@@ -1,0 +1,12 @@
+To use Orange
+
+first you have to use calipso with -P   -rs -rr -rg   -rc -rb -l    options to preprocess c source and to have more easier equivalent c source in term of execution path (no goto only one return no switch, no break) l option keep previous line number.
+
+then you can apply orange on c source resulting on calipso
+as an example  ./../orange/main/main  -pp -l  debieC/debie6.c HealthMonitoringTask Start_Conversion End_Of_ADC SetSensorUnitOff> debieC/debie6.pret
+
+-pp -l to know the initial line number of loop and function call
+
+next the first argument is the c source file to evaluate 
+the nest one is the name of the function head of the flow fact
+the other one are the name of the function to evaluate call number.
