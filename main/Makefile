@@ -1,4 +1,5 @@
 # $Id: Makefile,v 1.3 2008/07/18 11:36:31 michiel Exp $
+#Rajoute truc pour yacas.
 include ../Makefile.head
 
 SOURCES = \
