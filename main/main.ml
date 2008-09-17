@@ -2,7 +2,7 @@
  *	$Id: main.ml,v 1.2 2008/07/18 11:36:31 michiel Exp $
  *	Copyright (c) 2003, Hugues Cass� <hugues.casse@laposte.net>
  *
- *	Pretty printer of XML document.
+ *	Tool to compute loop bounds
  *)
 
 open Frontc
