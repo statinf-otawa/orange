@@ -4,8 +4,8 @@ include ../Makefile.head
 SOURCES = \
 	main.ml
 
-OCAML_INC += ../../Frontc-3.2-3/frontc/frontc ../O_Range
-OCAML_LIB += unix ../../Frontc-3.2-3/frontc/frontc/frontc ../O_Range/orange
+OCAML_INC += ../../Frontc-3.2-3/frontc/frontc ../O_Range ../inst/lib/
+OCAML_LIB += unix ../../Frontc-3.2-3/frontc/frontc/frontc ../O_Range/orange ../inst/lib/cyacas
 
 $(eval $(call ocaml_prog,main,$(SOURCES)))
 

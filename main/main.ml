@@ -36,6 +36,15 @@ let args2: Frontc.parsing_arg list ref = ref []
 let add_file_and_name filename =
 	list_file_and_name := List.append !list_file_and_name [filename]
 
+type myArgs_t = COMP of string
+type compInfo = int list
+
+let myArgs: myArgs_t list ref = ref []
+
+
+let myComps: (string * compInfo) list ref = ref []
+
+
 let opts = [
 	("-o", Arg.Set_string out_file,
 		"Output to the given file.");
@@ -51,6 +60,8 @@ let opts = [
 		"Include retrieval directory");
 	("-D", Arg.String (fun def -> args := (DEF def) :: !args),
 		"Pass this definition to the preprocessor.");
+	("-c", Arg.String (fun def -> myArgs := (COMP def) :: !myArgs),
+		"Declare a function as a component to do partial analysis.");
 	("-U", Arg.String (fun undef -> args := (UNDEF undef) :: !args),
 		"Pass this undefinition to the preprocessor.");
 	("-l", Arg.Unit (fun _ -> args := (Frontc.LINE_RECORD true)::!args),
@@ -59,6 +70,23 @@ let opts = [
 		"Takes input from standard input.");
 ]
 
+let isComponent comp = 
+  let rec aux = function
+     [] -> false
+    | (COMP comp2)::r -> if (comp = comp2) then (true) else (aux r)
+  in aux !myArgs
+  
+  
+let rec getComps = function
+   [] -> []
+  |t::r -> let fname = ((snd t).nom) and reste = (getComps r) in
+           if (isComponent fname) then (fname, [])::reste else reste
+
+let analysePartielle file = 
+ analyse_defs file;
+ myComps := (getComps !doc.laListeDesFonctions);
+ print_string "OK\n"
+  
 (* Main Program *)
 let _ =
 	(*Calipso.process*)
@@ -92,6 +120,7 @@ let _ =
 	Cextraireboucle.maj hd tl;
 	let a1 = !args in
 				
+				
 	let a2 = List.filter (fun e ->  match e with LINE_RECORD _-> false |_-> true) a1 in			
 				 
 				let firstParse =
@@ -108,7 +137,6 @@ let _ =
 		 		Orange.initref stdout firstParse;
 		
 				(*Cprint.print stdout firstParse ; (*plante avec l'option -l*)*)
-				 
 				let secondParse =
 						(match Frontc.parse  ((FROM_FILE (List.hd !Cextraireboucle.files)) :: a2) with 
 							PARSING_ERROR ->  []
@@ -118,13 +146,11 @@ let _ =
 
 				
 				(*Orange.initref stdout secondParse;*)
-				Orange.printFile  stdout secondParse;
+				(* analysePartielle secondParse; *)
+				Orange.printFile stdout secondParse;
 
 
 
-	(* Close the output if needed *)
-	if close then close_out output
-
-	
-
-
+                              (* Close the output if needed *)
+                              if close then close_out output
+                               
