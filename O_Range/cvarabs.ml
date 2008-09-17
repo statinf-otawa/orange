@@ -2859,6 +2859,25 @@ let rec consArraySum var min max tab1 indexexp a  =
 	end
 	else NOTHING
 
+(*let extractArrayExp var min max expE endcontexte lesAs estvalue =
+	let (tab1,_, _) =getArrayNameOfexp  expE  in
+	if tab1 != "" &&  estvalue = true then
+	begin
+		let (indexexp , isok) = consArrayFromPtrExp ( expE  )  tab1 in
+		if isok then 
+		begin
+			if existAssosArrayIDsize tab1  then 
+			begin
+				if  (listeDesVarsDeExpSeules indexexp)  = [var] then 
+				begin
+					let rescons = consArraySum var (0 -1) (max -1) tab1 indexexp (rond endcontexte lesAs) in
+					if rescons  = NOTHING then e else (EXP(rescons),true)
+				end
+			else (EXP(NOTHING),false) 
+		end else (EXP(NOTHING),false)
+	end else (EXP(NOTHING),false)
+end else (EXP(NOTHING),false)
+
 let sygmaArray e endcontexte lesAs =
 	match expVaToExp(e) with  
  		CALL (exp1, args) 			->	
@@ -2875,37 +2894,43 @@ let sygmaArray e endcontexte lesAs =
 						begin 
 								let (max,estvalue) = 	(match max1 with   ConstInt (i)-> (int_of_string  i, true)  | ConstFloat (i) ->   (0, true) | _->(0, false)) in
 								let expE =  (List.hd (List.tl suite) ) in
+
+								
 								let thevar =  (listeDesVarsDeExpSeules expE)  in
 								if thevar = [] || thevar = [var] then e
 								else
 								begin
+									
 									let listarrayvar = List.filter(fun v-> existAssosArrayIDsize v)thevar in
 									if inclus thevar (union listarrayvar [var]) then (*all var without var are array*)
 									begin
-										let (tab1,_, _) =getArrayNameOfexp  expE  in
-										if tab1 != "" &&  estvalue = true then
-										begin
-											let (indexexp , isok) = consArrayFromPtrExp ( expE  )  tab1 in
-											if isok then 
-											begin
-												if existAssosArrayIDsize tab1  then 
+										match expE with
+										BINARY(op,e1,e2)->
+												let (tab1,_, _) =getArrayNameOfexp  expE  in
+												if tab1 != "" &&  estvalue = true then
 												begin
-													if  (listeDesVarsDeExpSeules indexexp)  = [var] then 
+													let (indexexp , isok) = consArrayFromPtrExp ( expE  )  tab1 in
+													if isok then 
 													begin
-														let rescons = consArraySum var 0 (max -1) tab1 indexexp (rond endcontexte lesAs) in
-														if rescons  = NOTHING then e else EXP(rescons)
-													end
-													else e 
+														if existAssosArrayIDsize tab1  then 
+														begin
+															if  (listeDesVarsDeExpSeules indexexp)  = [var] then 
+															begin
+																let rescons = consArraySum var (0 -1) (max -1) tab1 indexexp (rond endcontexte lesAs) in
+																if rescons  = NOTHING then e else EXP(rescons)
+															end
+															else e 
+														end else e
+													end else e
 												end else e
-											end else e
-										end else e
+										|CALL(e1,a1)->
 									end else e
 								end 
 						end			
 					|_-> e)
 				end					
 				|_-> e)
-		| _->e
+		| _->e*)
 
 let estModifie = ref false
 
@@ -3161,7 +3186,7 @@ if l = [] then [] else  List.append  [absMoinsT (List.hd l) a1 a2 ] (paux a1 a2 
 
 let  produit a1 a2  = 
 (*Printf.printf "produit\n";*)
-listeASCourant := paux a1 a2 (rechercheLesVar a2  (rechercheLesVar a1 []))
+ paux a1 a2 (rechercheLesVar a2  (rechercheLesVar a1 []))
 
 let absMoinsTEm x a1 a2 listeT=
 	if ( existeAffectationVarListe x a1) then
@@ -3217,7 +3242,7 @@ let absMoinsTEm x a1 a2 listeT=
 let rec pauxEm a1 a2 l listeT=
 if l = [] then [] else  List.append  [absMoinsTEm (List.hd l) a1 a2 listeT] (pauxEm a1 a2 (List.tl l) listeT) 
 
-let produitEm a1 a2 listeT = listeASCourant := pauxEm a1 a2 (rechercheLesVar a2  (rechercheLesVar a1 [])) listeT
+let produitEm a1 a2 listeT =  pauxEm a1 a2 (rechercheLesVar a2  (rechercheLesVar a1 [])) listeT
 
 let rec reecrireCallsInLoop var listeinst =
 (*Printf.printf "reecrire liste appels dep de %s\n" var;*)
@@ -3260,20 +3285,20 @@ let estTrue myTest =  if  myTest = Boolean(true) then true else false
 let estFalse myTest = if  myTest = Boolean(false) then true else false
 
 let rec evalStore i a =
-(match i with 
+match i with 
 	VAR (id, exp) -> (*Printf.printf "evalStore var %s valeur du contexte  \n" id; afficherListeAS a;
 			Printf.printf "evalStore var apres contexte\n";*)
-		listeASCourant :=rond a [new_assign_simple id exp];
-
+		rond a [new_assign_simple id exp];
+		
 	| TAB (id, exp1, exp2) -> (*Printf.printf "evalStore tab\n";*)
-		listeASCourant :=rond a [new_assign_double id exp1 exp2]
+		rond a [new_assign_double id exp1 exp2]
 		(*afficherListeAS !listeASCourant;*)
-	|  MEMASSIGN ( id, exp1, exp2)	->	listeASCourant :=rond a [new_assign_mem id exp1 exp2];
+	|  MEMASSIGN ( id, exp1, exp2)	->	rond a [new_assign_mem id exp1 exp2];
 (*Printf.printf"memassign\n"; afficherListeAS  [new_assign_mem id exp1 exp2];
 Printf.printf"memassign as\n";	*)	
 	| BEGIN liste ->(*Printf.printf "evalStore sequence\n";*)
 		(*let pred = !listeASCourant in*)
-		listeASCourant :=(traiterSequence liste a) ;
+		(traiterSequence liste a) ;
 	(*afficherListeAS !listeASCourant;
 		Printf.printf "fin evalStore sequence\n";*)
 		
@@ -3296,22 +3321,19 @@ print_expVA myCond; new_line();
 				begin
 					(*Printf.printf "\nevalStore if then else IF res test indefini\n";*)
 					 listeASCourant := [];
-					 evalStore i1 [];
-					 let resT = !listeASCourant in
+					 let resT = evalStore i1 [] in
+					
 (*Printf.printf "les as de if T \n" ;
 afficherListeAS !listeASCourant;
 Printf.printf "fin \n";*)
 					 let listeIF = (rechercheLesVar resT []) in
-					 listeASCourant := [];
-					 evalStore i2 [];
-					 let resF = !listeASCourant in	
+					 
+					 let resF = evalStore i2 [] in	
 					 let listeELSE = (rechercheLesVar resF []) in
 					 let inter = intersection listeELSE  listeIF in
-					 	listeASCourant := []; 
-					 produit resT resF 	;
-					 
-					 let resA = !listeASCourant in	
-						listeASCourant := []; 
+					 	
+					  let resA = produit resT resF 	  in	
+						 
 					 produitEm a resA inter	(*produit a resA*)
 							(*	afficherListeAS !listeASCourant;*)
 				end
@@ -3320,19 +3342,16 @@ Printf.printf "fin \n";*)
 		else
 		begin
 (*Printf.printf "dans boucle\n" ;*)
-					 listeASCourant := [];
-					 evalStore i1 [];
-					 let resT = !listeASCourant in
+					
+					 let resT = evalStore i1 [] in
 					 let listeIF = (rechercheLesVar resT []) in
-					 listeASCourant := [];
-					 evalStore i2 [];
-					 let resF = !listeASCourant in	
+					 
+					 let resF =  evalStore i2 [] in	
 					 let listeELSE = (rechercheLesVar resF []) in
 					 let inter = intersection listeELSE  listeIF in
-					 	listeASCourant := []; 
-					 produit resT resF 	;
-					 let resA = !listeASCourant in	
-						listeASCourant := []; 
+					 	
+					 let resA = produit resT resF  in	
+					 
 					 produitEm a resA inter
 					(* let resA = !listeASCourant in	
 						listeASCourant := []; 
@@ -3359,29 +3378,19 @@ Printf.printf "fin \n";*)
 		else if (!estDansBoucle = true) then
 			begin
 				(*Printf.printf "evalStore if TRUE dans boucle\n"; *)
-				listeASCourant := [];
-				evalStore i1 [];
-				let resT = !listeASCourant in
+				
+				let resT = evalStore i1 [] in
 				produitEm a resT []
-				(*let resT = !listeASCourant in
-				(*let listeT = (rechercheLesVar resT []) in*)
-				listeASCourant := [];
-				produitEm a resT [];*)
+				(*listeASCourant := [];*)
 
 			end
-			else 	if (estFalse myTest = true ) then  listeASCourant := avant 
+			else 	if (estFalse myTest = true ) then   avant 
 					else 
 					begin
 					(*	Printf.printf "if non executé peut etre\n"; *)
-						listeASCourant := [];evalStore i1 []; let resT = !listeASCourant in
-						(*evalStore i1 [];
-						let resT = !listeASCourant in
-						(*let listeT = (rechercheLesVar resT []) in*)
-						listeASCourant := [];*)
-						produitEm a resT []
-						(*produit a resT *)
-
-					end;
+						let resT = evalStore i1 [] in
+						produitEm a resT [] 
+					end
 (*Printf.printf "fin evalStore IF THEN \n";		
 print_expVA myCond; new_line();
 Printf.printf "les as de if \n" ;
@@ -3390,14 +3399,14 @@ Printf.printf "fin \n";*)
 					
 	| FORV (num,id, _, _, _, _, inst)	-> 
 	(*	Printf.printf "\nevalStore boucle executed %d variable %s\n" num id;*)
-		listeASCourant := [];
+		
 		let listePred = !listeDesVarDependITitcour in
 		listeDesVarDependITitcour := [];
-   		evalStore inst [];
+   		let resT = evalStore inst [] in
 (*Printf.printf "les as de la boucle avant transfo %d\n" num;
 afficherListeAS !listeASCourant;
 Printf.printf "les as de la boucle avant transfo \n";*)
-		let resT = !listeASCourant in
+		
 		let newas=(closeFormPourToutXdelisteES resT id (*aS*) ) in
 
 (*Printf.printf "les as de FOR aprescloseform\n" ;
@@ -3407,26 +3416,25 @@ Printf.printf "contexte\n" ;
 afficherListeAS a;
 Printf.printf "fin \n";*)
 
-		listeASCourant:= (rond a  newas);
+		
 		(*abGlobales := majVG !abGlobales !listeASCourant;*)
 		listeDesVarDependITitcour := listePred;
 		(*Printf.printf "\nFIN evalStore boucle executed %d variable %s\n" num id;*)
-
+		(rond a  newas)
 (*Printf.printf "les as de FOR \n" ;
 afficherListeAS !listeASCourant;
 Printf.printf "fin \n";*)
 			
 	| APPEL (n,e,nomFonc,s,c,varB)->
-		listeASCourant := [];
+		
 		(*let globales = majVG !abGlobales a in*)
 
 		(*let contexte = rond  !abGlobales a  in*)
 
 	(*	Printf.printf "evalStore fonction %s  \n" nomFonc ;	*)
 		let sorties = (match s with BEGIN(sss)-> sss |_->[]) in
-		listeASCourant := [];
-		evalStore s [];
-		let affectSortie = !listeASCourant in	
+		
+		let affectSortie = evalStore s []  in	
 
 		let corps =   (match c with BEGIN(ccc)-> ccc |_->[]) in
 		let entrees = (match e with BEGIN(eee)-> eee |_->[]) in
@@ -3435,8 +3443,8 @@ Printf.printf "fin \n";*)
 		begin
 			(* POUR ESSAYER D'OPTIMISER NE GUARDER QUE LES ENTREES ET LES GLOBALES*)
 			listeASCourant := [];				
-			evalStore (c) (evalInputFunction a entrees !abGlobales);
-			corpsNouv := !listeASCourant;
+			corpsNouv := evalStore (c) (evalInputFunction a entrees !abGlobales);
+			
 			let rc =  !corpsNouv in listeASCourant := []; 
 (*Printf.printf "contxte \n" ;afficherListeAS rc;Printf.printf "fin liste\n" ;*)
 			if sorties <> [] then
@@ -3463,7 +3471,7 @@ Printf.printf "fin \n";*)
 				listeASCourant :=  List.append [affectres] !listeASCourant
 			end;
 			let nginterne = filterGlobales rc !globalesVar in
-			listeASCourant := (*rond ng *) (rond a (List.append  !listeASCourant nginterne))
+			(rond a (List.append  !listeASCourant nginterne))
 		end
 		else 
 		begin
@@ -3489,9 +3497,9 @@ Printf.printf "fin \n";*)
 		(*	afficherUneAffect (BEGIN(corps)); new_line(); Printf.printf "affect a apere reecrire fin\n";*)
 			let memoutput = !corpsNouvI in
 			let listeInput =   (evalInputFunction a entrees !abGlobales) in
-			listeASCourant := [];
-			evalStore (BEGIN(corps)) (*rond a*) listeInput;
-			let rc = !listeASCourant in
+			
+			let rc =evalStore (BEGIN(corps)) (*rond a*) listeInput in
+			
 			listeASCourant := [];
 			if memoutput <> [] then
 			begin
@@ -3518,12 +3526,13 @@ Printf.printf "fin \n";*)
 		 
 
 		(*Printf.printf "\nsorties %s depend de var de boucle %s\n" nomFonc varB; afficherListeAS !listeASCourant; Printf.printf "fin sorties\n";*)
-			listeASCourant := rond (*rond contexte globales  *)a (List.append  !listeASCourant nginterne);
+			rond (*rond contexte globales  *)a (List.append  !listeASCourant nginterne)
 		
 (*Printf.printf "evalStore fonction %s  \n global filter" nomFonc ; afficherListeAS nginterne; Printf.printf "fin res\n" ;*)
 (*Printf.printf "evalStore fonction %s  \n" nomFonc ;afficherListeAS !listeASCourant; Printf.printf "fin res\n" ;*)
 		end	
-)	
+
+
 
 and evalInputFunction a entrees  globales =
 	if entrees <> [] then
@@ -3541,13 +3550,7 @@ and evalInputFunction a entrees  globales =
 
 and  traiterSequence liste a =
 if liste = [] then a
-else
-begin
-
-	listeASCourant := [];
-	evalStore (List.hd liste) a;
-	(traiterSequence (List.tl liste) !listeASCourant)														
-end
+else traiterSequence (List.tl liste) (evalStore (List.hd liste) a)														
 
 and closeFormPourToutXdelisteES l id  =
 (*Printf.printf "closeFormPourToutXdelisteES %s fin\n" id; *)

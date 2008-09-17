@@ -223,9 +223,8 @@ and getIndirectIncrease var exp inst las asAs completList =
 	else
 	 match exp with
 		VARIABLE (v) -> 
-			listeASCourant := [];
-			evalStore (new_instBEGIN(completList)) [];
-			let cas = !listeASCourant in
+			
+			let cas =evalStore (new_instBEGIN(completList)) [] in
 			let assignj = expVaToExp(rechercheAffectVDsListeAS var cas) in
 						
 			(match assignj with
@@ -501,13 +500,13 @@ afficherLesAffectations iList;*)
 and extractIncOfLoop x inst varL nbItL completList=
 	if nbItL = 0 then
 	begin
-		listeASCourant := [];
-		evalStore (new_instBEGIN(inst)) [];
+		
+		let las = evalStore (new_instBEGIN(inst)) [] in
 		let (isindirect,inc1,v, before) = 
-			if existAffectVDsListeAS x !listeASCourant then
+			if existAffectVDsListeAS x las then
 			begin
 				let varBPUN = BINARY(SUB, VARIABLE varL, CONSTANT(CONST_INT("1"))) in
-				let extinc = expVaToExp(applyStoreVA (rechercheAffectVDsListeAS x !listeASCourant)  	[ASSIGN_SIMPLE (varL, EXP(varBPUN))] )   in
+				let extinc = expVaToExp(applyStoreVA (rechercheAffectVDsListeAS x las)  	[ASSIGN_SIMPLE (varL, EXP(varBPUN))] )   in
 				getInc x extinc inst !listeASCourant true completList
 			end
 			else (false,NOINC,x, false) in
@@ -517,12 +516,12 @@ and extractIncOfLoop x inst varL nbItL completList=
 	else 
 	begin
 		listeASCourant := [];
-		evalStore (new_instBEGIN(inst)) [];
+		let las =evalStore (new_instBEGIN(inst)) [] in
 		let (isindirect,inc1,v, before) = 
-			if existAffectVDsListeAS x !listeASCourant then
+			if existAffectVDsListeAS x las then
 			begin
 				let varBPUN = BINARY(SUB, VARIABLE varL, CONSTANT(CONST_INT("1"))) in
-				let extinc = expVaToExp(applyStoreVA (rechercheAffectVDsListeAS x !listeASCourant)  	[ASSIGN_SIMPLE (varL, EXP(varBPUN))] )   in
+				let extinc = expVaToExp(applyStoreVA (rechercheAffectVDsListeAS x las)  	[ASSIGN_SIMPLE (varL, EXP(varBPUN))] )   in
 				getInc x extinc inst !listeASCourant true completList
 			end
 			else (false,NOINC,x, false) in
@@ -531,11 +530,11 @@ and extractIncOfLoop x inst varL nbItL completList=
 
 
 and getIncOfCall x call completList=
-listeASCourant := [];
-evalStore call [];
-if existAffectVDsListeAS x !listeASCourant then
+
+let las = evalStore call [] in
+if existAffectVDsListeAS x las then
 begin
-			let extinc = expVaToExp(rechercheAffectVDsListeAS x !listeASCourant)   in
+			let extinc = expVaToExp(rechercheAffectVDsListeAS x las)   in
 			getInc x extinc [call] !listeASCourant true completList
 end
 else (false,NOINC,x, false)
@@ -553,152 +552,4 @@ print_expression !expressionIncFor 0; flush();new_line();flush();*)
 		(isindirect,inc,var, before)
 
 
-(*
 
-let getBooleanCondition    var init comp l avant dans cte t lv lvb inst =
-match comp with
- UNARY (op, exp) -> 
-
-		(match op with
-		
-			| NOT ->
-			|_->
-		)
-| VARIABLE (v) -> 
-|_->
-	 
-	*)	
-(*let getBoolVar comp  =
-match comp with
-	 UNARY (op, exp) -> 
-			(match op with
-		
-				| NOT -> (match exp with VARIABLE(v) ->(v, true,true)(*variable, has variable, isnot variable*)|_->("other", false,false)
-				|_->("other", false,false)
-			)
-	| VARIABLE (v) -> (v, true, false)
-	|_->("other", false,false)
-
-let getBoolVarChangeCond  inst var = (* var is charge into more than one conditional instruction nocomp*)
-()*)
-
-(*;*)
-
-(*
-let rec rechercheInc var exp =
-	let val1 = calculer (EXP exp) !infoaffichNull [] in 
-	if val1 = NOCOMP  then NOTHING
-	else
-	begin
-		if (estVarDsExpEval var val1 = false)  then (*exp*) NOTHING
-		else
-		begin
-			if (estAffine var val1)   then 
-			begin
-				let (a,b) = calculaetbAffineForne var val1 in	
-				let (var1, var2) = (evalexpression a , evalexpression b) in
-				if  (estNul var1 = true) || var1 = ConstInt("1") || var1 =  ConstFloat("1.0")  then
-				begin 
-					opEstPlus := true ; 
-
-					if estNul var2 then	estPosInc := INCVIDE 
-					else 	if estPositif var2 then estPosInc := POS 
-							else if estDefExp  var2 then estPosInc := NEG else estPosInc := NDEF;
-					expressionEvalueeToExpression var2  
-				end	
-				else 
-					if (estNul var2) then 
-					begin   
-						let val1 = expressionEvalueeToExpression var1 in
-						opEstPlus := false ; 
-						let varMoinsUn = (evalexpression (Diff( var1,  ConstInt("1")))) in
-						if estStricPositif var1 then
-						begin
-							if estNul varMoinsUn then	begin estPosInc := INCVIDE; val1 end
-							else  
-							begin
-								estPosInc := POS ;	
-								if estStricPositif varMoinsUn then val1
-								else  BINARY (DIV, CONSTANT  (CONST_INT "1"), val1)
-							end
-						end
-						else 
-						begin
-							estPosInc := NDEF;
-							expressionEvalueeToExpression var1 
-						end
-					end
-					else NOTHING		
-			end
-			else NOTHING
-		end
-	end 
-
-let rec analyseIncFor var exp =
-(	match exp with	
-	BINARY (op, exp1, exp2) ->
-		(	match exp1 with
-			VARIABLE (v) -> 
-				if v = var then
-				begin
-					(*Printf.printf"BINARY expression ici de l'as complet\n"; print_expression exp2 0; flush() ; space (); new_line();
-					evalStore (new_instBEGIN (!asInc)) [];
-					let aS = !listeASCourant in		
-					let exinc = expVaToExp(rechercheAffectVDsListeAS v aS) in
-					Printf.printf"expression ici de l'as partiel\n"; print_expression exinc 0; flush() ; space (); new_line();
-					if exinc = exp2 then Printf.printf "\negal\n" else Printf.printf "\ndifferent\n";*)
-				(	match op with
-					ASSIGN ->  			if List.mem var (listeDesVarsDeExpSeules  exp2) =false  then
-										begin
-											(* si j=i+N avec i mofifiée par la boucle alors on peut remplacer la condition sur j dans le test de boucle par une condition sur i+N sans décalage pour un do while mais avec décalage pour les autres boucles*)
-											expressionIncFor:=NOTHING
-										end
-							   			else expressionIncFor:= rechercheInc var exp2							
-					| ADD_ASSIGN ->    	expressionIncFor:=exp2;opEstPlus:= true
-					| SUB_ASSIGN ->    	expressionIncFor:=UNARY (MINUS, exp2); opEstPlus:=  true
-					| MUL_ASSIGN ->   	expressionIncFor:= exp2; opEstPlus:=  false
-					| DIV_ASSIGN ->    	expressionIncFor := BINARY (DIV, CONSTANT  (CONST_INT "1"), exp2); opEstPlus:=  false
-							(*| MOD_ASSIGN ->    expressionIncFor := BINARY (MOD, exp1, exp2)*)
-					| SHL_ASSIGN -> expressionIncFor := BINARY (MUL, CONSTANT  (CONST_INT "2"), exp2); opEstPlus:=  false
-					| SHR_ASSIGN ->   
-						expressionIncFor := BINARY (DIV, CONSTANT  (CONST_INT "1"),  BINARY (MUL, CONSTANT  (CONST_INT "2"), exp2) );
-							opEstPlus:=  false
-					|_ ->  expressionIncFor:=NOTHING
-				)
-				end
-				else  expressionIncFor:=NOTHING
-			|_->if List.mem var (listeDesVarsDeExpSeules  exp1) =false   then	analyseIncFor var exp2
-								else if List.mem var (listeDesVarsDeExpSeules  exp2) =false  then	analyseIncFor var exp1 
-								else expressionIncFor:=NOTHING;
-		)
-		| UNARY (op, exp1) ->
-			(match exp1 with
-				VARIABLE (v) -> 
-					if v = var then
-					begin
-
-				(*Printf.printf"UNARY expression ici de l'as complet\n"; print_expression exp1 0; flush() ; space (); new_line();*)
-				(*	evalStore (new_instBEGIN (!asInc)) []; 
-					let aS = !listeASCourant in		
-					let exinc = expVaToExp(rechercheAffectVDsListeAS v aS) in
-					(*Printf.printf"expression ici de l'as partiel\n"; print_expression exinc 0; flush() ; space (); new_line();*)
-					if exinc = exp1 then Printf.printf "\negal\n" else Printf.printf "\ndifferent\n";*)
-
-						(match op with
-						  PREINCR -> expressionIncFor:=CONSTANT (CONST_INT "1"); opEstPlus:= true
-						| PREDECR -> expressionIncFor:= CONSTANT(CONST_INT "-1"); opEstPlus:= true
-						| POSINCR -> expressionIncFor:= CONSTANT (CONST_INT "1"); opEstPlus:= true
-						| POSDECR -> expressionIncFor:= CONSTANT (CONST_INT "-1"); opEstPlus:= true
-						|_ -> 		 expressionIncFor:=NOTHING
-						)
-					end
-					else   expressionIncFor:=NOTHING; 
-				|_->  expressionIncFor:=NOTHING; 
-			)
-		| COMMA exps ->	
-			if List.mem var (listeDesVarsDeExpSeules exp) =false then	expressionIncFor:=NOTHING
-			else List.iter(	fun ex-> if List.mem var  (listeDesVarsDeExpSeules ex) = true then  analyseIncFor var ex)exps 				
-								   			
-		|_-> expressionIncFor:=NOTHING;
-)
-*)

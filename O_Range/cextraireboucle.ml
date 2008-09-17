@@ -2149,10 +2149,9 @@ let eval listeInst saufId idEng=
 			| FORV ( num, _, _, _, _, _, _) -> 	num != saufId						
 			| APPEL (_,_, _, _,_,_) ->true
 		) listeInst in
-	listeASCourant := []; 
 (*	Printf.printf "ideng %d EVAL var %s\n" idEng varDeBoucle ;*)
-	evalStore   (new_instBEGIN (listeInter)) [];
-	!listeASCourant	
+	evalStore   (new_instBEGIN (listeInter)) []
+	
 			
 let rec relierAux num 	varDeBoucle listeTraitee listeAtraiter listeDesFils=	
 	if (listeAtraiter = []) then 	
@@ -2441,12 +2440,8 @@ let rec analyse_statement   stat =
 
 		let listeVCond =  listeDesVarsDeExpSeules  exp in  
 (*ICI*)
-		listeASCourant := [];
-		(*evalStore (new_instBEGIN (li)) [];
-		let aS = !listeASCourant in	*)
 		let na = extractVarCONDAffect  li listeVCond in
-		evalStore (new_instBEGIN (na)) [];
-		let asna = !listeASCourant in
+		let asna = evalStore (new_instBEGIN (na)) []  in
 
 
 		let listeVDeBoucle =  	rechercheListeDesVarDeBoucle  listeVCond 	asna in
@@ -2459,15 +2454,13 @@ let rec analyse_statement   stat =
 	
 		
 		(*afficherLesAffectations na;*)
-	
-	
-		listeASCourant := [];
-		evalStore (new_instBEGIN (listePred)) [];
+		
+		let listeASC = evalStore (new_instBEGIN (listePred)) [] in
 		isExactForm := (hasMultiOuputInst stat = false) && (!trueList = []) && (!falseList = []);
 (*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" numBoucle;*)
 (*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" numBoucle;
 if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*)
-		let (nb, addtest) = traiterConditionBoucle "while" numBoucle deg exp idBoucleEngPred  varDeB constante varBoucleIfN lVB !listeASCourant  asna (*aS*) listeVDeBoucle (VARIABLE(varIfN)) na in
+		let (nb, addtest) = traiterConditionBoucle "while" numBoucle deg exp idBoucleEngPred  varDeB constante varBoucleIfN lVB listeASC  asna (*aS*) listeVDeBoucle (VARIABLE(varIfN)) na in
 (*Printf.printf "\n\nAnalyse statement : la boucle %d   ap\n" numBoucle;*)
 
 		listeDesInstCourantes := 
@@ -2542,25 +2535,20 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		listeDesInstCourantes := List.append !listeDesInstCourantes  !listeNextExp; 
 
  		let lesInstDeLaBoucle = !listeDesInstCourantes in
-		listeASCourant := [];
+	
 		let li = if !aUneFctNotDEf = true then 
 		begin 
 			(*Printf.printf "traitement particuloier boucle\n";*)
 			listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp ; !listeDesInstCourantes
 		end 
 		else !listeDesInstCourantes in
-		(*evalStore (new_instBEGIN (li)) [];
-		let aS = !listeASCourant in	*)
-
+		
 
 		let listeVCond =  listeDesVarsDeExpSeules  exp in  
 	
 (*ICI*)
-		(*evalStore (new_instBEGIN (li)) [];
-		let aS = !listeASCourant in	*)
 		let na = extractVarCONDAffect  li listeVCond in
-		evalStore (new_instBEGIN (na)) [];
-		let asna = !listeASCourant in
+		let asna = evalStore (new_instBEGIN (na)) [] in
 
 
 		let listeVDeBoucle =  	rechercheListeDesVarDeBoucle  listeVCond 	asna in
@@ -2573,13 +2561,13 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 				else (varBoucleIfN, false, listeVDeBoucle))in
 
 
-		listeASCourant := [];
-		evalStore (new_instBEGIN (listePred)) [];
+		
+		let las = evalStore (new_instBEGIN (listePred)) [] in
 		isExactForm := (hasMultiOuputInst stat = false) && (!trueList = []) && (!falseList = []);
 		(*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" numBoucle;*)
 		(*if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;
 *)
-		let (nb,_) =  traiterConditionBoucle "do" numBoucle deg exp idBoucleEngPred  varDeB constante  varBoucleIfN lVB !listeASCourant asna listeVDeBoucle  (VARIABLE(varIfN)) na in 
+		let (nb,_) =  traiterConditionBoucle "do" numBoucle deg exp idBoucleEngPred  varDeB constante  varBoucleIfN lVB las asna listeVDeBoucle  (VARIABLE(varIfN)) na in 
 	(*Printf.printf "\n\nAnalyse statement : la boucle %d   ap\n" numBoucle;*)
 		listeDesInstCourantes :=  [new_instFOR numBoucle varBoucleIfN (EXP(NOTHING)) (EXP(exp)) (EXP(NOTHING)) (EXP( nb)) 
 									(new_instBEGIN (lesInstDeLaBoucle ))];				
@@ -2670,11 +2658,9 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		let listeVCond =  listeDesVarsDeExpSeules  exp2 in  
 	
 (*ICI*)
-		(*evalStore (new_instBEGIN (li)) [];
-		let aS = !listeASCourant in	*)
+		
 		let na = extractVarCONDAffect  li listeVCond in
-		evalStore (new_instBEGIN (na)) [];
-		let asna = !listeASCourant in		 
+		let asna = evalStore (new_instBEGIN (na)) []  in		 
 		let listeVDeBoucle =  	rechercheListeDesVarDeBoucle  listeVCond 	asna in
 		(*remarque ajouter les initialisations au bloc englobant et exp3 à la boucle *)
 		
@@ -2685,13 +2671,12 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 			if (List.tl listeVDeBoucle) = [] then (List.hd listeVDeBoucle, false, [])(*la boucle ne depend que d'une seule variable on peut traiter*)
 			else (varBoucleIfN, false, listeVDeBoucle))in	
 
-		listeASCourant := [];
-		evalStore (new_instBEGIN (listePred)) [];
+		let las=  evalStore (new_instBEGIN (listePred)) [] in
 				isExactForm := (hasMultiOuputInst stat = false) && (!trueList = []) && (!falseList = []);
 (*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" num;*)(*
 if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*)
 		let (nb,addtest) = traiterConditionBoucleFor 	"for" num !nbImbrications exp2
-					idBoucleEngPred exp1 exp3  varDeBoucle constante varBoucleIfN listeVB !listeASCourant asna listeVDeBoucle (VARIABLE(varIfN)) na in	
+					idBoucleEngPred exp1 exp3  varDeBoucle constante varBoucleIfN listeVB las asna listeVDeBoucle (VARIABLE(varIfN)) na in	
 		(*Printf.printf "\n\nAnalyse statement : la boucle %d  ap \n" num;*)
 		listeDesInstCourantes := 
 				[	new_instFOR num varBoucleIfN	(EXP(exp1)) (EXP(exp2)) (EXP(exp3))  (EXP( nb)) (new_instBEGIN lesInstDeLaBoucle )  ];
@@ -3162,17 +3147,15 @@ end
 									
 and ajouterReturn nomF lesAffectations =
 	let nouvarres = Printf.sprintf "res%s" nomF  in
-	listeASCourant := [];
+	
 	if lesAffectations = [] then begin  ()end
 	else
 	begin
 		
-		evalStore (new_instBEGIN(lesAffectations)) [];
-
-
+		let asl = evalStore (new_instBEGIN(lesAffectations)) [] in
 		if existAffectVDsListeAS nouvarres !listeASCourant then
 		begin 
-			let resaux = rechercheAffectVDsListeAS nouvarres (*index*) !listeASCourant in
+			let resaux = rechercheAffectVDsListeAS nouvarres (*index*) asl in
 			listeASCourant := [];
 			if resaux <> EXP(NOTHING) then
 			begin
@@ -3824,8 +3807,8 @@ and onlyanalysedef def =
 							begin
 								let (id,_,_,exp) = (List.hd namelist) in
 								listeASCourant := [];(*static id *)
-								evalStore 	(new_instBEGIN !listeDesInstGlobales) []	;
-								if (existeAffectationVarListe id !listeASCourant) then  (true, true)
+								let glo = evalStore 	(new_instBEGIN !listeDesInstGlobales) []	in
+								if (existeAffectationVarListe id glo) then  (true, true)
 								else (false, true) 
 							end
 							else (false , true)

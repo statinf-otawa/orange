@@ -319,12 +319,12 @@ begin
 end	
 
 let  jusquaFaux listeInst saufId  contexte =
-	listeASCourant := [];
+	
 	reslisteSAUFID := [] ;
 	estTROUVEID := false;
 	jusquaF listeInst saufId ;
-	evalStore (new_instBEGIN(!reslisteSAUFID)) contexte	;
-	!listeASCourant
+	evalStore (new_instBEGIN(!reslisteSAUFID)) contexte	
+	
 
 let rec listeSAUFIDB listeInst sId  l=
   if listeInst <> [] then  List.append [traiterUneIntructionPourBoucle (List.hd listeInst) sId l] (listeSAUFIDB (List.tl listeInst) sId l)
@@ -340,9 +340,8 @@ and traiterUneIntructionPourBoucle premiere sId  l=
 	|_-> premiere
 		
 let  evalSIDB listeInst saufId contexte  l=
-	listeASCourant := [];
-	evalStore (new_instBEGIN(listeSAUFIDB listeInst saufId  l)) contexte	;
-	!listeASCourant
+	 evalStore (new_instBEGIN(listeSAUFIDB listeInst saufId  l)) contexte
+	
 
 let rec estDansListeInstBoucle l id =
 if l = [] then false
@@ -357,20 +356,18 @@ and  estDansCorpsBoucle corps id =
 	|_->  false		
 					
 let  jusquaBaux listeInst saufId contexte =
-	listeASCourant := [];
 	reslisteSAUFID := [] ;
 	estTROUVEID := false;
 	jusquaB listeInst saufId ;
-	evalStore (new_instBEGIN(!reslisteSAUFID)) contexte	;
-	!listeASCourant
+	evalStore (new_instBEGIN(!reslisteSAUFID)) contexte	
+	
 
 let lesVardeiSansj nEC n l=
 	let saufId = (getBoucleInfoB (n.infoNid.laBoucle)).identifiant in
 	(*Printf.printf"lesVardeiSansj de i = %d et j = %d \n" (getBoucleInfoB (nEC.infoNid.laBoucle)).identifiant saufId;*)
 	let listeInter =  listeSAUFIDB (reecrireCallsInLoop nEC.varDeBoucleNid 	nEC.lesAffectationsBNid)   saufId  l in
-	listeASCourant := [];
-	evalStore  (new_instBEGIN(listeInter)) []	;
-	!listeASCourant
+	evalStore  (new_instBEGIN(listeInter)) []
+	
 
 let rec recherche numappel liste =
 if liste = [] then TFONCTION(!(!mainFonc),0,[], [], [], [],[],[], true,false)
@@ -444,9 +441,8 @@ and traiterUneIntructionPourAppel premiere sId ainserer output input le=
 			appelcourant := [premiere]; 
 			estTROUVEID := true;
 			let aS = !listeASCourant in
-			listeASCourant := [];
-			evalStore  corpsF []	;
-			listeIF :=listeAsToListeAffect (filterIF  !listeASCourant) ;
+			
+			listeIF :=listeAsToListeAffect (filterIF  (evalStore  corpsF [])) ;
 			(*Printf.printf "APPEL de %s \n " nom;
 			Printf.printf "traiterUneIntructionPourAppel contexteAux dans eval FONCTION: \n";
 								afficherListeAS !listeASCourant; Printf.printf "FIN CONTEXTE \n";*)
@@ -475,13 +471,12 @@ let existeappel l  saufId=  List.exists (fun i -> match i with APPEL (num,_, _, 
 let rechercheAppelCourant l saufId= List.find(fun i -> match i with  APPEL (num,_, _, _,_,_) ->  num = saufId |_-> false  )l	
 	
 let  evalSIDA listeInst saufId  contexte ainserer output input le =
-	listeASCourant := [];
 	estTROUVEID := false;
 	listeIF := [];
 	let nc = new_instBEGIN(listeSAUFIDA listeInst saufId ainserer output input le) in
 (*Printf.printf "evalSIDA nc\n"; afficherUneAffect nc; Printf.printf "evalSIDA fin\n";*)
-	evalStore  nc contexte	;
-	!listeASCourant
+	evalStore  nc contexte	
+	
 													
 let rechercherEvalParNomAppel nomF idB appel listeF=
  List.find 
@@ -1039,10 +1034,7 @@ Printf.printf "tn\n"; print_expVA tN; new_line();*)
 								(*Printf.printf "ces as\n";*)
 
 								let aSC = (*if sansP = false then*) evalSIDA calllist numF  [] ainserer output listeInputInst listeEng 
-										(*  else 
-										  begin Printf.printf "sansP\n";
-												evalStore (new_instBEGIN(ainserer)) []; !listeASCourant 
-										  end*) in
+										 in
 								
 								let isExecutedF = isExecuted lFt lFf aSC appel !abGlobales true in
 								listeInstNonexe := List.append [pred] !listeInstNonexe;
@@ -1399,7 +1391,6 @@ let rec  evalCorpsFOB corps affectations contexte listeEng estexeEng =
 	else begin (contexte, []) end
 
 and endOfcontexte affec  last new_contexte =
-    listeASCourant := [];
 	if last = [] then begin (*Printf.printf"lastvide \n"; *) evalStore (BEGIN(affec)) new_contexte end
 	else
 	begin
@@ -1409,8 +1400,8 @@ and endOfcontexte affec  last new_contexte =
 		| IDAPPEL (numf,_,_,_, _,_) ->  (*Printf.printf"last function  %d\n" numf; *) nextInstructionsF numf affec)
  		in
 		(*afficherUneAffect (BEGIN(fin)); *)
-		if fin = [] then listeASCourant :=new_contexte else evalStore (BEGIN(fin)) new_contexte
-	end; !listeASCourant
+		if fin = [] then new_contexte else evalStore (BEGIN(fin)) new_contexte
+	end; 
 
 and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng=
 (match elem with
@@ -1653,8 +1644,6 @@ if !vDEBUG then Printf.printf "evalNid NID av eval nid de %d \n" (getBoucleIdB n
 			let ni = reecrireCorpsNonExe  nid.lesAffectationsBNid !listeInstNonexe !numAppel in
 			evalStore (new_instBEGIN ni) appel;
 			(*abGlobales := majVG !abGlobales !listeASCourant;*)
-
-			!listeASCourant
 		end
 		else
 		begin (*	Printf.printf "n'est pas exécutée\n";*)
@@ -1894,8 +1883,8 @@ let evaluerFonctionsDuDoc  doc=
 		let (_, f) = (rechercherFonctionParNom !(!mainFonc) doc) in
 		listeASCourant := [];
 		globalesVar := !alreadyAffectedGlobales;
-		evalStore 	(new_instBEGIN !listeDesInstGlobales) []	;
-		abGlobales := !listeASCourant;
+		abGlobales :=  evalStore 	(new_instBEGIN !listeDesInstGlobales) []	;
+	
 (*Printf.printf"GLOBALE\n";
 afficherListeAS( !abGlobales);new_line () ;flush(); space();
 Printf.printf"FIN GLOBALE\n";*)
