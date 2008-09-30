@@ -9,6 +9,7 @@ SOURCES = \
 	cvariables.ml \
 	constante.ml\
 	cvarabs.ml \
+	coutput.ml \
 	increment.ml\
 	cextraireboucle.ml\
 	rename.ml\
