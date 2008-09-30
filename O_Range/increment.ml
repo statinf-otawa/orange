@@ -18,7 +18,22 @@ let estPosInc = ref   INCVIDE (*1 positif 0 nul -1 négatif ou diff si incrémen
 let expressionIncFor = ref NOTHING
 
 
-
+	let listAssosExactLoopInit = ref [(-1, 0)]
+	let existAssosExactLoopInit  name  = (List.mem_assoc name !listAssosExactLoopInit)
+	let setAssosExactLoopInit  name t =  
+		if existAssosExactLoopInit  name = false then
+		begin
+			let val1 = calculer (EXP t) !infoaffichNull  []  1 in 
+			if estNoComp val1  =false then 
+ 				if estDefExp val1 then
+					match val1 with 
+					ConstInt(j) -> 		 listAssosExactLoopInit :=  List.append [(name, int_of_string  j)] !listAssosExactLoopInit 	
+					|_->()
+		end
+				
+	
+	
+	let getAssosExactLoopInit name  = (List.assoc name !listAssosExactLoopInit)
 
 type increaseType = POSITIV|NEGATIV|MULTI|DIVI|NOTYPE (* +,-,*or/, NODEF*)
 type increaseValue = NOINC|NODEFINC| INC of increaseType * expression
@@ -57,7 +72,7 @@ match inc with
 
 
 let rec rechercheInc var exp =
-	let val1 = calculer (EXP exp) !infoaffichNull [] in 
+	let val1 = calculer (EXP exp) !infoaffichNull [] 1 in 
 	if val1 = NOCOMP  then NOTHING
 	else
 	begin
@@ -257,7 +272,7 @@ and getIndirectIncrease var exp inst las asAs completList =
 and getInc var assign inst las asAs completList=
 		opEstPlus:= true;	
 		let (inc, before, isplus,iscomp,nvar)= analyseIncFor var (BINARY(ASSIGN,VARIABLE(var),assign)) inst las asAs completList in
-		let valinc = calculer (applyStoreVA   (EXP(inc)) [])  !infoaffichNull  [](*appel*) in	
+		let valinc = calculer (applyStoreVA   (EXP(inc)) [])  !infoaffichNull  [](*appel*) 1 in	
 		let isIndirect = nvar != var in
 		if estNoComp valinc then (false,NODEFINC,"others", before) 
 		else
@@ -295,7 +310,7 @@ match inc1 with
 	INC(POSITIV,v1)->
    			(match inc2 with INC(POSITIV,v2) -> INC(POSITIV,(BINARY(ADD,v1,v2)))
 							| INC(NEGATIV,v2) -> 
-								let v1Moinsv2 = calculer  (EXP(BINARY(SUB, v1,  v2))) !infoaffichNull [] in
+								let v1Moinsv2 = calculer  (EXP(BINARY(SUB, v1,  v2))) !infoaffichNull [] 1 in
 								if estStricPositif v1Moinsv2 then INC(POSITIV,(BINARY(SUB,v1,v2)))
 								else
 									if estNul v1Moinsv2 then	NOINC
@@ -306,7 +321,7 @@ match inc1 with
 	| INC(NEGATIV,v1) ->
 		 (	match inc2 with INC(NEGATIV,v2) -> INC(NEGATIV,(BINARY(ADD,v1,v2)))
 							| INC(POSITIV,v2) -> 
-								let v1Moinsv2 = calculer  (EXP(BINARY(SUB, v1,  v2))) !infoaffichNull [] in
+								let v1Moinsv2 = calculer  (EXP(BINARY(SUB, v1,  v2))) !infoaffichNull [] 1 in
 								if estStricPositif v1Moinsv2 then INC(POSITIV,(BINARY(SUB,v2,v1)))
 								else
 									if estNul v1Moinsv2 then	NOINC
@@ -318,7 +333,7 @@ match inc1 with
 	| INC(MULTI,v1)->
    			(match inc2 with INC(MULTI,v2) -> INC(MULTI,(BINARY(MUL,v1,v2)))
 							| INC(DIVI,v2) -> 
-								let v1Divv2 = calculer  (EXP(BINARY(DIV, v1,  v2))) !infoaffichNull [] in
+								let v1Divv2 = calculer  (EXP(BINARY(DIV, v1,  v2))) !infoaffichNull [] 1 in
 								let varMoinsUn = (evalexpression (Diff( v1Divv2,  ConstInt("1")))) in
 								if estStricPositif v1Divv2 then
 								begin
@@ -332,7 +347,7 @@ match inc1 with
 	| INC(DIVI,v1)->
    			(match inc2 with INC(DIVI,v2) -> INC(DIVI,(BINARY(MUL,v1,v2)))
 							| INC(MULTI,v2) -> 
-								let v1Divv2 = calculer  (EXP(BINARY(DIV, v2,  v1))) !infoaffichNull [] in
+								let v1Divv2 = calculer  (EXP(BINARY(DIV, v2,  v1))) !infoaffichNull [] 1 in
 								let varMoinsUn = (evalexpression (Diff( v1Divv2,  ConstInt("1")))) in
 								if estStricPositif v1Divv2 then
 								begin
@@ -384,7 +399,7 @@ match inc1 with
 
 
 
-and getIncOfInstList x iList completList=
+and getIncOfInstList x iList completList =
 (*Printf.printf "getIncOfInstList variable %s\n" x;
 afficherLesAffectations iList;*)
 	if iList = [] then (false,NOINC,x,false)
@@ -405,41 +420,41 @@ afficherLesAffectations iList;*)
 				else
 					if isindirect = false then
 					begin
-						let (indirect2, inc, var, before2) = getIncOfInstList x nextInst completList in
+						let (indirect2, inc, var, before2) = getIncOfInstList x nextInst completList  in
 						if indirect2 = false then (false, joinSequence x inc1  inc, x, false) else (true, inc, var, before2) 
 					end
 					else (true, inc1, v, before)
 
 			| TAB (id, _, _) -> 
 				if id = x then (false,NODEFINC,x,false) 
-				else  (*NOINC *)getIncOfInstList x nextInst completList  
+				else  (*NOINC *)getIncOfInstList x nextInst completList   
 			| MEMASSIGN (id, _, _) -> 
 				if id = x then (false,NODEFINC,x,false) 
 				else  (*NOINC *)getIncOfInstList x nextInst completList  
 
 			| BEGIN liste ->
-				let (indirect1, inc1, var1, before1) = (getIncOfInstList x  liste completList) in
+				let (indirect1, inc1, var1, before1) = (getIncOfInstList x  liste completList ) in
 				if inc1 = NODEFINC then (indirect1,inc1, var1, before1)
 				else
 					if indirect1 = false then 
 					begin 
-						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList) in
+						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList ) in
 						if indirect2 = false then (false,joinSequence x inc1 inc2,x, false) else (true, inc2, var2, before2) 
 					end
 					else (true, inc1, var1,before1) 
 
 			| IFVF (_, i1, i2) ->
-				let (indirect1, inc1, var1, before1) = (getIncOfInstList x   [i1] completList) in
+				let (indirect1, inc1, var1, before1) = (getIncOfInstList x   [i1] completList ) in
 				if inc1 = NODEFINC then (indirect1,inc1, var1, before1)
 				else
 					if indirect1 = false then 
 					begin 
-						let (indirect2, inc2, var2, before2) = (getIncOfInstList x [i2] completList) in
+						let (indirect2, inc2, var2, before2) = (getIncOfInstList x [i2] completList ) in
 						if inc2 = NODEFINC then (indirect2, inc2, var2, before2) 
 						else
 							if indirect2 = false then 
 							begin
-								let (indirect3, inc3, var3, before3) = (getIncOfInstList x  nextInst completList) in
+								let (indirect3, inc3, var3, before3) = (getIncOfInstList x  nextInst completList ) in
 
 (*Printf.printf"joinSequence %s\n"x;*)
 								if indirect3 = false then  (false,joinSequence x ( joinAlternate x inc1 inc2)  inc3,x, false) 
@@ -451,12 +466,12 @@ afficherLesAffectations iList;*)
 				
 
 			| IFV ( _, i1) ->
-				let (indirect1, inc1, var1, before1) = (getIncOfInstList x   [i1] completList) in
+				let (indirect1, inc1, var1, before1) = (getIncOfInstList x   [i1] completList ) in
 				if inc1 = NODEFINC then (indirect1,inc1, var1, before1)
 				else
 					if indirect1 = false then 
 					begin 
-						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList)  in
+						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList )  in
 						if indirect2 = false then   (false,joinSequence x ( joinAlternate x inc1 NOINC)  inc2,x, false)  else (true, inc2, var2, before2) 
 					end
 					else (true, inc1, var1, before1) 
@@ -464,14 +479,15 @@ afficherLesAffectations iList;*)
 				
 
 			| FORV (num,id, _, _, _, _, body)->
-				let (indirect1, inc1, var1, before1,incifexe) = (extractIncOfLoop x [body] id 0 (*nbItMin_{numLoop}*)completList) in
+				let nbItMin = if  existAssosExactLoopInit  num then getAssosExactLoopInit num  else 0 in
+				let (indirect1, inc1, var1, before1,incifexe) = (extractIncOfLoop x [body] id nbItMin (*nbItMin_{numLoop}*)completList) in
 				(*if nbItMin_{numLoop}=nbItMax_{numLoop} then joinSequence x (extractIncOfLoop x [body] id nbItMin_{numLoop} )(getIncOfInstList x [nextInst])
 				else*)
 				if inc1 = NODEFINC then (indirect1,inc1, var1, before1)
 				else
 					if indirect1 = false then 
 					begin 
-						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList)  in
+						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList )  in
 						if indirect2 = false then 
 						begin  
 							if incifexe = inc1 ||sameType incifexe inc2 then
@@ -489,7 +505,7 @@ afficherLesAffectations iList;*)
 				else
 					if indirect1 = false then 
 					begin 
-						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList)  in
+						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList )  in
 						if indirect2 = false then   (false,joinSequence x inc1 inc2,x, false)  else (true, inc2, var2, before2) 
 					end
 					else (true, inc1, var1, before1) 
@@ -541,7 +557,7 @@ else (false,NOINC,x, false)
 
 
 and getLoopVarInc v inst =
-		let (isindirect,inc,var, before) = getIncOfInstList v inst inst in
+		let (isindirect,inc,var, before) = getIncOfInstList v inst inst  in
 		opEstPlus := getIsAddInc inc;
 		expressionIncFor :=  getIncValue inc ;
 (*
