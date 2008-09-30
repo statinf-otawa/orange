@@ -794,6 +794,7 @@ let isExactEng = ref true
 let rec afficherNidUML nnE  liste tab (result:Listener.t) : Listener.t =
 match nnE.idBoucleN with
 TBOUCLE(num, appel, _,_,_,_,_) ->
+
   let estNulEngPred = !estNulEng in
   let exactEng = !isExactEng in
   print_tab (tab+3);
@@ -816,8 +817,8 @@ TBOUCLE(num, appel, _,_,_,_,_) ->
 
   (*Printf.printf "max new_expmax \n"; print_expVA  new_expmax ;new_line();*)
   let (expmax1, reseval) =(
-	  let c1 = calculer  nm   nia [] in
-	  if estDefExp c1 = false then begin 	(calculer new_expmax  nia [], false) end 
+	  let c1 = calculer  nm   nia [] 1 in
+	  if estDefExp c1 = false then begin 	(calculer new_expmax  nia [] 1, false) end 
 	  else (c1,true) ) in (* valeur max apres propagation*)
 
   (*Printf.printf "max sans eng \n"; print_expTerm (expmax1 );new_line();*)
@@ -830,8 +831,8 @@ TBOUCLE(num, appel, _,_,_,_,_) ->
 
   let exptt1 =
   (
-	  let c1 = calculer  nnE.expressionBorneToutesIt   nia [] in
-	  if estDefExp c1 =false|| reseval = false then calculer new_exptt  nia [] else c1 ) in
+	  let c1 = calculer  nnE.expressionBorneToutesIt   nia [] 1 in
+	  if estDefExp c1 =false|| reseval = false then calculer new_exptt  nia [] 1 else c1 ) in
 	  (* valeur total apres propagation*)
 
 
@@ -894,6 +895,7 @@ TBOUCLE(num, appel, _,_,_,_,_) ->
 
 		  listeVB := rond !listeVB 
 			  [ASSIGN_SIMPLE (varBoucleIfN, EXP(CONSTANT  (CONST_INT "-1")))]  ;
+
 (*attention on peut avoir plusieurs fois la même variable de boucle donc ici on ajoute dans false on peut supprimer*)
 		  estNulEng := true 
 	  end
@@ -904,6 +906,7 @@ TBOUCLE(num, appel, _,_,_,_,_) ->
 			  borneMaxAux:= myMaxIt ;
 (*
 Printf.printf"max of %d\n"num;*)
+
 	                  pwet := (expressionEvalueeToExpression myMaxIt);
 			  setAssosBoucleIdMaxIfSupOldMax num (EVALEXP(myMaxIt));
 
@@ -914,7 +917,7 @@ Printf.printf"max of %d\n"num;*)
 
 			  let maxp = (rechercheNid num).infoNid.expressionBorne in
 
-			  let resaux = calculer (EXP(maxp))  nia [] in
+			  let resaux = calculer (EXP(maxp))  nia [] 1 in
 
 			  borneMaxAux := if estDefExp resaux then 
 						  begin 
@@ -1005,6 +1008,7 @@ Printf.printf"max of %d\n"num;*)
   | _-> Listener.null
 
 
+
 and afficherUnAppelUML  exp  l tab numCall isExe isInLoop (result:Listener.t) : Listener.t =
   match exp with
 	  EXP(appel)->
@@ -1023,10 +1027,6 @@ and afficherInfoFonctionUML nom corps  tab numCall isExe isInLoop (result:Listen
 Printf.printf "BLABLA line=\"%d\" source=\"%s\" extern=\"true\">\n" ligne fichier ;
 
   Listener.onReturn result 
-
-
-
-
 and afficherCorpsUML lboua  tab (result:Listener.t) : Listener.t =	 
   List.fold_left(
 		  fun result unboua	->
@@ -1038,30 +1038,33 @@ and afficherCorpsUML lboua  tab (result:Listener.t) : Listener.t =
 		  )result lboua
 
 
+
 let rec isExecutedTrue ltrue contexte  affiche=
 if ltrue = [] then begin (*Printf.printf " liste isexecuted vide pour true \n" ;*)true end
 else
 begin  
-  (*Printf.printf "isExecutedTrue liste des variables true :\n"; List.iter (fun e-> Printf.printf "%s "e) ltrue;*)
-  if existeAffectationVarListe (List.hd ltrue) contexte then
-  begin
 
-	  let affect = rechercheAffectVDsListeAS  (List.hd ltrue) contexte in
-(*   Printf.printf "CALCUL affect true %s\n" (List.hd ltrue) ; print_expVA affect;flush(); space(); new_line();print_expVA affect;flush(); space(); new_line();*)
-	  let cond = calculer  affect !infoaffichNull  [] in
-	  if affiche then
-	  begin
-			  (*print_expTerm  cond; flush(); space();new_line();	*)
-			   space(); new_line() ;flush();
-		 	  Printf.printf "%s=" (List.hd ltrue) ;	print_expTerm  cond;  space(); new_line() ;flush();
-	  end;
-	  (* 
-		  print_expTerm  cond;flush(); space(); new_line();	*)
-	  match cond with
-	    Boolean(false) -> (*Printf.printf " non execute %s" (List.hd ltrue);*)false
-	  | Boolean(true)  |_-> isExecutedTrue (List.tl ltrue) contexte affiche
-  end
-  else true
+	(*Printf.printf "isExecutedTrue liste des variables true :\n"; List.iter (fun e-> Printf.printf "%s "e) ltrue;*)
+	if existeAffectationVarListe (List.hd ltrue) contexte then
+	begin
+ 
+		let affect = rechercheAffectVDsListeAS  (List.hd ltrue) contexte in
+   (*   Printf.printf "CALCUL affect true %s\n" (List.hd ltrue) ; print_expVA affect;flush(); space(); new_line();print_expVA affect;flush(); space(); new_line();*)
+		let cond = calculer  affect !infoaffichNull  [] 1 in
+		if affiche then
+		begin
+				(*print_expTerm  cond; flush(); space();new_line();	*)
+				 space(); new_line() ;flush();
+		 	 	Printf.printf "%s=" (List.hd ltrue) ;	print_expTerm  cond;  space(); new_line() ;flush();
+		end;
+		(* 
+			print_expTerm  cond;flush(); space(); new_line();	*)
+		match cond with
+		  Boolean(false) -> (*Printf.printf " non execute %s" (List.hd ltrue);*)false
+		| Boolean(true)  |_-> isExecutedTrue (List.tl ltrue) contexte affiche
+	end
+	else true
+
 end
 
 let rec isExecutedFalse lfalse contexte affiche=
@@ -1072,9 +1075,10 @@ begin
   if existeAffectationVarListe (List.hd lfalse) contexte then
   begin
 (*Printf.printf "existe \n";*)
+
   let affect = rechercheAffectVDsListeAS  (List.hd lfalse) contexte in
   (*	Printf.printf "CALCUL affect false %s\n" (List.hd lfalse) ; print_expVA affect; flush(); space();new_line();print_expVA affect;flush(); space(); new_line();*)	
-	  let cond = calculer   affect  !infoaffichNull  [] in
+	  let cond = calculer   affect  !infoaffichNull  [] 1 in
 	  if affiche then
 	  begin
 			  (*print_expTerm  cond; flush(); space();new_line();	*)
@@ -1086,6 +1090,7 @@ begin
 	  | Boolean(false)  |_-> isExecutedFalse (List.tl lfalse) contexte affiche
   end
   else begin (*Printf.printf " liste affect non trouve sur n autre chemin\n" ;*) true end
+
 end
 
 
@@ -1148,60 +1153,61 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 (*		Printf.printf "total englobante\n"; print_expVA tni; new_line();
 Printf.printf "max\n"; print_expVA max; new_line();
 Printf.printf "tn\n"; print_expVA tN; new_line();*)
-	  (*Printf.printf "av traiterBouclesInternes num %d nom eng %d ou stopper %d\n" (getBoucleIdB n.infoNid.laBoucle)	nomE idEng;
-				  Printf.printf "total englobante :\n";print_expVA tni; new_line();*)
-	  (* si fonction boucle1 boucle2 fonction boucle3 boucle4 *)
-	  (* il faut calculer pour boucle 4 le as de boucle1 jusqu'à la fonction union de la fonction à boucle 4*)
 
+		(*Printf.printf "av traiterBouclesInternes num %d nom eng %d ou stopper %d\n" (getBoucleIdB n.infoNid.laBoucle)	nomE idEng;
+					Printf.printf "total englobante :\n";print_expVA tni; new_line();*)
+		(* si fonction boucle1 boucle2 fonction boucle3 boucle4 *)
+		(* il faut calculer pour boucle 4 le as de boucle1 jusqu'à la fonction union de la fonction à boucle 4*)
 
-	  (*Printf.printf "av traiterBouclesInternes num %d nom eng %d \n"  (getBoucleIdB n.infoNid.laBoucle) nomE ;*)
-	  let(varTN,varmax,varTni,l, output) =   creerLesAffect tN max tni (getBoucleIdB n.infoNid.laBoucle) conte in
-	  isExeBoucle := isExeE;
-	  (*if !isExeBoucle then  Printf.printf "la boucle englobante est exécutée\n"  
-	  else  Printf.printf "la boucle englobante n'est pas exécutée\n";*)
+		
+		(*Printf.printf "av traiterBouclesInternes num %d nom eng %d \n"  (getBoucleIdB n.infoNid.laBoucle) nomE ;*)
+		let(varTN,varmax,varTni,l, output) =   creerLesAffect tN max tni (getBoucleIdB n.infoNid.laBoucle) conte in
+		isExeBoucle := isExeE;
+		(*if !isExeBoucle then  Printf.printf "la boucle englobante est exécutée\n"  
+		else  Printf.printf "la boucle englobante n'est pas exécutée\n";*)
 
-	  let lesAs = 
-	  (	if (!dernierAppelFct <> !predDernierAppelFct)  || sansP
-		  then 
-		  begin
-			  match !dernierAppelFct with
-			  TFONCTION (_, _,_,_, _,_,_,_,_,_) ->		
-				  let numB  = (getBoucleIdB n.infoNid.laBoucle) in
-				  let (pred, trouve) = 
-				  listejusquafonction (List.rev listeEng) numB !dernierAppelFct in
-				  let calllist = (reecrireCallsInLoop  nEC.varDeBoucleNid nEC.lesAffectationsBNid) in 
+		let lesAs = 
+		(	if (!dernierAppelFct <> !predDernierAppelFct)  || sansP
+			then 
+			begin
+				match !dernierAppelFct with
+				TFONCTION (_, _,_,_, _,_,_,_,_,_) ->		
+					let numB  = (getBoucleIdB n.infoNid.laBoucle) in
+					let (pred, trouve) = 
+					listejusquafonction (List.rev listeEng) numB !dernierAppelFct in
+					let calllist = (reecrireCallsInLoop  nEC.varDeBoucleNid nEC.lesAffectationsBNid) in 
+					
+					(match pred with
+						TFONCTION (nomf, numF,corps,listeInputInst, contexteAvantAppel,appelF,lFt,lFf,_,_) ->		
+					
+						(*Printf.printf"traiterboucleinterne Dans evaluation de la fonction...%s %d %s \n "nomf numB nEC.varDeBoucleNid ;*)
+						if appelF = [] then []
+						else
+						begin
+							(match List.hd appelF with  											
+							APPEL (_,e,nomFonc,s,c,v) ->
+								let ainserer = listeSAUFIDB  (reecrireCallsInLoop  nEC.varDeBoucleNid corps) numB l in
+								(*afficherLesAffectations( corps);new_line () ;*)
+								(*Printf.printf "ces as\n";*)
 
-				  (match pred with
-					  TFONCTION (nomf, numF,corps,listeInputInst, contexteAvantAppel,appelF,lFt,lFf,_,_) ->		
+								(*afficherLesAffectations( ainserer);new_line () ;*)
+								(*Printf.printf "ces as\n";*)
 
-					  (*Printf.printf"traiterboucleinterne Dans evaluation de la fonction...%s %d %s \n "nomf numB nEC.varDeBoucleNid ;*)
-					  if appelF = [] then []
-					  else
-					  begin
-						  (match List.hd appelF with  											
-						  APPEL (_,e,nomFonc,s,c,v) ->
-							  let ainserer = listeSAUFIDB  (reecrireCallsInLoop  nEC.varDeBoucleNid corps) numB l in
-							  (*afficherLesAffectations( corps);new_line () ;*)
-							  (*Printf.printf "ces as\n";*)
+								let aSC =  evalSIDA calllist numF  [] ainserer output listeInputInst listeEng   in
+								
+								let isExecutedF = isExecuted lFt lFf aSC appel !abGlobales true in
+								listeInstNonexe := List.append [pred] !listeInstNonexe;
+								(*if isExecutedF then 
+								
+								Printf.printf "la fonction est exécutée\n" 
+								else Printf.printf "la fonction n'est pas exécutée\n";*)
+								(*afficherListeAS( !listeASCourant);new_line () ;
+								Printf.printf "traiterBouclesInternes ces as\n";*)
+								isExeBoucle := isExeE && isExecutedF;
+								(*let asf = rond !abGlobales !listeASCourant in
+								afficherListeAS( !listeASCourant);new_line () ;
+								asf*)
 
-							  (*afficherLesAffectations( ainserer);new_line () ;*)
-							  (*Printf.printf "ces as\n";*)
-
-							  let aSC = (*if sansP = false then*) evalSIDA calllist numF  [] ainserer output listeInputInst listeEng 
-									   in
-
-							  let isExecutedF = isExecuted lFt lFf aSC appel !abGlobales true in
-							  listeInstNonexe := List.append [pred] !listeInstNonexe;
-							  (*if isExecutedF then 
-
-							  Printf.printf "la fonction est exécutée\n" 
-							  else Printf.printf "la fonction n'est pas exécutée\n";*)
-							  (*afficherListeAS( !listeASCourant);new_line () ;
-							  Printf.printf "traiterBouclesInternes ces as\n";*)
-							  isExeBoucle := isExeE && isExecutedF;
-							  (*let asf = rond !abGlobales !listeASCourant in
-							  afficherListeAS( !listeASCourant);new_line () ;
-							  asf*)
 (*afficherLesAffectations( corps);new_line () ;
 afficherListeAS(aSC);new_line () ;*)
 							  aSC
@@ -1230,125 +1236,126 @@ afficherListeAS(aSC);new_line () ;*)
 (*afficherListeAS  lesAs; Printf.printf "fin liste 	as num %d nom eng %d\n" (getBoucleIdB n.infoNid.laBoucle) nomE;		*)	
 	  let resExptN  =    rechercheAffectVDsListeAS varTN lesAs in 
 (*Printf.printf "varTN varmax %s %s\n" varTN varmax;		
-	  print_expVA resExptN; new_line();Printf.printf "CALCUL DE AS fin\n";*)
-	  let recExptMax = rechercheAffectVDsListeAS  varmax  lesAs in
-  (*	print_expVA recExptMax; new_line();Printf.printf "CALCUL DE AS fin\n";*)
-  (*	let isExe = !isExeBoucle && isExecuted lt lf lesAs [] [] in*)
-  isIntoIfLoop := false;
 
-  isEnd := false;
-  isEndNONZERO := false;
-  let resauxmax = calculer max  !infoaffichNull [] in
-  let resauxmax2 = calculer (applyStoreVA max !abGlobales) !infoaffichNull [] in
-  isEnd := if estDefExp resauxmax then if  estNul resauxmax then true else false else false ;
+		print_expVA resExptN; new_line();Printf.printf "CALCUL DE AS fin\n";*)
+		let recExptMax = rechercheAffectVDsListeAS  varmax  lesAs in
+	(*	print_expVA recExptMax; new_line();Printf.printf "CALCUL DE AS fin\n";*)
+	(*	let isExe = !isExeBoucle && isExecuted lt lf lesAs [] [] in*)
+	isIntoIfLoop := false;
+	
+	isEnd := false;
+	isEndNONZERO := false;
+	let resauxmax = calculer max  !infoaffichNull [] 1 in
+	isEnd := if estDefExp resauxmax then if  estNul resauxmax then true else false else false ;
+	
+	resAuxTN :=  
+	(  match resExptN with
+		MULTIPLE ->(* Printf.printf"resAuxTN MULTIPLEdef\n";*)
+			if sansP = false then	
+			begin 
+				if estDefExp resauxmax then 
+				begin 
+					isIntoIfLoop := true ; 
+					EXP(BINARY(MUL,expVaToExp borne,(expressionEvalueeToExpression resauxmax))) 
+				end	
+				else (*if estDefExp resauxmax2  then 
+						EXP(BINARY(MUL,expVaToExp borne,expVaToExp max)) 
+					 else*) EXP(NOTHING)
+			end
+			else MULTIPLE
+		|EXP  ( exptN) -> 
+			if sansP = false then	
+			begin 
+				(*Printf.printf"resAuxTN def\n";*) 
+				(*let resExptni  =  rechercheAffectVDsListeAS  varTni lesAs in*)
+				(*Printf.printf "CALCUL DE TNi num %d nom eng %d\n" (getBoucleIdB n.infoNid.laBoucle)	nomE ;*)
+				(*print_expVA resExptni; new_line();Printf.printf "CALCUL DE AS fin\n";*)
+				let vdij = ( intersection (listeDesVarsDeExpSeules exptN)  ( union [ii]  vij)) in 
+				(* idenpendant*)
+				if vdij = [] then
+				begin
+					if !vDEBUG then  Printf.printf "intersection vide\n";
+					(* si les deux contiennent une même variable max * max ici ou dans evaluation ???*)
+					 (match nbEngl with 
+						MULTIPLE->(*Printf.printf"borne  multiple\n";*)  MULTIPLE 
+						|EXP(exptni)->							
+							if estDefExp resauxmax then 
+							begin
+								(*Printf.printf"borne  MUL 1\n";*)
+								isEndNONZERO := true;
+								EXP(BINARY(MUL,expVaToExp borne,(expressionEvalueeToExpression resauxmax))) 
+							end
+							else 
+								(*if estDefExp resauxmax2  then EXP(BINARY(MUL,expVaToExp borne,expVaToExp max) )
+								else*)
+									if estNothing nbEngl || estNothing (EXP(exptN)) then 
+									begin (*Printf.printf"borne  NOTHING 1\n";*) EXP(NOTHING) end
+									else begin (*Printf.printf"borne  MUL 2\n";*) EXP(BINARY(MUL,exptni,exptN)) end)
+				end
+				else
+				begin
+					(*tant que vD != [ii] faire begin pour toute variable x appartenant à vD faire
+	 				remplacer dans tN x
+					 par l'expression qui lui est associée dans la liste des vij	end	*)
+					(*remplacerVar tN vD vij;*)
+					(* avant il faut modifiee lesAs mais uniquement pour les variables*)
+					(*let lesAs = (if vdij <> [ii] then majAs lesAs vdij ii else lesAs) in*)
+					if !vDEBUG then Printf.printf("!!!Depend de la boucle englobante sans var \n");	
+					match nbEngl with 
+					MULTIPLE -> (*Printf.printf"borne  multiple 2\n";*)MULTIPLE; 
+					| EXP(exptni) ->
+						begin
+						 	(* si tN contient lui meme un SYGMA de i il faut composer *)
+							(*Printf.printf"borne  SYGMA 2\n";*)
+							if estNothing nbEngl || estNothing (EXP(exptN)) then  
+							begin (*Printf.printf"borne  NOTHING 2\n";*) EXP(NOTHING) end
+							else
+								EXP(CALL(VARIABLE("SYGMA") ,
+									(List.append
+										(List.append [VARIABLE (ii)]	
+												[BINARY(SUB, exptni,CONSTANT (CONST_INT "1"))])  [ exptN])));
+											
+						end
+						(* remarque la seule variable modifiée par la boucle englobante courante dont
+						 doit dépendre TN à ce stade est ii *)			
+				end
+			end
+			else resExptN) ;
+		maxAuxTN := 
+		(	if sansP = false then	
+			begin 
+				match recExptMax with
+				MULTIPLE->
+					if estDefExp resauxmax then 
+					begin isIntoIfLoop := true ;
+						 EXP(expressionEvalueeToExpression resauxmax) 
+					end	
+					else (*if estDefExp resauxmax2  then 
+							EXP( expVaToExp max)
+						 else*) EXP(NOTHING)
+				  | EXP (e)->(*Printf.printf"resAuxTN def\n";*)
+					if (intersection (listeDesVarsDeExpSeules e) (union [ii] vij)) = [] then 
+					begin (*Printf.printf "la borne max ne contient pas de var fct de ii :%s\n" ii;*)
+						EXP (e);
+					(*	print_expVA !maxAuxTN; new_line ();Printf.printf"\n"	*)
+					end
+					else  
+					begin
+						(*Printf.printf "la borne max  contient  la variable fct de ii :%s\n" ii;*)
+						(match nbEngl with 
+						MULTIPLE ->   MULTIPLE
+						| EXP(exp) ->  
+							if estNothing nbEngl || estNothing (EXP(e)) then  EXP(NOTHING) 
+							else
+								EXP(CALL(VARIABLE("MAX") , (List.append (List.append
+			 						[VARIABLE (ii)]	
+									[BINARY(SUB,	exp, (CONSTANT (CONST_INT "1")))])  [e])))
+								(*print_expVA !maxAuxTN; new_line ();Printf.printf"\n";	*)	)
+					end
+				end
+				else recExptMax
+			);
 
-  resAuxTN :=  
-  (  match resExptN with
-	  MULTIPLE ->(* Printf.printf"resAuxTN MULTIPLEdef\n";*)
-		  if sansP = false then	
-		  begin 
-			  if estDefExp resauxmax then 
-			  begin 
-				  isIntoIfLoop := true ; 
-				  EXP(BINARY(MUL,expVaToExp borne,(expressionEvalueeToExpression resauxmax))) 
-			  end	
-			  else if estDefExp resauxmax2  then 
-					  EXP(BINARY(MUL,expVaToExp borne,expVaToExp max)) 
-				   else EXP(NOTHING)
-		  end
-		  else MULTIPLE
-	  |EXP  ( exptN) -> 
-		  if sansP = false then	
-		  begin 
-			  (*Printf.printf"resAuxTN def\n";*) 
-			  (*let resExptni  =  rechercheAffectVDsListeAS  varTni lesAs in*)
-			  (*Printf.printf "CALCUL DE TNi num %d nom eng %d\n" (getBoucleIdB n.infoNid.laBoucle)	nomE ;*)
-			  (*print_expVA resExptni; new_line();Printf.printf "CALCUL DE AS fin\n";*)
-			  let vdij = ( intersection (listeDesVarsDeExpSeules exptN)  ( union [ii]  vij)) in 
-			  (* idenpendant*)
-			  if vdij = [] then
-			  begin
-				  if !vDEBUG then  Printf.printf "intersection vide\n";
-				  (* si les deux contiennent une même variable max * max ici ou dans evaluation ???*)
-				   (match nbEngl with 
-					  MULTIPLE->(*Printf.printf"borne  multiple\n";*)  MULTIPLE 
-					  |EXP(exptni)->							
-						  if estDefExp resauxmax then 
-						  begin
-							  (*Printf.printf"borne  MUL 1\n";*)
-							  isEndNONZERO := true;
-							  EXP(BINARY(MUL,expVaToExp borne,(expressionEvalueeToExpression resauxmax))) 
-						  end
-						  else 
-							  if estDefExp resauxmax2  then EXP(BINARY(MUL,expVaToExp borne,expVaToExp max) )
-							  else
-								  if estNothing nbEngl || estNothing (EXP(exptN)) then 
-								  begin (*Printf.printf"borne  NOTHING 1\n";*) EXP(NOTHING) end
-								  else begin (*Printf.printf"borne  MUL 2\n";*) EXP(BINARY(MUL,exptni,exptN)) end)
-			  end
-			  else
-			  begin
-				  (*tant que vD != [ii] faire begin pour toute variable x appartenant à vD faire
-	 			  remplacer dans tN x
-				   par l'expression qui lui est associée dans la liste des vij	end	*)
-				  (*remplacerVar tN vD vij;*)
-				  (* avant il faut modifiee lesAs mais uniquement pour les variables*)
-				  (*let lesAs = (if vdij <> [ii] then majAs lesAs vdij ii else lesAs) in*)
-				  if !vDEBUG then Printf.printf("!!!Depend de la boucle englobante sans var \n");	
-				  match nbEngl with 
-				  MULTIPLE -> (*Printf.printf"borne  multiple 2\n";*)MULTIPLE; 
-				  | EXP(exptni) ->
-					  begin
-						  (* si tN contient lui meme un SYGMA de i il faut composer *)
-						  (*Printf.printf"borne  SYGMA 2\n";*)
-						  if estNothing nbEngl || estNothing (EXP(exptN)) then  
-						  begin (*Printf.printf"borne  NOTHING 2\n";*) EXP(NOTHING) end
-						  else
-							  EXP(CALL(VARIABLE("SYGMA") ,
-								  (List.append
-									  (List.append [VARIABLE (ii)]	
-											  [BINARY(SUB, exptni,CONSTANT (CONST_INT "1"))])  [ exptN])));
-
-					  end
-					  (* remarque la seule variable modifiée par la boucle englobante courante dont
-					   doit dépendre TN à ce stade est ii *)			
-			  end
-		  end
-		  else resExptN) ;
-	  maxAuxTN := 
-	  (	if sansP = false then	
-		  begin 
-			  match recExptMax with
-			  MULTIPLE->
-				  if estDefExp resauxmax then 
-				  begin isIntoIfLoop := true ;
-					   EXP(expressionEvalueeToExpression resauxmax) 
-				  end	
-				  else if estDefExp resauxmax2  then 
-						  EXP( expVaToExp max)
-					   else EXP(NOTHING)
-			    | EXP (e)->(*Printf.printf"resAuxTN def\n";*)
-				  if (intersection (listeDesVarsDeExpSeules e) (union [ii] vij)) = [] then 
-				  begin (*Printf.printf "la borne max ne contient pas de var fct de ii :%s\n" ii;*)
-					  EXP (e);
-				  (*	print_expVA !maxAuxTN; new_line ();Printf.printf"\n"	*)
-				  end
-				  else  
-				  begin
-					  (*Printf.printf "la borne max  contient  la variable fct de ii :%s\n" ii;*)
-					  (match nbEngl with 
-					  MULTIPLE ->   MULTIPLE
-					  | EXP(exp) ->  
-						  if estNothing nbEngl || estNothing (EXP(e)) then  EXP(NOTHING) 
-						  else
-							  EXP(CALL(VARIABLE("MAX") , (List.append (List.append
-			 					  [VARIABLE (ii)]	
-								  [BINARY(SUB,	exp, (CONSTANT (CONST_INT "1")))])  [e])))
-							  (*print_expVA !maxAuxTN; new_line ();Printf.printf"\n";	*)	)
-				  end
-			  end
-			  else recExptMax
-		  );
 (*Printf.printf"traiter calcul MAX pour %s =\n" ii; print_expVA !maxAuxTN; new_line ();Printf.printf"\n";
 Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA !resAuxTN; new_line ();Printf.printf"\n";*)
 (*Printf.printf"resAuxTN et max fin eval\n";
@@ -1359,110 +1366,79 @@ Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA !resAuxTN; new_l
 (* 1 traiterBouclesInternes num 1 nom eng 16 ou stopper 16 sa eng 0 tete nid 16*)
 (*Printf.printf "1 traiterBouclesInternes  nom eng %d ou stopper %d sa eng %d tete nid %d\n" 	nomE idEng saBENG (getBoucleIdB nT.infoNid.laBoucle);
 *)
-	  let fini = (nomE = idEng) && (nomE =  (getBoucleIdB nT.infoNid.laBoucle)) in
-	  if   !isIntoIfLoop = false && !isEnd  = false && !isEndNONZERO = false && fini = false then 
-		  traiterBouclesInternes nT  nT saBENG
-		  n  aS   ( !resAuxTN)  appel listeEng typeE numAp  ( !maxAuxTN) true lt lf borne n tetePred sansP
-	  else
-	  begin
-				  (*Printf.printf"traiter calcul MAX pour %s =\n" ii; print_expVA !maxAuxTN; 
-				  new_line ();Printf.printf"\n";		*)
 
-		  (*if !isExeBoucle = true then Printf.printf "!isExeBoucle= true" else Printf.printf "!isExeBoucle= false" ;*)
+		let fini = (nomE = idEng) && (nomE =  (getBoucleIdB nT.infoNid.laBoucle)) in
+		if   !isIntoIfLoop = false && !isEnd  = false && !isEndNONZERO = false && fini = false then 
+			traiterBouclesInternes nT  nT saBENG
+			n  aS   ( !resAuxTN)  appel listeEng typeE numAp  ( !maxAuxTN) true lt lf borne n tetePred sansP
+		else
+		begin
+					(*Printf.printf"traiter calcul MAX pour %s =\n" ii; print_expVA !maxAuxTN; 
+					new_line ();Printf.printf"\n";		*)
 
-				  let isExe2 = if nT = nEC then !isExeBoucle && isExecuted lt lf lesAs appel !abGlobales true else !isExeBoucle in
+			(*if !isExeBoucle = true then Printf.printf "!isExeBoucle= true" else Printf.printf "!isExeBoucle= false" ;*)
 
-				  if isExe2 = false || !isEnd then
-				  begin
-					  (*Printf.printf "la boucle n'est pas exécutée\n";*)		
-					  maxAuxTN :=EXP(CONSTANT (CONST_INT "0"));
-					  resAuxTN:=EXP(CONSTANT (CONST_INT "0"));
-				 	  listeInstNonexe := List.append [typeE] !listeInstNonexe
-				  end;
-				  let endcontexte = (*rond*) (rond  !abGlobales  appel) (*!funcContext *)in
-				  let nTN =  (applyStoreVA (!resAuxTN) endcontexte)  in
-				  let nMax = (applyStoreVA (!maxAuxTN) endcontexte) in
+					let isExe2 = if nT = nEC then !isExeBoucle && isExecuted lt lf lesAs appel !abGlobales true else !isExeBoucle in
+	
+					if isExe2 = false || !isEnd then
+					begin
+						(*Printf.printf "la boucle n'est pas exécutée\n";*)		
+						maxAuxTN :=EXP(CONSTANT (CONST_INT "0"));
+						resAuxTN:=EXP(CONSTANT (CONST_INT "0"));
+				 		listeInstNonexe := List.append [typeE] !listeInstNonexe
+					end;
+					let endcontexte = (*rond*) (rond  !abGlobales  appel) (*!funcContext *)in
+					let nTN =  (applyStoreVA (!resAuxTN) endcontexte)  in
+					let nMax = (applyStoreVA (!maxAuxTN) endcontexte) in
 
 
-		  (*Printf.printf"traiter calcul MAX pour %s =\n" ii; print_expVA nMax; new_line ();Printf.printf"\n";
-		  Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA nTN; new_line ();Printf.printf"\n";
-		  (*if !vDEBUG then*) Printf.printf "evalNid contexte  boucle: %d\n"  (getBoucleIdB n.infoNid.laBoucle)	 ;*)
-				  (*afficherListeAS (rond endcontexte lesAs);flush(); space(); new_line();*)
+			(*Printf.printf"traiter calcul MAX pour %s =\n" ii; print_expVA nMax; new_line ();Printf.printf"\n";
+			Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA nTN; new_line ();Printf.printf"\n";
+			(*if !vDEBUG then*) Printf.printf "evalNid contexte  boucle: %d\n"  (getBoucleIdB n.infoNid.laBoucle)	 ;*)
+					(*afficherListeAS (rond endcontexte lesAs);flush(); space(); new_line();*)
 
-				  let info = (getBoucleInfoB (n.infoNid.laBoucle)) in	
-				  let nouNidEval = new_nidEval	 	
-								  (applyStoreVA (EXP(n.condN)) endcontexte)
-								  typeE
-								  n.infoNid.expressionBorne 
-								  (applyStoreVA ( !resAuxTN) endcontexte)
-								  n.varDeBoucleNid  
-								  (applyStoreVA (EXP(info.infoVariation.borneInf)) endcontexte)
-								  (applyStoreVA (EXP(info.infoVariation.borneSup)) endcontexte)
-								  (applyStoreVA (EXP(info.infoVariation.increment)) endcontexte)
-								  info.infoVariation.direction  
-								  info.infoVariation.operateur 
-								  nMax nTN isExe2 !isIntoIfLoop in	
-		  (*Printf.printf "1 traiterBouclesInternes  %d nom eng %d ou stopper %d sa eng %d tete nid %d\n" (getBoucleIdB n.infoNid.laBoucle)	nomE idEng saBENG (getBoucleIdB nT.infoNid.laBoucle);*)
-				  ignore (afficherNidUML nouNidEval  [] 1 Listener.null);
-				  docEvalue := new_documentEvalue 
-							  (List.append  [ nouNidEval] !docEvalue.maListeNidEval) !docEvalue.maListeEval;
-						  nouBoucleEval := [nouNidEval]
-	  end
-  end
-  else 
-  begin	
-  (* fin de la récursivité lorsque en descendant dans les boucles on rencontre bi lui même *)
-  (*	if (existeNidContenant nEC.listeTripletNid  idEng) then 
-	  begin 
-		  let liste = (rechercheNidContenant 	nEC.listeTripletNid idEng) in
-		  if liste <> [] then
-		  begin			
-			  let (_,_,nid) =List.hd liste in
-Printf.printf "4 traiterBouclesInternes TRAITEMENT  DE %d \n" (getBoucleIdB nid.infoNid.laBoucle);
-			  traiterBouclesInternes nT  nid idEng n  aS  !resAuxTN appel listeEng typeE  numAp !maxAuxTN isExeE lt lf borne n tetePred sansP
-		  end
-	  end
-	  else
-	  begin (* on ne passe pas ici déjà sortis *)
-		  (*|| (nomE = (getBoucleIdB nT.infoNid.laBoucle) && nomE != 0*)
-		  if ((idEng <> 0) && (idEng <> (getBoucleIdB nT.infoNid.laBoucle))) then
-		  begin
-			  let reverseliste = List.rev listeEng in			    	
-			  let (nbou, nab, _,_,_,_,_) =
-			  rechercheDerniereBoucleApresId (getBoucleIdB nEC.infoNid.laBoucle) reverseliste in
+					let info = (getBoucleInfoB (n.infoNid.laBoucle)) in	
+					let nouNidEval = new_nidEval	 	
+									(applyStoreVA (EXP(n.condN)) endcontexte)
+									typeE
+									n.infoNid.expressionBorne 
+									(applyStoreVA ( !resAuxTN) endcontexte)
+									n.varDeBoucleNid  
+									(applyStoreVA (EXP(info.infoVariation.borneInf)) endcontexte)
+									(applyStoreVA (EXP(info.infoVariation.borneSup)) endcontexte)
+									(applyStoreVA (EXP(info.infoVariation.increment)) endcontexte)
+									info.infoVariation.direction  
+									info.infoVariation.operateur 
+									nMax nTN isExe2 !isIntoIfLoop in	
+			(*Printf.printf "1 traiterBouclesInternes  %d nom eng %d ou stopper %d sa eng %d tete nid %d\n" (getBoucleIdB n.infoNid.laBoucle)	nomE idEng saBENG (getBoucleIdB nT.infoNid.laBoucle);*)
 
-			  let evalP = isExecutedNidEval nbou nab  !docEvalue.maListeNidEval  in
-			  Printf.printf "5 traiterBouclesInternes TRAITEMENT  DE %d id b fin :%d id b cour %d \n"
-				  (getBoucleIdB n.infoNid.laBoucle) idEng nbou;
-			  Printf.printf "traiterBouclesInternes REMONTER JUSQU4A SUIVANT DE %d suivant %d\n"	
-				  (getBoucleIdB nEC.infoNid.laBoucle) nbou;
-			  let nidCourantCC = (rechercheNid nbou) in
-			  traiterBouclesInternes nT  nidCourantCC idEng n aS 
-			  !resAuxTN appel listeEng typeE  nab  
-			  !maxAuxTN evalP lt lf borne n tetePred sansP
-		  end
-		  else 
-		  begin *)
-			  if (nomE = (getBoucleIdB nT.infoNid.laBoucle) && nomE != 0) || (idEng != (getBoucleIdB nT.infoNid.laBoucle)) then
-			  begin
-				  let appelP = !dernierAppelFct in
-				  rechercheDernierAppel listeEng ;
-				  (match !dernierAppelFct with
-					  TFONCTION (nomf, numF,corps,listeInputInst, contexteAvantAppel,appelF,lFt,lFf,_,_) ->		
-						  Printf.printf"traiterboucleinterne Dans evaluation de la fonction remontee...fin 0%s\n "nomf;
-
-						  traiterBouclesInternes nT  nT nomE n aS 
-						  !resAuxTN appel listeEng typeE  numF  
-						  !maxAuxTN isExeE lt lf borne n tetePred true (* true = sans prod*);
- 						  (*	funcContext :=[]*)
-						  (*Printf.printf "faire contexte\n"*)
-			  |_->()(*funcContext :=[]*));				
-			  (*  Printf.printf "pas de boucle englobante fin traiterBouclesInternes apres creer\n"*)
-			  dernierAppelFct := appelP;
-			  end
-	  (*	end
-	  end*)
-  end
+					ignore (afficherNidUML nouNidEval  [] 1 Listener.null) ;
+					docEvalue := new_documentEvalue 
+								(List.append  [ nouNidEval] !docEvalue.maListeNidEval) !docEvalue.maListeEval;
+							nouBoucleEval := [nouNidEval]
+		end
+	end
+	else 
+	begin	
+		if (nomE = (getBoucleIdB nT.infoNid.laBoucle) && nomE != 0) || (idEng != (getBoucleIdB nT.infoNid.laBoucle)) then
+				begin
+					let appelP = !dernierAppelFct in
+					rechercheDernierAppel listeEng ;
+					(match !dernierAppelFct with
+						TFONCTION (nomf, numF,corps,listeInputInst, contexteAvantAppel,appelF,lFt,lFf,_,_) ->		
+							Printf.printf"traiterboucleinterne Dans evaluation de la fonction remontee...fin 0%s\n "nomf;
+							
+							traiterBouclesInternes nT  nT nomE n aS 
+							!resAuxTN appel listeEng typeE  numF  
+							!maxAuxTN isExeE lt lf borne n tetePred true (* true = sans prod*);
+ 							(*	funcContext :=[]*)
+							(*Printf.printf "faire contexte\n"*)
+				|_->()(*funcContext :=[]*));				
+				(*  Printf.printf "pas de boucle englobante fin traiterBouclesInternes apres creer\n"*)
+				dernierAppelFct := appelP;
+				end
+	end
+		
 
 let rechercheTriplet n liste= 
 List.find (fun e -> let (_,_,nid) =e in (getBoucleIdB nid.infoNid.laBoucle) = n) liste
@@ -1717,83 +1693,85 @@ and evaluerFonction id f contexte exp listeEng typeA estexeEng=
 
 and evalNid nid  appel (*appelée pour une mere de nid*) listeEng lt lf estexeEng=	
 if !vDEBUG then Printf.printf "evalNid NID av eval nid de %d \n" (getBoucleIdB nid.infoNid.laBoucle)	;
-  dernierAppelFct :=   !predDernierAppelFct;
-  let info = getBoucleInfoB nid.infoNid.laBoucle in
-  let mesBouclesOuAppel = info.boucleOuAppelB in
-  if !estDansBoucle = false then
-  begin
 
-	  let aSC =  rond !abGlobales appel in 
-	  if !vDEBUG then Printf.printf "evalNid contexte  boucle: \n";
-	  (*Printf.printf "FIN CONTEXTE globale \n";*)
-	  (*if lt <> [] then begin Printf.printf "liste des variables IF true :\n"; List.iter (fun e-> Printf.printf "%s "e) lt end;
-	  if lf <> [] then begin Printf.printf "liste des variables IF false :\n"; List.iter (fun e-> Printf.printf "%s "e) lf end;*)
-	  listeInstNonexe :=[];
-	  if !vDEBUG then Printf.printf "NID av eval nid de %d pas dans autre boucle\n" (getBoucleIdB nid.infoNid.laBoucle)	;
-
-
-	  let isExe =  estexeEng && isExecuted lt lf appel [] !abGlobales true in
-	  (*Printf.printf"evalNid : valeur de isexe dans evalboucel pas dans autre : ";
-	  if isExe then Printf.printf"vrai\n" else Printf.printf"false\n" ;*)
-
-	  estDansBoucle := true;
-	  let varDeBouclePred = !varDeBoucleBoucle in
-	  varDeBoucleBoucle :=nid.varDeBoucleNid;
-	  let corpsEvalTMPPred = !corpsEvalTMP in
-	  corpsEvalTMP := [];
-
-	  (*print_expression nid.infoNid.expressionBorne 0;*)
-	  let nb = if isExe then applyStoreVA (getNombreIt (nid.infoNid.expressionBorne) 
-				  info.conditionConstante info.typeBoucle  info.conditionI info.conditionMultiple
- 				  aSC info.estPlus  info.infoVariation nid.varDeBoucleNid) !abGlobales
-			   else EXP(CONSTANT (CONST_INT "0")) in
+	dernierAppelFct :=   !predDernierAppelFct;
+	let info = getBoucleInfoB nid.infoNid.laBoucle in
+	let mesBouclesOuAppel = info.boucleOuAppelB in
+	if !estDansBoucle = false then
+	begin
+		
+		let aSC =  rond !abGlobales appel in 
+		if !vDEBUG then Printf.printf "evalNid contexte  boucle: \n";
+		(*Printf.printf "FIN CONTEXTE globale \n";*)
+		(*if lt <> [] then begin Printf.printf "liste des variables IF true :\n"; List.iter (fun e-> Printf.printf "%s "e) lt end;
+		if lf <> [] then begin Printf.printf "liste des variables IF false :\n"; List.iter (fun e-> Printf.printf "%s "e) lf end;*)
+		listeInstNonexe :=[];
+		if !vDEBUG then Printf.printf "NID av eval nid de %d pas dans autre boucle\n" (getBoucleIdB nid.infoNid.laBoucle)	;
 
 
-	  let typeEval = TBOUCLE((getBoucleIdB nid.infoNid.laBoucle), !numAppel,
-				  (reecrireCallsInLoop nid.varDeBoucleNid 	nid.lesAffectationsBNid),appel, isExe,[],[]) in
-	  if !vDEBUG then Printf.printf "evalNid contexte  boucle: %d\n" (getBoucleIdB nid.infoNid.laBoucle);
-	  (*		afficherListeAS aSC;flush(); space(); new_line();*)
+		let isExe =  estexeEng && isExecuted lt lf appel [] !abGlobales true in
+		(*Printf.printf"evalNid : valeur de isexe dans evalboucel pas dans autre : ";
+		if isExe then Printf.printf"vrai\n" else Printf.printf"false\n" ;*)
+	
+		estDansBoucle := true;
+		let varDeBouclePred = !varDeBoucleBoucle in
+		varDeBoucleBoucle :=nid.varDeBoucleNid;
+		let corpsEvalTMPPred = !corpsEvalTMP in
+		corpsEvalTMP := [];
 
-	  let nouNidEval = 
-		  new_nidEval	(applyStoreVA  (EXP(nid.condN)) aSC) 	
-				  typeEval
-				  (nid.infoNid.expressionBorne) (*borne pour une exécution*)
-				  nb (* borne total *) (nid.varDeBoucleNid) 
-				    (applyStoreVA (EXP(info.infoVariation.borneInf)) aSC)
-				    (applyStoreVA (EXP(info.infoVariation.borneSup)) aSC)
-				    (applyStoreVA (EXP(info.infoVariation.increment)) aSC)
-				  info.infoVariation.direction  info.infoVariation.operateur 
-				   nb  nb isExe false
-	   in
-	  docEvalue :=  new_documentEvalue  (List.append [ nouNidEval] !docEvalue.maListeNidEval) !docEvalue.maListeEval;		
-	  if !vDEBUG then Printf.printf "av evaluerSN de %d dans nid tete appel %d\n" (getBoucleIdB nid.infoNid.laBoucle)	!numAppel;
-	  ignore (afficherNidUML nouNidEval  [] 1 Listener.null); 
+		(*print_expression nid.infoNid.expressionBorne 0;*)
+		let nb = if isExe then applyStoreVA (getNombreIt (nid.infoNid.expressionBorne) 
+					info.conditionConstante info.typeBoucle  info.conditionI info.conditionMultiple
+ 					aSC info.estPlus  info.infoVariation nid.varDeBoucleNid) !abGlobales
+				 else EXP(CONSTANT (CONST_INT "0")) in
+		
 
-	  let borne  =  nouNidEval.expressionBorneToutesIt  in
-	  let tetePred = (TBOUCLE(0,0,[],[], true,[],[]))  in
+		let typeEval = TBOUCLE((getBoucleIdB nid.infoNid.laBoucle), !numAppel,
+					(reecrireCallsInLoop nid.varDeBoucleNid 	nid.lesAffectationsBNid),appel, isExe,[],[]) in
+		if !vDEBUG then Printf.printf "evalNid contexte  boucle: %d\n" (getBoucleIdB nid.infoNid.laBoucle);
+		(*		afficherListeAS aSC;flush(); space(); new_line();*)
+	
+		let nouNidEval = 
+			new_nidEval	(applyStoreVA  (EXP(nid.condN)) aSC) 	
+					typeEval
+					(nid.infoNid.expressionBorne) (*borne pour une exécution*)
+					nb (* borne total *) (nid.varDeBoucleNid) 
+					  (applyStoreVA (EXP(info.infoVariation.borneInf)) aSC)
+					  (applyStoreVA (EXP(info.infoVariation.borneSup)) aSC)
+					  (applyStoreVA (EXP(info.infoVariation.increment)) aSC)
+					info.infoVariation.direction  info.infoVariation.operateur 
+					 nb  nb isExe false
+		 in
+		docEvalue :=  new_documentEvalue  (List.append [ nouNidEval] !docEvalue.maListeNidEval) !docEvalue.maListeEval;		
+		if !vDEBUG then Printf.printf "av evaluerSN de %d dans nid tete appel %d\n" (getBoucleIdB nid.infoNid.laBoucle)	!numAppel;
+		ignore (afficherNidUML nouNidEval  [] 1 Listener.null);
 
-	  typeNidTeteCourant := typeEval;
+		let borne  =  nouNidEval.expressionBorneToutesIt  in
+		let tetePred = (TBOUCLE(0,0,[],[], true,[],[]))  in
+		
+		typeNidTeteCourant := typeEval;
 
-	  let resaux = calculer nb  !infoaffichNull [] in
-	  let isNull = if  estDefExp resaux then  if estNul resaux then true else false else false in
-	  (*let listeSauf =*)evaluerSN   nid	nid	appel mesBouclesOuAppel  (List.append  [typeEval] listeEng) isExe borne nid;
-				  (*	resaux in*)
+		let resaux = calculer nb  !infoaffichNull [] 1 in
+		let isNull = if  estDefExp resaux then  if estNul resaux then true else false else false in
+		(*let listeSauf =*)evaluerSN   nid	nid	appel mesBouclesOuAppel  (List.append  [typeEval] listeEng) isExe borne nid;
+					(*	resaux in*)
 
-	  if !vDEBUG then  Printf.printf "ap evaluerSN de %d dans nid tete appel %d\n"  (getBoucleIdB nid.infoNid.laBoucle) !numAppel;
+		if !vDEBUG then  Printf.printf "ap evaluerSN de %d dans nid tete appel %d\n"  (getBoucleIdB nid.infoNid.laBoucle) !numAppel;
 
-	  typeNidTeteCourant :=tetePred;
-	  let corpsEvalPourB = !corpsEvalTMP  in 
-	  let new_b = [ new_elementEvalb nouNidEval typeEval corpsEvalPourB] in
+		typeNidTeteCourant :=tetePred;
+		let corpsEvalPourB = !corpsEvalTMP  in 
+		let new_b = [ new_elementEvalb nouNidEval typeEval corpsEvalPourB] in
 
-	  corpsEvalTMP := List.append corpsEvalTMPPred	 new_b;	
-	  docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append	!docEvalue.maListeEval   new_b);
-	  if !vDEBUG then Printf.printf "ajout dans liste corpsEval %d\n"  (getBoucleIdB nid.infoNid.laBoucle);
+		corpsEvalTMP := List.append corpsEvalTMPPred	 new_b;	
+		docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append	!docEvalue.maListeEval   new_b);
+		if !vDEBUG then Printf.printf "ajout dans liste corpsEval %d\n"  (getBoucleIdB nid.infoNid.laBoucle);
+		
+		varDeBoucleBoucle :=varDeBouclePred;
+		estDansBoucle := false;	
+		if isExe && isNull = false then
+		begin
+		 	(*Printf.printf "est exécutée\n" ;*)
 
-	  varDeBoucleBoucle :=varDeBouclePred;
-	  estDansBoucle := false;	
-	  if isExe && isNull = false then
-	  begin
-		  (*Printf.printf "est exécutée\n" ;*)
 (*supprimer tous ceux qui sont dans  !listeInstNonexe; *)
 		  let ni = reecrireCorpsNonExe  nid.lesAffectationsBNid !listeInstNonexe !numAppel in
 		  evalStore (new_instBEGIN ni) appel;
@@ -2208,21 +2186,24 @@ else if lt = [] then consProdT lf false
 
 let nb_loop = ref 0
 let rec  consNbCorpsFOB corps  numCall evalFunction = 
+
   if corps = [] then CONSTANT( CONST_INT "0")
   else 
   begin
 	  let v1 = consNBUneBoucleOuAppel (List.hd corps) numCall evalFunction in
 	  let v2 = consNbCorpsFOB (List.tl corps) numCall evalFunction in
 
-	  let add1 = calculer  (EXP(v1)) !infoaffichNull  []  in
-	  let add2 = calculer  (EXP(v2)) !infoaffichNull  [] in
+	  let add1 = calculer  (EXP(v1)) !infoaffichNull  [] 1  in
+	  let add2 = calculer  (EXP(v2)) !infoaffichNull  [] 1 in
 	  if estNoComp add1 = false && estNoComp add2 =false &&  estNul add1 && estNul add2 then CONSTANT( CONST_INT "0")
 		  else if estNoComp add1 = false && estNul add1 then v2 else if estNoComp add2 = false && estNul add2 then v1 else BINARY(ADD, v1 ,v2)
   end
 
 
+
 and consNBUneBoucleOuAppel elem  numCall evalFunction=
 match elem with
+
   IDBOUCLE (num, lt,lf) -> 
 
 	  let nvar =  Printf.sprintf "%s_%d_%d_%d" "NBIT" num numCall  !nb_loop in	
@@ -2235,11 +2216,11 @@ match elem with
 		  let info = getBoucleInfoB b in
 		  let mesBouclesOuAppel = info.boucleOuAppelB in
 		  let profinit = consProdCaseTF lt lf in 
-		  let valprod = (calculer  (EXP(profinit)) !infoaffichNull  []) in
+		  let valprod = (calculer  (EXP(profinit)) !infoaffichNull  [] 1) in
 		  let prod = if estNoComp valprod = false && estUn valprod then VARIABLE(nvar) else
 				   BINARY(MUL, VARIABLE(nvar), profinit) in
 		  let other = consNbCorpsFOB mesBouclesOuAppel  numCall evalFunction in
-		  let value = calculer  (EXP(other)) !infoaffichNull  [] in
+		  let value = calculer  (EXP(other)) !infoaffichNull  [] 1 in
 		  if estNoComp value = false &&  estNul value then CONSTANT( CONST_INT "0")
 		  else if estNoComp value = false &&  estUn value then prod else  BINARY(MUL,prod,other)
 	  end
@@ -2259,18 +2240,21 @@ match elem with
 			  else if nomFonction = evalFunction then  consProdCaseTF lt lf else CONSTANT( CONST_INT "0")
 
 
+
 and consNBFonction id f   numCall lt lf evalFunction=	
 let prod = consProdCaseTF lt lf in
-let valprod = (calculer  (EXP(prod)) !infoaffichNull  []) in
+let valprod = (calculer  (EXP(prod)) !infoaffichNull  [] 1) in
 
 if id = evalFunction then (* fonction non recursive*)    prod 
 else
 begin
+
   let other =consNbCorpsFOB f.corps.boucleOuAppel   numCall evalFunction in
-  let value = calculer  (EXP(other)) !infoaffichNull  [] in
+  let value = calculer  (EXP(other)) !infoaffichNull  [] 1 in
   if estNoComp value = false && estNul value then CONSTANT( CONST_INT "0")
 		  else if estNoComp value = false && estUn value then prod else
 		 		  if estNoComp valprod = false && estUn valprod then other else   BINARY(MUL,prod,other)
+
 end
 
 

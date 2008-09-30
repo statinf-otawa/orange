@@ -124,6 +124,7 @@ let partial = ref false
 
 let existsPartialResult _ = false
 
+
 module PartialAdapter = 
   functor (Listener : LISTENER) ->
   struct
@@ -134,12 +135,7 @@ module PartialAdapter =
     let onFunction = Listener.onFunction
     let onFunctionEnd = Listener.onFunctionEnd
     let onCall res name numCall line source inloop executed extern = 
-      if (extern) then
-        let partialResult = getPartialResult name in
-	applyPartialResult partialResult res
-       else
         Listener.onCall res name numCall line source inloop executed extern
-      
     let onReturn = Listener.onReturn
     let onLoop = Listener.onLoop
     let onLoopEnd = Listener.onLoopEnd
