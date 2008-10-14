@@ -83,6 +83,7 @@ let aUneFctNotDEf = ref false
 	type elementCorpsFonction =
 		IDBOUCLE of int * string list * string list 
 	|	IDAPPEL of int * expression *inst list *string  * string list * string list
+	|	IDIF of string * inst list * elementCorpsFonction list (*then*)* inst list* elementCorpsFonction list(*else*)* string list * string list
 	
 	type refAppel = string * int (* id fichier numline*)
 
@@ -460,11 +461,14 @@ and get_base_typeEPS  ntyp =
 	
 (* pour les fonctions *)
 	
-let  reecrireCAll var liste =
+let  rec reecrireCAll var liste =
 List.map (fun e -> 
 	match e with
-			IDBOUCLE (i,_,_) -> e
-		|	IDAPPEL (i , expression, l,_,lt,lf) -> IDAPPEL (i , expression, l,var,lt,lf) ) liste
+			IDBOUCLE (_,_,_) -> e
+		|	IDAPPEL (i , expression, l,_,lt,lf) -> IDAPPEL (i , expression, l,var,lt,lf) 
+		|	IDIF (var,instthen, treethen,instelse, treeelse,lt,lf) ->IDIF (var,instthen, reecrireCAll var treethen,instelse, reecrireCAll var treeelse,lt,lf) 
+
+) liste
 
 
 let nomFonctionDeExp exp = match exp with  VARIABLE (s)->s  | _->""
@@ -1026,7 +1030,7 @@ let lesVarBoucle num =( listeDesVarsDeExpSeules (nombreIT num))
 let rec rechercheVarBoucleFor var init  =
 (*	Printf.printf  "\n analyseInitFor \n"; print_expression init 1 ;new_line ();*)
 match init	with
-NOTHING -> ()
+NOTHING ->   expressionDinitFor := VARIABLE(var);()
 | UNARY (op, n) ->
 	if get_estAffect init then 
 	( match n with
@@ -1040,7 +1044,7 @@ NOTHING -> ()
 				| _ ->()
 				)
 			end
-		|_->()
+		|_->expressionDinitFor := VARIABLE(var);()
 	)
 	else ()
 | BINARY (op, exp1, exp2) ->
@@ -1062,11 +1066,11 @@ NOTHING -> ()
 				| XOR_ASSIGN ->  	expressionDinitFor :=BINARY(XOR,exp1,exp2)
 				| SHL_ASSIGN ->  	expressionDinitFor :=BINARY(SHL,exp1,exp2)
 				| SHR_ASSIGN -> 	expressionDinitFor :=BINARY(SHR,exp1,exp2)
-				|_ ->   ()	)
-				|_->())
+				|_ -> expressionDinitFor := VARIABLE(var);  ()	)
+				|_->expressionDinitFor := VARIABLE(var);())
 	else ()
 | COMMA exps ->	List.iter(fun ex-> rechercheVarBoucleFor var ex)exps							
-|_ -> () (*initialisation :="";*)
+|_ -> expressionDinitFor := VARIABLE(var);() (*initialisation :="";*)
 
 
 let traiterEQ init borne var c =
@@ -1986,22 +1990,23 @@ let isDivInc exp =
 		else true
 	end
 
- let traiterConditionBoucleFor t nom nbIt cond eng (*exp*) init inc var cte var2 listLoopVar avant dans lvb vcond inst =
+ let traiterConditionBoucleFor t nom nbIt cond eng (*exp*) (*init*) inc var cte var2 listLoopVar avant dans lvb vcond inst =
 (*afficherLesAffectations inst;*)
-	let liste = listeDesVarsDeExpSeules cond in
-	let listeV = listeDesVarsDeExpSeules init in
+	let listeV = listeDesVarsDeExpSeules cond in
+	(*let listeV = listeDesVarsDeExpSeules init in*)
 
 	expressionDinitFor :=NOTHING;
 	expressionIncFor:= NOTHING;
-	rechercheVarBoucleFor var init;
-	
-	let (operateur,typevar,multiple,v) = analyseCompFor var !expressionDinitFor cond listLoopVar avant dans cte t var2 lvb inst in	
+	(*rechercheVarBoucleFor var init;*)
+	(*if  !expressionDinitFor = NOTHING then*) expressionDinitFor := VARIABLE(var);
+	let (operateur,typevar,multiple,v) = analyseCompFor var (VARIABLE(var)) cond listLoopVar avant dans cte t var2 lvb inst in	
 
 	let ( indirect,nv,nt, indirectafter)=
 
 		if v != var2 then
 		begin
-			expressionDinitFor := expVaToExp(rechercheAffectVDsListeAS v avant);
+			let initialvar =expVaToExp(rechercheAffectVDsListeAS v avant) in
+			expressionDinitFor := if initialvar = NOTHING then VARIABLE(v) else initialvar;
 			opEstPlus:= true;	
 			let ((*isindirect,inc,var, before*)isindirect,_,var, before) =  getLoopVarInc v inst in
 			if isindirect then 
@@ -2036,7 +2041,7 @@ let isDivInc exp =
 	let nb = expVaToExp (getNombreIt !borne (typevar=CONSTANTE||cte) t vcond multiple [] typeopPlusouMUL  infoVar v) in
 	listeBoucleOuAppelCourante := reecrireCAll var2 !listeBoucleOuAppelCourante;
 
-	let info = (new_boucleInfo t nom liste nbIt eng cte vcond multiple !listeBoucleOuAppelCourante 
+	let info = (new_boucleInfo t nom listeV nbIt eng cte vcond multiple !listeBoucleOuAppelCourante 
 				( new_variation !expressionDinitFor nb !expressionIncFor typevar operateur indirectafter) typeopPlusouMUL) in
 	
 	let boucleFor = new_boucleFor  info  listeV  var2  !expressionDinitFor  nb !expressionIncFor  in
@@ -2345,10 +2350,13 @@ let rec analyse_statement   stat =
 		listeDesInstCourantes :=List.append listePred2  !listeDesInstCourantes 
 											
 	| IF (exp, s1, s2) ->			
-		
+		(*ICI IDIF (var,instthen, treethen,insteles, treeelse,lt,lf)*)
 		let trueListPred = !trueList in
 		let falseListPred = !falseList in
 		
+		let maListeDesBoucleOuAppelPred = 	!listeBoucleOuAppelCourante		in
+		listeBoucleOuAppelCourante := [];
+
 		idIf := !idIf + 1;
 		analyse_expression   exp ;
 		let ne = !nouvExp in   
@@ -2356,25 +2364,36 @@ let rec analyse_statement   stat =
 		let newaffect =new_instVar  varIfN  (EXP(ne)) in 
 		listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect]; 
 		let listePred = !listeDesInstCourantes in	
+
+
 		listeDesInstCourantes := [];
 		trueList := List.append !trueList [varIfN];
 		analyse_statement  s1;
+		let listeThen = !listeDesInstCourantes in
+		let bouavrai = !listeBoucleOuAppelCourante in
 		trueList := trueListPred ;
-  
-		if (s2 = NOP)	then 
-		begin
-			listeDesInstCourantes :=  List.append listePred  [ new_instIFV (EXP(VARIABLE(varIfN))) (new_instBEGIN (!listeDesInstCourantes)) ]
-		end
-		else 	
-		begin
-			let listeVrai = !listeDesInstCourantes in
-			listeDesInstCourantes := [];
-			falseList := List.append !falseList [varIfN];
-			analyse_statement  s2;													
-			listeDesInstCourantes := 
-				List.append  listePred  [new_instIFVF (EXP(VARIABLE(varIfN))) (new_instBEGIN (listeVrai))  (new_instBEGIN (!listeDesInstCourantes)) ];
-			falseList := falseListPred
-		end;	
+  		let (instthen,treethen, instelse,treeelse) =
+				if (s2 = NOP)	then 
+				begin
+					listeDesInstCourantes :=  List.append listePred  [ new_instIFV (EXP(VARIABLE(varIfN))) (new_instBEGIN (listeThen)) ];
+					(listeThen,bouavrai,[],[])
+				end
+				else 	
+				begin
+					
+					 
+					listeBoucleOuAppelCourante := [];
+					listeDesInstCourantes := [];
+					falseList := List.append !falseList [varIfN];
+					let listeElse = !listeDesInstCourantes in
+					analyse_statement  s2;													
+					listeDesInstCourantes := 
+						List.append  listePred  [new_instIFVF (EXP(VARIABLE(varIfN))) (new_instBEGIN (listeThen))  (new_instBEGIN (listeElse)) ];
+					falseList := falseListPred;
+					(listeThen,bouavrai,listeElse,!listeBoucleOuAppelCourante)
+				end in	
+
+		listeBoucleOuAppelCourante	:= List.append  maListeDesBoucleOuAppelPred   [IDIF(varIfN , instthen,treethen, instelse,treeelse,trueListPred,falseListPred)]
 												
 	| WHILE (exp, stat) ->  	(*analyse_expression  exp ;rien condition sans effet de bord*)	
 		nbImbrications := !nbImbrications + 1;
@@ -2649,7 +2668,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 (*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" num;*)(*
 if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*)
 		let (nb,addtest) = traiterConditionBoucleFor 	"for" num !nbImbrications exp2
-					idBoucleEngPred exp1 exp3  varDeBoucle constante varBoucleIfN listeVB las asna listeVDeBoucle (VARIABLE(varIfN)) na in	
+					idBoucleEngPred (*exp1*) exp3  varDeBoucle constante varBoucleIfN listeVB las asna listeVDeBoucle (VARIABLE(varIfN)) na in	
 		(*Printf.printf "\n\nAnalyse statement : la boucle %d  ap \n" num;*)
 		listeDesInstCourantes := 
 				[	new_instFOR num varBoucleIfN	(EXP(exp1)) (EXP(exp2)) (EXP(exp3))  (EXP( nb)) (new_instBEGIN lesInstDeLaBoucle )  ];
@@ -3149,7 +3168,14 @@ and traiterAppelFonction exp args init =
 (*Printf.printf"Call %s existe traiterAppelFonction apres construire\n" nom;*)
 		ajouterReturn nom aff;
 (*Printf.printf"Call %s existe traiterAppelFonction apres ajouter return\n" nom;*)
-		listeDesInstCourantes :=  [ new_instAPPEL !idAppel  (new_instBEGIN init)  f.nom (new_instBEGIN !sorties) (new_instBEGIN aff) ""]
+		listeDesInstCourantes :=  [ new_instAPPEL !idAppel  (new_instBEGIN (List.append init !entrees))  f.nom (new_instBEGIN !sorties) (new_instBEGIN aff) ""]
+	end
+	else 
+	begin
+		 
+		 
+		aUneFctNotDEf := true; 
+		listeDesInstCourantes :=  [ new_instAPPEL !idAppel  (new_instBEGIN ([]))  nom (new_instBEGIN []) (new_instBEGIN []) ""]
 	end
 
 (* pour variables *)
