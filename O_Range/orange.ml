@@ -385,7 +385,7 @@ let rec jusquaF listeInst saufId  =
 
 and jusquaPourF premiere saufId =
   match premiere with
-     FORV ( n, a, b, c, d, e, i) ->  jusquaPourF i saufId  
+     FORV ( n, a, b, c, d, e, i) ->  let (_, trouve )= jusquaPourF i saufId  in ([premiere]	,trouve)
   | VAR ( _, _) |TAB ( _, _, _) | MEMASSIGN(_,_,_)-> ([premiere]	,false)							
   | APPEL (num,_, _, _,_,_) ->
 	  if num != saufId then ([premiere]	,false)		
@@ -452,7 +452,12 @@ begin
   let (premiere, suite) =(List.hd inst, List.tl inst)in
   match premiere with
     FORV ( _, _, _, _, _, _, _)   | VAR ( _, _) |TAB ( _, _, _)| MEMASSIGN(_,_,_) -> nextInstructionsF id suite						
-  | APPEL (num,_, _, _,_,_) ->    if num = id then (suite, true) else nextInstructionsF id suite		
+  | APPEL (num,_, _, _,_,_) ->    
+		if num = id then
+		begin
+			 (suite, true) 
+		end
+		else nextInstructionsF id suite		
   | IFVF ( c, i1, i2) -> 
 
 		  let (c1,t1) = nextInstructionsF id [i1]  in
@@ -461,7 +466,7 @@ begin
 		  else  
 		  begin
 			    if (t1 = true) then (List.append [IFVF ( c, BEGIN(c1), i2)]  suite, true)
-				else (List.append [IFVF ( c, BEGIN(c1), BEGIN(c2))] suite, true)
+				else (List.append [IFVF ( c, BEGIN([]), BEGIN(c2))] suite, true)
 		  end
 
   | IFV ( c, i1) 		-> 
@@ -529,20 +534,35 @@ and endOfcontexte affec  last new_contexte =
   begin
 	  let (fin,_) = 
 	  (match List.hd last with
-	  IDBOUCLE (num, _,_) ->  (*Printf.printf"last boucle %d\n" num; *) nextInstructionsB num affec 
-	  | IDAPPEL (numf,_,_,_, _,_) -> (* Printf.printf"last function  %d\n" numf; *) nextInstructionsF numf affec
-	  | IDIF (var,_, _,_, _,_,_)  ->(* Printf.printf"last if  %s\n" var; *) nextInstructionsI var affec)
+	  IDBOUCLE (num, _,_) ->  (*Printf.printf"last boucle %d\n" num;*)  nextInstructionsB num affec 
+	  | IDAPPEL (numf,_,_,_, _,_) ->  (*Printf.printf"last function  %d\n" numf;*)  nextInstructionsF numf affec
+	  | IDIF (var,_, _,_, _,_,_)  -> (*Printf.printf"last if  %s\n" var; *) nextInstructionsI var affec)
  	  in
-	  (*afficherUneAffect (BEGIN(fin)); *)
+(*Printf.printf"Inst end of context\n" ;
+	  afficherUneAffect (BEGIN(fin)); *)
 	  if fin = [] then new_contexte else evalStore (BEGIN(fin)) new_contexte
   end
 
 let  jusquaFaux listeInst saufId  contexte lastLoopOrCall=
-(*Printf.printf "jusqu'aFaux %d\n" saufId;*)
+(*  Printf.printf "fonction cherchee dans %d\n" saufId;
+  afficherLesAffectations ( listeInst) ;new_line () ;*)
+
+
+
+  (*Printf.printf "jusqu'aFaux %d\n" saufId;*)
   let (res,_)= jusquaF listeInst saufId in
 
-(*if trouve = false then Printf.printf "fonction  non trouvee %d\n" saufId;*)
-  endOfcontexte res  lastLoopOrCall contexte
+  (*if trouve = false then Printf.printf "fonction  non trouvee %d\n" saufId;
+  afficherLesAffectations ( res) ;new_line () ;*)
+ 
+
+(*Printf.printf "jusquaFaux %d\n" saufId;*)
+ let newres =  endOfcontexte res  lastLoopOrCall contexte in
+(*afficherListeAS ( newres) ;new_line () ;
+
+Printf.printf "jusquaFaux %d\n" saufId;*)
+newres
+
 
 let  jusquaIaux listeInst saufId  contexte lastLoopOrCall=
 (*Printf.printf "jusqu'aFaux %s\n" saufId;*)
@@ -585,9 +605,9 @@ let  jusquaBaux listeInst saufId contexte  lastLoopOrCall=
 (*Printf.printf "jusquaBaux %d\n" saufId;
 
 afficherLesAffectations ( listeInst) ;new_line () ;*)
-  let (res,_) = jusquaB listeInst saufId in
-(*if trouve = false then Printf.printf "boucle  non trouvee %d\n" saufId;*)
-(*afficherLesAffectations ( res) ;new_line () ;
+  let (res,trouve) = jusquaB listeInst saufId in
+(*if trouve = false then Printf.printf "boucle  non trouvee %d\n" saufId;
+afficherLesAffectations ( res) ;new_line () ;
 
 Printf.printf "jusquaBaux %d\n" saufId;*)
  let newres =  endOfcontexte res  lastLoopOrCall contexte in
@@ -1027,7 +1047,7 @@ TBOUCLE(num, appel, _,_,_,_,_) ->
 					  else 
 					  begin
 						  	setAssosBoucleIdMaxIfSupOldMax num (EXPMAX [(expVaToExp new_expmax)]);
-							(NOCOMP, EXP(maxp) )
+							(NOCOMP, EXP(new_expmax ) )
 					  end
 				  end
 				(*  print_expTerm !borneMaxAux; *)
@@ -1702,7 +1722,7 @@ begin
 		  let res1 = reecrireCorpsNonExe  liste1 listeTypeNonExe numAppel in
 		  List.append [IFV ( t, BEGIN(res1))] (reecrireCorpsNonExe  suite listeTypeNonExe numAppel)
 	  | FORV (num,id, e1, e2, e3, nbIt, inst)	-> 
-		  if existeTBoucle listeTypeNonExe num numAppel then (reecrireCorpsNonExe  suite listeTypeNonExe numAppel)
+		  if existeTBoucle listeTypeNonExe num numAppel then List.append [FORV (num,id, e1, e2, e3, nbIt, BEGIN([]))](reecrireCorpsNonExe  suite listeTypeNonExe numAppel)
 		  else
 		  begin
 			  let liste1 = match inst with BEGIN(e)-> e |_->[] in
@@ -1711,7 +1731,7 @@ begin
 				  (reecrireCorpsNonExe  suite listeTypeNonExe numAppel)
 		  end
 	  | APPEL (i,e,nomFonc,s,c,var)-> 
-		  if existeTFonction listeTypeNonExe nomFonc i then (reecrireCorpsNonExe  suite listeTypeNonExe numAppel)
+		  if existeTFonction listeTypeNonExe nomFonc i then List.append [APPEL (i,e,nomFonc,s,BEGIN([]),var)](reecrireCorpsNonExe  suite listeTypeNonExe numAppel)
 		  else
 		  begin
 			  let liste1 = match c with BEGIN(e)-> e |_->[] in
@@ -2354,8 +2374,10 @@ match a with
 		  Printf.printf"FIN Boucle nid...%d \n"num;
 	  end
 	  else   Printf.printf "Boucle nid %d non trouve\n" num	;
-  |IDIF (_,_, treethen,_, treeelse,_,_)->
+  |IDIF (var,_, treethen,_, treeelse,_,_)->
+Printf.printf"IF...%s \n"var;
 	afficherFonction treethen  (tab+3);
+Printf.printf"IF...%s else\n"var ;
 	afficherFonction treeelse  (tab+3);
   | IDAPPEL (numf,appel,_,_, _,_) ->
 

@@ -3086,9 +3086,9 @@ and  analyse_expressionaux exp =
 				else 
 				begin 
 					List.iter (fun ep -> analyse_expressionaux ep) args;
-
+			
 					listeBoucleOuAppelCourante	
-						:= List.append  !listeBoucleOuAppelCourante [IDAPPEL(!idAppel, exp,!listeDesInstCourantes,"" , !trueList,!falseList )];
+						:= List.append  !listeBoucleOuAppelCourante [IDAPPEL(!idAppel, exp,[],"" , !trueList,!falseList )];
 					traiterAppelFonction e args !listeDesInstCourantes;
 					let nouvar = Printf.sprintf "call%s%d" (nomFonctionDeExp e) ida in
 					let nouvarres = Printf.sprintf "res%s" (nomFonctionDeExp e) in
