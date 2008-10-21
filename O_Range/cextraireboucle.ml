@@ -2210,7 +2210,7 @@ let eval listeInst saufId idEng=
 			| FORV ( num, _, _, _, _, _, _) -> 	num != saufId						
 			| APPEL (_,_, _, _,_,_) ->true
 		) listeInst in
-(*	Printf.printf "ideng %d EVAL var %s\n" idEng varDeBoucle ;*)
+	 
 	evalStore   (new_instBEGIN (listeInter)) []
 	
 			
@@ -2513,6 +2513,7 @@ let rec analyse_statement   stat =
 		let listeVCond =  listeDesVarsDeExpSeules  exp in  
 (*ICI*)
 		let na = extractVarCONDAffect  li listeVCond in
+ 
 		let asna = evalStore (new_instBEGIN (na)) []  in
 
 
@@ -2523,6 +2524,8 @@ let rec analyse_statement   stat =
 				if (List.tl listeVDeBoucle) = [] then  (List.hd listeVDeBoucle, false, []) (*la boucle ne depend que d'1 variable on peut traiter*)	
 				else (varBoucleIfN, false, listeVDeBoucle))in
 		(*afficherLesAffectations na;*)
+
+ 
 		
 		let listeASC = evalStore (new_instBEGIN (listePred)) [] in
 		isExactForm := (hasMultiOuputInst stat = false) && (!trueList = []) && (!falseList = []);
@@ -2614,6 +2617,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 
 		let listeVCond =  listeDesVarsDeExpSeules  exp in  
 		let na = extractVarCONDAffect  li listeVCond in
+
 		let asna = evalStore (new_instBEGIN (na)) [] in
 
 
@@ -2720,6 +2724,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 
 		let listeVCond =  listeDesVarsDeExpSeules  exp2 in  
 		let na = extractVarCONDAffect  li listeVCond in
+ 
 		let asna = evalStore (new_instBEGIN (na)) []  in		 
 		let listeVDeBoucle =  	rechercheListeDesVarDeBoucle  listeVCond 	asna in
 		(*remarque ajouter les initialisations au bloc englobant et exp3 à la boucle *)
@@ -2730,8 +2735,12 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		else
 			if (List.tl listeVDeBoucle) = [] then (List.hd listeVDeBoucle, false, [])(*la boucle ne depend que d'une seule variable on peut traiter*)
 			else (varBoucleIfN, false, listeVDeBoucle))in	
-
+ 
 		let las=  evalStore (new_instBEGIN (listePred)) [] in
+
+ 
+
+
 				isExactForm := (hasMultiOuputInst stat = false) && (!trueList = []) && (!falseList = []);
 (*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" num;*)(*
 if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*)
@@ -2774,7 +2783,9 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		listeBouclesImbriquees :=  List.append [num] !listeBouclesImbriquees;
 		listeBouclesImbriquees :=  List.append listeBouclesInbriqueesPred !listeBouclesImbriquees ;
 		listeDesInstCourantes :=  List.append( List.append listePred !listeDesInstCourantes) !listeNextExp;
-		nbImbrications := !nbImbrications - 1; 														
+		nbImbrications := !nbImbrications - 1; 		
+
+ 											
 		listeBoucleOuAppelCourante :=  maListeDesBoucleOuAppelPred 
 	
 	| BREAK | CONTINUE -> 			()
@@ -3205,8 +3216,10 @@ and ajouterReturn nomF lesAffectations =
 	if lesAffectations = [] then begin  ()end
 	else
 	begin
-		
+		 
+		withoutTakingCallIntoAccount := true;
 		let asl = evalStore (new_instBEGIN(lesAffectations)) [] in
+	    withoutTakingCallIntoAccount := false;
 		if existAffectVDsListeAS nouvarres !listeASCourant then
 		begin 
 			let resaux = rechercheAffectVDsListeAS nouvarres (*index*) asl in
@@ -3216,8 +3229,8 @@ and ajouterReturn nomF lesAffectations =
 				let newaffect = new_instVar  nouvarres resaux in
 				sorties := List.append !sorties [newaffect]
 			end		
-		end
-		
+		end;
+		 
 	end
 	
 and getESFromPartial nom =

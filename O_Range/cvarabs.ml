@@ -26,6 +26,7 @@ let version = "cvarabs Marianne de Michiel"
 	let getAssosArrayIDsize name  = if existAssosArrayIDsize name then (List.assoc name !listAssosArrayIDsize) else NOSIZE
 
 let (alreadyAffectedGlobales: string list ref) = ref []
+let (withoutTakingCallIntoAccount: bool ref) = ref false
         
 let aAntiDep = ref false
 let vDEBUG = ref false
@@ -1219,7 +1220,7 @@ let rec  calculer expressionVA ia l sign =
 								else
 								begin
 									let val1 = simplifier var max expE ia in
-									if  estNoComp val1 then   (*Sygma (var ,ConstInt("0")(* ou 1 voir*), max,expE)*) NOCOMP
+									if  estNoComp val1 then   Sygma (var ,ConstInt("0")(* ou 1 voir*), max,expE)(* NOCOMP*)
 									else	val1
 								end	
 							end
@@ -1260,9 +1261,9 @@ let rec  calculer expressionVA ia l sign =
 								else
 								begin		
 									let val1 = simplifierMax var max expE ia in
-									Printf.printf"calcul MAX pour %s =\n" var; 
+									(*Printf.printf"calcul MAX pour %s =\n" var; 
 									print_expTerm val1; new_line ();
-									Printf.printf"MAX apres calcul =\n";
+									Printf.printf"MAX apres calcul =\n";*)
 									if  estNoComp val1 then  NOCOMP
 										(*Max (var ,ConstInt("0")(* ou 1 voir*), max,expE)*)
 									else	val1
@@ -3542,129 +3543,133 @@ afficherListeAS res;
 Printf.printf "fin \n";*)
 			res
 	| APPEL (n,e,nomFonc,s,corpsAbs,varB)->
-
-		print_string ("Appel fonction definie: "^nomFonc ^"\n");
-
-	(*	Printf.printf "evalStore fonction %s  \n" nomFonc ;	*)
-		let sorties = (match s with BEGIN(sss)-> sss |_->[]) in
-
-		let affectSortie = evalStore s []  in	
-		let entrees = (match e with BEGIN(eee) -> eee |_->[]) in
-		let isAbs = match corpsAbs with CORPS(_) -> false | ABSSTORE(_) -> true in
-		let absStore = match corpsAbs with ABSSTORE(a) -> a | _ -> [] in
-		
-		if varB = "" then
+		if ! withoutTakingCallIntoAccount = true then a
+		else
 		begin
-			let c = (match corpsAbs with CORPS(x) -> x |_ -> BEGIN([])) in
-			(*let corps =   (match corpsAbs with CORPS (BEGIN(ccc)) -> ccc |_->[]) in*)
 
-			(* POUR ESSAYER D'OPTIMISER NE GUARDER QUE LES ENTREES ET LES GLOBALES*)
+					print_string ("Appel fonction definie: "^nomFonc ^"\n");
 
-			 		
-			let globale = filterGlobales a !alreadyAffectedGlobales in
+				(*	Printf.printf "evalStore fonction %s  \n" nomFonc ;	*)
+					let sorties = (match s with BEGIN(sss)-> sss |_->[]) in
 
-			corpsNouv := if (isAbs)
-			               then (rond (List.append globale (evalInputFunction a entrees )) absStore)
-				       else (evalStore (c) (List.append globale (evalInputFunction a entrees )));
+					let affectSortie = evalStore s []  in	
+					let entrees = (match e with BEGIN(eee) -> eee |_->[]) in
+					let isAbs = match corpsAbs with CORPS(_) -> false | ABSSTORE(_) -> true in
+					let absStore = match corpsAbs with ABSSTORE(a) -> a | _ -> [] in
+		
+					if varB = "" then
+					begin
+						let c = (match corpsAbs with CORPS(x) -> x |_ -> BEGIN([])) in
+						(*let corps =   (match corpsAbs with CORPS (BEGIN(ccc)) -> ccc |_->[]) in*)
+
+						(* POUR ESSAYER D'OPTIMISER NE GUARDER QUE LES ENTREES ET LES GLOBALES*)
+
+						 		
+						let globale = filterGlobales a !alreadyAffectedGlobales in
+
+						corpsNouv := if (isAbs)
+									   then (rond (List.append globale (evalInputFunction a entrees )) absStore)
+								   else (evalStore (c) (List.append globale (evalInputFunction a entrees )));
 
 			
-			let rc =  !corpsNouv in listeASCourant := []; 
-		(*Printf.printf "contxte \n" ;afficherListeAS rc;Printf.printf "fin liste\n" ;*)
-			if sorties <> [] then
-			begin
-				(*afficherListeAS rc; *)
-				List.iter (
-					fun sortie -> 
-					(match sortie with 
-					VAR (id, e) ->  
-						listeASCourant :=  List.append 
-						[new_assign_simple id  (applyStoreVA e rc)  ]  !listeASCourant; 
-						()
-					| TAB (id, e1, e2) ->  
-						listeASCourant := List.append
-							[ASSIGN_DOUBLE (id,   (applyStoreVA e1 rc) ,  (applyStoreVA e2 rc) )] !listeASCourant;
-						()
-					|_-> (*Printf.printf"memassign";*)())
-					)sorties	
-			end;
-			let nginterne = filterGlobales rc  !alreadyAffectedGlobales in
-			let returnf = Printf.sprintf "res%s"  nomFonc in
-			if existeAffectationVarListe returnf rc then
-			begin
-				let affectres = ro returnf rc in
-				listeASCourant :=  List.append [affectres] (List.append nginterne !listeASCourant )
-			end
-			else listeASCourant :=     (List.append nginterne !listeASCourant );
+						let rc =  !corpsNouv in listeASCourant := []; 
+					(*Printf.printf "contxte \n" ;afficherListeAS rc;Printf.printf "fin liste\n" ;*)
+						if sorties <> [] then
+						begin
+							(*afficherListeAS rc; *)
+							List.iter (
+								fun sortie -> 
+								(match sortie with 
+								VAR (id, e) ->  
+									listeASCourant :=  List.append 
+									[new_assign_simple id  (applyStoreVA e rc)  ]  !listeASCourant; 
+									()
+								| TAB (id, e1, e2) ->  
+									listeASCourant := List.append
+										[ASSIGN_DOUBLE (id,   (applyStoreVA e1 rc) ,  (applyStoreVA e2 rc) )] !listeASCourant;
+									()
+								|_-> (*Printf.printf"memassign";*)())
+								)sorties	
+						end;
+						let nginterne = filterGlobales rc  !alreadyAffectedGlobales in
+						let returnf = Printf.sprintf "res%s"  nomFonc in
+						if existeAffectationVarListe returnf rc then
+						begin
+							let affectres = ro returnf rc in
+							listeASCourant :=  List.append [affectres] (List.append nginterne !listeASCourant )
+						end
+						else listeASCourant :=     (List.append nginterne !listeASCourant );
 	
 			
-			(*Printf.printf "evalStore fonction %s  \n" nomFonc ;*)
-			let nc = rond a     !listeASCourant  in
-			(*Printf.printf "contxte \n" ;afficherListeAS nc;Printf.printf "fin liste\n" ;*)
-			nc
+						(*Printf.printf "evalStore fonction %s  \n" nomFonc ;*)
+						let nc = rond a     !listeASCourant  in
+						(*Printf.printf "contxte \n" ;afficherListeAS nc;Printf.printf "fin liste\n" ;*)
+						nc
+					end
+					else 
+					begin
+						(*	Printf.printf "dans boucle\n";*)
+						 
+						let corps =   (match corpsAbs with CORPS (BEGIN(ccc)) -> ccc |_->[]) in
+						listeASCourant := [];
+						corpsNouvI := sorties ;
+						(*listeAvant := contexte;*)
+						if entrees <> [] then
+						begin
+							List.iter (
+								fun entree -> 
+									match entree with 
+									VAR (id, exp) ->
+										let nouvar = Printf.sprintf "%s%s_%d" id nomFonc n in
+										let idsortie = rechercheAffectVDsListeAS  id affectSortie in
+										if idsortie = EXP(NOTHING) then corpsNouvI:= List.append !corpsNouvI [VAR (id, EXP(VARIABLE(nouvar)))]
+									|_-> ()
+								)entrees;
+
+						end;
+
+					(*	Printf.printf "le sorties a apere reecrire \%s depend de var de boucle %s\n" nomFonc varB;*)
+					(*	afficherUneAffect (BEGIN(corps)); new_line(); Printf.printf "affect a apere reecrire fin\n";*)
+						let memoutput = !corpsNouvI in
+						let listeInput =   (evalInputFunction a entrees ) in
+			
+						let rc =evalStore (BEGIN(corps)) (*rond a*) listeInput in
+			
+						listeASCourant := [];
+						if memoutput <> [] then
+						begin
+							(*afficherListeAS rc; *)
+							List.iter (
+								fun sortie -> 
+								(match sortie with 
+								VAR (id, e) ->  
+									listeASCourant :=  List.append  [new_assign_simple id  (applyStoreVA e rc)]  !listeASCourant; 
+									()
+								| TAB (id, e1, e2) ->  
+									listeASCourant := List.append [ASSIGN_DOUBLE (id, applyStoreVA e1 rc, applyStoreVA e2 rc)] !listeASCourant;
+									()
+								|_-> ())
+								)memoutput	
+						end;
+						let nginterne = filterGlobales rc  !alreadyAffectedGlobales in
+
+						let returnf = Printf.sprintf "res%s"  nomFonc in
+						if existeAffectationVarListe returnf rc then
+						begin
+							let affectres = ro returnf rc in
+							listeASCourant :=  List.append [affectres] (List.append nginterne !listeASCourant )
+						end
+						else listeASCourant :=   (List.append nginterne !listeASCourant );
+			
+					 
+
+					(*Printf.printf "\nsorties %s depend de var de boucle %s\n" nomFonc varB; afficherListeAS !listeASCourant; Printf.printf "fin sorties\n";*)
+						let nc = rond a   !listeASCourant  in
+						nc
+			(*Printf.printf "evalStore fonction %s  \n global filter" nomFonc ; afficherListeAS nginterne; Printf.printf "fin res\n" ;*)
+			(*Printf.printf "evalStore fonction %s  \n" nomFonc ;afficherListeAS !listeASCourant; Printf.printf "fin res\n" ;*)
 		end
-		else 
-		begin
-			(*	Printf.printf "dans boucle\n";*)
-			 
-			let corps =   (match corpsAbs with CORPS (BEGIN(ccc)) -> ccc |_->[]) in
-			listeASCourant := [];
-			corpsNouvI := sorties ;
-			(*listeAvant := contexte;*)
-			if entrees <> [] then
-			begin
-				List.iter (
-					fun entree -> 
-						match entree with 
-						VAR (id, exp) ->
-							let nouvar = Printf.sprintf "%s%s_%d" id nomFonc n in
-							let idsortie = rechercheAffectVDsListeAS  id affectSortie in
-							if idsortie = EXP(NOTHING) then corpsNouvI:= List.append !corpsNouvI [VAR (id, EXP(VARIABLE(nouvar)))]
-						|_-> ()
-					)entrees;
-
-			end;
-
-		(*	Printf.printf "le sorties a apere reecrire \%s depend de var de boucle %s\n" nomFonc varB;*)
-		(*	afficherUneAffect (BEGIN(corps)); new_line(); Printf.printf "affect a apere reecrire fin\n";*)
-			let memoutput = !corpsNouvI in
-			let listeInput =   (evalInputFunction a entrees ) in
-			
-			let rc =evalStore (BEGIN(corps)) (*rond a*) listeInput in
-			
-			listeASCourant := [];
-			if memoutput <> [] then
-			begin
-				(*afficherListeAS rc; *)
-				List.iter (
-					fun sortie -> 
-					(match sortie with 
-					VAR (id, e) ->  
-						listeASCourant :=  List.append  [new_assign_simple id  (applyStoreVA e rc)]  !listeASCourant; 
-						()
-					| TAB (id, e1, e2) ->  
-						listeASCourant := List.append [ASSIGN_DOUBLE (id, applyStoreVA e1 rc, applyStoreVA e2 rc)] !listeASCourant;
-						()
-					|_-> ())
-					)memoutput	
-			end;
-			let nginterne = filterGlobales rc  !alreadyAffectedGlobales in
-
-			let returnf = Printf.sprintf "res%s"  nomFonc in
-			if existeAffectationVarListe returnf rc then
-			begin
-				let affectres = ro returnf rc in
-				listeASCourant :=  List.append [affectres] (List.append nginterne !listeASCourant )
-			end
-			else listeASCourant :=   (List.append nginterne !listeASCourant );
-			
-		 
-
-		(*Printf.printf "\nsorties %s depend de var de boucle %s\n" nomFonc varB; afficherListeAS !listeASCourant; Printf.printf "fin sorties\n";*)
-			let nc = rond a   !listeASCourant  in
-			nc
-(*Printf.printf "evalStore fonction %s  \n global filter" nomFonc ; afficherListeAS nginterne; Printf.printf "fin res\n" ;*)
-(*Printf.printf "evalStore fonction %s  \n" nomFonc ;afficherListeAS !listeASCourant; Printf.printf "fin res\n" ;*)
-		end	
+	end	
 
 
 

@@ -1126,13 +1126,13 @@ TBOUCLE(num, appel, _,_,_,_,_) ->
 		  else 
 		  begin
 			  let maxp = (rechercheNid num).infoNid.expressionBorne in
-			  (*let resaux = calculer (EXP(maxp))  nia [] 1 in*)
-			  borneMaxAux :=(* if estDefExp resaux then 
+			  let resaux = calculer (EXP(maxp))  nia [] 1 in
+			  borneMaxAux := if estDefExp resaux then 
 						  begin 
 							  setAssosBoucleIdMaxIfSupOldMax num (EVALEXP (resaux));
 							  resaux 
 						  end
-						  else *)
+						  else 
 						  begin
 							  setAssosBoucleIdMaxIfSupOldMax num (EXPMAX [maxp]);
 							  NOCOMP
