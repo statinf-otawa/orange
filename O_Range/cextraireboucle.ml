@@ -17,8 +17,9 @@ open Cexptostr
 open Cvarabs
 open Cvariables
 open Constante
+open Coutput
 open Increment
-
+open Printf
 
 let files: string list ref = ref []
 let names : (string ref) list ref =  ref[]
@@ -49,6 +50,8 @@ let maj hd tl =
 	mainFonc := ref hd;
 	evalFunction := (List.append !evalFunction tl)
 	end
+	
+
 
 let  fileCour = ref "" 
 let  numLine = ref 0
@@ -62,7 +65,7 @@ let aUneFctNotDEf = ref false
 	let expressionCondFor = ref NOTHING
 	let listeDesInstCourantes = ref []
 	let listeDesInstGlobales = ref []
-	let alreadyAffectedGlobales = ref []
+	(*let alreadyAffectedGlobales = ref [] *)(* pas chez Clément*)
 	let listeAffectInit = ref []
 
 	let trueList = ref []
@@ -398,6 +401,71 @@ let new_variation i s inc d op b=
 	let add_fonction  (n,f) liste=	List.append liste [(n,f)]	
 	let doc = ref (new_document [] [] [] [])
 	let enumCour = ref NO_TYPE
+
+
+module TreeList = struct
+  type intOuNocomp = Int of int | Nocomp
+  type tree = Doc of tree list
+         | Function of (string * bool * bool * bool) * tree list (* function name, inloop, executed, extern *)
+         | Call of (string * int * int * string * bool * bool * bool) * tree list (* function name, relative call ID, line num, source file, inlopo, executed, extern *)
+         | Loop of (int * int * string * bool * intOuNocomp * intOuNocomp * string * string) * tree list (* loop id, line, source file, exact, max, toatl, exp max, exp total *)
+
+ 
+  
+  type t = tree * tree list  (* current, ancestor stack *)
+  let null = (Doc [], [])
+  exception TreeBuildException
+  
+  let addChild node : tree -> tree = function
+     (Doc children) -> (Doc (node::children)) 
+    |Function (x, children) -> Function (x, (node::children))
+    |Call (x, children) -> Call (x, (node::children))
+    |Loop (x, children) -> Loop (x, (node::children))
+    
+    
+  let extractExp = function
+          (ConstInt(valeur)) -> Int (int_of_string valeur)
+          |(ConstFloat(valeur)) -> Int (int_of_float (float_of_string  valeur))
+          | _ -> Nocomp
+    
+  let onBegin = function
+      (Doc [], [] ) as x -> x
+      | _ -> raise TreeBuildException
+        
+
+  let onEnd = function
+      (Doc _, []) as x -> x
+      | _ -> raise TreeBuildException
+  
+  let onFunction res name inloop executed extern = match res with
+      (current, stack) -> 
+        let newCurrent = Function ((name,inloop,executed,extern), []) in
+	(newCurrent, current::stack)      
+
+  let onLoop res loopID line source exact maxcount totalcount maxexp totalexp = match res with
+      (current, stack) -> 
+        let newCurrent = 
+	   Loop ((loopID, line, source, exact, (extractExp maxcount), (extractExp totalcount), (string_from_expr maxexp),(string_from_expr totalexp)), []) in
+	(newCurrent, current::stack)   
+     
+  
+  let onCall res name numCall line source inloop executed extern = match res  with
+      (current, stack) -> 
+        let newCurrent = Call ((name, numCall, line, source, inloop, executed, extern), []) in
+	(newCurrent, current::stack)   
+
+  let onFunctionEnd = function
+      (current, item::stack) -> (addChild current item), stack
+      |(_, []) -> raise TreeBuildException
+        	
+  let onReturn = onFunctionEnd
+  let onLoopEnd = onFunctionEnd 
+
+
+end ;;
+type compInfo = {name:string; absStore: typeListeAS; compES:listeDesES; expBornes:TreeList.tree}
+
+
 
 let rec getItemList dec result=
 if dec = [] then result
@@ -1030,7 +1098,7 @@ let lesVarBoucle num =( listeDesVarsDeExpSeules (nombreIT num))
 let rec rechercheVarBoucleFor var init  =
 (*	Printf.printf  "\n analyseInitFor \n"; print_expression init 1 ;new_line ();*)
 match init	with
-NOTHING ->   expressionDinitFor := VARIABLE(var);()
+NOTHING ->   ()
 | UNARY (op, n) ->
 	if get_estAffect init then 
 	( match n with
@@ -1044,7 +1112,7 @@ NOTHING ->   expressionDinitFor := VARIABLE(var);()
 				| _ ->()
 				)
 			end
-		|_->expressionDinitFor := VARIABLE(var);()
+		|_->()
 	)
 	else ()
 | BINARY (op, exp1, exp2) ->
@@ -1070,7 +1138,7 @@ NOTHING ->   expressionDinitFor := VARIABLE(var);()
 				|_->expressionDinitFor := VARIABLE(var);())
 	else ()
 | COMMA exps ->	List.iter(fun ex-> rechercheVarBoucleFor var ex)exps							
-|_ -> expressionDinitFor := VARIABLE(var);() (*initialisation :="";*)
+|_ -> () (*initialisation :="";*)
 
 
 let traiterEQ init borne var c =
@@ -3074,7 +3142,7 @@ and  analyse_expressionaux exp =
 
 					listeBoucleOuAppelCourante	:= 
 						List.append  !listeBoucleOuAppelCourante  [IDAPPEL(!idAppel, exp, !listeDesInstCourantes,"", !trueList,!falseList )];
-					traiterAppelFonction e args !listeDesInstCourantes;
+					let _ = traiterAppelFonction e args !listeDesInstCourantes in
 					
 					let nouvar = Printf.sprintf "call%s%d" (nomFonctionDeExp e) ida in
 					let nouvarres = Printf.sprintf "res%s" (nomFonctionDeExp e) in
@@ -3089,13 +3157,13 @@ and  analyse_expressionaux exp =
 			
 					listeBoucleOuAppelCourante	
 						:= List.append  !listeBoucleOuAppelCourante [IDAPPEL(!idAppel, exp,[],"" , !trueList,!falseList )];
-					traiterAppelFonction e args !listeDesInstCourantes;
+					let isComponant = traiterAppelFonction e args !listeDesInstCourantes in
 					let nouvar = Printf.sprintf "call%s%d" (nomFonctionDeExp e) ida in
 					let nouvarres = Printf.sprintf "res%s" (nomFonctionDeExp e) in
 					let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
 					listeDesInstCourantes :=  List.append !listeDesInstCourantes  [newaffect];
 					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
-					(*nouvExp:=VARIABLE(nouvar)*)nouvExp:=exp
+					if isComponant then nouvExp:=VARIABLE(nouvar) else nouvExp:=exp
 				end		;
 	| COMMA e 	-> (*Printf.printf "dans comma\n";print_expression exp 0; new_line();*) List.iter (fun ep -> analyse_expressionaux ep) e;
 					nouvExp:=COMMA(e)
@@ -3152,8 +3220,20 @@ and ajouterReturn nomF lesAffectations =
 		
 	end
 	
+and getESFromPartial nom =
+    let nom = (nom^".rpo") in
+    let chan = Unix.in_channel_of_descr (Unix.openfile nom [Unix.O_RDONLY] 0) in
+    let (partialResult : compInfo) = Marshal.from_channel chan in    
+    partialResult.compES
+    
+and getAbsStoreFromPartial nom =
 
-and traiterAppelFonction exp args init =
+    let nom = (nom^".rpo") in
+    let chan = Unix.in_channel_of_descr (Unix.openfile nom [Unix.O_RDONLY] 0) in
+    let (partialResult : compInfo) = Marshal.from_channel chan in    
+    partialResult.absStore    
+
+(*and traiterAppelFonction exp args init =
 	let nom = nomFonctionDeExp exp in (* il faut construire la liste d es entrées et la liste des sorties*)
 	if existeFonction nom then
 	begin
@@ -3172,11 +3252,46 @@ and traiterAppelFonction exp args init =
 	end
 	else 
 	begin
-		 
-		 
 		aUneFctNotDEf := true; 
 		listeDesInstCourantes :=  [ new_instAPPEL !idAppel  (new_instBEGIN ([]))  nom (new_instBEGIN []) (new_instBEGIN []) ""]
-	end
+	end*)
+
+
+and traiterAppelFonction exp args init =
+      let nom = nomFonctionDeExp exp in (* il faut construire la liste d es entrées et la liste des sorties*)
+      (*Printf.printf "La fonction: %s existe=%b \n" nom (existeFonction nom);*)
+
+      if (existeFonction nom) then (	
+	  		let (_, f) = rechercheFonction nom in
+	  		if f.lesAffectations = [] then   aUneFctNotDEf := true;
+	  		entrees := init;
+      		sorties := [];
+	  		construireListesES f.listeES args;
+	  		ajouterReturn nom f.lesAffectations;
+	  		listeDesInstCourantes :=  [ new_instAPPEL !idAppel  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  (new_instBEGIN f.lesAffectations) ""];
+			false
+	) else (
+	
+		entrees := init;
+		sorties := [];
+    	aUneFctNotDEf := true; 
+		
+		try (
+				let (absStore,listeES) = (getAbsStoreFromPartial nom),(getESFromPartial nom) in
+				(*Printf.printf "Il y a %u variables E/S" (List.length listeES);*)
+				construireListesES listeES args;	  
+				listeDesInstCourantes :=  [ new_instAPPELCOMP !idAppel  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  absStore ""]; true
+		) 
+		with  Unix.Unix_error(Unix.ENOENT, _, _)-> 
+          	listeDesInstCourantes :=  [ new_instAPPEL !idAppel  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  (new_instBEGIN []) ""];false
+        	| Unix.Unix_error (x,y,z) -> 
+           		 Printf.eprintf "%s: %s %s\n%!" y (Unix.error_message x) z;
+           		 false
+
+			
+	  
+	)
+
 
 (* pour variables *)
 and analyse_defs defs = List.iter	(fun def ->		analyse_def def)		defs
