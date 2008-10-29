@@ -400,8 +400,8 @@ match inc1 with
 
 
 and getIncOfInstList x iList completList =
-(*Printf.printf "getIncOfInstList variable %s\n" x;
-afficherLesAffectations iList;*)
+Printf.printf "getIncOfInstList variable %s\n" x;
+afficherLesAffectations iList;
 	if iList = [] then (false,NOINC,x,false)
 	else
 	begin 
@@ -546,17 +546,25 @@ and extractIncOfLoop x inst varL nbItL completList=
 
 
 and getIncOfCall x call completList=
+print_string "ON CHERCHE L AS DU CALL\n";
 
 let las = evalStore call [] in
 if existAffectVDsListeAS x las then
 begin
 			let extinc = expVaToExp(rechercheAffectVDsListeAS x las)   in
+                        print_string "BLA : ";
+                        print_expression extinc 0;
+                        print_string "\n";
+			
 			getInc x extinc [call] !listeASCourant true completList
 end
 else (false,NOINC,x, false)
 
 
 and getLoopVarInc v inst =
+		print_string "AFFICHAGE INST INITIAL\n";
+		afficherLesAffectations inst;
+
 		let (isindirect,inc,var, before) = getIncOfInstList v inst inst  in
 		opEstPlus := getIsAddInc inc;
 		expressionIncFor :=  getIncValue inc ;

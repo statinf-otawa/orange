@@ -1814,7 +1814,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 			  CALL(exp,_)->(match exp with VARIABLE(nomFct)->nomFct|_-> "")|_->"") in		
 	  (*listeDesInstCourantes := [];*)
 
-	  if !vDEBUG then Printf.printf "evalUneBoucleOuAppel Eval appel FONCTION %s: num appel %d \n" nomFonction numf;
+	  (*if !vDEBUG then*) Printf.printf "evalUneBoucleOuAppel Eval appel FONCTION %s: num appel %d \n" nomFonction numf;
 	  let dansBoucle = !estDansBoucle in
 
  
@@ -1824,7 +1824,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 	  let (lappel, entrees) = if  !appelcourant <> [] then
 				   begin
 					  match List.hd !appelcourant with  															
-						  APPEL (n,e,nomFonc,s,c,v) ->
+						  APPEL (n,e,nomFonc,s,CORPS c,v) ->
 							  if existeFonctionParNom	nomFonction doc then
 							  begin				
 								  let (_, func) = (rechercherFonctionParNom nomFonction doc) in
@@ -1832,7 +1832,9 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 								  ([APPEL (n,e,nomFonc,s,CORPS(BEGIN(func.lesAffectations)),v)], ne)
 							  end
 							  else ([],listeInputInstruction)
-						  |_->([], listeInputInstruction)
+						  |APPEL (n,e,nomFonc,s,ABSSTORE a,v)->
+						  	let ne = (match e with BEGIN(eee)-> eee |_->[]) in
+						  	([], ne)
 				   end
 				   else ([], listeInputInstruction) in
 
@@ -1858,8 +1860,8 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 				  let affec = if dansBoucle = false then func.lesAffectations  
 							  else reecrireCallsInLoop !varDeBoucleBoucle func.lesAffectations in 
 				   
-				  if !vDEBUG then Printf.printf "evalUneBoucleOuAppel FIN Eval appel FONCTION %s:\n ENTREES :\n" nomFonction ;
-				  (*afficherListeAS( asLAppel);new_line () ;*)
+				  (* if !vDEBUG then *) Printf.printf "evalUneBoucleOuAppel FIN Eval appel FONCTION %s:\n ENTREES :\n" nomFonction ;
+				  afficherListeAS( asLAppel);new_line () ;
 				  let typeE =  
 					  TFONCTION(nomFonction,!numAppel,affec , listeInputInstruction, asLAppel,lappel,lt,lf, 
 						  isExecutedCall || dansBoucle , dansBoucle)
@@ -1926,24 +1928,51 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 		  end
 		  else 
 		  begin 
-				  numAppel := numf;     
+				  numAppel := numf;   
+				    
+				  let nextcont=
 				  if dansBoucle = false then 
 				  begin
 					  if isExecutedCall then
 					  begin
-						  let typeE =  
-							  TFONCTION(nomFonction,!numAppel,[] , listeInputInstruction, contexteAvantAppel,[],lt,lf,
+					  		 Printf.printf "FIN Eval appel FONCTION 6%s:\n" nomFonction ;
+					   let APPEL(_, e, _, _, corpsOuAppel, _ ) =  (List.hd !appelcourant) in
+					   match corpsOuAppel with
+					      CORPS c -> 
+					      let typeE =  
+						  TFONCTION(nomFonction,!numAppel,[] , listeInputInstruction, contexteAvantAppel,[],lt,lf,
 								   isExecutedCall, dansBoucle)
-							  in  
+						  in  
 						  let new_fct = [ new_elementEvala typeE (EXP(appel)) []] in						
 						  corpsEvalTMP := List.append !corpsEvalTMP	 new_fct;	
 						  docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append !docEvalue.maListeEval new_fct);
+					      contexteAvantAppel
+					     |ABSSTORE a -> 
+					     
+					      let typeE =  
+						  TFONCTION(nomFonction,!numAppel,[] , listeInputInstruction, contexteAvantAppel,[],lt,lf,
+								   isExecutedCall, dansBoucle)
+						  in  
+						  let new_fct = [ new_elementEvala typeE (EXP(appel)) []] in						
+						  corpsEvalTMP := List.append !corpsEvalTMP	 new_fct;	
+						  docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append !docEvalue.maListeEval new_fct);
+					     
+					     evalStore (List.hd !appelcourant) contexteAvantAppel	 
+					     (* rond (evalStore (BEGIN(entrees)) contexteAvantAppel) a *)
+						  
 
 					  end
-				  end;
-				  numAppel := numAppelPred ;	 
-				  (*Printf.printf "FIN Eval appel FONCTION 6%s:\n" nomFonction ; *)
-				  contexte (*asLAppel REVOIR !!!*)
+					  else contexte
+				  end 
+				  else contexte
+				  in
+				  numAppel := numAppelPred ;
+				  nextcont
+				  
+				  
+				 
+				    
+			
 		  end )
 
 

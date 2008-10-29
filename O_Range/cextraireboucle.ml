@@ -2076,7 +2076,7 @@ let isDivInc exp =
 			let initialvar =expVaToExp(rechercheAffectVDsListeAS v avant) in
 			expressionDinitFor := if initialvar = NOTHING then VARIABLE(v) else initialvar;
 			opEstPlus:= true;	
-			let ((*isindirect,inc,var, before*)isindirect,_,var, before) =  getLoopVarInc v inst in
+			let ((*isindirect,inc,var, before*)isindirect,_,var, before) =  print_string "C EST LE BON\n" ; getLoopVarInc v inst in
 			if isindirect then 
 			begin 
 				expressionDinitFor := expVaToExp(rechercheAffectVDsListeAS var avant);
@@ -2721,9 +2721,18 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 			listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp3 ;onlyAexpression   exp2; !listeDesInstCourantes
 		end  
 		else !listeDesInstCourantes in
+		
+		
+				print_string "AFFICHAGE INST INITIAL TOUTES\n";
+		afficherLesAffectations li;
+		
+		
 
 		let listeVCond =  listeDesVarsDeExpSeules  exp2 in  
 		let na = extractVarCONDAffect  li listeVCond in
+		
+		 print_string "AFFICHAGE INST INITIAL TOUTES\n";
+		afficherLesAffectations na;
  
 		let asna = evalStore (new_instBEGIN (na)) []  in		 
 		let listeVDeBoucle =  	rechercheListeDesVarDeBoucle  listeVCond 	asna in
@@ -3287,15 +3296,17 @@ and traiterAppelFonction exp args init =
 	
 		entrees := init;
 		sorties := [];
-    	aUneFctNotDEf := true; 
+    	
 		
 		try (
 				let (absStore,listeES) = (getAbsStoreFromPartial nom),(getESFromPartial nom) in
 				(*Printf.printf "Il y a %u variables E/S" (List.length listeES);*)
 				construireListesES listeES args;	  
+				Printf.printf "Ici on construit le noeud d'appel du composant: %s\n" nom;
 				listeDesInstCourantes :=  [ new_instAPPELCOMP !idAppel  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  absStore ""]; true
 		) 
 		with  Unix.Unix_error(Unix.ENOENT, _, _)-> 
+		aUneFctNotDEf := true; 
           	listeDesInstCourantes :=  [ new_instAPPEL !idAppel  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  (new_instBEGIN []) ""];false
         	| Unix.Unix_error (x,y,z) -> 
            		 Printf.eprintf "%s: %s %s\n%!" y (Unix.error_message x) z;
