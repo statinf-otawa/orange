@@ -13,6 +13,7 @@ open Cprint
 open Cexptostr
 open Cvariables
 open Constante
+open Coutput
 
 let version = "cvarabs Marianne de Michiel"
 
@@ -294,7 +295,7 @@ let new_infoAffich c i s incr d o=
 	opA = o;
 } 
 
-let infoaffichNull = ref (new_infoAffich (EXP(NOTHING)) (EXP(NOTHING))(EXP(NOTHING)) (EXP(NOTHING)) NONMONOTONE ADD) 
+let infoaffichNull = ref   NONMONOTONE  
 
 type expressionEvaluee =
 	 NOCOMP
@@ -941,6 +942,15 @@ let rec remplacerValPar  var nouexp expr =
 	| INDEX (n,exp) 			->	INDEX (n, remplacerValPar  var nouexp exp)
 	| _ 						-> 	expr
 
+let rec mapVar fct = function 
+         NOTHING				-> NOTHING
+	|UNARY (op, exp)			-> UNARY (op, mapVar fct exp)
+	| BINARY (op, exp1, exp2) 		-> BINARY (op, mapVar fct exp1, mapVar fct exp2)
+	| CALL (exp, args) 			->	CALL (exp, List.map(fun a-> mapVar fct a)args)
+	| VARIABLE (s) 				->	VARIABLE (fct s)
+	| INDEX (n,exp) 			->	INDEX (n, mapVar fct exp)
+	| expr 					-> 	expr
+	
 let rec remplacerNOTHINGPar  expr =
 	match expr with
 	NOTHING 					-> VARIABLE ("NODEF") 
@@ -1286,6 +1296,7 @@ let rec  calculer expressionVA ia l sign =
 	)
 |	MULTIPLE -> NOCOMP
 
+and calculer_simple expVA = calculer expVA CROISSANT [] 1
 and estVarDsExpEval var expre =
 match expre with
 		NOCOMP 			-> false
@@ -1892,7 +1903,7 @@ else
 if estNul max then (remplacerVpM  var (ConstInt("0")) expre) 
 else
 begin
-    if (ia.sensVariationA = NONMONOTONE) then NOCOMP
+    if (ia = NONMONOTONE) then   NOCOMP
 	else
 	begin		
 		if ((estAffine var expre) && (estVarDsExpEval var max = false))  then 
@@ -1999,10 +2010,10 @@ begin
  expre) *)  			end	
 					end
 				end
-			end else NOCOMP
+			end else  NOCOMP
 			end
 			end (*estDef*)
-			else NOCOMP
+			else  NOCOMP
 		end (*fin affine*)
 		else (*non affine*)
 		begin
@@ -2040,7 +2051,7 @@ and simplifierMax var max expre ia =
 if ((estVarDsExpEval var expre = false) && (estVarDsExpEval var max = false))  then expre
 else
 begin
-  if (ia.sensVariationA = NONMONOTONE) then NOCOMP
+  if (ia = NONMONOTONE) then NOCOMP
   else
   begin		
 	if ((estAffine var expre) && (estVarDsExpEval var max = false))  then 
@@ -3013,7 +3024,7 @@ let estModifie = ref false
 
 let closeForm assign varB listeDesVarModifiees = 
 estModifie := true;
-let n = new_infoAffich (EXP(NOTHING)) (EXP(NOTHING)) (EXP(NOTHING)) (EXP(NOTHING)) CROISSANT ADD    in
+let n =   CROISSANT      in
 let (predna,na) =
 (	match assign with
 		ASSIGN_MEM (id, e1, e2) ->
@@ -3091,8 +3102,11 @@ let (predna,na) =
 								let var1 = expressionEvalueeToExpression (evalexpression a) in
 								let var2 = expressionEvalueeToExpression(evalexpression b) in	
 								if var1 = CONSTANT(CONST_INT("1")) then (* type x = x + cte *)
+								begin
+									(*ICI*)
 									(assign,ASSIGN_SIMPLE (id,EXP(BINARY(ADD, VARIABLE(id), 
 										BINARY(MUL,  var2, varBPUN)))))
+								end
 								else  if estNul b then (* type x = ax*) 		
 										(assign,ASSIGN_SIMPLE  (id, EXP(BINARY(MUL, 
 											VARIABLE(id),CALL (VARIABLE("pow"),   List.append [var1] [ varBPUN ])))))
@@ -3235,6 +3249,21 @@ fun prem ->
 				false
 			end
 ) ascour
+
+let rec filterGlobalesAndOthers ascour globales =
+if ascour = [] then ([], [])
+else 
+begin
+	let (prem, next) = (List.hd ascour, List.tl ascour) in
+	let (nextGlobal, nextOthers) =filterGlobalesAndOthers next globales in
+
+
+	(match prem with  
+		ASSIGN_SIMPLE (x, _) 
+		| ASSIGN_DOUBLE (x, _, _)  
+		| ASSIGN_MEM	 (x, _, _)  -> if (List.mem x globales ) then  (List.append [prem] nextGlobal, nextOthers)  else (nextGlobal, List.append [prem] nextOthers))
+
+end
 
 let filterSingleGlobales ascour globales =
 List.filter(
@@ -3385,22 +3414,35 @@ let firstLoop = ref 0
 let estTrue myTest =  if  myTest = Boolean(true) then true else false
 let estFalse myTest = if  myTest = Boolean(false) then true else false
 
-(*let rec listeDesVarDuCorps corps =
+let rec listeDesVarDuCorps corps =
 match corps with 
-	VAR (id, exp) -> List.append [id] (listeDesVarsDeExpSeules  (expVaToExp (exp))
+	VAR (id, exp) -> List.append [id] (listeDesVarsDeExpSeules  (expVaToExp (exp)))
 		
 	| TAB (id, exp1, exp2)
-	|  MEMASSIGN ( id, exp1, exp2)	->	List.append [id] (List.append (listeDesVarsDeExpSeules  (expVaToExp (exp1))  (listeDesVarsDeExpSeules  (expVaToExp (exp2)))
-	| BEGIN liste -> 
-		List.map (fun i->listeDesVarDuCorps i)liste
-	| IFVF (cond, i1, i2) ->List.append (listeDesVarsDeExpSeules  (expVaToExp (cond)) (List.append (listeDesVarDuCorps i1)  (listeDesVarDuCorps  i2))			
-	| IFV ( cond, i1) 		->List.append (listeDesVarsDeExpSeules  (expVaToExp (cond))  (listeDesVarDuCorps i1)  	
-	| (_,_, _, exp2, exp3, _, i)>List.append (listeDesVarsDeExpSeules  (expVaToExp (exp2))  (List.append  (listeDesVarsDeExpSeules  (expVaToExp (exp3)) (listeDesVarDuCorps i1)  )
-	| APPEL (_,e,_,s,corpsAbs,_)-> List.append (listeDesVarDuCorps e) (List.append  (listeDesVarDuCorps corpsAbs) (listeDesVarDuCorps s))
-end	*)
+	|  MEMASSIGN ( id, exp1, exp2)	->	List.append [id] (List.append (listeDesVarsDeExpSeules  (expVaToExp (exp1)))  (listeDesVarsDeExpSeules  (expVaToExp (exp2))))
+	| BEGIN liste -> listeDesVarBegin liste
+		
+	| IFVF (cond, i1, i2) ->
+			List.append (listeDesVarsDeExpSeules  (expVaToExp (cond))) 
+						(List.append (listeDesVarDuCorps  i1)  (listeDesVarDuCorps  i2))			
+	| IFV ( cond, i1) 	->
+			List.append (listeDesVarsDeExpSeules  (expVaToExp (cond)) ) (listeDesVarDuCorps  i1) 	
+	| APPEL (_,e,_,s,_,_)-> List.append (listeDesVarDuCorps e) (listeDesVarDuCorps s)
+	| FORV(_,_,_, exp2, exp3, _, i)->
+			List.append (listeDesVarsDeExpSeules  (expVaToExp (exp2)))  
+						(List.append  (listeDesVarsDeExpSeules  (expVaToExp (exp3))) (listeDesVarDuCorps  i))  
+
+and listeDesVarBegin liste =
+if liste = [] then []
+else
+begin
+	let (first, next) =(List.hd liste, List.tl liste )in
+	List.append (listeDesVarDuCorps first) (listeDesVarBegin next)
+end
+	
 
 
-let rec evalStore i a =
+let rec evalStore i a g=
 match i with 
 	VAR (id, exp) -> (*Printf.printf "evalStore var %s valeur du contexte  \n" id; afficherListeAS a;
 			Printf.printf "evalStore var apres contexte\n";*)
@@ -3414,13 +3456,13 @@ match i with
 Printf.printf"memassign as\n";	*)	
 	| BEGIN liste ->(*Printf.printf "evalStore sequence\n";*)
 		(*let pred = !listeASCourant in*)
-		(traiterSequence liste a) ;
+		(traiterSequence liste a g) ;
 	(*afficherListeAS !listeASCourant;
 		Printf.printf "fin evalStore sequence\n";*)
 		
 	| IFVF (cond, i1, i2) ->(*Printf.printf "evalStore if then else\n";*)
 
-		let myCond =  (applyStoreVA  cond a)   in 
+		let myCond =  applyStoreVA (applyStoreVA  cond a) g  in 
 		let myTest = calculer myCond  !infoaffichNull  [] 1 in
 (*Printf.printf "evalStore if TRUE false\n"; 
 
@@ -3429,22 +3471,22 @@ print_expVA myCond; new_line();
 		print_expTerm myTest;new_line();*)
 		if !estDansBoucle = false then
 		begin
-			if estTrue myTest then  evalStore i1 a
+			if estTrue myTest then  evalStore i1 a g
 			else 
 			begin
-				if estFalse myTest then evalStore i2 a
+				if estFalse myTest then evalStore i2 a g
 				else
 				begin
 					(*Printf.printf "\nevalStore if then else IF res test indefini\n";*)
 					 listeASCourant := [];
-					 let resT = evalStore i1 [] in
+					 let resT = evalStore i1 [] [] in
 					
 (*Printf.printf "les as de if T \n" ;
 afficherListeAS !listeASCourant;
 Printf.printf "fin \n";*)
 					 let listeIF = (rechercheLesVar resT []) in
 					 
-					 let resF = evalStore i2 [] in	
+					 let resF = evalStore i2 [] [] in	
 					 let listeELSE = (rechercheLesVar resF []) in
 					 let inter = intersection listeELSE  listeIF in
 					 	
@@ -3459,10 +3501,10 @@ Printf.printf "fin \n";*)
 		begin
 (*Printf.printf "dans boucle\n" ;*)
 					
-					 let resT = evalStore i1 [] in
+					 let resT = evalStore i1 [] [] in
 					 let listeIF = (rechercheLesVar resT []) in
 					 
-					 let resF =  evalStore i2 [] in	
+					 let resF =  evalStore i2 []  [] in	
 					 let listeELSE = (rechercheLesVar resF []) in
 					 let inter = intersection listeELSE  listeIF in
 					 	
@@ -3482,7 +3524,7 @@ Printf.printf "fin \n";*)
 	| IFV ( cond, i1) 		->(*Printf.printf "evalStore if TRUE \n"; *)
 		let avant = a in
 
-		let myCond =  (applyStoreVA  cond a)   in 
+		let myCond = applyStoreVA (applyStoreVA  cond a) g  in 
 
 		let myTest = calculer myCond  !infoaffichNull  [] 1 in
 		(*print_expVA myCond; new_line();
@@ -3490,12 +3532,12 @@ Printf.printf "fin \n";*)
 		print_expTerm myTest;new_line();*)
 	
 		(*if !estDansBoucle = true then Printf.printf "IF DANS BOUCLE\n";*)
-		if (!estDansBoucle = false && estTrue myTest)  then evalStore i1 a
+		if (!estDansBoucle = false && estTrue myTest)  then evalStore i1 a g
 		else if (!estDansBoucle = true) then
 			begin
 				(*Printf.printf "evalStore if TRUE dans boucle\n"; *)
 				
-				let resT = evalStore i1 [] in
+				let resT = evalStore i1 [] [] in
 				produitEm a resT []
 				(*listeASCourant := [];*)
 
@@ -3504,7 +3546,7 @@ Printf.printf "fin \n";*)
 					else 
 					begin
 					(*	Printf.printf "if non executé peut etre\n"; *)
-						let resT = evalStore i1 [] in
+						let resT = evalStore i1 [] [] in
 						produitEm a resT [] 
 					end
 (*Printf.printf "fin evalStore IF THEN \n";		
@@ -3518,7 +3560,7 @@ Printf.printf "fin \n";*)
 		if !firstLoop = 0 then firstLoop := num;
 		let listePred = !listeDesVarDependITitcour in
 		listeDesVarDependITitcour := [];
-   		let resT = evalStore inst [] in
+   		let resT = evalStore inst [] [] in
 (*Printf.printf "les as de la boucle avant transfo %d\n" num;
 afficherListeAS resT;
 Printf.printf "les as de la boucle avant transfo \n";*)
@@ -3552,7 +3594,7 @@ Printf.printf "fin \n";*)
 				(*	Printf.printf "evalStore fonction %s  \n" nomFonc ;	*)
 					let sorties = (match s with BEGIN(sss)-> sss |_->[]) in
 
-					let affectSortie = evalStore s []  in	
+					let affectSortie = evalStore s [] [] in	
 					let entrees = (match e with BEGIN(eee) -> eee |_->[]) in
 					let isAbs = match corpsAbs with CORPS(_) -> false | ABSSTORE(_) -> true in
 					let absStore = match corpsAbs with ABSSTORE(a) -> a | _ -> [] in
@@ -3565,11 +3607,13 @@ Printf.printf "fin \n";*)
 						(* POUR ESSAYER D'OPTIMISER NE GUARDER QUE LES ENTREES ET LES GLOBALES*)
 
 						 		
-						let globale = filterGlobales a !alreadyAffectedGlobales in
+						let (globale, others) = filterGlobalesAndOthers a !alreadyAffectedGlobales in
+
+
 
 						corpsNouv := if (isAbs)
-									   then (rond (List.append globale (evalInputFunction a entrees )) absStore)
-								   else (evalStore (c) (List.append globale (evalInputFunction a entrees )));
+									   then (rond (List.append globale (evalInputFunction a entrees g )) absStore)
+								   else (evalStore (c) (List.append globale (evalInputFunction a entrees g)) g);
 
 			
 						let rc =  !corpsNouv in listeASCourant := []; 
@@ -3582,11 +3626,11 @@ Printf.printf "fin \n";*)
 								(match sortie with 
 								VAR (id, e) ->  
 									listeASCourant :=  List.append 
-									[new_assign_simple id  (applyStoreVA e rc)  ]  !listeASCourant; 
+									[new_assign_simple id  (applyStoreVA (applyStoreVA e rc) g )]  !listeASCourant; 
 									()
 								| TAB (id, e1, e2) ->  
 									listeASCourant := List.append
-										[ASSIGN_DOUBLE (id,   (applyStoreVA e1 rc) ,  (applyStoreVA e2 rc) )] !listeASCourant;
+										[ASSIGN_DOUBLE (id,  applyStoreVA (applyStoreVA e1 rc) g,  applyStoreVA (applyStoreVA e2 rc) g)] !listeASCourant;
 									()
 								|_-> (*Printf.printf"memassign";*)())
 								)sorties	
@@ -3602,7 +3646,7 @@ Printf.printf "fin \n";*)
 	
 			
 						(*Printf.printf "evalStore fonction %s  \n" nomFonc ;*)
-						let nc = rond a     !listeASCourant  in
+						let nc = rond others     !listeASCourant  in
 						(*Printf.printf "contxte \n" ;afficherListeAS nc;Printf.printf "fin liste\n" ;*)
 						nc
 					end
@@ -3631,9 +3675,9 @@ Printf.printf "fin \n";*)
 					(*	Printf.printf "le sorties a apere reecrire \%s depend de var de boucle %s\n" nomFonc varB;*)
 					(*	afficherUneAffect (BEGIN(corps)); new_line(); Printf.printf "affect a apere reecrire fin\n";*)
 						let memoutput = !corpsNouvI in
-						let listeInput =   (evalInputFunction a entrees ) in
+						let listeInput =   (evalInputFunction a entrees [] ) in
 			
-						let rc =evalStore (BEGIN(corps)) (*rond a*) listeInput in
+						let rc =evalStore (BEGIN(corps)) (*rond a*) listeInput [] in
 			
 						listeASCourant := [];
 						if memoutput <> [] then
@@ -3673,23 +3717,23 @@ Printf.printf "fin \n";*)
 
 
 
-and evalInputFunction a entrees   =
+and evalInputFunction a entrees  globales =
 	if entrees <> [] then
 	begin
 		let(entree, others) = (List.hd entrees, List.tl entrees) in
 				match entree with 
 				VAR (id, exp) ->
-					let new_exp =  (applyStoreVA exp a)  in
-					List.append   [new_assign_simple id  new_exp]  (evalInputFunction a others )
+					let new_exp =  applyStoreVA (applyStoreVA exp a) globales in
+					List.append   [new_assign_simple id  new_exp]  (evalInputFunction a others globales)
 						
-				|_-> (evalInputFunction a others )
+				|_-> (evalInputFunction a others globales)
 	end	
 	else []
 
 
-and  traiterSequence liste a =
+and  traiterSequence liste a g =
 if liste = [] then a
-else traiterSequence (List.tl liste) (evalStore (List.hd liste) a)														
+else traiterSequence (List.tl liste) (evalStore (List.hd liste) a g) g														
 
 and closeFormPourToutXdelisteES l id  =
 (*Printf.printf "closeFormPourToutXdelisteES %s fin\n" id; *)

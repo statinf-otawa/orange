@@ -404,11 +404,10 @@ let new_variation i s inc d op b=
 
 
 module TreeList = struct
-  type intOuNocomp = Int of int | Nocomp
   type tree = Doc of tree list
          | Function of (string * bool * bool * bool) * tree list (* function name, inloop, executed, extern *)
          | Call of (string * int * int * string * bool * bool * bool) * tree list (* function name, relative call ID, line num, source file, inlopo, executed, extern *)
-         | Loop of (int * int * string * bool * intOuNocomp * intOuNocomp * string * string) * tree list (* loop id, line, source file, exact, max, toatl, exp max, exp total *)
+         | Loop of (int * int * string * bool * expressionEvaluee * expressionEvaluee * expression * expression) * tree list (* loop id, line, source file, exact, max, toatl, exp max, exp total *)
 
  
   
@@ -421,12 +420,6 @@ module TreeList = struct
     |Function (x, children) -> Function (x, (node::children))
     |Call (x, children) -> Call (x, (node::children))
     |Loop (x, children) -> Loop (x, (node::children))
-    
-    
-  let extractExp = function
-          (ConstInt(valeur)) -> Int (int_of_string valeur)
-          |(ConstFloat(valeur)) -> Int (int_of_float (float_of_string  valeur))
-          | _ -> Nocomp
     
   let onBegin = function
       (Doc [], [] ) as x -> x
@@ -444,8 +437,15 @@ module TreeList = struct
 
   let onLoop res loopID line source exact maxcount totalcount maxexp totalexp = match res with
       (current, stack) -> 
+        let relativize valname = 
+	  try
+	    Scanf.sscanf valname "bIt_%d" (fun x -> (sprintf "bIt_%d" (x-1)))
+	  with Scanf.Scan_failure str -> valname
+	  in
+        let maxexp = mapVar relativize maxexp in
+	let totalexp = mapVar relativize totalexp in
         let newCurrent = 
-	   Loop ((loopID, line, source, exact, (extractExp maxcount), (extractExp totalcount), (string_from_expr maxexp),(string_from_expr totalexp)), []) in
+	   Loop ((loopID - 1, line, source, exact, maxcount,  totalcount, ( maxexp),( totalexp)), []) in
 	(newCurrent, current::stack)   
      
   
@@ -460,9 +460,15 @@ module TreeList = struct
         	
   let onReturn = onFunctionEnd
   let onLoopEnd = onFunctionEnd 
+  
+  let concat _ _ = failwith "pas supporte\n";
 
 
 end ;;
+
+
+
+
 type compInfo = {name:string; absStore: typeListeAS; compES:listeDesES; expBornes:TreeList.tree}
 
 
@@ -849,6 +855,8 @@ let rec isPowCte name expr = (* return isPow, contante pow, sign cte mul (CONSTA
 					else (true, CONSTANT (CONST_INT "1"), CONSTANT (CONST_INT "1"), CONSTANT (CONST_INT "0"))
 			| _ ->(false, NOTHING, NOTHING, NOTHING) 
 
+
+
 let 	calculForIndependant typeB borne init inc esttypeopPlus  afterindirect=
 
 (*if afterindirect then Printf.printf "mettre a jour after indirect %s\n" typeB;*)
@@ -879,8 +887,8 @@ begin
 		if afterindirect then 	BINARY	(ADD, exp, (CONSTANT (CONST_INT "1")))	else exp	
 end
 
-let analyseInc infoVar appel typeopPlusouMUL =
-	let valinc = calculer (applyStoreVA   (EXP(infoVar.increment)) appel)  !infoaffichNull  [](*appel*) 1 in	
+let analyseInc infoVar appel typeopPlusouMUL contexte =
+	let valinc = calculer (applyStoreVA(applyStoreVA   (EXP(infoVar.increment)) appel)contexte)  !infoaffichNull  [](*appel*) 1 in	
 	let op = infoVar.operateur in 
 	let sensinc = if estNoComp valinc then NDEF 
 				  else if typeopPlusouMUL (*op +or -*) then 
@@ -1597,7 +1605,7 @@ and traiterUn croissant  borneInf borneSup operateur multiple var  cond avant da
 		NOTHING
 	end
 	else expVaToExp (getNombreIt !borne (typevar=CONSTANTE||cte) t cond multiple [] !opEstPlus   
-				( new_variation !expressionDinitFor !borne !expressionIncFor typevar  operateur false) v ) 
+				( new_variation !expressionDinitFor !borne !expressionIncFor typevar  operateur false) v []) 
 
 
 
@@ -1741,10 +1749,10 @@ and changeExpInto0 expToChange exp  =
 	end
 
 
-and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple appel typeopPlusouMUL infoVar var=
+and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple appel typeopPlusouMUL infoVar var globales=
 
 (*Printf.printf "getnombre d'it valeur de la condition : %s\n" var;*)
-	let const = calculer (applyStoreVA   (EXP(conditionI)) appel)  !infoaffichNull  [](*appel*) 1 in
+	let const = calculer (applyStoreVA (applyStoreVA   (EXP(conditionI)) appel) globales) !infoaffichNull  [](*appel*) 1 in
 	let isExecutedV = (match const with Boolean(b)				->  if b = false then false  else true |_->true) in	
 (*Printf.printf "getnombre d'it valeur de la condition : %s\n" var;*)
 		(*	
@@ -1758,7 +1766,7 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 		if (conditionMultiple) then   EXP(NOTHING)
 		else
 		begin	
-			let (valinc, op, sensinc) = analyseInc infoVar appel typeopPlusouMUL in
+			let (valinc, op, sensinc) = analyseInc infoVar appel typeopPlusouMUL globales in
 			(*Printf.printf "NON MULTIPLE\n";*)
 			match sensinc with
 			 NOVALID ->	 EXP(NOTHING)
@@ -1803,15 +1811,15 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 				
 					let typeInc =  expressionType valinc  in
 
-					let bie = expVaToExp (applyStoreVA 
-										(EXP ( remplacerValPar  "EPSILON" (CONSTANT (CONST_INT "1")) (infoVar.borneInf))) appel)  in
+					let bie = expVaToExp (applyStoreVA (applyStoreVA
+										(EXP ( remplacerValPar  "EPSILON" (CONSTANT (CONST_INT "1")) (infoVar.borneInf))) appel)globales)  in
 					
 					let borneinf =  if listeDesVarsDeExpSeules bie = [] 
 
 					then calculer  (EXP ( bie)) !infoaffichNull  [] 1 else NOCOMP in
 					let typeInf =  expressionType borneinf  in
-					let bse = expVaToExp (applyStoreVA 
-										(EXP ( remplacerValPar  "EPSILON" (CONSTANT (CONST_INT "1")) (infoVar.borneSup))) appel)  in
+					let bse = expVaToExp (applyStoreVA (applyStoreVA
+										(EXP ( remplacerValPar  "EPSILON" (CONSTANT (CONST_INT "1")) (infoVar.borneSup))) appel)globales)   in
 					let bornesup = if listeDesVarsDeExpSeules bse = [] then calculer  (EXP ( bse)) !infoaffichNull  [] 1 else NOCOMP in
 					let typeSup = expressionType bornesup in 
 
@@ -1821,9 +1829,9 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 													else !vEPSILONFLOAT in
 				
 					(*afficherListeAS appel; new_line();*)
- 					let bs = applyStoreVA   (EXP ( infoVar.borneSup)) appel in
-					let bi = applyStoreVA   (EXP ( infoVar.borneInf)) appel in
-					let bu = applyStoreVA   (EXP ( une )) appel in
+ 					let bs = applyStoreVA(applyStoreVA   (EXP ( infoVar.borneSup)) appel)globales in
+					let bi = applyStoreVA(applyStoreVA   (EXP ( infoVar.borneInf)) appel)globales in
+					let bu = applyStoreVA(applyStoreVA   (EXP ( une )) appel)globales in
 					(*print_expVA bs; new_line();*)
 
 (*Printf.printf "getNombreIt recherche de affect : \n";
@@ -1837,20 +1845,19 @@ Printf.printf "getNombreIt recherche de affect : \n";*)
 								if rep = true then 
 								begin
 									(*Printf.printf "getNombreIt recherche de affect :%s \n"var;
-									
 
- 
 								afficherListeAS appel; Printf.printf "FIN CONTEXTE \n";*)
+									let av = if (existeAffectationVarListe var appel) then applyStoreVA(rechercheAffectVDsListeAS  var appel)globales else rechercheAffectVDsListeAS  var globales in
 
-									let av = (rechercheAffectVDsListeAS var appel) in
+				
 									(*print_expVA av;flush(); space(); new_line();*)
-									let newe = expVaToExp av  in
+									let newe = expVaToExp( av )  in
 									let (tab1,lidx1, e1) =getArrayNameOfexp newe in
 									if tab1 != "" then
 									begin
 										let nsup = changeExpInto0 e1 (expVaToExp bs) in
-										(*print_expression e1 0; new_line();*)
-										(*Printf.printf "nom du tableau :%s\n"tab1;*)
+										(*print_expression e1 0; new_line();
+										Printf.printf "nom du tableau :%s\n"tab1;*)
 										let ninf = changeExpInto0 e1 (expVaToExp bi) in
 										
 										let nune = changeExpInto0 e1 (expVaToExp bu) in
@@ -1874,13 +1881,13 @@ Printf.printf "getNombreIt recherche de affect : \n";*)
 									else  (infoVar.borneSup, infoVar.borneInf, une)
 								end
 								else (infoVar.borneSup, infoVar.borneInf, une) in
-					if sensinc = NDEF || (op != NE) then  applyStoreVA   (EXP( remplacerValPar  "EPSILON" valEPSILON expune)) appel
+					if sensinc = NDEF || (op != NE) then  applyStoreVA(applyStoreVA   (EXP( remplacerValPar  "EPSILON" valEPSILON expune)) appel)globales
 					else if sensinc = POS then  
-						applyStoreVA   (EXP(calculForIndependant typeBoucle (BINARY(SUB, bsup,valEPSILON)) binf infoVar.increment typeopPlusouMUL infoVar.afterindirect)) appel
+					applyStoreVA(	applyStoreVA   (EXP(calculForIndependant typeBoucle (BINARY(SUB, bsup,valEPSILON)) binf infoVar.increment typeopPlusouMUL infoVar.afterindirect)) appel)globales
 						else 
 						begin
 						(*	sensNE := NEG;*)
-							applyStoreVA   (EXP(calculForIndependant typeBoucle (BINARY (ADD, binf, valEPSILON))  bsup infoVar.increment typeopPlusouMUL infoVar.afterindirect)) appel
+							applyStoreVA(applyStoreVA   (EXP(calculForIndependant typeBoucle (BINARY (ADD, binf, valEPSILON))  bsup infoVar.increment typeopPlusouMUL infoVar.afterindirect)) appel)globales
 						end
 				end
 		end
@@ -2106,7 +2113,7 @@ let isDivInc exp =
 	(*if !expressionDinitFor = NOTHING then expressionDinitFor := VARIABLE(nv);*)
 	let infoVar =   new_variation !expressionDinitFor !borne !expressionIncFor typevar  operateur indirectafter in
 
-	let nb = expVaToExp (getNombreIt !borne (typevar=CONSTANTE||cte) t vcond multiple [] typeopPlusouMUL  infoVar v) in
+	let nb = expVaToExp (getNombreIt !borne (typevar=CONSTANTE||cte) t vcond multiple [] typeopPlusouMUL  infoVar v []) in
 	listeBoucleOuAppelCourante := reecrireCAll var2 !listeBoucleOuAppelCourante;
 
 	let info = (new_boucleInfo t nom listeV nbIt eng cte vcond multiple !listeBoucleOuAppelCourante 
@@ -2162,7 +2169,7 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 (*Printf.printf "\n\ntraiterConditionBoucleFor  2\n" ;*)
  	let infoVar =   new_variation !expressionDinitFor !borne !expressionIncFor typevar  operateur indirectafter in
 
-	let nb = expVaToExp (getNombreIt !borne (typevar=CONSTANTE||cte) t vcond multiple [] !opEstPlus   infoVar v) in
+	let nb = expVaToExp (getNombreIt !borne (typevar=CONSTANTE||cte) t vcond multiple [] !opEstPlus   infoVar v []) in
 	listeBoucleOuAppelCourante := reecrireCAll var2 !listeBoucleOuAppelCourante;
 	let b = new_boucleWhileOuDoWhile 
 				(new_boucleInfo t nom liste nbIt eng multiple vcond cte  !listeBoucleOuAppelCourante
@@ -2211,7 +2218,7 @@ let eval listeInst saufId idEng=
 			| APPEL (_,_, _, _,_,_) ->true
 		) listeInst in
 	 
-	evalStore   (new_instBEGIN (listeInter)) []
+	evalStore   (new_instBEGIN (listeInter)) [] []
 	
 			
 let rec relierAux num 	varDeBoucle listeTraitee listeAtraiter listeDesFils=	
@@ -2514,7 +2521,7 @@ let rec analyse_statement   stat =
 (*ICI*)
 		let na = extractVarCONDAffect  li listeVCond in
  
-		let asna = evalStore (new_instBEGIN (na)) []  in
+		let asna = evalStore (new_instBEGIN (na)) [] [] in
 
 
 		let listeVDeBoucle =  	rechercheListeDesVarDeBoucle  listeVCond 	asna in
@@ -2527,7 +2534,7 @@ let rec analyse_statement   stat =
 
  
 		
-		let listeASC = evalStore (new_instBEGIN (listePred)) [] in
+		let listeASC = evalStore (new_instBEGIN (listePred)) [] [] in
 		isExactForm := (hasMultiOuputInst stat = false) && (!trueList = []) && (!falseList = []);
 (*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" numBoucle;*)
 (*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" numBoucle;
@@ -2618,7 +2625,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		let listeVCond =  listeDesVarsDeExpSeules  exp in  
 		let na = extractVarCONDAffect  li listeVCond in
 
-		let asna = evalStore (new_instBEGIN (na)) [] in
+		let asna = evalStore (new_instBEGIN (na)) [] [] in
 
 
 		let listeVDeBoucle =  	rechercheListeDesVarDeBoucle  listeVCond 	asna in
@@ -2632,7 +2639,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 
 
 		
-		let las = evalStore (new_instBEGIN (listePred)) [] in
+		let las = evalStore (new_instBEGIN (listePred)) [] [] in
 		isExactForm := (hasMultiOuputInst stat = false) && (!trueList = []) && (!falseList = []);
 		(*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" numBoucle;*)
 		(*if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*)
@@ -2725,7 +2732,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		let listeVCond =  listeDesVarsDeExpSeules  exp2 in  
 		let na = extractVarCONDAffect  li listeVCond in
  
-		let asna = evalStore (new_instBEGIN (na)) []  in		 
+		let asna = evalStore (new_instBEGIN (na)) [] [] in		 
 		let listeVDeBoucle =  	rechercheListeDesVarDeBoucle  listeVCond 	asna in
 		(*remarque ajouter les initialisations au bloc englobant et exp3 à la boucle *)
 		
@@ -2736,7 +2743,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 			if (List.tl listeVDeBoucle) = [] then (List.hd listeVDeBoucle, false, [])(*la boucle ne depend que d'une seule variable on peut traiter*)
 			else (varBoucleIfN, false, listeVDeBoucle))in	
  
-		let las=  evalStore (new_instBEGIN (listePred)) [] in
+		let las=  evalStore (new_instBEGIN (listePred)) [] [] in
 
  
 
@@ -3218,7 +3225,7 @@ and ajouterReturn nomF lesAffectations =
 	begin
 		 
 		withoutTakingCallIntoAccount := true;
-		let asl = evalStore (new_instBEGIN(lesAffectations)) [] in
+		let asl = evalStore (new_instBEGIN(lesAffectations)) [] [] in
 	    withoutTakingCallIntoAccount := false;
 		if existAffectVDsListeAS nouvarres !listeASCourant then
 		begin 
@@ -3233,6 +3240,12 @@ and ajouterReturn nomF lesAffectations =
 		 
 	end
 	
+and getExpBornesFromPartial nom =
+    let nom = (nom^".rpo") in
+    let chan = Unix.in_channel_of_descr (Unix.openfile nom [Unix.O_RDONLY] 0) in
+    let (partialResult : compInfo) = Marshal.from_channel chan in    
+    partialResult.expBornes
+    	
 and getESFromPartial nom =
     let nom = (nom^".rpo") in
     let chan = Unix.in_channel_of_descr (Unix.openfile nom [Unix.O_RDONLY] 0) in
@@ -3245,30 +3258,6 @@ and getAbsStoreFromPartial nom =
     let chan = Unix.in_channel_of_descr (Unix.openfile nom [Unix.O_RDONLY] 0) in
     let (partialResult : compInfo) = Marshal.from_channel chan in    
     partialResult.absStore    
-
-(*and traiterAppelFonction exp args init =
-	let nom = nomFonctionDeExp exp in (* il faut construire la liste d es entrées et la liste des sorties*)
-	if existeFonction nom then
-	begin
-		let fonction = rechercheFonction nom in
-		let (_, f) = fonction in
-		let aff =  f.lesAffectations in
-		if f.lesAffectations = [] then   aUneFctNotDEf := true;
-		entrees := [];
-	    sorties := [];
-(*Printf.printf"Call %s existe traiterAppelFonction avant construire\n" nom;*)
-		construireListesES f.listeES args;
-(*Printf.printf"Call %s existe traiterAppelFonction apres construire\n" nom;*)
-		ajouterReturn nom aff;
-(*Printf.printf"Call %s existe traiterAppelFonction apres ajouter return\n" nom;*)
-		listeDesInstCourantes :=  [ new_instAPPEL !idAppel  (new_instBEGIN (List.append init !entrees))  f.nom (new_instBEGIN !sorties) (new_instBEGIN aff) ""]
-	end
-	else 
-	begin
-		aUneFctNotDEf := true; 
-		listeDesInstCourantes :=  [ new_instAPPEL !idAppel  (new_instBEGIN ([]))  nom (new_instBEGIN []) (new_instBEGIN []) ""]
-	end*)
-
 
 and traiterAppelFonction exp args init =
       let nom = nomFonctionDeExp exp in (* il faut construire la liste d es entrées et la liste des sorties*)
@@ -3287,15 +3276,17 @@ and traiterAppelFonction exp args init =
 	
 		entrees := init;
 		sorties := [];
-    	aUneFctNotDEf := true; 
+    	
 		
 		try (
 				let (absStore,listeES) = (getAbsStoreFromPartial nom),(getESFromPartial nom) in
 				(*Printf.printf "Il y a %u variables E/S" (List.length listeES);*)
 				construireListesES listeES args;	  
+				Printf.printf "Ici on construit le noeud d'appel du composant: %s\n" nom;
 				listeDesInstCourantes :=  [ new_instAPPELCOMP !idAppel  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  absStore ""]; true
 		) 
 		with  Unix.Unix_error(Unix.ENOENT, _, _)-> 
+			aUneFctNotDEf := true; 
           	listeDesInstCourantes :=  [ new_instAPPEL !idAppel  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  (new_instBEGIN []) ""];false
         	| Unix.Unix_error (x,y,z) -> 
            		 Printf.eprintf "%s: %s %s\n%!" y (Unix.error_message x) z;
@@ -3919,7 +3910,7 @@ and onlyanalysedef def =
 							begin
 								let (id,_,_,exp) = (List.hd namelist) in
 								listeASCourant := [];(*static id *)
-								let glo = evalStore 	(new_instBEGIN !listeDesInstGlobales) []	in
+								let glo = evalStore 	(new_instBEGIN !listeDesInstGlobales) [] []	in
 								if (existeAffectationVarListe id glo) then  (true, true)
 								else (false, true) 
 							end

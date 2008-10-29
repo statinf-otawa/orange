@@ -16,66 +16,7 @@ open Orange
 
 
 
-module TreeList = struct
-  type intOuNocomp = Int of int | Nocomp
-  type tree = Doc of tree list
-         | Function of (string * bool * bool * bool) * tree list (* function name, inloop, executed, extern *)
-         | Call of (string * int * int * string * bool * bool * bool) * tree list (* function name, relative call ID, line num, source file, inlopo, executed, extern *)
-         | Loop of (int * int * string * bool * intOuNocomp * intOuNocomp * string * string) * tree list (* loop id, line, source file, exact, max, toatl, exp max, exp total *)
 
- 
-  
-  type t = tree * tree list  (* current, ancestor stack *)
-  let null = (Doc [], [])
-  exception TreeBuildException
-  
-  let addChild node : tree -> tree = function
-     (Doc children) -> (Doc (node::children)) 
-    |Function (x, children) -> Function (x, (node::children))
-    |Call (x, children) -> Call (x, (node::children))
-    |Loop (x, children) -> Loop (x, (node::children))
-    
-    
-  let extractExp = function
-          (ConstInt(valeur)) -> Int (int_of_string valeur)
-          |(ConstFloat(valeur)) -> Int (int_of_float (float_of_string  valeur))
-          | _ -> Nocomp
-    
-  let onBegin = function
-      (Doc [], [] ) as x -> x
-      | _ -> raise TreeBuildException
-        
-
-  let onEnd = function
-      (Doc _, []) as x -> x
-      | _ -> raise TreeBuildException
-  
-  let onFunction res name inloop executed extern = match res with
-      (current, stack) -> 
-        let newCurrent = Function ((name,inloop,executed,extern), []) in
-	(newCurrent, current::stack)      
-
-  let onLoop res loopID line source exact maxcount totalcount maxexp totalexp = match res with
-      (current, stack) -> 
-        let newCurrent = 
-	   Loop ((loopID, line, source, exact, (extractExp maxcount), (extractExp totalcount), (string_from_expr maxexp),(string_from_expr totalexp)), []) in
-	(newCurrent, current::stack)   
-     
-  
-  let onCall res name numCall line source inloop executed extern = match res  with
-      (current, stack) -> 
-        let newCurrent = Call ((name, numCall, line, source, inloop, executed, extern), []) in
-	(newCurrent, current::stack)   
-
-  let onFunctionEnd = function
-      (current, item::stack) -> (addChild current item), stack
-      |(_, []) -> raise TreeBuildException
-        	
-  let onReturn = onFunctionEnd
-  let onLoopEnd = onFunctionEnd 
-
-
-end ;;
 
 
 let rec printlist li= match li with 
@@ -125,26 +66,9 @@ let partial = ref false
 let existsPartialResult _ = false
 
 
-module PartialAdapter = 
-  functor (Listener : LISTENER) ->
-  struct
-    type t = Listener.t
-    let null = Listener.null
-    let onBegin = Listener.onBegin
-    let onEnd = Listener.onEnd
-    let onFunction = Listener.onFunction
-    let onFunctionEnd = Listener.onFunctionEnd
-    let onCall res name numCall line source inloop executed extern = 
-        Listener.onCall res name numCall line source inloop executed extern
-    let onReturn = Listener.onReturn
-    let onLoop = Listener.onLoop
-    let onLoopEnd = Listener.onLoopEnd
-    
-  end;;
 
-
-module TO = Orange.Maker(PartialAdapter(TreeList))
-module XO = Orange.Maker(PartialAdapter(Orange.MonList))
+module TO = Orange.Maker(Orange.PartialAdapter(Cextraireboucle.TreeList))
+module XO = Orange.Maker(Orange.PartialAdapter(Orange.MonList))
 
 (* open TO   *)
 
@@ -202,8 +126,8 @@ let rec getComps  = function
                let typeE = TO.TFONCTION(fn.nom,!TO.numAppel, fn.lesAffectations, [], [], [], [],  [], true, false) in
                TO.dernierAppelFct := typeE;
                TO.predDernierAppelFct := typeE;
-               let (_,_) = TO.evaluerFonction (fn.nom) fn !listeASCourant  (EXP(NOTHING))   [typeE]  typeE true in () ;
-               let compAS: abstractStore list = evalStore (new_instBEGIN fn.lesAffectations) [] in
+               let (_,_,_) = TO.evaluerFonction (fn.nom) fn []  (EXP(NOTHING))   [typeE]  typeE true !listeASCourant in () ;
+               let compAS: abstractStore list = evalStore (new_instBEGIN fn.lesAffectations) [] [] in
                printf "..l'abstractStore fait %u entrees, affichage: \n"(List.length(compAS));
                afficherListeAS compAS;
                printf "\n";

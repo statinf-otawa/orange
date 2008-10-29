@@ -239,7 +239,7 @@ and getIndirectIncrease var exp inst las asAs completList =
 	 match exp with
 		VARIABLE (v) -> 
 			
-			let cas =evalStore (new_instBEGIN(completList)) [] in
+			let cas =evalStore (new_instBEGIN(completList)) [] [] in
 			let assignj = expVaToExp(rechercheAffectVDsListeAS var cas) in
 						
 			(match assignj with
@@ -517,7 +517,7 @@ and extractIncOfLoop x inst varL nbItL completList=
 	if nbItL = 0 then
 	begin
 		
-		let las = evalStore (new_instBEGIN(inst)) [] in
+		let las = evalStore (new_instBEGIN(inst)) [] [] in
 		let (isindirect,inc1,v, before) = 
 			if existAffectVDsListeAS x las then
 			begin
@@ -532,7 +532,7 @@ and extractIncOfLoop x inst varL nbItL completList=
 	else 
 	begin
 		listeASCourant := [];
-		let las =evalStore (new_instBEGIN(inst)) [] in
+		let las =evalStore (new_instBEGIN(inst)) [] [] in
 		let (isindirect,inc1,v, before) = 
 			if existAffectVDsListeAS x las then
 			begin
@@ -547,7 +547,7 @@ and extractIncOfLoop x inst varL nbItL completList=
 
 and getIncOfCall x call completList=
 
-let las = evalStore call [] in
+let las = evalStore call [] [] in
 if existAffectVDsListeAS x las then
 begin
 			let extinc = expVaToExp(rechercheAffectVDsListeAS x las)   in

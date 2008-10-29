@@ -168,11 +168,11 @@ and convert_def def =
 				let (typeP,storageP,nameP)=proto in
 				let proto = (typeP, storageP,convert_param nameP) in
 				let contexteDecFunc = !monContexte in
-				monContexte := [];
+				monContexte := contexteDecFunc;
 			    let (decs, stat) = body in 
 				
 				let decs = List.map	(fun dec -> convert_def dec)		decs in
-				monContexte := concatContexte (List.append contexteDecFunc !monContexte) contexteEnglobant;
+				monContexte := concatContexte   !monContexte contexteEnglobant;
 				let res = FUNDEF (  proto,  (decs , convert_statement stat)) in
 				monContexte := contexteEnglobant;
 			res
