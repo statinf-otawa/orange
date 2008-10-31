@@ -3400,7 +3400,7 @@ match corps with
 end	*)
 
 
-let rec evalStore i a = 
+let rec evalStore i a =
 match i with 
 	VAR (id, exp) -> (*Printf.printf "evalStore var %s valeur du contexte  \n" id; afficherListeAS a;
 			Printf.printf "evalStore var apres contexte\n";*)
@@ -3412,11 +3412,11 @@ match i with
 	|  MEMASSIGN ( id, exp1, exp2)	->	rond a [new_assign_mem id exp1 exp2];
 (*Printf.printf"memassign\n"; afficherListeAS  [new_assign_mem id exp1 exp2];
 Printf.printf"memassign as\n";	*)	
-	| BEGIN liste -> Printf.printf "evalStore sequence\n"; afficherLesAffectations [i];
+	| BEGIN liste ->(*Printf.printf "evalStore sequence\n";*)
 		(*let pred = !listeASCourant in*)
 		(traiterSequence liste a) ;
-	(*afficherListeAS !listeASCourant; *)
-		(* Printf.printf "fin evalStore sequence\n"; *)
+	(*afficherListeAS !listeASCourant;
+		Printf.printf "fin evalStore sequence\n";*)
 		
 	| IFVF (cond, i1, i2) ->(*Printf.printf "evalStore if then else\n";*)
 
@@ -3542,8 +3542,8 @@ Printf.printf "fin \n";*)
 afficherListeAS res;
 Printf.printf "fin \n";*)
 			res
-	| APPEL (n,e,nomFonc,s,corpsAbs,varB)-> (* failwith "ta mere" ;  *)
-		if  ! withoutTakingCallIntoAccount = true  then ((print_string "BORDEL\n") ; a ) 
+	| APPEL (n,e,nomFonc,s,corpsAbs,varB)->
+		if ! withoutTakingCallIntoAccount = true then a
 		else
 		begin
 
@@ -3557,7 +3557,7 @@ Printf.printf "fin \n";*)
 					let isAbs = match corpsAbs with CORPS(_) -> false | ABSSTORE(_) -> true in
 					let absStore = match corpsAbs with ABSSTORE(a) -> a | _ -> [] in
 		
-					if (true or (varB = "")) then
+					if varB = "" then
 					begin
 						let c = (match corpsAbs with CORPS(x) -> x |_ -> BEGIN([])) in
 						(*let corps =   (match corpsAbs with CORPS (BEGIN(ccc)) -> ccc |_->[]) in*)
