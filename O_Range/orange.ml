@@ -1925,7 +1925,7 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales=
     end
   in
   print_string "ICI ON KONPOZE LE KONPOZAN\n";
-  let mytree = getExpBornesFromPartial nomComp in
+  let mytree = getExpBornesFromComp nomComp in
   evalAux mytree
   
 

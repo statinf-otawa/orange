@@ -3240,24 +3240,26 @@ and ajouterReturn nomF lesAffectations =
 		 
 	end
 	
-and getExpBornesFromPartial nom =
+	
+and getPartialResult nom = 
     let nom = (nom^".rpo") in
     let chan = Unix.in_channel_of_descr (Unix.openfile nom [Unix.O_RDONLY] 0) in
-    let (partialResult : compInfo) = Marshal.from_channel chan in    
-    partialResult.expBornes
+    let (partialResult : compInfo) = Marshal.from_channel chan in  
+    partialResult
+     
+and getExpBornesFromComp nom =
+    (getPartialResult nom).expBornes
     	
-and getESFromPartial nom =
-    let nom = (nom^".rpo") in
-    let chan = Unix.in_channel_of_descr (Unix.openfile nom [Unix.O_RDONLY] 0) in
-    let (partialResult : compInfo) = Marshal.from_channel chan in    
-    partialResult.compES
-    
-and getAbsStoreFromPartial nom =
+and getESFromComp nom =
+    (getPartialResult nom).compES
 
-    let nom = (nom^".rpo") in
-    let chan = Unix.in_channel_of_descr (Unix.openfile nom [Unix.O_RDONLY] 0) in
-    let (partialResult : compInfo) = Marshal.from_channel chan in    
-    partialResult.absStore    
+    
+and getAbsStoreFromComp nom =
+    (getPartialResult nom).absStore
+
+and getInstListFromPartial partialResult = 
+    []
+    
 
 and traiterAppelFonction exp args init =
       let nom = nomFonctionDeExp exp in (* il faut construire la liste d es entrées et la liste des sorties*)
@@ -3279,7 +3281,7 @@ and traiterAppelFonction exp args init =
     	
 		
 		try (
-				let (absStore,listeES) = (getAbsStoreFromPartial nom),(getESFromPartial nom) in
+				let (absStore,listeES) = (getAbsStoreFromComp nom),(getESFromComp nom) in
 				(*Printf.printf "Il y a %u variables E/S" (List.length listeES);*)
 				construireListesES listeES args;	  
 				Printf.printf "Ici on construit le noeud d'appel du composant: %s\n" nom;
