@@ -2596,7 +2596,14 @@ let getArrayAssign  x index assign =
 let arrayAssignFilter var liste=
 List.filter (fun aSCourant -> match aSCourant with ASSIGN_SIMPLE (id, _)  |	ASSIGN_DOUBLE (id, _, _)  |ASSIGN_MEM (id, _, _)	->  (id = var)  ) liste
 
-
+let rec simplifierValeur exp =
+ match exp with
+		UNARY (MEMOF, exp1)->
+			 (match exp1 with UNARY (ADDROF, next) ->  simplifierValeur  next |_->exp	 )
+						 
+		|UNARY (ADDROF, exp1)->    	
+			(match exp1 with  UNARY (MEMOF, next) ->   simplifierValeur  next |_->exp)
+		|_-> exp
 	
 
 
@@ -2605,7 +2612,7 @@ match e with
 	NOTHING  -> NOTHING
 	| VARIABLE name ->  
 		if (existeAffectationVarListe name a ) then 
-			match (ro name a) with ASSIGN_SIMPLE (_(*id*), EXP(valeur)) -> (valeur) | _ ->(*impossible ou erreur code c*)	NOTHING
+			match (ro name a) with ASSIGN_SIMPLE (_(*id*), EXP(valeur)) -> (valeur) |ASSIGN_SIMPLE (_(*id*), MULTIPLE) ->NOTHING| _ ->(*impossible ou erreur code c*)	e
 		else (e)
 	| CONSTANT 	cst	->
 		(match cst with 
@@ -2676,11 +2683,11 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 						begin 
 (* Printf.printf "les as rofilter array 2\n" ;*)
 							(match exp1 with
-							 UNARY (ADDROF, next) ->  applyStore next a 
+							 UNARY (ADDROF, next) ->  Printf.printf "les as rofilter*&\n" ;  applyStore next a 
 							 |_->	(match exp1e with 	 UNARY (ADDROF, next) ->    applyStore next a  |_->  UNARY (op, exp1e  ) ))
 						end
 			|ADDROF->    	(match exp1 with
-							 UNARY (MEMOF, next) ->  applyStore next a 
+							 UNARY (MEMOF, next) ->   Printf.printf "les *&\n" ; applyStore next a 
 							 |_->	 UNARY (op, (applyStore exp1 a) ))
 			|_->(* if op = NOT then begin Printf.printf "NOT\n" ; print_expression  (UNARY (op, (applyStore exp1 a) ))) 0; new_line();end;*) (UNARY (op, (applyStore exp1 a) )))
 	| BINARY (op, exp1, exp2) 		-> 	(BINARY (op, (applyStore exp1 a), (applyStore exp2 a)))
@@ -2716,53 +2723,56 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 				(NOTHING)
 		)				
 	 | MEMBEROF (ex, c) 			
-	 | MEMBEROFPTR (ex, c) 		->	
-		let lid =	getInitVarFromStruct e  in
-		if lid != [] && (isCallVarStruct lid = false )then 
-		begin
-			let (btype, id) =  ( getBaseType (List.assoc (List.hd lid) !listAssocIdType) , List.hd lid)  in
-			if (existeAffectationVarListe id a ) then 
-			begin
-				
-				(match (ro id a) with 
-					ASSIGN_SIMPLE (id, EXP(valeur)) -> (*Printf.printf "applystore assign %s\n" id;print_expression valeur 0; new_line();*)
-					(	match (valeur) with  
-						CONSTANT cst ->
-							(match cst with 
-								CONST_COMPOUND expsc ->  (*Printf.printf "applystore MEMBEROFPTR lid non vide  assigncomma%s\n" id;*)
-									(*List.iter (fun x-> Printf.printf "%s." x)lid;	Printf.printf "\n"; *)
-									let na = getconsCommaExp  btype (List.tl lid) expsc in
-	 							(*	Printf.printf "new\n";print_expression na 0; new_line() ;*)
-									(na)
-								|_->(valeur)	
-							)
-						|  UNARY (op, e) ->
-							(match op with
-								ADDROF ->
-								(*	Printf.printf "&assign\n";*)
-									(match e with 
-										CONSTANT cst ->
-											(match cst with
-												CONST_COMPOUND expsc ->  
-												(*Printf.printf "applystore MEMBEROFPTR lid non vide  &assigncomma%s\n" id;*)
-											   (* List.iter (fun x-> Printf.printf "%s." x)lid;	Printf.printf "\n"; *)
-												let na = getconsCommaExp  btype (List.tl lid) expsc in
- 												(*Printf.printf "new\n";print_expression na 0; new_line() ;*)
-												(na)
-												|_->(valeur)
-											)
-										|_-> begin boolAS:= true; (NOTHING) end 
+	 | MEMBEROFPTR (ex, c) 		->	(*Printf.printf "applystore MEMBEROFPTR  \n" ;*)
+		
+		
+				let lid =	getInitVarFromStruct e  in
+				if lid != [] && (isCallVarStruct lid = false )then 
+				begin
+					let (btype, id) =  ( getBaseType (List.assoc (List.hd lid) !listAssocIdType) , List.hd lid)  in (*Printf.printf "applystore MEMBEROFPTR  avant existe \n" ;*)
+					if (existeAffectationVarListe id a ) then 
+					begin
+						(*Printf.printf "applystore MEMBEROFPTR   existe \n" ;*)
+						(match (ro id a) with 
+							ASSIGN_SIMPLE (id, EXP(valeur)) -> (*Printf.printf "applystore assign %s\n" id;print_expression valeur 0; new_line();*)
+							(	match (simplifierValeur valeur) with  
+								CONSTANT cst ->
+									(match cst with 
+										CONST_COMPOUND expsc ->  (*Printf.printf "applystore MEMBEROFPTR lid non vide  assigncomma%s\n" id;
+											List.iter (fun x-> Printf.printf "%s." x)lid;	Printf.printf "\n"; *)
+											let na = getconsCommaExp  btype (List.tl lid) expsc in
+			 								(*Printf.printf "new\n";print_expression na 0; new_line() ;*)
+											(na)
+										|_->(valeur)	
 									)
-								|_-> begin boolAS:= true; (NOTHING) end 
-							)(*voir autres cas*)
-						|_->	begin boolAS:= true; (NOTHING)end
-					)
-					| _ ->(*impossible ou erreur code c*)	begin boolAS:= true; (NOTHING)end
-				)
-			end
-			else begin (*Printf.printf "AS non exist \n" ;*) (e)end
-		end
-		else begin boolAS:= true; (NOTHING)end
+								|  UNARY (op, e) ->
+									(match op with
+										ADDROF ->
+										(*	Printf.printf "&assign\n";*)
+											(match e with 
+												CONSTANT cst ->
+													(match cst with
+														CONST_COMPOUND expsc ->  
+														(*Printf.printf "applystore MEMBEROFPTR lid non vide  &assigncomma%s\n" id;
+														List.iter (fun x-> Printf.printf "%s." x)lid;	Printf.printf "\n"; *)
+														let na = getconsCommaExp  btype (List.tl lid) expsc in
+		 												(*Printf.printf "new\n";print_expression na 0; new_line() ;*)
+														(na)
+														|_->(valeur)
+													)
+												|UNARY(MEMOF, ne)-> begin (*Printf.printf "applystore MEMBEROFPTRcas 1.1 %s\n" id;  *)  boolAS:= true; (NOTHING) end 
+												|_-> begin (*Printf.printf "applystore MEMBEROFPTRcas 1 %s\n" id;*) boolAS:= true; (NOTHING) end 
+											)
+										|_-> begin (*Printf.printf "applystore MEMBEROFPTRcas 2 %s\n" id; *) boolAS:= true; (NOTHING) end 
+									)(*voir autres cas*)
+								|_->	begin (*Printf.printf "applystore MEMBEROFPTRcas 3 %s\n" id; *)boolAS:= true; (NOTHING)end
+							)
+							| _ ->(*impossible ou erreur code c*)	begin (*Printf.printf "applystore MEMBEROFPTRcas 4 %s\n" id; *) boolAS:= true; (NOTHING)end
+						)
+					end
+					else begin (*Printf.printf "AS non exist \n" ;*) (e)end
+				end
+				else begin (*Printf.printf "applystore MEMBEROFPTRcas 5 \n" ;*) boolAS:= true; (NOTHING)end
 
 	| _	-> if !vDEBUG then Printf.printf "struct et gnu body non traités pour le moment \n"; 
 			boolAS:= true; 
@@ -3371,40 +3381,6 @@ if l = [] then [] else  List.append  [absMoinsTEm (List.hd l) a1 a2 listeT] (pau
 
 let produitEm a1 a2 listeT =  pauxEm a1 a2 (rechercheLesVar a2  (rechercheLesVar a1 [])) listeT
 
-let rec reecrireCallsInLoop var listeinst =
-(*Printf.printf "reecrire liste appels dep de %s\n" var;*)
-if listeinst = [] then listeinst
-else 
-begin
-	let i = List.hd listeinst in
-	let suite = List.tl listeinst in
-	match i with 
-		VAR (id, exp) -> List.append [i] (reecrireCallsInLoop var suite)
-		| TAB (id, exp1, exp2) -> List.append [i] (reecrireCallsInLoop var suite)
-		|  MEMASSIGN ( id, expVA1, expVA2)	->	 List.append [i] (reecrireCallsInLoop var suite)
-		| BEGIN liste -> 		List.append [BEGIN(reecrireCallsInLoop var liste)]	 (reecrireCallsInLoop var suite)
-		| IFVF (t, i1, i2) -> 	
-			let liste1 = match i1 with BEGIN(e)-> e |_->[] in
-			let res1 = reecrireCallsInLoop var liste1 in
-			let liste2 = match i2 with BEGIN(e)-> e |_->[]  in
-			let res2 = reecrireCallsInLoop var liste2 in
-			List.append  [IFVF(t, BEGIN(res1), BEGIN(res2))] (reecrireCallsInLoop var suite)
-		| IFV ( t, i1) 		-> 
-			let liste1 = match i1 with BEGIN(e)-> e |_->[] in
-			let res1 = reecrireCallsInLoop var liste1 in
-			List.append [IFV ( t, BEGIN(res1))] (reecrireCallsInLoop var suite)
-		| FORV (num,id, e1, e2, e3, nbIt, inst)	-> 
-			let liste1 = match inst with BEGIN(e)-> e |_->[] in
-			let res1 = reecrireCallsInLoop id liste1 in
-			List.append [FORV (num,id, e1, e2, e3, nbIt,  BEGIN(res1))] (reecrireCallsInLoop var suite)
-		| APPEL (i,e,nomFonc,s,CORPS c,_)-> 
-			(*Printf.printf "reecriture appel %s depend de %s \n" nomFonc var;*)
-			let liste1 = match c with BEGIN(e)-> e |_->[] in
-			let res1 = reecrireCallsInLoop var liste1 in
-			List.append [APPEL (i, e ,nomFonc,s,CORPS (BEGIN(res1)),var)] (reecrireCallsInLoop var suite) 
-		| APPEL (i,e,nomFonc,s, ABSSTORE a,_)-> 
-			List.append [APPEL (i, e ,nomFonc,s,ABSSTORE a,var)] (reecrireCallsInLoop var suite) 
-end
 
 let corpsNouv = ref []
 let corpsNouvI = ref []
@@ -3444,7 +3420,7 @@ end
 
 let rec evalStore i a g=
 match i with 
-	VAR (id, exp) -> (*Printf.printf "evalStore var %s valeur du contexte  \n" id; afficherListeAS a;
+	VAR (id, exp) -> (*Printf.printf "evalStore var %s valeur du contexte  \n" id;*) (*afficherListeAS a;
 			Printf.printf "evalStore var apres contexte\n";*)
 		rond a [new_assign_simple id exp];
 		
@@ -3723,7 +3699,10 @@ and evalInputFunction a entrees  globales =
 		let(entree, others) = (List.hd entrees, List.tl entrees) in
 				match entree with 
 				VAR (id, exp) ->
+					 
+
 					let new_exp =  applyStoreVA (applyStoreVA exp a) globales in
+					
 					List.append   [new_assign_simple id  new_exp]  (evalInputFunction a others globales)
 						
 				|_-> (evalInputFunction a others globales)

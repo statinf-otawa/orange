@@ -223,7 +223,7 @@ let _ =
 							| PARSING_OK f2 -> 
 
 							Rename.go(Frontc.trans_old_fun_defs  f2 )  ) in
-
+				(*Cprint.print stdout secondParse ; *)
 				
 				(*Analyser.initref stdout secondParse;*)
 				(* analysePartielle secondParse; *)

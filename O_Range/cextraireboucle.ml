@@ -355,10 +355,10 @@ let new_variation i s inc d op b=
 	
 	type typeCorpsFonction =
 	{
-		listeDesBouclesDansCorps: listeDesIdDeBoucle;	
+		(*listeDesBouclesDansCorps: listeDesIdDeBoucle;	*)
 		boucleOuAppel : elementCorpsFonction list;
 		corpsS : statement;	
-		listeDesAppelDeFonctionsDansCorps : typeListeAppels ;
+		(*listeDesAppelDeFonctionsDansCorps : typeListeAppels ;*)
 	}
 	
 	type typeES =
@@ -377,7 +377,7 @@ let new_variation i s inc d op b=
 	}
 	
 	let getCorpsFonction f = f.corps
-	let getListeDesBouclesFonction f = f.corps.listeDesBouclesDansCorps
+	(*let getListeDesBouclesFonction f = f.corps.listeDesBouclesDansCorps*)
 	
 	type listeDesFonctions = (int * typeInfofonction) list
 
@@ -573,12 +573,12 @@ let existeBoucle id =
 				
 (* pour les fonctions *)
 
-	let new_CorpsFonction listeB bloc lbOa l =
+	let new_CorpsFonction  bloc lbOa  =
 	{
-		listeDesBouclesDansCorps = listeB;	
+	(*	listeDesBouclesDansCorps = listeB;	*)
 		boucleOuAppel = lbOa;
 		corpsS = bloc;
-		listeDesAppelDeFonctionsDansCorps = l;
+		(*listeDesAppelDeFonctionsDansCorps = l;*)
 	} 
 	let listeBoucleOuAppelCourante = ref []
 	
@@ -698,10 +698,7 @@ let existeBoucle id =
 						(	
 							num, 
 							(new_Infofonction  func.nom func.declaration 
-								(
-									new_CorpsFonction 	func.corps.listeDesBouclesDansCorps	 func.corps.corpsS
-									!listeBoucleOuAppelCourante func.corps.listeDesAppelDeFonctionsDansCorps
-								) 
+								( new_CorpsFonction 		 func.corps.corpsS !listeBoucleOuAppelCourante) 
 							!listeDesInstCourantes
 							func.listeES
 							)
@@ -1755,10 +1752,10 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 (*Printf.printf "getnombre d'it valeur de la condition : %s\n" var;*)
 	let const = calculer (applyStoreVA (applyStoreVA   (EXP(conditionI)) appel) globales) !infoaffichNull  [](*appel*) 1 in
 	let isExecutedV = (match const with Boolean(b)				->  if b = false then false  else true |_->true) in	
-(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var;*)
-		(*	
-			print_expTerm const; new_line ();
-			if isExecutedV  then Printf.printf "isexecuted \n" else Printf.printf "is not executed \n" ;
+(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var;
+		
+			print_expTerm const; new_line ();*)
+			(*if isExecutedV  then Printf.printf "isexecuted \n" else Printf.printf "is not executed \n" ;
 			Printf.printf "FIN...\n";*)
 
 	if isExecutedV then
@@ -1835,8 +1832,8 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 					let bu = applyStoreVA(applyStoreVA   (EXP ( une )) appel)globales in
 					(*print_expVA bs; new_line();*)
 
-(*Printf.printf "getNombreIt recherche de affect : \n";
-print_expression infoVar.borneSup 0; space() ;flush() ;new_line(); flush();new_line(); 
+(*Printf.printf "getNombreIt recherche de affect : \n";*)
+(*print_expression infoVar.borneSup 0; space() ;flush() ;new_line(); flush();new_line(); 
 print_expression infoVar.borneInf 0; space() ;flush() ;new_line(); flush();new_line(); 
 print_expression  une 0; space() ;flush() ;new_line(); flush();new_line(); 
 Printf.printf "getNombreIt recherche de affect : \n";*)
@@ -1845,9 +1842,10 @@ Printf.printf "getNombreIt recherche de affect : \n";*)
 					let (bsup, binf,expune)=
 								if rep = true then 
 								begin
-									(*Printf.printf "getNombreIt recherche de affect :%s \n"var;
+									(*Printf.printf "getNombreIt recherche de affect :%s \n"var;*)
 
-								afficherListeAS appel; Printf.printf "FIN CONTEXTE \n";*)
+								(*afficherListeAS appel; Printf.printf "FIN CONTEXTE \n";
+							    afficherListeAS globales; Printf.printf "FIN GLOBALES \n";*)
 									let av = if (existeAffectationVarListe var appel) then applyStoreVA(rechercheAffectVDsListeAS  var appel)globales else rechercheAffectVDsListeAS  var globales in
 
 				
@@ -2047,10 +2045,10 @@ and ajouteFonctionDansDocument proto body =
 	 
 	let (decs, stat) = body in
 	consRefstatement (BLOCK (decs, stat));
-	let nouCorpsFonction = new_CorpsFonction  []   (BLOCK (decs, stat)) [] [](*!laListeDesAppelsDsFctCourante *)in
+	let nouCorpsFonction = new_CorpsFonction    (BLOCK (decs, stat)) [] (*!laListeDesAppelsDsFctCourante *)in
 	listeRes := []; 
 	creerListeES proto ; 
-(*Printf.printf"ajoute fonction\n";*)
+ 
 	let nouInfoFonc = new_Infofonction  nom proto nouCorpsFonction [] !listeRes in	
 	let nouListe = add_fonction ( num,  nouInfoFonc ) !doc.laListeDesFonctions in		
 	doc := new_document !doc.laListeDesBoucles nouListe  !doc.laListeDesAssosBoucleBorne  !doc.laListeDesNids
@@ -2430,21 +2428,26 @@ let rec analyse_statement   stat =
 		let trueListPred = !trueList in
 		let falseListPred = !falseList in
 		
-		let maListeDesBoucleOuAppelPred = 	!listeBoucleOuAppelCourante		in
-		listeBoucleOuAppelCourante := [];
+
 
 		idIf := !idIf + 1;
 		analyse_expression   exp ;
 		let ne = !nouvExp in   
 		let varIfN =  Printf.sprintf "%s_%d" "IF" !idIf  in	 
 		let newaffect =new_instVar  varIfN  (EXP(ne)) in 
+
 		listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect]; 
 		let listePred = !listeDesInstCourantes in	
 
 
+		let maListeDesBoucleOuAppelPred = 	!listeBoucleOuAppelCourante		in
+		listeBoucleOuAppelCourante := [];
+
 		listeDesInstCourantes := [];
 		trueList := List.append !trueList [varIfN];
 		analyse_statement  s1;
+
+
 		let listeThen = !listeDesInstCourantes in
 		let bouavrai = !listeBoucleOuAppelCourante in
 		trueList := trueListPred ;
@@ -2461,8 +2464,12 @@ let rec analyse_statement   stat =
 					listeBoucleOuAppelCourante := [];
 					listeDesInstCourantes := [];
 					falseList := List.append !falseList [varIfN];
+
+
+					
+					analyse_statement  s2;			
 					let listeElse = !listeDesInstCourantes in
-					analyse_statement  s2;													
+										
 					listeDesInstCourantes := 
 						List.append  listePred  [new_instIFVF (EXP(VARIABLE(varIfN))) (new_instBEGIN (listeThen))  (new_instBEGIN (listeElse)) ];
 					falseList := falseListPred;
@@ -2472,7 +2479,14 @@ let rec analyse_statement   stat =
 		listeBoucleOuAppelCourante	:= List.append  maListeDesBoucleOuAppelPred   [IDIF(varIfN , instthen,treethen, instelse,treeelse,trueListPred,falseListPred)]
 												
 	| WHILE (exp, stat) ->  	(*analyse_expression  exp ;rien condition sans effet de bord*)	
+
+	    let degPred = !nbImbrications in 
+
+
+
 		nbImbrications := !nbImbrications + 1;
+		let deg = !nbImbrications in 
+		
 
 		if !nbImbrications >= !nbImbricationsMaxAppli then nbImbricationsMaxAppli := !nbImbrications;
 
@@ -2481,6 +2495,12 @@ let rec analyse_statement   stat =
 		let ne = !nouvExp in   
 		idBoucle := !idBoucle +1;
 		let numBoucle = !idBoucle in	
+
+		let idBoucleEngPred = !idBoucleEng in	
+		idBoucleEng := numBoucle;
+
+		
+
 		let varIfN =  Printf.sprintf "%s_%d" "TWH" numBoucle  in	 
 		let newaffect =new_instVar  varIfN  (EXP(ne)) in 
 		listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect]; 
@@ -2492,30 +2512,33 @@ let rec analyse_statement   stat =
 		listeDesInstCourantes := !listeNextExp;																	
 		listeBoucleOuAppelCourante	:= List.append  !listeBoucleOuAppelCourante   [IDBOUCLE(numBoucle, !trueList,!falseList)];	
 		let maListeDesBoucleOuAppelPred = 	!listeBoucleOuAppelCourante		in
+
+
 		listeBoucleOuAppelCourante := [];
 								
 		let listeBouclesInbriqueesPred = !listeDesBouclesDuNidCourant in
 		listeDesBouclesDuNidCourant := List.append  !listeDesBouclesDuNidCourant [numBoucle];			
 		listeBouclesImbriquees := [];
 			
-		let idBoucleEngPred = !idBoucleEng in	
-		idBoucleEng := numBoucle;
-		let deg = !nbImbrications in 
+
+
 		aUneFctNotDEf := false;
 		analyse_statement  stat;
 		listeNextExp := [];
 		analyse_expressionaux exp ;
+
+
 		idBoucleEng := idBoucleEngPred;
 
 		let lesInstDeLaBoucle = !listeDesInstCourantes in
 		idBoucleEng := idBoucleEngPred;
 
-		let li = if !aUneFctNotDEf = true then 
-		begin 
-		(*	Printf.printf "traitement particuloier boucle\n";*)
-			listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp ; !listeDesInstCourantes
-		end 
-		else !listeDesInstCourantes in
+			let li = if !aUneFctNotDEf = true then 
+			begin 
+			(*	Printf.printf "traitement particuloier boucle\n";*)
+				listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp ; !listeDesInstCourantes
+			end 
+			else !listeDesInstCourantes in
 
 
 		let listeVCond =  listeDesVarsDeExpSeules  exp in  
@@ -2561,8 +2584,8 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 			relierLesNoeudsEnglobesAuNoeudCourant 	numBoucle varBoucleIfN !listeNoeudCourant !listeBouclesImbriquees exp
 		end;									
 		(* si la boucle est au départ d'un noeud*)
-		let nonEstTeteNid = aBoucleEnglobante (getBoucleInfoB (rechercheBoucle numBoucle)) in
-		if (nonEstTeteNid = false) then
+		 
+		if (idBoucleEngPred = 0) then
 		begin
 			doc := 	new_document !doc.laListeDesBoucles !doc.laListeDesFonctions 	res	 (List.append [!noeudCourant] !doc.laListeDesNids);
 			listeTripletNidCourantPred := [];
@@ -2577,11 +2600,14 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		listeBouclesImbriquees :=  List.append [numBoucle] !listeBouclesImbriquees;
 		listeBouclesImbriquees :=  List.append listeBouclesInbriqueesPred !listeBouclesImbriquees ;
 		listeDesInstCourantes :=  List.append( List.append listePred !listeDesInstCourantes) !listeNextExp;
-		nbImbrications := !nbImbrications - 1; 		
+		nbImbrications := degPred; 		
 		listeBoucleOuAppelCourante :=  maListeDesBoucleOuAppelPred 
 									
 	| DOWHILE (exp, stat) ->		
+   		let degPred = !nbImbrications in 
+
 		nbImbrications := !nbImbrications + 1;
+		let deg = !nbImbrications in  
 		if !nbImbrications >= !nbImbricationsMaxAppli then nbImbricationsMaxAppli := !nbImbrications;
 	(*	analyse_expression   exp ;*)
 		idBoucle := !idBoucle +1;
@@ -2600,7 +2626,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 
 		let idBoucleEngPred = !idBoucleEng in 										
 		idBoucleEng := numBoucle;	
-		let deg = !nbImbrications in 
+		
 		aUneFctNotDEf := false;
 		analyse_statement  stat;
 		idBoucleEng := idBoucleEngPred;
@@ -2664,8 +2690,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 			exp
 		end;									
 		(* si la boucle est au départ d'un noeud*)
-		let nonEstTeteNid = aBoucleEnglobante (getBoucleInfoB (rechercheBoucle numBoucle)) in
-		if (nonEstTeteNid = false) then
+		if (idBoucleEngPred = 0) then
 		begin
 			doc := 	new_document !doc.laListeDesBoucles !doc.laListeDesFonctions 	res	 (List.append [!noeudCourant] !doc.laListeDesNids);
 			listeTripletNidCourantPred := [];
@@ -2680,18 +2705,26 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		listeBouclesImbriquees :=  List.append [numBoucle] !listeBouclesImbriquees;
 		listeBouclesImbriquees :=  List.append listeBouclesInbriqueesPred !listeBouclesImbriquees ;
 		listeDesInstCourantes :=   List.append listePred !listeDesInstCourantes;	
-		nbImbrications := !nbImbrications - 1; 										
+		nbImbrications := degPred; 										
 		listeBoucleOuAppelCourante :=  maListeDesBoucleOuAppelPred 
 
 	| FOR (exp1, exp2, exp3, stat) ->
+		let degPred = !nbImbrications in 
+
 		nbImbrications := !nbImbrications + 1;
+		let deg = !nbImbrications in  
 
 		if !nbImbrications >= !nbImbricationsMaxAppli then  nbImbricationsMaxAppli := !nbImbrications;
 
 		listeNextExp := [];
 		analyse_expression  exp1 ;
 		idBoucle := !idBoucle +1;
-		let num = !idBoucle in			
+		let num = !idBoucle in		
+
+		let idBoucleEngPred = !idBoucleEng in 	
+		aUneFctNotDEf := false;	
+		idBoucleEng := num;
+	
 		analyse_expressionaux  exp2;
 		let ne = !nouvExp in   
 		let varIfN =  Printf.sprintf "%s_%d" "TWH" num  in	 
@@ -2711,9 +2744,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 					
 		listeDesBouclesDuNidCourant := List.append  !listeDesBouclesDuNidCourant [num];
 		listeBouclesImbriquees := [];
-		let idBoucleEngPred = !idBoucleEng in 	
-		aUneFctNotDEf := false;	
-		idBoucleEng := num;
+	
 		analyse_statement   stat;
 		idBoucleEng := idBoucleEngPred;
 
@@ -2745,14 +2776,10 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 			else (varBoucleIfN, false, listeVDeBoucle))in	
  
 		let las=  evalStore (new_instBEGIN (listePred)) [] [] in
-
- 
-
-
 				isExactForm := (hasMultiOuputInst stat = false) && (!trueList = []) && (!falseList = []);
 (*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" num;*)(*
 if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*)
-		let (nb,addtest) = traiterConditionBoucleFor 	"for" num !nbImbrications exp2
+		let (nb,addtest) = traiterConditionBoucleFor 	"for" num deg exp2
 					idBoucleEngPred (*exp1*) exp3  varDeBoucle constante varBoucleIfN listeVB las asna listeVDeBoucle (VARIABLE(varIfN)) na in	
 		(*Printf.printf "\n\nAnalyse statement : la boucle %d  ap \n" num;*)
 		listeDesInstCourantes := 
@@ -2773,8 +2800,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 			relierLesNoeudsEnglobesAuNoeudCourant num varBoucleIfN !listeNoeudCourant !listeBouclesImbriquees exp2
 		end;									
 		(* si la boucle est au départ d'un noeud*)
-		let nonEstTeteNid = aBoucleEnglobante (getBoucleInfoB (rechercheBoucle num)) in
-		if (nonEstTeteNid = false) then
+		if (idBoucleEngPred = 0) then
 		begin
 			doc := 	new_document !doc.laListeDesBoucles !doc.laListeDesFonctions 	res	
 					(List.append [!noeudCourant] !doc.laListeDesNids);
@@ -2791,7 +2817,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		listeBouclesImbriquees :=  List.append [num] !listeBouclesImbriquees;
 		listeBouclesImbriquees :=  List.append listeBouclesInbriqueesPred !listeBouclesImbriquees ;
 		listeDesInstCourantes :=  List.append( List.append listePred !listeDesInstCourantes) !listeNextExp;
-		nbImbrications := !nbImbrications - 1; 		
+		nbImbrications := degPred; 		
 
  											
 		listeBoucleOuAppelCourante :=  maListeDesBoucleOuAppelPred 
@@ -3482,7 +3508,6 @@ let listeP = !listeDesInstCourantes in
 	 let (decs, stat) = body in analyse_statement (BLOCK (decs, stat));
 	 nomFctCour := nomPred;
 	 listeDesInstCourantes := [ new_instBEGIN  !listeDesInstCourantes];
-
 		let res = majAuxFct  []  !doc.laListeDesFonctions nom  in
 		doc := new_document !doc.laListeDesBoucles   res !doc.laListeDesAssosBoucleBorne !doc.laListeDesNids;
 listeDesInstCourantes:= listeP
@@ -3811,11 +3836,11 @@ let nom = nomFonctionDeExp exp in
 				res (*f.lesAffectations*)
 			end 
 			else f.lesAffectations in 
-		entrees := [];
-	    sorties := [];
-		construireListesES f.listeES args;
-		ajouterReturn nom aff;
-		listeDesInstCourantes :=  [ new_instAPPEL r  (new_instBEGIN init)  f.nom (new_instBEGIN !sorties) (new_instBEGIN aff) ""];()
+					entrees := [];
+					sorties := [];
+					construireListesES f.listeES args;
+					ajouterReturn nom aff;
+					listeDesInstCourantes :=  [ new_instAPPEL r  (new_instBEGIN init)  f.nom (new_instBEGIN !sorties) (new_instBEGIN aff) ""];()
 	end
 
 and onlyAdefs defs = List.iter	(fun def ->		onlyanalysedef def)		defs
