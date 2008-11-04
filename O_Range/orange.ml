@@ -1660,7 +1660,7 @@ let rec traiterBouclesInternesComposant 	nT (*tete nid contenant bi*)  nEC (*noe
 							  idEng (*id noeud englobant  où stopper *)
 							  id (*courant à  évaluer bi*)  tN
 							  appel (*contexte appel pour le moment fonction puis doc *) 
-							  listeEng typeE numAp max isExeE lt lf borne    sansP globales corpsCompo maxinit varLoop direction=				
+							  listeEng typeE numAp max isExeE lt lf borne    sansP globales corpsCompo maxinit varLoop direction idPred=				
   let info = (getBoucleInfoB (nEC.infoNid.laBoucle)) in
  
   let nomE = info.identifiant  in
@@ -2219,7 +2219,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 											  in  		 
 											  
 											  dernierAppelFct := typeE;
-										  	  compEvalue := (!idBoucle + 1, (evaluerComposant nomFonction contexteAvecEntrees isExecutedCall dansBoucle globale listeEng))::(!compEvalue);
+										  	  compEvalue := (!idBoucle + 1, (evaluerComposant nomFonction contexteAvecEntrees isExecutedCall dansBoucle globale listeEng typeE))::(!compEvalue);
 											  let new_fct = [ new_elementEvala typeE (EXP(appel)) []] in						
 											  corpsEvalTMP := List.append !corpsEvalTMP	 new_fct;
 											  docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append !docEvalue.maListeEval new_fct);			
@@ -2255,7 +2255,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 									 let new_fct = [ new_elementEvala typeE (EXP(appel)) []] in						
 											  corpsEvalTMP := List.append !corpsEvalTMP	 new_fct;
 									 docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append !docEvalue.maListeEval new_fct); 
-									 compEvalue := (!idBoucle + 1, (evaluerComposant nomFonction contexteAvecEntrees isExecutedCall dansBoucle globale listeEng))::(!compEvalue);
+									 compEvalue := (!idBoucle + 1, (evaluerComposant nomFonction contexteAvecEntrees isExecutedCall dansBoucle globale listeEng typeE))::(!compEvalue);
 									 Printf.printf "On ajoute au compEvalue un nouvel element, qui a maintenant %d elements\n" (List.length !compEvalue);
 									  								     
 									 
@@ -2269,7 +2269,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 		  end )
 
 
-and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEng=
+and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEng typeE=
   let absolutize valname = 
         try
           Scanf.sscanf valname "bIt_%d" (fun x -> (sprintf "bIt_%d" (x + (!idBoucle) + 1)))
@@ -2299,10 +2299,15 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEn
     let varLoop = sprintf "bIt_%d" id in
 	let direction = CROISSANT in
 	let corpsCompo =  (mapListAffect absolutizeTotalMax (getInstListFromPartial (getPartialResult nomComp))) in
+
+	 let appelP = !dernierAppelFct in
+   dernierAppelFct:= typeE;
     let (instanciedTotal,instanciedMax) =	evalNidComposant id contexte listeEng [] [] true globales expMax expTotal varLoop direction corpsCompo in
 
     Printf.printf "TOTAL: %s MAX: %s\n" (string_from_expr instanciedTotal) (string_from_expr instanciedMax);	
-    Loop ((id, line, source, exact, max, total, instanciedMax, instanciedTotal), List.map evalAuxBoucle subtree)
+    let res = Loop ((id, line, source, exact, max, total, instanciedMax, instanciedTotal), List.map evalAuxBoucle subtree) in
+          dernierAppelFct := appelP;
+	  res
     in
 	
   
@@ -2313,6 +2318,9 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEn
   | Loop ((id, line, source, exact, max, total, expMax, expTotal), subtree) -> 
     begin      
 (*      Printf.printf "ON ESSAYE D APPLIQUER LE CONTEXTE SUR: %s/%s" expMax expTotal; *)
+	  let appelP = !dernierAppelFct in
+					
+				
       
       let expMax = mapVar absolutize expMax in
       let expTotal = mapVar absolutize expTotal in
@@ -2320,7 +2328,9 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEn
       let instanciedTotal = if (not (estDefExp total)) then (expVaToExp(applyStoreVA (applyStoreVA (EXP(expTotal)) contexte)globales)) else (expTotal) in		
       
       Printf.printf "ON A COMPOSE la boucle ID %u , ca a donne total=%s max=%s\n" id (string_from_expr instanciedMax) (string_from_expr instanciedTotal);
-      Loop ((id + (!idBoucle), line, source, exact, max, total, instanciedMax, instanciedTotal), List.map evalAuxPasBoucle subtree)
+      let res = Loop ((id + (!idBoucle), line, source, exact, max, total, instanciedMax, instanciedTotal), List.map evalAuxPasBoucle subtree) in
+      dernierAppelFct := appelP;
+	  res
     end in
   
   print_string "ICI ON KONPOZE LE KONPOZAN\n";
@@ -2362,7 +2372,7 @@ and evalNidComposant id  appel  listeEng lt lf estexeEng globales expMax expTota
 				  traiterBouclesInternesComposant 	
 						  nidTETE  nidPred  ouStopper
 						  id	 (EXP( expTotal))  
-						  courcont nle typeEval numAppBP (EXP(expMax))  isExeE lt lf borneP   false globales corpsCompo expMax  varLoop  direction;		
+						  courcont nle typeEval numAppBP (EXP(expMax))  isExeE lt lf borneP   false globales corpsCompo expMax  varLoop  direction id;		
 
 				  let nouNidEval = List.hd !nouBoucleEval in
 				  let borne  =  nouNidEval.expressionBorneToutesIt  in
@@ -2627,7 +2637,7 @@ List.iter
 						  (* le noeud englobant où il faut s'arreter ici id boucle englobante *)
 						  (getBoucleIdB n.infoNid.laBoucle)  (*sous noeud conserné*)
 						  (*(EXP(n.infoNid.expressionBorne)) *)valBorne
-						  appel listeEng typeEval !numAppel valBorne isExeE lt lf borne   false globales  nid.infoNid.expressionBorne nid.varDeBoucleNid info.infoVariation.direction;
+						  appel listeEng typeEval !numAppel valBorne isExeE lt lf borne   false globales  nid.infoNid.expressionBorne nid.varDeBoucleNid info.infoVariation.direction  (getBoucleIdB n.infoNid.laBoucle);
 			  let nouNidEval = List.hd !nouBoucleEval in
 			  let borneN  =  nouNidEval.expressionBorneToutesIt  in
 			  let corpsEvalTMPPred = !corpsEvalTMP in
