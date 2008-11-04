@@ -1,4 +1,4 @@
-u(* orange -- eval loop bound and eval flowfact 
+(* orange -- eval loop bound and eval flowfact 
 **
 ** Project:	O_Range
 ** File:	orange.ml
@@ -1591,18 +1591,8 @@ Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA !resAuxTN; new_l
 					let nTN =  applyStoreVA(applyStoreVA (!resAuxTN) appel) globales in
 					let inter = applyStoreVA(applyStoreVA (!maxAuxTN) appel) globales in
 
-<<<<<<< TREE
 					let expmaxinit = if (intersection (listeDesVarsDeExpSeules maxinit ) (union [ii] vij)) = [] then 
 											applyStoreVA( applyStoreVA (EXP( maxinit)) appel) globales
-=======
-
-				(*	let listeDesVarDeMax = listeDesVarsDeExpSeules n.infoNid.expressionBorne in*)
-
- 
-
-					let expmaxinit = if (intersection (listeDesVarsDeExpSeules n.infoNid.expressionBorne) (union [ii] vij)) = [] then 
-											applyStoreVA( applyStoreVA (EXP(n.infoNid.expressionBorne)) appel) globales
->>>>>>> MERGE-SOURCE
 								     else  EXP(NOTHING)  in
 					let resauxmax2 = calculer expmaxinit   !infoaffichNull [] 1 in
 					let nMax =
@@ -1656,7 +1646,6 @@ Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA !resAuxTN; new_l
 				dernierAppelFct := appelP;
 				end
 	end
-<<<<<<< TREE
 
 
 let rec traiterBouclesInternesComposant 	nT (*tete nid contenant bi*)  nEC (*noeud englobantcourant *) 
@@ -1876,225 +1865,6 @@ let rec traiterBouclesInternesComposant 	nT (*tete nid contenant bi*)  nEC (*noe
 				end
 	end	 
 
-=======
-
-
-let rec traiterBouclesInternesComposant 	nT (*tete nid contenant bi*)  nEC (*noeud englobantcourant *) 
-							  idEng (*id noeud englobant  où stopper *)
-							  id (*courant à  évaluer bi*)  tN
-							  appel (*contexte appel pour le moment fonction puis doc *) 
-							  listeEng typeE numAp max isExeE lt lf borne    sansP globales corpsCompo maxinit varLoop direction=				
-  let info = (getBoucleInfoB (nEC.infoNid.laBoucle)) in
- 
-  let nomE = info.identifiant  in
-  let saBENG = (if aBoucleEnglobante info then info.nomEnglobante else 0) in
-  (*if !vDEBUG then *)
-  begin
-
-	  Printf.printf "1 traiterBouclesInternes num %d nom eng %d ou stopper %d sa eng %d tete nid %d\n" id	nomE idEng saBENG (getBoucleIdB nT.infoNid.laBoucle);
-	  (* afficheNidEval !docEvalue.maListeNidEval; *)
-  (*	Printf.printf "FIN NID ENG COURANT \n"*)
-  end;
- 
-  if nomE = idEng (*|| (nomE = (getBoucleIdB nT.infoNid.laBoucle) && nomE != 0*) then 
-  begin	
-	
-	let saBENG = (if aBoucleEnglobante info then info.nomEnglobante else 0) in
-
-	
-	let nbEngl =getNombreIt (nEC.infoNid.expressionBorne)  info.conditionConstante info.typeBoucle  info.conditionI  info.conditionMultiple  [] info.estPlus   info.infoVariation  nEC.varDeBoucleNid []  in
-
-	let varTN =  Printf.sprintf "%s_%d" "total" id in	
-	let varmax =  Printf.sprintf "%s_%d" "max" id in	
-	let l = List.append  [new_instVar varTN tN]  [new_instVar varmax max] 	in
-
-
-	Printf.printf "Affichage du corps virtuel du composant:\n";
-	afficherLesAffectations corpsCompo;
-	Printf.printf "On cherchera les variables %s %s" varTN varmax;
-
-	isExeBoucle := isExeE;
-
-	let (lesAs, intofunction) = 
-		(	if (!dernierAppelFct <> !predDernierAppelFct)  
-			then 
-			begin
-				(match !dernierAppelFct with
-					TFONCTION (nomf, numF,_,listeInputInst, contexteAvantAppel,appelF,lFt,lFf,_,_) ->		
-						 Printf.printf "cherche dernier appel\n";
-						let calllist = (reecrireCallsInLoop  nEC.varDeBoucleNid nEC.lesAffectationsBNid) in 
-						if appelF = [] then 
-							(Printf.printf "appelF est egal a liste vide\n";([], true))
-						else
-						begin
-							Printf.printf "avant List.hd 1\n";
-							(match List.hd appelF with  											
-								APPEL (_,e,nomFonc,s,c,v) ->
-									let aSC =  evalSIDA calllist numF  appel corpsCompo corpsCompo listeInputInst listeEng globales  in
-									
-									let isExecutedF = isExecuted lFt lFf aSC [] globales true in
-									if isExecutedF = false then listeInstNonexe := List.append [!dernierAppelFct] !listeInstNonexe;
-									isExeBoucle := isExeE && isExecutedF;
-									Printf.printf "apres evalSIDA\n";
-								  (aSC, true)
-							  | _-> ([], true))
-						 end
-					|_->([], true))
-		  end
-		  else   (lesVardeiSansj nEC id   l, false)
-	  )in
-	 afficherListeAS lesAs; 
-	    let ii = (nEC.varDeBoucleNid) in
-	    let vij =  rechercheLesVar  lesAs [] in	
-		let resExptN  =    rechercheAffectVDsListeAS varTN lesAs in 
-	    let recExptMax = rechercheAffectVDsListeAS  varmax  lesAs in
-	    isIntoIfLoop := false;
-		isEnd := false;
-		isEndNONZERO := false;
-		let resauxmax = calculer max  !infoaffichNull [] 1 in
-		isEnd := if estDefExp resauxmax then if  estNul resauxmax then true else false else false ;
-
-		resAuxTN :=  
-		(  match resExptN with
-		MULTIPLE -> 
-			if sansP = false then	
-			begin 
-				if estDefExp resauxmax then 
-				begin 
-					isIntoIfLoop := true ; 
-					EXP(BINARY(MUL,expVaToExp borne,(expressionEvalueeToExpression resauxmax))) 
-				end	
-				else EXP(NOTHING)
-			end
-			else MULTIPLE
-		|EXP  ( exptN) -> 
-			if sansP = false then	
-			begin 
-				let vdij = ( intersection (listeDesVarsDeExpSeules exptN)  ( union [ii]  vij)) in 
-				if vdij = [] then
-				begin
-					 (match nbEngl with 
-						MULTIPLE->  MULTIPLE 
-						|EXP(exptni)->							
-							if estDefExp resauxmax then 
-							begin
-								isEndNONZERO := true;
-								EXP(BINARY(MUL,expVaToExp borne,(expressionEvalueeToExpression resauxmax))) 
-							end
-							else if estNothing nbEngl || estNothing (EXP(exptN)) then   EXP(NOTHING) else    EXP(BINARY(MUL,exptni,exptN)) )
-				end
-				else
-				begin
-					match nbEngl with 
-					MULTIPLE -> MULTIPLE; 
-					| EXP(exptni) ->
-							if estNothing nbEngl || estNothing (EXP(exptN)) then  EXP(NOTHING) 
-							else
-								EXP(CALL(VARIABLE("SYGMA") ,
-									(List.append
-										(List.append [VARIABLE (ii)]	
-												[BINARY(SUB, exptni,CONSTANT (CONST_INT "1"))])  [ exptN])))
-											
-				end
-			end
-			else resExptN) ;
-		maxAuxTN := 
-		(	if sansP = false then	
-			begin 
-				match recExptMax with
-				MULTIPLE->
-					if estDefExp resauxmax then 
-					begin isIntoIfLoop := true ;
-						 EXP(expressionEvalueeToExpression resauxmax) 
-					end	
-					else  EXP(NOTHING)
-				  | EXP (e)-> 
-					if (intersection (listeDesVarsDeExpSeules e) (union [ii] vij)) = [] then  EXP (e)
-					else  
-						(match nbEngl with 
-							MULTIPLE ->   MULTIPLE
-							| EXP(exp) ->  
-								if estNothing nbEngl || estNothing (EXP(e)) then  EXP(NOTHING) 
-								else EXP(
-											CALL(
-													VARIABLE("MAX") , 
-													(List.append (
-																	List.append [VARIABLE (ii)] 	[BINARY(SUB,	exp, (CONSTANT (CONST_INT "1")))]	
-																 )  
-																[e]
-													)
-												)))
-								 
-					
-				end
-				else recExptMax
-			);
-
- 		dernierAppelFct := !predDernierAppelFct;
-		let fini = ((nomE = idEng) && (nomE =  (getBoucleIdB nT.infoNid.laBoucle)))  in
-		if   !isIntoIfLoop = false && !isEnd  = false && !isEndNONZERO = false && fini = false then 
-			traiterBouclesInternesComposant nT  nT saBENG id    ( !resAuxTN)  appel listeEng typeE numAp  ( !maxAuxTN) true lt lf borne   sansP globales corpsCompo maxinit varLoop direction
-		else
-		begin
-					Printf.printf "dans le else 1\n";
-					let isExe2 = if nT = nEC then !isExeBoucle && isExecuted lt lf lesAs appel globales true else !isExeBoucle in
-					if isExe2 = false || !isEnd then
-					begin
-						maxAuxTN :=EXP(CONSTANT (CONST_INT "0"));
-						resAuxTN:=EXP(CONSTANT (CONST_INT "0"));
-				 		listeInstNonexe := List.append [typeE] !listeInstNonexe
-					end;
-					
-					let nTN =  applyStoreVA(applyStoreVA (!resAuxTN) appel) globales in
-					let inter = applyStoreVA(applyStoreVA (!maxAuxTN) appel) globales in
-					let expmaxinit = if (intersection (listeDesVarsDeExpSeules maxinit ) (union [ii] vij)) = [] then 
-											applyStoreVA( applyStoreVA (EXP( maxinit)) appel) globales
-								     else  EXP(NOTHING)  in
-					Printf.printf "dans le else 2\n";			  
-					let resauxmax2 = calculer expmaxinit   !infoaffichNull [] 1 in
-					let nMax =
-						( match inter with
-							MULTIPLE ->
-									
-									 if estDefExp resauxmax2  then  expmaxinit else EXP(NOTHING) 
-							| EXP(exp) ->  
-								if estNothing inter then
-									if estDefExp resauxmax2  then  expmaxinit else EXP(NOTHING) 
-								else inter
-							 	 
-							 ) in
-
-					Printf.printf "dans le else 3\n"; 
-					let nouNidEval = new_nidEval typeE nTN  varLoop direction nMax   isExe2 !isIntoIfLoop in	
-
-					(* ignore (afficherNidUML nouNidEval  [] 1 Listener.null) ; *)
-					docEvalue := new_documentEvalue  (List.append  [ nouNidEval] !docEvalue.maListeNidEval) !docEvalue.maListeEval;
-					Printf.printf "dans le else 4\n";
-					nouBoucleEval := [nouNidEval]
-	    end
-	
-		 
-	end
-	else 
-	begin	
-		if (nomE = (getBoucleIdB nT.infoNid.laBoucle) && nomE != 0) || (idEng != (getBoucleIdB nT.infoNid.laBoucle)) then
-				begin
-					let appelP = !dernierAppelFct in
-					rechercheDernierAppel listeEng ;
-					(match !dernierAppelFct with
-						TFONCTION (nomf, numF,corps,listeInputInst, contexteAvantAppel,appelF,lFt,lFf,_,_) ->		
-							(*Printf.printf"traiterboucleinterne Dans evaluation de la fonction remontee...fin 0%s\n "nomf;*)
-							
-							traiterBouclesInternes nT  nT nomE id  
-							!resAuxTN appel listeEng typeE  numF  
-							!maxAuxTN isExeE lt lf borne  true globales(* true = sans prod*) maxinit varLoop direction;
-				|_->()(*funcContext :=[]*));				
-				  Printf.printf "pas de boucle englobante fin traiterBouclesInternes apres creer\n";
-				dernierAppelFct := appelP;
-				end
-	end	 
-
->>>>>>> MERGE-SOURCE
 		
 
 let rechercheTriplet n liste= 
