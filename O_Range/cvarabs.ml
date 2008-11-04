@@ -961,6 +961,13 @@ let rec remplacerNOTHINGPar  expr =
 	| INDEX (n,exp) 			->	INDEX (n, remplacerNOTHINGPar    exp)
 	| _ 						-> 	expr
 
+let rec mapAffect fct = function
+  (VAR(ident, expr)) -> (VAR((fct ident), expr))
+  | autre -> autre 
+
+let mapListAffect fct = List.map (mapAffect fct)
+
+
 let remplacerNOTHINGParAux e =
 match e with MULTIPLE ->VARIABLE ("NODEF") | EXP (e) -> if e = NOTHING then VARIABLE ("NODEF")  else remplacerNOTHINGPar e 
 
