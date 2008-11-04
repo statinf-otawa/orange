@@ -879,9 +879,12 @@ and traiterUneIntructionPourAppel premiere sId ainserer output input le=
 	  begin  
 		  appelcourant := [premiere]; 
 		  estTROUVEID := true;
+	
 
 		  let new_appel = APPEL (num, avant, nom, BEGIN(List.append sorties  output),  
 					CORPS ( BEGIN (   ainserer)), varB)	in
+
+		  
 		  BEGIN (List.append input   [new_appel]);
 	  end
   |_-> premiere
@@ -904,8 +907,13 @@ let  evalSIDA listeInst saufId  contexte ainserer output input le globales=
   estTROUVEID := false;
   listeIF := [];
   let nc = new_instBEGIN(listeSAUFIDA listeInst saufId ainserer output input le) in
-(*Printf.printf "evalSIDA nc\n"; afficherUneAffect nc; Printf.printf "evalSIDA fin\n";*)
-  evalStore  nc contexte globales	
+  
+(* Printf.printf "evalSIDA nc\n"; afficherUneAffect nc; Printf.printf "evalSIDA fin\n"; *)
+  let res= evalStore  nc contexte globales	in
+  print_string "Affichage du resultat du evalStore:\n";
+  afficherListeAS res;
+  print_string "Fin d affichage.\n";
+  res
 
 
 let rechercherEvalParNomAppel nomF idB appel listeF=
@@ -1673,17 +1681,15 @@ let rec traiterBouclesInternesComposant 	nT (*tete nid contenant bi*)  nEC (*noe
 	
 	let nbEngl =getNombreIt (nEC.infoNid.expressionBorne)  info.conditionConstante info.typeBoucle  info.conditionI  info.conditionMultiple  [] info.estPlus   info.infoVariation  nEC.varDeBoucleNid []  in
 
-	let varTN =  Printf.sprintf "%s_%d" "total" id in	
+	(*let varTN =  Printf.sprintf "%s_%d" "total" id in	
 	let varmax =  Printf.sprintf "%s_%d" "max" id in	
+	
 	let l = List.append  [new_instVar varTN tN]  [new_instVar varmax max] 	in
-    let output = 	List.append  [new_instVar varTN (EXP(VARIABLE(varTN)))]    [new_instVar varmax (EXP(VARIABLE(varmax)))] in
+    let output = 	List.append  [new_instVar varTN (EXP(VARIABLE(varTN)))]    [new_instVar varmax (EXP(VARIABLE(varmax)))] in*)
+
+    let(varTN,varmax,varTni,l, output) =   creerLesAffect tN max (EXP(NOTHING)) id 0 in
+
    
-
-
-	Printf.printf "Affichage du corps virtuel du composant:\n";
-	afficherLesAffectations corpsCompo;
-	Printf.printf "On cherchera les variables %s %s" varTN varmax;
-
 	isExeBoucle := isExeE;
 
 	let (lesAs, intofunction) = 
@@ -1710,9 +1716,9 @@ let rec traiterBouclesInternesComposant 	nT (*tete nid contenant bi*)  nEC (*noe
 								  (aSC, true)
 							  | _-> ([], true))
 						 end
-					|_->([], true))
+					|_->Printf.printf"cas 1\n";(lesVardeiSansj nEC id   l, false))
 		  end
-		  else   (lesVardeiSansj nEC id   l, false)
+		  else  (Printf.printf"cas 2\n"; (lesVardeiSansj nEC id   l, false))
 	  )in
 	 afficherListeAS lesAs; 
 	    let ii = (nEC.varDeBoucleNid) in
@@ -1801,7 +1807,7 @@ let rec traiterBouclesInternesComposant 	nT (*tete nid contenant bi*)  nEC (*noe
 				else recExptMax
 			);
 
- 		dernierAppelFct := !predDernierAppelFct;
+ 		 
 		let fini = ((nomE = idEng) && (nomE =  (getBoucleIdB nT.infoNid.laBoucle)))  in
 		if   !isIntoIfLoop = false && !isEnd  = false && !isEndNONZERO = false && fini = false then 
 			traiterBouclesInternesComposant nT  nT saBENG id    ( !resAuxTN)  appel listeEng typeE numAp  ( !maxAuxTN) true lt lf borne   sansP globales corpsCompo maxinit varLoop direction

@@ -2253,11 +2253,20 @@ and afficherUneAffect affect =
 			print_expVA expVA3;  new_line () ; Printf.printf ")\n" ;
 			Printf.printf "{";		indent (); afficherUneAffect i; flush(); space(); unindent ();
 			Printf.printf "}"; new_line ()
-	| APPEL (num, avant, nom, apres,corps,_) ->
+	| APPEL (num, avant, nom, apres,CORPS c,_) ->
 			Printf.printf  "\n\t\t\t\tFUNCTION CALL INPUT APPEL numbero %d %s \n" num nom; 
 			afficherUneAffect avant;new_line () ;
-			Printf.printf  "\n\t\t\t\tFUNCTION CORPS APPEL numbero %d\n" num; 
-			(* afficherUneAffect corps;new_line () ; *)
+			Printf.printf  "\n\t\t\t\tFUNCTION CORPS(VRAI CORPS) APPEL numbero %d\n" num; 
+			afficherUneAffect c;new_line () ; 
+			Printf.printf  "\t\t\t\t NAME %s\n" nom; 
+			Printf.printf  "\t\t\t\t FUNCTION CALL OUTPUT\n"; 
+			afficherUneAffect apres;new_line () ;flush(); space();
+Printf.printf  "\t\t\t\t FIN  OUTPUT %d %s\n" num nom;  
+	| APPEL (num, avant, nom, apres,ABSSTORE a,_) ->
+			Printf.printf  "\n\t\t\t\tFUNCTION CALL INPUT APPEL numbero %d %s \n" num nom; 
+			afficherUneAffect avant;new_line () ;
+			Printf.printf  "\n\t\t\t\tFUNCTION CORPS(ABSTRACT STORE) APPEL numbero %d\n" num; 
+			(* afficherListeAS a *) print_string "PAS AFFICHE" ;new_line () ; 
 			Printf.printf  "\t\t\t\t NAME %s\n" nom; 
 			Printf.printf  "\t\t\t\t FUNCTION CALL OUTPUT\n"; 
 			afficherUneAffect apres;new_line () ;flush(); space();
