@@ -1325,7 +1325,7 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 							  idEng (*id noeud englobant  où stopper *)
 							  id (*courant à  évaluer bi*)  tN
 							  appel (*contexte appel pour le moment fonction puis doc *) 
-							  listeEng typeE numAp max isExeE lt lf borne   sansP globales maxinit varLoop direction=				
+							  listeEng typeE numAp max isExeE lt lf borne   sansP globales maxinit varLoop direction idpred =				
   (* il faut evaluer le nombre total d'itération  de la boucle courante n*)
   (*	Pour toutes les boucles bi englobantes de Bj à partir de la	boucle immédiatement englobante de Bj 
   jusqu'à la mère du nid faire*) (*donc en remonté de recursivité*)
@@ -1417,7 +1417,7 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 					  |_->([], true))
 			  |_->(*Printf.printf "lesAS NON par fonction valeur\n"; *)  (lesVardeiSansj nEC id   l, false)
 		  end
-		  else begin(* Printf.printf "cas3\n";*)  (lesVardeiSansj nEC id   l, false)end
+		  else begin(* Printf.printf "cas3\n";*)  (lesVardeiSansj nEC idpred   l, false)end
 	  )in
 	  let ii = (nEC.varDeBoucleNid) in
 	  let vij =  rechercheLesVar  lesAs [] in
@@ -1569,7 +1569,7 @@ Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA !resAuxTN; new_l
 		let fini = ((nomE = idEng) && (nomE =  (getBoucleIdB nT.infoNid.laBoucle)))  in
 		if   !isIntoIfLoop = false && !isEnd  = false && !isEndNONZERO = false && fini = false then 
 			traiterBouclesInternes nT  nT saBENG
-			id    ( !resAuxTN)  appel listeEng typeE numAp  ( !maxAuxTN) true lt lf borne   sansP globales maxinit varLoop direction
+			id    ( !resAuxTN)  appel listeEng typeE numAp  ( !maxAuxTN) true lt lf borne   sansP globales maxinit varLoop direction nomE
 		else
 		begin
 
@@ -1648,7 +1648,7 @@ Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA !resAuxTN; new_l
 							
 							traiterBouclesInternes nT  nT nomE id 
 							!resAuxTN appel listeEng typeE  numF  
-							!maxAuxTN isExeE lt lf borne  true globales(* true = sans prod*) maxinit varLoop direction;
+							!maxAuxTN isExeE lt lf borne  true globales(* true = sans prod*) maxinit varLoop direction id;
 				|_->()(*funcContext :=[]*));				
 				(*  Printf.printf "pas de boucle englobante fin traiterBouclesInternes apres creer\n"*)
 				dernierAppelFct := appelP;
@@ -1716,9 +1716,9 @@ let rec traiterBouclesInternesComposant 	nT (*tete nid contenant bi*)  nEC (*noe
 								  (aSC, true)
 							  | _-> ([], true))
 						 end
-					|_->Printf.printf"cas 1\n";(lesVardeiSansj nEC id   l, false))
+					|_->Printf.printf"cas 1\n";(lesVardeiSansj nEC idPred   l, false))
 		  end
-		  else  (Printf.printf"cas 2\n"; (lesVardeiSansj nEC id   l, false))
+		  else  (Printf.printf"cas 2\n"; (lesVardeiSansj nEC idPred   l, false))
 	  )in
 	 afficherListeAS lesAs; 
 	    let ii = (nEC.varDeBoucleNid) in
@@ -1807,10 +1807,11 @@ let rec traiterBouclesInternesComposant 	nT (*tete nid contenant bi*)  nEC (*noe
 				else recExptMax
 			);
 
- 		 
+ 		dernierAppelFct := !predDernierAppelFct; 
 		let fini = ((nomE = idEng) && (nomE =  (getBoucleIdB nT.infoNid.laBoucle)))  in
 		if   !isIntoIfLoop = false && !isEnd  = false && !isEndNONZERO = false && fini = false then 
-			traiterBouclesInternesComposant nT  nT saBENG id    ( !resAuxTN)  appel listeEng typeE numAp  ( !maxAuxTN) true lt lf borne   sansP globales corpsCompo maxinit varLoop direction
+			traiterBouclesInternesComposant nT  nT saBENG id    ( !resAuxTN)  appel listeEng typeE numAp  ( !maxAuxTN) true lt lf borne   sansP
+			globales corpsCompo maxinit varLoop direction nomE
 		else
 		begin
 					Printf.printf "dans le else 1\n";
@@ -1864,7 +1865,7 @@ let rec traiterBouclesInternesComposant 	nT (*tete nid contenant bi*)  nEC (*noe
 							
 							traiterBouclesInternes nT  nT nomE id  
 							!resAuxTN appel listeEng typeE  numF  
-							!maxAuxTN isExeE lt lf borne  true globales(* true = sans prod*) maxinit varLoop direction;
+							!maxAuxTN isExeE lt lf borne  true globales(* true = sans prod*) maxinit varLoop direction nomE;
 				|_->()(*funcContext :=[]*));				
 				  Printf.printf "pas de boucle englobante fin traiterBouclesInternes apres creer\n";
 				dernierAppelFct := appelP;
@@ -2541,7 +2542,8 @@ Printf.printf "evalNid contexte  boucle: tete\n";
 						  (* le noeud englobant où il faut s'arreter ici id boucle englobante *)
 						  (getBoucleIdB nid.infoNid.laBoucle) 	
 						  (*(EXP(n.infoNid.expressionBorne)) *)valBorne
-						  courcont nle typeEval numAppBP valBorne isExeE lt lf borneP   false globales nid.infoNid.expressionBorne nid.varDeBoucleNid info.infoVariation.direction   ;		
+						  courcont nle typeEval numAppBP valBorne isExeE lt lf borneP   false globales nid.infoNid.expressionBorne nid.varDeBoucleNid info.infoVariation.direction   
+						  (getBoucleIdB nid.infoNid.laBoucle) 	;		
  
 
 				  let nouNidEval = List.hd !nouBoucleEval in
