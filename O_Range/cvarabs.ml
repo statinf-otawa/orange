@@ -2687,7 +2687,7 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 							 |_->	(match exp1e with 	 UNARY (ADDROF, next) ->    applyStore next a  |_->  UNARY (op, exp1e  ) ))
 						end
 			|ADDROF->    	(match exp1 with
-							 UNARY (MEMOF, next) ->   Printf.printf "les *&\n" ; applyStore next a 
+							 UNARY (MEMOF, next) ->  (* Printf.printf "les *&\n" ;*) applyStore next a 
 							 |_->	 UNARY (op, (applyStore exp1 a) ))
 			|_->(* if op = NOT then begin Printf.printf "NOT\n" ; print_expression  (UNARY (op, (applyStore exp1 a) ))) 0; new_line();end;*) (UNARY (op, (applyStore exp1 a) )))
 	| BINARY (op, exp1, exp2) 		-> 	(BINARY (op, (applyStore exp1 a), (applyStore exp2 a)))
