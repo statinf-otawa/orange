@@ -1415,7 +1415,7 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 						  | _-> ([], true))
 					  end
 					  |_->([], true))
-			  |_->(*Printf.printf "lesAS NON par fonction valeur\n"; *)  (lesVardeiSansj nEC id   l, false)
+			  |_->(*Printf.printf "lesAS NON par fonction valeur\n"; *)  (lesVardeiSansj nEC idpred   l, false)
 		  end
 		  else begin(* Printf.printf "cas3\n";*)  (lesVardeiSansj nEC idpred   l, false)end
 	  )in
@@ -1566,6 +1566,8 @@ Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA !resAuxTN; new_l
 
 (*if nT != idEng
 *)
+ 		dernierAppelFct := !predDernierAppelFct; 
+
 		let fini = ((nomE = idEng) && (nomE =  (getBoucleIdB nT.infoNid.laBoucle)))  in
 		if   !isIntoIfLoop = false && !isEnd  = false && !isEndNONZERO = false && fini = false then 
 			traiterBouclesInternes nT  nT saBENG
@@ -1648,7 +1650,7 @@ Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA !resAuxTN; new_l
 							
 							traiterBouclesInternes nT  nT nomE id 
 							!resAuxTN appel listeEng typeE  numF  
-							!maxAuxTN isExeE lt lf borne  true globales(* true = sans prod*) maxinit varLoop direction id;
+							!maxAuxTN isExeE lt lf borne  true globales(* true = sans prod*) maxinit varLoop direction nomE;
 				|_->()(*funcContext :=[]*));				
 				(*  Printf.printf "pas de boucle englobante fin traiterBouclesInternes apres creer\n"*)
 				dernierAppelFct := appelP;
