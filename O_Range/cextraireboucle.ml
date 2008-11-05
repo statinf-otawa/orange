@@ -467,6 +467,7 @@ module TreeList = struct
 end ;;
 
 
+open TreeList
 
 
 type compInfo = {name:string; absStore: typeListeAS; compES:listeDesES; expBornes:TreeList.tree}
@@ -3256,9 +3257,19 @@ and getESFromComp nom =
     
 and getAbsStoreFromComp nom =
     (getPartialResult nom).absStore
+    
+and expBornesToListeAffect expBornes =
+    let rec aux res = function
+      	Doc subtree -> List.fold_left aux res subtree
+  	| Function (x, subtree) ->  List.fold_left aux res subtree
+  	| Call (x, subtree) -> List.fold_left aux res subtree
+  	| Loop ((id, line, source, exact, max, total, expMax, expTotal), subtree) -> 
+	  (new_instVar (sprintf "max_%d" id) (EXP expMax))::(new_instVar (sprintf "total_%d" id) (EXP expTotal))::(List.fold_left aux res subtree)
+	in
+    aux [] expBornes 
 
 and getInstListFromPartial partialResult = 
-    []
+    List.append (expBornesToListeAffect partialResult.expBornes) (listeAsToListeAffect partialResult.absStore)
     
 
 and traiterAppelFonction exp args init =
