@@ -3432,7 +3432,31 @@ begin
 	List.append (listeDesVarDuCorps first) (listeDesVarBegin next)
 end
 	
+let rec splitTotalAndOthers ascour= 
+if ascour = [] then ([], [])
+else 
+begin
+	let (prem, next) = (List.hd ascour, List.tl ascour) in
+	let (nextGlobal, nextOthers) =splitTotalAndOthers next  in
 
+
+	(match prem with  
+		ASSIGN_SIMPLE (id, _) ->
+			let rep =if (String.length id > 4) then
+			begin
+				let var4 = (String.sub id  0 4) in
+				let var3 = (String.sub id  0 3) in
+				if  var3 = "IF_" || var3 = "tN_" || var4 = "max_" || var4 = "tni_" || var4 = "TWH_" then true else false
+			end
+			else if (String.length id > 3) then 
+						if (String.sub id  0 3) = "IF_" || (String.sub id  0 3) = "tN_" then true else false
+						else false	
+			in
+			if rep then (List.append [prem] nextGlobal, nextOthers) else  (nextGlobal, List.append [prem] nextOthers)
+		| ASSIGN_DOUBLE (_, _, _)  
+		| ASSIGN_MEM	 (_, _, _)  ->    (nextGlobal, List.append [prem] nextOthers))
+
+end
 
 let rec evalStore i a g=
 match i with 
@@ -3688,14 +3712,15 @@ Printf.printf "fin \n";*)
 								)memoutput	
 						end;
 						let nginterne = filterGlobales rc  !alreadyAffectedGlobales in
+						let (aPart, _) = splitTotalAndOthers rc in
 
 						let returnf = Printf.sprintf "res%s"  nomFonc in
 						if existeAffectationVarListe returnf rc then
 						begin
 							let affectres = ro returnf rc in
-							listeASCourant :=  List.append [affectres] (List.append nginterne !listeASCourant )
+							listeASCourant :=  List.append [affectres] (List.append (List.append aPart nginterne) !listeASCourant )
 						end
-						else listeASCourant :=   (List.append nginterne !listeASCourant );
+						else listeASCourant :=   (List.append (List.append aPart nginterne) !listeASCourant );
 			
 					 
 
