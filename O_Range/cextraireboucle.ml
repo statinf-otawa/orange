@@ -407,7 +407,7 @@ module TreeList = struct
   type tree = Doc of tree list
          | Function of (string * bool * bool * bool) * tree list (* function name, inloop, executed, extern *)
          | Call of (string * int * int * string * bool * bool * bool) * tree list (* function name, relative call ID, line num, source file, inlopo, executed, extern *)
-         | Loop of (int * int * string * bool * expressionEvaluee * expressionEvaluee * expression * expression) * tree list (* loop id, line, source file, exact, max, toatl, exp max, exp total *)
+         | Loop of (int * int * string * bool * expressionEvaluee * expressionEvaluee * expression * expression * expression * sens) * tree list (* loop id, line, source file, exact, max, toatl, exp max, exp total *)
 
  
   
@@ -435,7 +435,7 @@ module TreeList = struct
         let newCurrent = Function ((name,inloop,executed,extern), []) in
 	(newCurrent, current::stack)      
 
-  let onLoop res loopID line source exact maxcount totalcount maxexp totalexp = match res with
+  let onLoop res loopID line source exact maxcount totalcount maxexp totalexp expinit sens = match res with
       (current, stack) -> 
         let relativize valname = 
 	  try
@@ -445,7 +445,7 @@ module TreeList = struct
         let maxexp = mapVar relativize maxexp in
 	let totalexp = mapVar relativize totalexp in
         let newCurrent = 
-	   Loop ((loopID - 1, line, source, exact, maxcount,  totalcount, ( maxexp),( totalexp)), []) in
+	   Loop ((loopID - 1, line, source, exact, maxcount,  totalcount, ( maxexp),( totalexp), expinit, sens), []) in
 	(newCurrent, current::stack)   
      
   
@@ -3289,7 +3289,7 @@ and expBornesToListeAffect expBornes =
       	Doc subtree -> List.fold_left aux res subtree
   	| Function (x, subtree) ->  List.fold_left aux res subtree
   	| Call (x, subtree) -> List.fold_left aux res subtree
-  	| Loop ((id, line, source, exact, max, total, expMax, expTotal), subtree) -> 
+  	| Loop ((id, line, source, exact, max, total, expMax, expTotal, expinit, sens), subtree) -> 
 	  (new_instVar (sprintf "max_%d" id) (EXP expMax))::(new_instVar (sprintf "total_%d" id) (EXP expTotal))::(List.fold_left aux res subtree)
 	in
     aux [] expBornes 
