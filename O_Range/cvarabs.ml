@@ -3693,7 +3693,10 @@ Printf.printf "fin \n";*)
 						let memoutput = !corpsNouvI in
 						let listeInput =   (evalInputFunction a entrees [] ) in
 			
-						let rc =evalStore (BEGIN(corps)) (*rond a*) listeInput [] in
+						
+						let rc = if (isAbs)
+						    then (rond listeInput absStore)
+						    else (evalStore (BEGIN(corps)) (*rond a*) listeInput []) in
 			
 						listeASCourant := [];
 						if memoutput <> [] then

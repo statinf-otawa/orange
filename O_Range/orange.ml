@@ -1951,7 +1951,7 @@ afficheUnNidEval nouNidEval;
 			begin			
 				let (_,_,nid) =List.hd liste in
 Printf.printf "TRAITEMENT  DE %d AAA\n"	id;
-				traiterBouclesInternes nT  nid idEng id  !resAuxTN appel listeEng typeE  numAp !maxAuxTN isExeE lt lf borne true globales(* true = sans prod*) maxinit varLoop direction idpred
+				traiterBouclesInternes nT  nid idEng id  !resAuxTN appel listeEng typeE  numAp !maxAuxTN isExeE lt lf borne true globales(* true = sans prod*) maxinit varLoop direction idPred
 			end
 		end
 		else
@@ -1974,7 +1974,7 @@ Printf.printf "TRAITEMENT  DE %d AAA\n"	id;
 								if fin then Printf.printf "on continu\n" else Printf.printf "derniere passe\n";
 									traiterBouclesInternes nT  nidCourantCC nomE id   
 								!resAuxTN appel listeEng typeE  numF  
-								!maxAuxTN isExeE lt lf borne  fin globales(* true = sans prod*) maxinit varLoop direction  idpred
+								!maxAuxTN isExeE lt lf borne  fin globales(* true = sans prod*) maxinit varLoop direction  idPred
 							|_-> 			
 							  Printf.printf "FIN 1 pas de boucle englobante fin traiterBouclesInternes apres creer\n")
 								(*traiterBouclesInternes nT  nT nomE id   
@@ -1994,7 +1994,7 @@ Printf.printf "TRAITEMENT  DE %d AAA\n"	id;
 					 traiterBouclesInternes nT  nT idEng id   
 								!resAuxTN appel listeEng typeE  numAp  
 								!maxAuxTN isExeE lt lf borne  false globales(* true = sans prod*) maxinit varLoop direction
-					 idpred
+					 idPred
 				end
 		end
 	end
