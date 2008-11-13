@@ -1750,8 +1750,24 @@ and changeExpInto0 expToChange exp  =
 and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple appel typeopPlusouMUL infoVar var globales=
 
 (*Printf.printf "getnombre d'it valeur de la condition : %s\n" var;*)
-	let const = calculer (applyStoreVA (applyStoreVA   (EXP(conditionI)) appel) globales) !infoaffichNull  [](*appel*) 1 in
-	let isExecutedV = (match const with Boolean(b)				->  if b = false then false  else true |_->true) in	
+let varCond = match conditionI with VARIABLE(v)->v |_-> "NODEF" in
+(*print_expVA (EXP(conditionI)); new_line ();*)
+let affect = if (  conditionConstante) then
+ 				 (  (*Printf.printf"cons cte";*) EXP(conditionI) )
+			else 
+				if (existeAffectationVarListe varCond appel) then ( (* Printf.printf"cons non cte 1";*) applyStoreVA(rechercheAffectVDsListeAS  varCond appel)globales )
+				else ( (* Printf.printf"cons non cte 2"; *) EXP(NOTHING)) in
+ 
+
+
+	let const = calculer   affect !infoaffichNull  [](*appel*) 1 in
+
+(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var;
+		
+			print_expTerm const; new_line ();*)
+
+	let isExecutedV = (match const with Boolean(b)				->  if b = false then false  else true 
+										|_->if estDefExp const then if estNul const then false else true else true) in	
 (*Printf.printf "getnombre d'it valeur de la condition : %s\n" var;
 		
 			print_expTerm const; new_line ();*)
@@ -2111,11 +2127,12 @@ let isDivInc exp =
 	let (increment, typeopPlusouMUL) = (!expressionIncFor, !opEstPlus)	in
 	(*if !expressionDinitFor = NOTHING then expressionDinitFor := VARIABLE(nv);*)
 	let infoVar =   new_variation !expressionDinitFor !borne !expressionIncFor typevar  operateur indirectafter in
-
-	let nb = expVaToExp (getNombreIt !borne (typevar=CONSTANTE||cte) t vcond multiple [] typeopPlusouMUL  infoVar v []) in
+	let nc = if (typevar=CONSTANTE||cte) then cond else vcond in
+	let nb = expVaToExp (getNombreIt !borne (typevar=CONSTANTE||cte) t nc multiple [] typeopPlusouMUL  infoVar v []) in
 	listeBoucleOuAppelCourante := reecrireCAll var2 !listeBoucleOuAppelCourante;
+	 
 
-	let info = (new_boucleInfo t nom listeV nbIt eng cte vcond multiple !listeBoucleOuAppelCourante 
+	let info = (new_boucleInfo t nom listeV nbIt eng (typevar=CONSTANTE||cte) nc multiple !listeBoucleOuAppelCourante 
 				( new_variation !expressionDinitFor nb !expressionIncFor typevar operateur indirectafter) typeopPlusouMUL) in
 	
 	let boucleFor = new_boucleFor  info  listeV  var2  !expressionDinitFor  nb !expressionIncFor  in
@@ -2167,11 +2184,12 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 
 (*Printf.printf "\n\ntraiterConditionBoucleFor  2\n" ;*)
  	let infoVar =   new_variation !expressionDinitFor !borne !expressionIncFor typevar  operateur indirectafter in
-
-	let nb = expVaToExp (getNombreIt !borne (typevar=CONSTANTE||cte) t vcond multiple [] !opEstPlus   infoVar v []) in
+	 let nc = if (typevar=CONSTANTE||cte) then cond else vcond in
+	let nb = expVaToExp (getNombreIt !borne (typevar=CONSTANTE||cte) t nc multiple [] !opEstPlus   infoVar v []) in
 	listeBoucleOuAppelCourante := reecrireCAll var2 !listeBoucleOuAppelCourante;
+   
 	let b = new_boucleWhileOuDoWhile 
-				(new_boucleInfo t nom liste nbIt eng multiple vcond cte  !listeBoucleOuAppelCourante
+				(new_boucleInfo t nom liste nbIt eng (typevar=CONSTANTE||cte)  nc  multiple !listeBoucleOuAppelCourante
 				(new_variation (VARIABLE(v)) nb !expressionIncFor typevar operateur indirectafter) !opEstPlus ) [] []  in
 	let ba = (new_boucleA b )  in	
 	let borne = (getBorneBoucleFor t nb !initialisation !expressionIncFor !opEstPlus indirectafter) in

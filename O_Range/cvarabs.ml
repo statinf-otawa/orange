@@ -3087,7 +3087,7 @@ let (predna,na) =
 				end 
 				else (assign, assign))		
 		 end
-	|ASSIGN_SIMPLE (id, e)->	(*Printf.printf "closeForm varB ASSIGN_SIMPLE = %s id %s =" varB id; *) 
+	|ASSIGN_SIMPLE (id, e)->	(*Printf.printf "closeForm varB ASSIGN_SIMPLE = %s id %s =" varB id; *)
 	if id = varB then begin estModifie:= false; (assign, assign) end
 	else
 	begin
@@ -3170,7 +3170,7 @@ let (predna,na) =
 						  else (assign, assign)
 				)
 				end (* binary*)
-			| _->  (*Printf.printf "closeForm varB OTHER = %s id %s = BINARY" varB id; *)
+			| _-> (* Printf.printf "closeForm varB OTHER = %s id %s = BINARY" varB id; *)
 				   if List.mem id (listeDesVarsDeExpSeules exp) then 
 							(assign,ASSIGN_SIMPLE ( id, MULTIPLE)) 
 					else (assign, assign) 
@@ -3186,7 +3186,7 @@ begin
 	(predna,na, [])
 end
 (*if !estModifie = true then listeDesVarDependITitcour :=List.append !listeDesVarDependITitcour [na];*)
-else (predna,na, [na])
+else begin (*Printf.printf "closeForm =other\n" ; afficherListeAS [assign] ;new_line(); *)(predna,na, [na])end
 			
 
 let rec majexpaux var e	=
@@ -3458,6 +3458,21 @@ begin
 
 end
 
+let rec rewriteEndOthers asl oldOthers newOthers =
+if oldOthers = [] || asl = [] then asl 
+else 
+begin
+	let (oinit, onext )= (List.hd oldOthers, List.tl oldOthers) in
+	let (firstChange, nextchanges) = (List.hd newOthers, List.tl newOthers) in
+	let (curAssign, nextAssign) =  (List.hd asl, List.tl asl) in
+	if curAssign = oinit then 
+			List.append [firstChange] (rewriteEndOthers nextAssign onext nextchanges) 
+	else   if List.mem oinit nextAssign then 
+				List.append [curAssign] (rewriteEndOthers nextAssign oldOthers newOthers) 
+			else List.append [curAssign] (rewriteEndOthers nextAssign onext nextchanges) 
+end
+
+
 let rec evalStore i a g=
 match i with 
 	VAR (id, exp) -> (*Printf.printf "evalStore var %s valeur du contexte  \n" id;*) (*afficherListeAS a;
@@ -3581,7 +3596,7 @@ Printf.printf "fin \n";*)
 afficherListeAS resT;
 Printf.printf "les as de la boucle avant transfo \n";*)
 		
-		let newas =(closeFormPourToutXdelisteES resT id (*aS*) ) in
+		let (newas, oldOthers, newOthers) =(closeFormPourToutXdelisteES resT id (*aS*) ) in
 (*let listeDesnewAffect = List.map (fun a -> remplacer id a) newas in
 Printf.printf "les as de FOR aprescloseform\n" ;
 afficherListeAS newas;
@@ -3590,12 +3605,30 @@ Printf.printf "fin \n";*)
 (*Printf.printf "contexte\n" ;
 afficherListeAS a;
 Printf.printf "fin \n";*)
+let rewrite = 
+if newOthers != [] then
+(
+(*Printf.printf "\nothers rewriteAllOthers\n";
+	afficherListeAS newOthers;space();flush();new_line();
+	Printf.printf "\nend\n";
+	Printf.printf "others\n";
+	afficherListeAS oldOthers ;space();flush();new_line();
+	Printf.printf "\nend\n";*)
+let new_res = rewriteEndOthers newas oldOthers newOthers in
+(*Printf.printf "newasl \n";
+	afficherListeAS new_res ;space();flush();new_line();
+	Printf.printf "\nend\n";*)
+new_res 
+)
+else newas in
+
+
 
 
 		listeDesVarDependITitcour :=(* rond*) listePred   (*listeDesnewAffect*);
 		(*Printf.printf "\nFIN evalStore boucle executed %d variable %s\n" num id;*)
 		if num = !firstLoop then begin listeDesVarDependITitcour :=[]; firstLoop :=0 end;
-		let res = (rond a  newas) in
+		let res = (rond a   rewrite ) in
 (*Printf.printf "les as de FOR \n" ;
 afficherListeAS res;
 Printf.printf "fin \n";*)
@@ -3693,10 +3726,7 @@ Printf.printf "fin \n";*)
 						let memoutput = !corpsNouvI in
 						let listeInput =   (evalInputFunction a entrees [] ) in
 			
-						
-						let rc = if (isAbs)
-						    then (rond listeInput absStore)
-						    else (evalStore (BEGIN(corps)) (*rond a*) listeInput []) in
+						let rc =evalStore (BEGIN(corps)) (*rond a*) listeInput [] in
 			
 						listeASCourant := [];
 						if memoutput <> [] then
@@ -3759,37 +3789,29 @@ if liste = [] then a
 else traiterSequence (List.tl liste) (evalStore (List.hd liste) a g) g														
 
 and closeFormPourToutXdelisteES l id  =
-(*Printf.printf "closeFormPourToutXdelisteES %s fin\n" id; *)
-let listeDesVarModifiees = (rechercheLesVar l [] ) in
- let (listeres, others) =  (closeFormrec id  listeDesVarModifiees l listeDesVarModifiees) in
+	(*Printf.printf "closeFormPourToutXdelisteES %s fin\n" id; *)
+	let listeDesVarModifiees = (rechercheLesVar l [] ) in
+	let (listeres, others) =  (closeFormrec id  listeDesVarModifiees l listeDesVarModifiees) in
+	let (filteredOthers, rewritedOthers) = (othersFilter others,rewriteAllOthers others ) in
 
+	let nl = (traiterOthers listeres filteredOthers rewritedOthers) in
+	(*Printf.printf "\nlisteres\n";
+	afficherListeAS listeres ;space();flush();new_line();
+	Printf.printf "\nend\n";*)
+	(*Printf.printf "\nothers rewriteAllOthers\n";
+	afficherListeAS (rewriteAllOthers others);space();flush();new_line();
+	Printf.printf "\nend\n";
+	Printf.printf "others\n";
+	afficherListeAS others ;space();flush();new_line();
+	Printf.printf "\nend\n";*)
 
-let nl = (traiterOthers listeres (othersFilter others) (rewriteAllOthers others)) in
-(*Printf.printf "\nlisteres\n";
-afficherListeAS listeres ;space();flush();new_line();
-Printf.printf "\nend\n";
-
-
-Printf.printf "\nothers rewriteAllOthers\n";
-afficherListeAS (rewriteAllOthers others);space();flush();new_line();
-Printf.printf "\nend\n";
-
-
-Printf.printf "others\n";
-afficherListeAS others ;space();flush();new_line();
-Printf.printf "\nend\n";
-
-Printf.printf "\nothers traites\n";
-afficherListeAS nl;space();flush();new_line();*)
- 
-
-let fineval = (traiterAntidepPointFixe id nl ) in
-
-(*Printf.printf "\npoint fixe\n";
-afficherListeAS fineval;space();flush();new_line();
-Printf.printf "\npoint fixe\n";*)
-
-fineval
+	(*Printf.printf "\nothers traites\n";
+	afficherListeAS nl;space();flush();new_line();*)
+	let fineval = (traiterAntidepPointFixe id nl ) in
+	(*Printf.printf "\npoint fixe\n";
+	afficherListeAS fineval;space();flush();new_line();
+	Printf.printf "\npoint fixe\n";*)
+	(fineval, filteredOthers, rewritedOthers)
 
 
 
@@ -3897,11 +3919,11 @@ else
 
 		let (predna, new_affect, otherAffect) =  closeForm aSCourant  id listeDesVarModifiees 	in
 		let (nextAffect, othersNext) = closeFormrec id l suite listeDesVarModifiees in
-(*Printf.printf "pred\n";
+(*Printf.printf "otherAffect\n";
 
-afficherListeAS [new_affect];new_line();
+afficherListeAS otherAffect;new_line();
 Printf.printf "suite\n";
-afficherListeAS otherAffect;new_line();*)
+afficherListeAS othersNext;new_line();*)
 
 		(List.append [new_affect] nextAffect, List.append     otherAffect othersNext)
 end
