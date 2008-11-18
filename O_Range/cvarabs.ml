@@ -1304,6 +1304,7 @@ let rec  calculer expressionVA ia l sign =
 |	MULTIPLE -> NOCOMP
 
 and calculer_simple expVA = calculer expVA CROISSANT [] 1
+and calculer_avec_sens expVA sens = calculer expVA sens [] 1
 and estVarDsExpEval var expre =
 match expre with
 		NOCOMP 			-> false

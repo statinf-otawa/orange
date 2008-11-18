@@ -184,9 +184,8 @@ module PartialAdapter =
   	| Call (x, subtree) -> List.fold_left aux res subtree
   	| Loop ((id, line, source, exact, max, total, expMax, expTotal, expInit, sens), subtree) ->  
 	
-	  let max_final = if (estDefExp max) then max else (calculer_simple (EXP expMax)) in
-	  let total_final = (* if (estDefExp total) then total else *) (calculer_simple (EXP expTotal)) in 
-	(*  if (not (estDefExp total_final)) then failwith "pouetpoeut";  *)
+	  let max_final = if (estDefExp max) then max else (calculer_avec_sens (EXP expMax) sens) in
+	  let total_final =  if (estDefExp total) then total else  (calculer_avec_sens (EXP expTotal) sens) in 
 	  print_string (string_from_expr expTotal);
 	  
 	  let res = Listener.onLoop res id line source exact max_final total_final expMax expTotal expInit sens in
@@ -2120,6 +2119,7 @@ let ncorps = if intoLoop = false  then corps else sansIfCorps corps in
   if ncorps <> [] then
   begin
 	  let (first,next) = ((List.hd ncorps),(List.tl ncorps)) in
+          print_string "Appele depuis CorpsFOB\n";
 	  let (new_cont, new_globale) = evalUneBoucleOuAppel first affectations contexte listeEng  estexeEng lastLoopOrCall globales in
 	  if next != [] then
 	  begin
@@ -2397,7 +2397,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 							begin
 								 let (e, corpsOuAppel) = match List.hd myCall with APPEL(_, e, _, _, corpsOuAppel, _ ) -> (e, corpsOuAppel)  |_ -> failwith "erreur filtrage" in
 								 match corpsOuAppel with
-								  CORPS c -> 	Printf.printf "IMPOSSIBLE%s:\n" nomFonction ; contexte
+								  CORPS c -> 	Printf.printf "IMPOSSIBLE %s:\n" nomFonction ; afficherLesAffectations [c]; contexte
 								  |ABSSTORE a -> Printf.printf "FIN Eval appel FONCTION composant%s:\n" nomFonction ;
 									 let contexteAvecEntrees = (evalStore (BEGIN(entrees)) contexteAvantAppel globale) in
 									 let typeE =  
@@ -2480,8 +2480,10 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEn
       
       let expMax = mapVar absolutize expMax in
       let expTotal = mapVar absolutize expTotal in
-      let instanciedMax =if (not (estDefExp max)) then (expVaToExp( applyStoreVA(applyStoreVA (EXP(expMax)) contexte)globales)) else (expMax) in
-      let instanciedTotal = if (not (estDefExp total)) then (expVaToExp(applyStoreVA (applyStoreVA (EXP(expTotal)) contexte)globales)) else (expTotal) in		
+      let instanciedMax =if (not exact) then (expVaToExp( applyStoreVA(applyStoreVA (EXP(expMax)) contexte)globales)) else (expMax) in
+      let instanciedTotal = if (not exact) then (expVaToExp(applyStoreVA (applyStoreVA (EXP(expTotal)) contexte)globales)) else (expTotal) in		
+      let total = if (exact) then total else NOCOMP in
+      let max = if (exact) then max else NOCOMP in
       
       Printf.printf "ON A COMPOSE la boucle ID %u , ca a donne total=%s max=%s\n" id (string_from_expr instanciedMax) (string_from_expr instanciedTotal);
       let res = Loop ((id + (!idBoucle), line, source, exact, max, total, instanciedMax, instanciedTotal, expinit, sens), List.map evalAuxPasBoucle subtree) in
@@ -2844,7 +2846,7 @@ afficheUnNidEval nouNidEval;*)
 			  corpsEvalTMP := List.append corpsEvalTMPPred	[ new_b];		
 
 			  varDeBoucleBoucle :=varDeBouclePred;()
-		  | IDAPPEL (_,_,_,_,_,_) 	 |IDIF (_,_, _,_, _,_,_)-> 	(*Printf.printf"reecrire corps boucle appel ou\n";*)
+		  | IDAPPEL (_,_,_,_,_,_) 	 |IDIF (_,_, _,_, _,_,_)-> 	Printf.printf"reecrire corps boucle appel ou\n";
 			  let _ = 
 				  evalUneBoucleOuAppel c (reecrireCallsInLoop niddepart.varDeBoucleNid niddepart.lesAffectationsBNid)  
 				  appel listeEng isExeE  [] globales in ()	
