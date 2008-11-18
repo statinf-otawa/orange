@@ -2578,7 +2578,9 @@ let rec analyse_statement   stat =
 		
 		let listeASC = evalStore (new_instBEGIN (listePred)) [] [] in
 		isExactForm := (hasMultiOuputInst stat = false) && (!trueList = []) && (!falseList = []);
-(*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" numBoucle;*)
+		(*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" numBoucle;
+
+afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 (*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" numBoucle;
 if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*)
 		let (nb, addtest) = traiterConditionBoucle "while" numBoucle deg exp idBoucleEngPred  varDeB constante varBoucleIfN lVB listeASC  asna (*aS*) listeVDeBoucle (VARIABLE(varIfN)) na in
@@ -2686,7 +2688,11 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		
 		let las = evalStore (new_instBEGIN (listePred)) [] [] in
 		isExactForm := (hasMultiOuputInst stat = false) && (!trueList = []) && (!falseList = []);
-		(*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" numBoucle;*)
+		(*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" numBoucle;
+
+afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
+
+
 		(*if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*)
 		let (nb,_) =  traiterConditionBoucle "do" numBoucle deg exp idBoucleEngPred  varDeB constante  varBoucleIfN lVB las asna listeVDeBoucle  (VARIABLE(varIfN)) na in 
 	(*Printf.printf "\n\nAnalyse statement : la boucle %d   ap\n" numBoucle;*)
@@ -2795,7 +2801,9 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
  
 		let las=  evalStore (new_instBEGIN (listePred)) [] [] in
 				isExactForm := (hasMultiOuputInst stat = false) && (!trueList = []) && (!falseList = []);
-(*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" num;*)(*
+(*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" num;
+afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
+(*
 if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*)
 		let (nb,addtest) = traiterConditionBoucleFor 	"for" num deg exp2
 					idBoucleEngPred (*exp1*) exp3  varDeBoucle constante varBoucleIfN listeVB las asna listeVDeBoucle (VARIABLE(varIfN)) na in	
@@ -3203,6 +3211,8 @@ and  analyse_expressionaux exp =
 					listeDesInstCourantes := [];
 					construireAsAppel f.declaration	exp ;
 
+(*Printf.printf "analyse_expressionaux %s EXISTE \n" (nomFonctionDeExp e) ;*)
+
 					listeBoucleOuAppelCourante	:= 
 						List.append  !listeBoucleOuAppelCourante  [IDAPPEL(!idAppel, exp, !listeDesInstCourantes,"", !trueList,!falseList )];
 					let _ = traiterAppelFonction e args !listeDesInstCourantes in
@@ -3212,20 +3222,31 @@ and  analyse_expressionaux exp =
 					let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
 					listeDesInstCourantes :=  List.append !listeDesInstCourantes  [newaffect];
 					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
+
+(*afficherLesAffectations (  !listeDesInstCourantes) ;new_line () ;*)
+
+
 					nouvExp:=VARIABLE(nouvar)
 				end
 				else 
 				begin 
+					listeDesInstCourantes := [];
 					List.iter (fun ep -> analyse_expressionaux ep) args;
+
+(*Printf.printf "analyse_expressionaux %s NON EXISTE \n" (nomFonctionDeExp e) ;*)
 			
 					listeBoucleOuAppelCourante	
 						:= List.append  !listeBoucleOuAppelCourante [IDAPPEL(!idAppel, exp,[],"" , !trueList,!falseList )];
 					let isComponant = traiterAppelFonction e args !listeDesInstCourantes in
+
+(*if isComponant then Printf.printf "analyse_expressionaux %s NON EXISTE IS COMPOSANT\n" (nomFonctionDeExp e) ;*)
 					let nouvar = Printf.sprintf "call%s%d" (nomFonctionDeExp e) ida in
 					let nouvarres = Printf.sprintf "res%s" (nomFonctionDeExp e) in
 					let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
 					listeDesInstCourantes :=  List.append !listeDesInstCourantes  [newaffect];
 					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
+
+(*afficherLesAffectations (  !listeDesInstCourantes) ;new_line () ;*)
 					if isComponant then nouvExp:=VARIABLE(nouvar) else nouvExp:=exp
 				end		;
 	| COMMA e 	-> (*Printf.printf "dans comma\n";print_expression exp 0; new_line();*) List.iter (fun ep -> analyse_expressionaux ep) e;
@@ -3327,6 +3348,7 @@ and traiterAppelFonction exp args init =
       		sorties := [];
 	  		construireListesES f.listeES args;
 	  		ajouterReturn nom f.lesAffectations;
+Printf.printf "La fonction: %s existe=%b NEW APPEL \n" nom (existeFonction nom);
 	  		listeDesInstCourantes :=  [ new_instAPPEL !idAppel  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  (new_instBEGIN f.lesAffectations) ""];
 			false
 	) else (
@@ -3339,11 +3361,12 @@ and traiterAppelFonction exp args init =
 				let (absStore,listeES) = (getAbsStoreFromComp nom),(getESFromComp nom) in
 				(*Printf.printf "Il y a %u variables E/S" (List.length listeES);*)
 				construireListesES listeES args;	  
-				Printf.printf "Ici on construit le noeud d'appel du composant: %s\n" nom;
+				Printf.printf "Ici on construit le noeud d'appel du composant: %s %d\n" nom !idAppel;
 				listeDesInstCourantes :=  [ new_instAPPELCOMP !idAppel  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  absStore ""]; true
 		) 
 		with  Unix.Unix_error(Unix.ENOENT, _, _)-> 
 			aUneFctNotDEf := true; 
+Printf.printf "La fonction: %s existe=%b NEW APPEL NON 2\n" nom (existeFonction nom);
           	listeDesInstCourantes :=  [ new_instAPPEL !idAppel  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  (new_instBEGIN []) ""];false
         	| Unix.Unix_error (x,y,z) -> 
            		 Printf.eprintf "%s: %s %s\n%!" y (Unix.error_message x) z;
@@ -3766,7 +3789,7 @@ and  onlyAexpressionaux exp =
 					let (_, f) = fonction in
 					listeDesInstCourantes := [];
 					construireAsAppelAux f.declaration	exp ;(*pb si arg est un appel de fonction revoir*)
-					onlytraiterAF e args !listeDesInstCourantes;
+					let _ = onlytraiterAF e args !listeDesInstCourantes in
 					
 					let nouvar = Printf.sprintf "call%s%d" (nomFonctionDeExp e) 0 in
 					let nouvarres = Printf.sprintf "res%s" (nomFonctionDeExp e) in
@@ -3775,7 +3798,58 @@ and  onlyAexpressionaux exp =
 					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
 					nouvExp:=VARIABLE(nouvar)
 				end
-				else nouvExp:=exp
+				else
+				begin 
+					listeDesInstCourantes := [];
+					List.iter (fun ep -> analyse_expressionaux ep) args;
+			
+					
+					let isComponant =  onlytraiterAF e args !listeDesInstCourantes in
+					let nouvar = Printf.sprintf "call%s%d" (nomFonctionDeExp e) 0 in
+					let nouvarres = Printf.sprintf "res%s" (nomFonctionDeExp e) in
+					let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
+					listeDesInstCourantes :=  List.append !listeDesInstCourantes  [newaffect];
+					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
+					if isComponant then nouvExp:=VARIABLE(nouvar) else nouvExp:=exp
+				end	
+
+
+			(*	let listeInstPred = !listeDesInstCourantes in
+				idAppel := !idAppel + 1;
+				let ida = !idAppel in									
+				if existeFonction (nomFonctionDeExp e) then 
+				begin
+
+					let fonction = rechercheFonction (nomFonctionDeExp e) in
+					let (_, f) = fonction in
+					listeDesInstCourantes := [];
+					construireAsAppel f.declaration	exp ;
+
+					listeBoucleOuAppelCourante	:= 
+						List.append  !listeBoucleOuAppelCourante  [IDAPPEL(!idAppel, exp, !listeDesInstCourantes,"", !trueList,!falseList )];
+					let _ = traiterAppelFonction e args !listeDesInstCourantes in
+					
+					let nouvar = Printf.sprintf "call%s%d" (nomFonctionDeExp e) ida in
+					let nouvarres = Printf.sprintf "res%s" (nomFonctionDeExp e) in
+					let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
+					listeDesInstCourantes :=  List.append !listeDesInstCourantes  [newaffect];
+					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
+					nouvExp:=VARIABLE(nouvar)
+				end
+				else 
+				begin 
+					List.iter (fun ep -> analyse_expressionaux ep) args;
+			
+					
+					let isComponant = let _ onlytraiterAF e args !listeDesInstCourantes in
+					let nouvar = Printf.sprintf "call%s%d" (nomFonctionDeExp e) ida in
+					let nouvarres = Printf.sprintf "res%s" (nomFonctionDeExp e) in
+					let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
+					listeDesInstCourantes :=  List.append !listeDesInstCourantes  [newaffect];
+					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
+					if isComponant then nouvExp:=VARIABLE(nouvar) else nouvExp:=exp
+				end		;*)
+
 			 
 	| COMMA e 				->  (*Printf.printf "dans only comma\n";print_expression exp 0; new_line();*) List.iter (fun ep -> onlyAexpression ep) e; nouvExp:=COMMA(e)
 	| MEMBEROF (e , t) 		
@@ -3830,15 +3904,18 @@ and  construireAsAppelAux dec	appel =
 
 and onlytraiterAF exp args init =
 let nom = nomFonctionDeExp exp in
+let r = !idAppel in
 	if existeFonction nom then
 	begin
 		let fonction = rechercheFonction nom in
 		let (_, f) = fonction in
 		let proto = f.declaration in
-		let r = !idAppel in
+		
 		let aff =
 			if f.lesAffectations = [] then 
 			begin
+
+
 				let nfc = !nomFctCour in
 				let a = !listeDesInstCourantes in
 				listeDesInstCourantes := [];		
@@ -3854,12 +3931,68 @@ let nom = nomFonctionDeExp exp in
 				res (*f.lesAffectations*)
 			end 
 			else f.lesAffectations in 
-					entrees := [];
-					sorties := [];
-					construireListesES f.listeES args;
-					ajouterReturn nom aff;
-					listeDesInstCourantes :=  [ new_instAPPEL r  (new_instBEGIN init)  f.nom (new_instBEGIN !sorties) (new_instBEGIN aff) ""];()
+			
+		entrees := init;
+		sorties := [];
+		construireListesES f.listeES args;
+		ajouterReturn nom aff;
+Printf.printf "La fonction: %s existe=%b NEW APPEL ONLY\n" nom (existeFonction nom);
+		listeDesInstCourantes :=  [ new_instAPPEL r  (new_instBEGIN !entrees)  f.nom (new_instBEGIN !sorties) (new_instBEGIN aff) ""];
+	    false
 	end
+
+
+   (*   let nom = nomFonctionDeExp exp in (* il faut construire la liste d es entrées et la liste des sorties*)
+      (*Printf.printf "La fonction: %s existe=%b \n" nom (existeFonction nom);*)
+
+      if (existeFonction nom) then (	
+	  		let (_, f) = rechercheFonction nom in
+	  		if f.lesAffectations = [] then   aUneFctNotDEf := true;
+	  		entrees := init;
+      		sorties := [];
+	  		construireListesES f.listeES args;
+	  		ajouterReturn nom f.lesAffectations;
+	  		listeDesInstCourantes :=  [ new_instAPPEL !idAppel  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  (new_instBEGIN f.lesAffectations) ""];
+			false
+	) *)else (
+	
+		entrees := init;
+		sorties := [];
+    	
+		
+		try (
+
+				let nfc = !nomFctCour in
+				 
+				listeDesInstCourantes := [];		
+				let m = !listeASCourant in
+				listeASCourant := [];		
+
+				let (absStore,listeES) = (getAbsStoreFromComp nom),(getESFromComp nom) in
+				
+				(*Printf.printf "Il y a %u variables E/S" (List.length listeES);*)
+				construireListesES listeES args;	  
+				 
+				listeASCourant := m;
+				nomFctCour := nfc;
+
+				Printf.printf "Ici on construit le noeud d'appel du composant: %s ONLY\n" nom;
+Printf.printf "La fonction: %s existe=%b NEW APPEL COMPO \n" nom (existeFonction nom);
+				listeDesInstCourantes :=  [ new_instAPPELCOMP r  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  absStore ""]; true
+		) 
+		with  Unix.Unix_error(Unix.ENOENT, _, _)-> 
+			(*aUneFctNotDEf := true; *)
+Printf.printf "La fonction: %s existe=%b NEW APPEL NON ONLY \n" nom (existeFonction nom);
+          	listeDesInstCourantes :=  [ new_instAPPEL !idAppel  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  (new_instBEGIN []) ""];false
+        	| Unix.Unix_error (x,y,z) -> 
+           		 Printf.eprintf "%s: %s %s\n%!" y (Unix.error_message x) z;
+           		 false
+
+			
+	  
+	)
+
+
 
 and onlyAdefs defs = List.iter	(fun def ->		onlyanalysedef def)		defs
 
