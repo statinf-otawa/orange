@@ -1294,7 +1294,7 @@ let rec  calculer expressionVA ia l sign =
 			| COMMA _ ->					NOCOMP
 			| CONSTANT cst -> 													
 				(	match cst with
-						CONST_INT i 	->	  	 (ConstInt(Printf.sprintf "%d" (string_to_int  i)))
+						CONST_INT i 	->	  	(ConstInt(Printf.sprintf "%d" (string_to_int  i)))
 						| CONST_FLOAT r ->	   	 (ConstFloat(Printf.sprintf "%f" (string_to_float  r)))
 						| CONST_CHAR _ 	|CONST_STRING _ | CONST_COMPOUND _ ->	NOCOMP
 				)
@@ -2226,53 +2226,7 @@ BINARY(	DIV ,
 	)
 
 											
-let rec afficherLesAffectations listeAffect = List.iter (fun affect -> afficherUneAffect affect; flush();flush(); space(); new_line ()) listeAffect
-and afficherUneAffect affect =
-	Printf.printf "\t\t\t\t\t";
-	match affect with
-	 VAR ( id, expVA1) 				->	 Printf.printf "%s  <- " id ;  flush (); print_expVA expVA1; flush(); space();
-	|  MEMASSIGN ( id, expVA1, expVA2)	->	 Printf.printf "%s  <- (" id ; flush (); print_expVA expVA1; flush(); space();
-																 Printf.printf " ) <- ";flush(); space(); 
-											 flush (); print_expVA expVA2; flush(); space();
-	| TAB ( id, expVA1, expVA2) 	->   Printf.printf "%s  [" id ; flush (); print_expVA expVA1; flush(); space();
-										 Printf.printf " ] <- "; print_expVA expVA2; 	flush(); space();
-	| IFVF ( expVA1, i1, i2) 		->
-			Printf.printf  "if (";	print_expVA expVA1;flush(); space(); Printf.printf  ")"; new_line (); 
-			Printf.printf "{";		indent (); afficherUneAffect i1;flush(); space(); new_line (); unindent ();
-			Printf.printf "}";new_line ();
-			Printf.printf  "else "; 
-			Printf.printf "{";		indent (); afficherUneAffect i2; flush(); space();	unindent ();
-			Printf.printf "}"; new_line ()
-	| IFV ( expVA1, i1) 		->
-			Printf.printf  "if (";	print_expVA expVA1; flush(); space();Printf.printf  ")"; new_line (); 
-			Printf.printf "{";		indent (); afficherUneAffect i1; unindent ();
-			Printf.printf "}"; new_line ()
-	| BEGIN (liste)			->  afficherLesAffectations liste; new_line ()	;	flush(); space();			
-	| FORV ( num, id, expVA1, expVA2, expVA3, _, i) -> 	
-			Printf.printf "num loop %d\n" num; Printf.printf "/* %s" id ; flush();Printf.printf " */\nfor ("; flush(); space();
-			new_line ();  print_expVA expVA1;flush(); space(); Printf.printf "; ";	print_expVA expVA2; flush(); space();Printf.printf "; " ;
-			print_expVA expVA3;  new_line () ; Printf.printf ")\n" ;
-			Printf.printf "{";		indent (); afficherUneAffect i; flush(); space(); unindent ();
-			Printf.printf "}"; new_line ()
-	| APPEL (num, avant, nom, apres,CORPS c,_) ->
-			Printf.printf  "\n\t\t\t\tFUNCTION CALL INPUT APPEL numbero %d %s \n" num nom; 
-			afficherUneAffect avant;new_line () ;
-			Printf.printf  "\n\t\t\t\tFUNCTION CORPS(VRAI CORPS) APPEL numbero %d\n" num; 
-			afficherUneAffect c;new_line () ; 
-			Printf.printf  "\t\t\t\t NAME %s\n" nom; 
-			Printf.printf  "\t\t\t\t FUNCTION CALL OUTPUT\n"; 
-			afficherUneAffect apres;new_line () ;flush(); space();
-Printf.printf  "\t\t\t\t FIN  OUTPUT %d %s\n" num nom;  
-	| APPEL (num, avant, nom, apres,ABSSTORE a,_) ->
-			Printf.printf  "\n\t\t\t\tFUNCTION CALL INPUT APPEL numbero %d %s \n" num nom; 
-			afficherUneAffect avant;new_line () ;
-			Printf.printf  "\n\t\t\t\tFUNCTION CORPS(ABSTRACT STORE) APPEL numbero %d\n" num; 
-			(* afficherListeAS a *) print_string "PAS AFFICHE" ;new_line () ; 
-			Printf.printf  "\t\t\t\t NAME %s\n" nom; 
-			Printf.printf  "\t\t\t\t FUNCTION CALL OUTPUT\n"; 
-			afficherUneAffect apres;new_line () ;flush(); space();
-Printf.printf  "\t\t\t\t FIN  OUTPUT %d %s\n" num nom;  
-Printf.printf  "\n\t\t\t\tFUNCTION CALL INPUT APPEL numbero %d %s FIN \n" num nom
+
 
 
 let new_assign_simple id exp  = ASSIGN_SIMPLE(id, exp)
@@ -2318,6 +2272,54 @@ if l = [] then [] else List.append [asToListeAffect (List.hd l)] (listeAsToListe
 						
 let afficherListeAS asL =space(); new_line() ;flush(); List.iter (fun a-> afficherAS a; space(); new_line() ;flush(); )asL
 
+let rec afficherLesAffectations listeAffect = List.iter (fun affect -> afficherUneAffect affect; flush();flush(); space(); new_line ()) listeAffect
+and afficherUneAffect affect =
+	Printf.printf "\t\t\t\t\t";
+	match affect with
+	 VAR ( id, expVA1) 				->	 Printf.printf "%s  <- " id ;  flush (); print_expVA expVA1; flush(); space();
+	|  MEMASSIGN ( id, expVA1, expVA2)	->	 Printf.printf "%s  <- (" id ; flush (); print_expVA expVA1; flush(); space();
+																 Printf.printf " ) <- ";flush(); space(); 
+											 flush (); print_expVA expVA2; flush(); space();
+	| TAB ( id, expVA1, expVA2) 	->   Printf.printf "%s  [" id ; flush (); print_expVA expVA1; flush(); space();
+										 Printf.printf " ] <- "; print_expVA expVA2; 	flush(); space();
+	| IFVF ( expVA1, i1, i2) 		->
+			Printf.printf  "if (";	print_expVA expVA1;flush(); space(); Printf.printf  ")"; new_line (); 
+			Printf.printf "{";		indent (); afficherUneAffect i1;flush(); space(); new_line (); unindent ();
+			Printf.printf "}";new_line ();
+			Printf.printf  "else "; 
+			Printf.printf "{";		indent (); afficherUneAffect i2; flush(); space();	unindent ();
+			Printf.printf "}"; new_line ()
+	| IFV ( expVA1, i1) 		->
+			Printf.printf  "if (";	print_expVA expVA1; flush(); space();Printf.printf  ")"; new_line (); 
+			Printf.printf "{";		indent (); afficherUneAffect i1; unindent ();
+			Printf.printf "}"; new_line ()
+	| BEGIN (liste)			->  afficherLesAffectations liste; new_line ()	;	flush(); space();			
+	| FORV ( num, id, expVA1, expVA2, expVA3, _, i) -> 	
+			Printf.printf "num loop %d\n" num; Printf.printf "/* %s" id ; flush();Printf.printf " */\nfor ("; flush(); space();
+			new_line ();  print_expVA expVA1;flush(); space(); Printf.printf "; ";	print_expVA expVA2; flush(); space();Printf.printf "; " ;
+			print_expVA expVA3;  new_line () ; Printf.printf ")\n" ;
+			Printf.printf "{";		indent (); afficherUneAffect i; flush(); space(); unindent ();
+			Printf.printf "}"; new_line ()
+	| APPEL (num, avant, nom, apres,CORPS c,_) ->
+			Printf.printf  "\n\t\t\t\tFUNCTION CALL INPUT APPEL numbero %d %s \n" num nom; 
+			afficherUneAffect avant;new_line () ;
+			Printf.printf  "\n\t\t\t\tFUNCTION CORPS(VRAI CORPS) APPEL numbero %d\n" num; 
+			afficherUneAffect c;new_line () ; 
+			Printf.printf  "\t\t\t\t NAME %s\n" nom; 
+			Printf.printf  "\t\t\t\t FUNCTION CALL OUTPUT\n"; 
+			afficherUneAffect apres;new_line () ;flush(); space();
+Printf.printf  "\t\t\t\t FIN  OUTPUT %d %s\n" num nom;  
+	| APPEL (num, avant, nom, apres,ABSSTORE a,_) ->
+			Printf.printf  "\n\t\t\t\tFUNCTION CALL INPUT APPEL numbero %d %s \n" num nom; 
+			afficherUneAffect avant;new_line () ;
+			Printf.printf  "\n\t\t\t\tFUNCTION CORPS(ABSTRACT STORE) APPEL numbero %d\n" num; 
+			 afficherListeAS a ; print_string "PAS AFFICHE" ;new_line () ; 
+			Printf.printf  "\t\t\t\t NAME %s\n" nom; 
+			Printf.printf  "\t\t\t\t FUNCTION CALL OUTPUT\n"; 
+			afficherUneAffect apres;new_line () ;flush(); space();
+Printf.printf  "\t\t\t\t FIN  OUTPUT %d %s\n" num nom;  
+Printf.printf  "\n\t\t\t\tFUNCTION CALL INPUT APPEL numbero %d %s FIN \n" num nom
+
 let afficherListeDesFctAS liste=
 if liste <> [] then
 begin
@@ -2332,67 +2334,6 @@ let  expVaToExp exp = match exp with EXP(e) ->e| _->NOTHING
 
 
 
-
-let rec extractVarCONDAffectaux  listeAffect listeCondVar =
-if listeAffect = [] then ([], [])
-else 
-begin
-	let (affect, suite) = (List.hd listeAffect, List.tl listeAffect) in
-
-	let (newSuite, listeaux) = extractVarCONDAffectaux suite listeCondVar in
-
-	match affect with
-	 VAR ( id, exp) 				->	 
-		if  List.mem id listeCondVar then 
-		begin 
-			(List.append [affect] newSuite, union  listeaux (listeDesVarsDeExpSeules  (expVaToExp (exp)))) 
-		end 
-		else (newSuite, listeaux) 
-	| TAB ( id, _, _) 	->  (newSuite, listeaux)
-	|  MEMASSIGN ( id, _, _)	->  (newSuite, listeaux) (*voir*)
-	| IFVF ( expVA1, i1, i2) 		->
-			let (newi1, listeaux1) = extractVarCONDAffectaux [i1] listeCondVar in
-			let (newi2, listeaux2)  = extractVarCONDAffectaux [i2] listeCondVar in
-			if newi1 = [] && newi2 = [] then (newSuite, listeaux)
-			else 
-			begin
-				let next1 = if newi1 = [] then BEGIN([]) else List.hd newi1 in
-				let next2 = if newi2 = [] then BEGIN([]) else List.hd newi2 in
-				(List.append [IFVF ( expVA1, next1, next2) ] newSuite, union (union listeaux1 listeaux2) listeaux)
-			end
-	| IFV ( expVA1, i1) 		->
-			let (newi1, listeaux1) = extractVarCONDAffectaux [i1] listeCondVar in
-			
-			if newi1 = []  then (newSuite, listeaux)
-			else (List.append [IFV ( expVA1, List.hd newi1)] newSuite, union listeaux1 listeaux)
-	| BEGIN (liste)			->  
-			let (newi1, listeaux1) = extractVarCONDAffectaux liste listeCondVar in		
-			if newi1 = []  then (newSuite, listeaux)
-			else (List.append [BEGIN ( newi1)] newSuite, union listeaux1 listeaux)			
-	| FORV ( num, id, expVA1, expVA2, expVA3, n, i) -> 	
-			let (newi1, listeaux1) = extractVarCONDAffectaux [i] listeCondVar in		
-			if newi1 = []  then (newSuite, listeaux)
-			else (List.append [  FORV ( num, id, expVA1, expVA2, expVA3, n, (List.hd newi1))] newSuite, union listeaux1 listeaux)				
-
-	| APPEL (num, e, nom, s, CORPS c,v) ->
-			(* var may be a global *)
-			let (newi1, listeaux1) = extractVarCONDAffectaux [c] listeCondVar in
-			if newi1 = []  then (newSuite, listeaux)
-			else (List.append [ APPEL( num, e,nom ,s, CORPS (List.hd newi1),v)] newSuite, union  listeaux1 listeaux)				
-
-	| APPEL (num, e, nom, s, ABSSTORE a,v) ->
-	                let c = BEGIN (listeAsToListeAffect a) in
-			(* var may be a global *)
-			let (newi1, listeaux1) = extractVarCONDAffectaux [c] listeCondVar in
-			if newi1 = []  then (newSuite, listeaux)
-			else (List.append [ APPEL( num, e,nom ,s, CORPS (List.hd newi1),v)] newSuite, union  listeaux1 listeaux)				
-end
-
-(* fixed point operator to find any usefull variable for loop condition*)
-let rec extractVarCONDAffect listeAffect listeCondVar =
-let (extractsInst, listevar) = extractVarCONDAffectaux  listeAffect listeCondVar in
-if listevar = [] || (inclus listevar listeCondVar) then extractsInst
-else extractVarCONDAffect listeAffect (union listeCondVar listevar)
 
 let rec existAffectVDsListeAS v (*index*) l =
 (*Printf.printf "recherche %s dans liste :\n" v;afficherListeAS l;new_line ();Printf.printf "fin s liste :\n" ;*)
@@ -3635,7 +3576,7 @@ afficherListeAS res;
 Printf.printf "fin \n";*)
 			res
 	| APPEL (n,e,nomFonc,s,corpsAbs,varB)->
-		if ! withoutTakingCallIntoAccount = true then a
+		if !withoutTakingCallIntoAccount = true then a
 		else
 		begin
 
@@ -3685,7 +3626,9 @@ Printf.printf "fin \n";*)
 								|_-> (*Printf.printf"memassign";*)())
 								)sorties	
 						end;
-						let nginterne = filterGlobales rc  !alreadyAffectedGlobales in
+
+
+					(*	let nginterne = filterGlobales rc  !alreadyAffectedGlobales in
 						let returnf = Printf.sprintf "res%s"  nomFonc in
 						if existeAffectationVarListe returnf rc then
 						begin
@@ -3698,6 +3641,23 @@ Printf.printf "fin \n";*)
 						(*Printf.printf "evalStore fonction %s  \n" nomFonc ;*)
 						let nc = rond others     !listeASCourant  in
 						(*Printf.printf "contxte \n" ;afficherListeAS nc;Printf.printf "fin liste\n" ;*)
+						nc*)
+						let nginterne = filterGlobales rc  !alreadyAffectedGlobales in
+						(*let (aPart, _) = splitTotalAndOthers rc in*)
+
+						let returnf = Printf.sprintf "res%s"  nomFonc in
+						if existeAffectationVarListe returnf rc then
+						begin
+							let affectres = ro returnf rc in
+							listeASCourant :=  List.append [affectres] (List.append   nginterne !listeASCourant )
+						end
+						else listeASCourant :=   (List.append   nginterne !listeASCourant );
+			
+					 
+
+					(*Printf.printf "\nsorties %s depend de var de boucle %s\n" nomFonc varB; afficherListeAS !listeASCourant; Printf.printf "fin sorties\n";*)
+						let nc = rond others   !listeASCourant  in
+print_string ("Appel fonction definie: FIN "^nomFonc ^"\n");
 						nc
 					end
 					else 
@@ -3722,12 +3682,15 @@ Printf.printf "fin \n";*)
 
 						end;
 
-					(*	Printf.printf "le sorties a apere reecrire \%s depend de var de boucle %s\n" nomFonc varB;*)
+					(*	Printf.printf "le sorties a apere reecrire %s depend de var de boucle %s\n" nomFonc varB;*)
 					(*	afficherUneAffect (BEGIN(corps)); new_line(); Printf.printf "affect a apere reecrire fin\n";*)
 						let memoutput = !corpsNouvI in
 						let listeInput =   (evalInputFunction a entrees [] ) in
+
+						
+
 			
-						let rc =evalStore (BEGIN(corps)) (*rond a*) listeInput [] in
+						let rc =if (isAbs)  then  rond listeInput absStore else evalStore (BEGIN(corps)) (*rond a*) listeInput [] in
 			
 						listeASCourant := [];
 						if memoutput <> [] then
@@ -3755,11 +3718,12 @@ Printf.printf "fin \n";*)
 							listeASCourant :=  List.append [affectres] (List.append (List.append aPart nginterne) !listeASCourant )
 						end
 						else listeASCourant :=   (List.append (List.append aPart nginterne) !listeASCourant );
-			
-					 
+(*afficherListeAS rc;			
+Printf.printf "evalStore fonction %s  \n" nomFonc ;afficherListeAS !listeASCourant; Printf.printf "fin res\n" ;*)			 
 
 					(*Printf.printf "\nsorties %s depend de var de boucle %s\n" nomFonc varB; afficherListeAS !listeASCourant; Printf.printf "fin sorties\n";*)
 						let nc = rond a   !listeASCourant  in
+print_string ("Appel fonction definie: FIN "^nomFonc ^"\n");
 						nc
 			(*Printf.printf "evalStore fonction %s  \n global filter" nomFonc ; afficherListeAS nginterne; Printf.printf "fin res\n" ;*)
 			(*Printf.printf "evalStore fonction %s  \n" nomFonc ;afficherListeAS !listeASCourant; Printf.printf "fin res\n" ;*)
@@ -4090,5 +4054,73 @@ Printf.printf "remplacerToutesAffect res\n" ;*)
 	List.append ( new_tete)  (List.append [derniereAffectCour] ressuite)
  	end 
 end
+
+
+
+let rec extractVarCONDAffectaux  listeAffect listeCondVar =
+if listeAffect = [] then ([], [])
+else 
+begin
+	let (affect, suite) = (List.hd listeAffect, List.tl listeAffect) in
+
+	let (newSuite, listeaux) = extractVarCONDAffectaux suite listeCondVar in
+
+	match affect with
+	 VAR ( id, exp) 				->	 
+		if  List.mem id listeCondVar then 
+		begin 
+			(List.append [affect] newSuite, union  listeaux (listeDesVarsDeExpSeules  (expVaToExp (exp)))) 
+		end 
+		else (newSuite, listeaux) 
+	| TAB ( id, _, _) 	->  (newSuite, listeaux)
+	|  MEMASSIGN ( id, _, _)	->  (newSuite, listeaux) (*voir*)
+	| IFVF ( expVA1, i1, i2) 		->
+			let (newi1, listeaux1) = extractVarCONDAffectaux [i1] listeCondVar in
+			let (newi2, listeaux2)  = extractVarCONDAffectaux [i2] listeCondVar in
+			if newi1 = [] && newi2 = [] then (newSuite, listeaux)
+			else 
+			begin
+				let next1 = if newi1 = [] then BEGIN([]) else List.hd newi1 in
+				let next2 = if newi2 = [] then BEGIN([]) else List.hd newi2 in
+				(List.append [IFVF ( expVA1, next1, next2) ] newSuite, union (union listeaux1 listeaux2) listeaux)
+			end
+	| IFV ( expVA1, i1) 		->
+			let (newi1, listeaux1) = extractVarCONDAffectaux [i1] listeCondVar in
+			
+			if newi1 = []  then (newSuite, listeaux)
+			else (List.append [IFV ( expVA1, List.hd newi1)] newSuite, union listeaux1 listeaux)
+	| BEGIN (liste)			->  
+			let (newi1, listeaux1) = extractVarCONDAffectaux liste listeCondVar in		
+			if newi1 = []  then (newSuite, listeaux)
+			else (List.append [BEGIN ( newi1)] newSuite, union listeaux1 listeaux)			
+	| FORV ( num, id, expVA1, expVA2, expVA3, n, i) -> 	
+			let (newi1, listeaux1) = extractVarCONDAffectaux [i] listeCondVar in		
+			if newi1 = []  then (newSuite, listeaux)
+			else (List.append [  FORV ( num, id, expVA1, expVA2, expVA3, n, (List.hd newi1))] newSuite, union listeaux1 listeaux)				
+
+	| APPEL (num, e, nom, s, CORPS c,v) ->
+			(* var may be a global *)
+			let (newi1, listeaux1) = extractVarCONDAffectaux [c] listeCondVar in
+			if newi1 = []  then (newSuite, listeaux)
+			else (List.append [ APPEL( num, e,nom ,s, CORPS (List.hd newi1),v)] newSuite, union  listeaux1 listeaux)				
+
+	| APPEL (num, e, nom, s, ABSSTORE a,v) ->
+	                let c = BEGIN (listeAsToListeAffect a) in
+			(* var may be a global *)
+			let (newi1, listeaux1) = extractVarCONDAffectaux [c] listeCondVar in
+			if newi1 = []  then (newSuite, listeaux)
+			
+			else
+			begin
+				 let na = evalStore (List.hd newi1) [] [] in
+				 (List.append [ APPEL( num, e,nom ,s, ABSSTORE na,v)] newSuite, union  listeaux1 listeaux)	
+			end			
+end
+
+(* fixed point operator to find any usefull variable for loop condition*)
+let rec extractVarCONDAffect listeAffect listeCondVar =
+let (extractsInst, listevar) = extractVarCONDAffectaux  listeAffect listeCondVar in
+if listevar = [] || (inclus listevar listeCondVar) then extractsInst
+else extractVarCONDAffect listeAffect (union listeCondVar listevar)
 
 

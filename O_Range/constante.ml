@@ -142,19 +142,25 @@ let string_to_int = fun i ->
 					0-(decimal nb (String.length nb) 0)
 					
 			else
-				let first=(String.get l 0) and second=(String.get l 1) in
-				if (first == '0')
+				if ((String.length l)>1)
 				then
-					if (second == 'x' || second == 'X')
-					then 
-						(* positive hexadecimal number *)
-						hexadecimal l (String.length l) 2
+
+					let first=(String.get l 0) and second=(String.get l 1) in
+					if (first == '0')
+					then
+						if (second == 'x' || second == 'X')
+						then 
+							(* positive hexadecimal number *)
+							hexadecimal l (String.length l) 2
+						else 
+							(* positive hexadecimal number *)
+							octal l (String.length l) 1
 					else 
-						(* positive hexadecimal number *)
-						octal l (String.length l) 1
-				else 
-					(* positive decimal number *)
+						(* positive decimal number *)
+						(decimal l (String.length l) 0)
+				else
 					(decimal l (String.length l) 0)
+				
 		else
 			(* int number *)
 			if (neg i) 
