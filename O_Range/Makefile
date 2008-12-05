@@ -21,7 +21,7 @@ OCAML_INC += ../../frontc/frontc
 OCAML_LIB += unix ../../frontc/frontc/frontc
 
 
-$(eval $(call ocaml_prog,orange,$(SOURCES)))
+$(eval $(call ocaml_prog,orange, $(SOURCES), no_install))
 $(eval $(call ocaml_lib,orange,$(SOURCES)))
 
 
