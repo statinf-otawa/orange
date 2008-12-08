@@ -70,6 +70,7 @@ let existsPartialResult _ = false
 module TO = Orange.Maker(Orange.PartialAdapter(Cextraireboucle.TreeList))
 module XO = Orange.Maker(Orange.PartialAdapter(Orange.MonList))
 
+
 (* open TO   *)
 
 
@@ -187,9 +188,21 @@ let _ =
 
 	(*let filesmem = !files in*)
 	Arg.parse opts add_file_and_name banner;
+	if (List.length !list_file_and_name < 2) then
+		begin
+			Arg.usage opts banner;
+			prerr_string "ERROR: select at least one sourcefile and one task entry function\n";
+			exit 1
+		end;
 	(*printlist !list_file_and_name ;*)
 	
 	Cextraireboucle.sort_list_file_and_name !list_file_and_name;
+	prerr_string "names&files\n";
+	List.iter (fun r -> prerr_string (r ^ "\n")) !list_file_and_name;
+	prerr_string "names\n";
+	List.iter (fun r -> prerr_string (!r ^ "\n")) !Cextraireboucle.names;
+	prerr_string "files\n";
+	List.iter (fun r -> prerr_string (r ^ "\n")) !Cextraireboucle.files;
 	
 	if (not !partial) then (
 	  let hd=(! (List.hd (!Cextraireboucle.names))) and tl =(List.tl (!Cextraireboucle.names)) in
@@ -233,7 +246,13 @@ let _ =
 				end				
 				else
 				begin
-				  print_string (XO.printFile stdout secondParse)
+					let result = XO.printFile stdout secondParse in
+					if !out_file = ""
+					then print_string result
+					else
+						let out = open_out !out_file in
+						output_string out result;
+						close_out out
 				end;
 				
 
