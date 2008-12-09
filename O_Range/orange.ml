@@ -1402,7 +1402,7 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 				  info.infoVariation  nEC.varDeBoucleNid []  in
 	  let totalNbEndborneP = rechercheNbTotalIti nomE numAp !docEvalue.maListeNidEval in
 
-print_expVA (EXP(info.conditionI)); flush(); space(); new_line ();
+(*print_expVA (EXP(info.conditionI)); flush(); space(); new_line ();*)
 
 	  let totalNbEndborneP = rechercheNbTotalIti nomE numAp !docEvalue.maListeNidEval in
 

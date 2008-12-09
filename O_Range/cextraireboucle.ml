@@ -1168,15 +1168,15 @@ let traiterNEQ init borne var c =
 	begin
 		match !estPosInc with
 			INCVIDE  -> (CONSTANTE , NOTHING, NOTHING, NE, false, var, c)(* si init = borne toujours sinon 0*)
-			|POS -> (CROISSANT , init, BINARY(SUB, borne,!vEPSILON), LT, false, var, BINARY(LT, VARIABLE(var), borne))(* si init = borne 1 sinon 0*)
-			|NEG-> (DECROISSANT , init, BINARY (ADD, borne, !vEPSILON), GT, false, var,BINARY(GT, VARIABLE(var), borne))(* si init = borne 1 sinon 0*)
+			|POS -> (CROISSANT , init,  borne, LT, false, var, BINARY(LT, VARIABLE(var), borne))(* si init = borne 1 sinon 0*)
+			|NEG-> (DECROISSANT , borne, init, GT, false, var,BINARY(GT, VARIABLE(var), borne))(* si init = borne 1 sinon 0*)
 			|_ ->  (CROISSANT , init, borne, NE, true, var, c)(*voir signe INC*)
 		end (*incrément type *// constant*)
 	else
 	begin
 		match !estPosInc with
 			INCVIDE  -> (CONSTANTE , NOTHING, NOTHING, NE, false, var, c)(* case constant = 1 then si init = borne 1 sinon 0*)
-			|POS -> (CROISSANT , init, BINARY(SUB, borne,!vEPSILON), LT, false, var, BINARY(LT, VARIABLE(var), borne))
+			|POS -> (CROISSANT , init,   borne , LT, false, var, BINARY(LT, VARIABLE(var), borne))
 			(* case constant > 1  si init = borne toujours sinon 0*)
 			|NEG ->  isExactForm := false;(NONMONOTONE , NOTHING, NOTHING, XOR, true, var, c)
 			|_ ->   (CROISSANT , init, borne, NE, true, var, c)
@@ -1725,7 +1725,7 @@ and analyseCompFor  var init comp l avant dans cte t lv lvb inst=
 			begin
 				if croissant = CROISSANT then
 				begin
-					borne:=borneSup; initialisation:=borneInf; (operateur,	CROISSANT, false, var)  
+					borne:=borneSup; initialisation:=borneInf;  (operateur,	CROISSANT, false, var)  
 				end
 				else begin  borne:=borneInf; initialisation:=borneSup; (operateur,croissant, false, var)   end
 			end		
@@ -2094,14 +2094,19 @@ let isDivInc exp =
 
 		if v != var2 then
 		begin
-			let initialvar =expVaToExp(rechercheAffectVDsListeAS v avant) in
-			expressionDinitFor := if initialvar = NOTHING then VARIABLE(v) else initialvar;
+				
+			expressionDinitFor := 
+				(*if !expressionDinitFor = NOTHING then  *)
+				( let initialvar =expVaToExp(rechercheAffectVDsListeAS v avant) in if  initialvar  = NOTHING then   VARIABLE(v)   else initialvar )
+				(*else !expressionDinitFor*);
 			opEstPlus:= true;	
 			let ((*isindirect,inc,var, before*)isindirect,_,var, before) =  getLoopVarInc v inst in
 			if isindirect then 
 			begin 
-				expressionDinitFor := expVaToExp(rechercheAffectVDsListeAS var avant);
-				expressionDinitFor := if !expressionDinitFor = NOTHING then VARIABLE(var) else !expressionDinitFor;
+				expressionDinitFor := 
+					(*if !expressionDinitFor = NOTHING then  *)
+					( let initialvar =expVaToExp(rechercheAffectVDsListeAS var avant) in if  initialvar  = NOTHING then   VARIABLE(var)   else initialvar );
+					(*else !expressionDinitFor;*)
 				(true, var, "dowhile", before = false) 
 			end
 			else (false, v, t, false)
@@ -2115,28 +2120,28 @@ let isDivInc exp =
 		end in
 
 	let (sup, inf, inc) = 
-	if indirect && !opEstPlus = false && isDivInc !expressionIncFor then (!expressionDinitFor, !borne,  BINARY (DIV, CONSTANT  (CONST_INT "1"), !expressionIncFor)) 
-	else (!borne,!expressionDinitFor,!expressionIncFor) in
+	if indirect && !opEstPlus = false && isDivInc !expressionIncFor then (!initialisation, !borne,  BINARY (DIV, CONSTANT  (CONST_INT "1"), !expressionIncFor)) 
+	else if !opEstPlus && typevar = DECROISSANT then  (!borne,!initialisation, !expressionIncFor)  else  (!borne,!initialisation,!expressionIncFor) in
 	borne := sup;
-	initialisation := inf;	
-	expressionDinitFor := inf;
+	 
+	initialisation := inf;
 	expressionIncFor := inc;
 
 (*Printf.printf "\n\ntraiterConditionBoucleFor  2\n" ;*)
-	let (increment, typeopPlusouMUL) = (!expressionIncFor, !opEstPlus)	in
+	let typeopPlusouMUL =  !opEstPlus	in
 	(*if !expressionDinitFor = NOTHING then expressionDinitFor := VARIABLE(nv);*)
-	let infoVar =   new_variation !expressionDinitFor !borne !expressionIncFor typevar  operateur indirectafter in
+	let infoVar =   new_variation inf sup inc typevar  operateur indirectafter in
 	let nc = if (typevar=CONSTANTE||cte) then cond else vcond in
-	let nb = expVaToExp (getNombreIt !borne (typevar=CONSTANTE||cte) t nc multiple [] typeopPlusouMUL  infoVar v []) in
+	let nb = expVaToExp (getNombreIt sup (typevar=CONSTANTE||cte) t nc multiple [] typeopPlusouMUL  infoVar v []) in
 	listeBoucleOuAppelCourante := reecrireCAll var2 !listeBoucleOuAppelCourante;
 	 
 
 	let info = (new_boucleInfo t nom listeV nbIt eng (typevar=CONSTANTE||cte) nc multiple !listeBoucleOuAppelCourante 
-				( new_variation !expressionDinitFor nb !expressionIncFor typevar operateur indirectafter) typeopPlusouMUL) in
+				( new_variation !expressionDinitFor nb inc typevar operateur indirectafter) typeopPlusouMUL) in
 	
-	let boucleFor = new_boucleFor  info  listeV  var2  !expressionDinitFor  nb !expressionIncFor  in
+	let boucleFor = new_boucleFor  info  listeV  var2  inf  nb inc  in
 	let nouvBoucle = new_bouclef boucleFor in
-    let borne = (getBorneBoucleFor t boucleFor.n boucleFor.valInit.valeur boucleFor.c typeopPlusouMUL infoVar.afterindirect) in
+    let borne = (getBorneBoucleFor t boucleFor.n boucleFor.valInit.valeur boucleFor.c typeopPlusouMUL indirectafter) in
 	if !isExactForm then setAssosExactLoopInit  nom borne;
 	doc := 	new_document 
 				(new_ListeDesBoucles !doc.laListeDesBoucles  [nouvBoucle]) 
@@ -2155,12 +2160,12 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 	let ( indirect,nv,nt, indirectafter)=
 		if v != var2 then
 		begin
-			expressionDinitFor := expVaToExp(rechercheAffectVDsListeAS v avant);
+			expressionDinitFor := (*if !expressionDinitFor = NOTHING then*)    VARIABLE(v)   (*else !expressionDinitFor*);
 			opEstPlus:= true;	
 			let ((*isindirect,inc,var, before*)isindirect,_,var, before) =  getLoopVarInc v inst in
 			if isindirect then 
 			begin 
-				expressionDinitFor := expVaToExp(rechercheAffectVDsListeAS var avant);
+				expressionDinitFor :=  (*if !expressionDinitFor = NOTHING then *)   VARIABLE(var)   (*else !expressionDinitFor*);
 				(true, var, "dowhile", before = false) 
 			end
 			else (false, v, t, false)
@@ -2175,23 +2180,23 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 		end in
 
 	let (sup, inf, inc) = 
-	if indirect && !opEstPlus = false && isDivInc !expressionIncFor then ((VARIABLE(nv)), !borne,  BINARY (DIV, CONSTANT  (CONST_INT "1"), !expressionIncFor)) 
-	else (!borne,(VARIABLE(nv)),!expressionIncFor) in
+	if indirect && !opEstPlus = false && isDivInc !expressionIncFor then (!initialisation, !borne,  BINARY (DIV, CONSTANT  (CONST_INT "1"), !expressionIncFor)) 
+	else if !opEstPlus && typevar = DECROISSANT then  (!borne,!initialisation, !expressionIncFor) else (!borne,!initialisation,!expressionIncFor) in
 	borne := sup;
 	initialisation := inf;	
 	expressionIncFor := inc;
 
 (*Printf.printf "\n\ntraiterConditionBoucleFor  2\n" ;*)
- 	let infoVar =   new_variation !expressionDinitFor !borne !expressionIncFor typevar  operateur indirectafter in
+ 	let infoVar =   new_variation inf sup inc typevar  operateur indirectafter in
 	 let nc = if (typevar=CONSTANTE||cte) then cond else vcond in
-	let nb = expVaToExp (getNombreIt !borne (typevar=CONSTANTE||cte) t nc multiple [] !opEstPlus   infoVar v []) in
+	let nb = expVaToExp (getNombreIt sup (typevar=CONSTANTE||cte) t nc multiple [] !opEstPlus   infoVar v []) in
 	listeBoucleOuAppelCourante := reecrireCAll var2 !listeBoucleOuAppelCourante;
    
 	let b = new_boucleWhileOuDoWhile 
 				(new_boucleInfo t nom liste nbIt eng (typevar=CONSTANTE||cte)  nc  multiple !listeBoucleOuAppelCourante
-				(new_variation (VARIABLE(v)) nb !expressionIncFor typevar operateur indirectafter) !opEstPlus ) [] []  in
+				(new_variation (VARIABLE(nv)) nb inc typevar operateur indirectafter) !opEstPlus ) [] []  in
 	let ba = (new_boucleA b )  in	
-	let borne = (getBorneBoucleFor t nb !initialisation !expressionIncFor !opEstPlus indirectafter) in
+	let borne = (getBorneBoucleFor t nb inf inc !opEstPlus indirectafter) in
 	if !isExactForm then setAssosExactLoopInit  nom borne;
 	doc := new_document 	(new_ListeDesBoucles !doc.laListeDesBoucles  [ba])  !doc.laListeDesFonctions
 							(new_ListeDesBoucles !doc.laListeDesAssosBoucleBorne
