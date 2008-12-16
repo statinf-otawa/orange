@@ -1266,7 +1266,7 @@ let rec  calculer expressionVA ia l sign =
 							end;
 							if estDefExp max && estNul max then 
 							begin
-								Printf.printf "remplacer max\n"	;
+								(*Printf.printf "remplacer max\n"	;*)
 								calculer  (EXP
 											(remplacerValPar0 var (List.hd (List.tl suite)) ))
 								ia l sign
@@ -3580,7 +3580,7 @@ Printf.printf "fin \n";*)
 		else
 		begin
 
-					print_string ("Appel fonction definie: "^nomFonc ^"\n");
+					(*print_string ("Appel fonction definie: "^nomFonc ^"\n");*)
 
 				(*	Printf.printf "evalStore fonction %s  \n" nomFonc ;	*)
 					let sorties = (match s with BEGIN(sss)-> sss |_->[]) in
@@ -3657,7 +3657,7 @@ Printf.printf "fin \n";*)
 
 					(*Printf.printf "\nsorties %s depend de var de boucle %s\n" nomFonc varB; afficherListeAS !listeASCourant; Printf.printf "fin sorties\n";*)
 						let nc = rond others   !listeASCourant  in
-print_string ("Appel fonction definie: FIN "^nomFonc ^"\n");
+(*print_string ("Appel fonction definie: FIN "^nomFonc ^"\n");*)
 						nc
 					end
 					else 
@@ -3723,7 +3723,7 @@ Printf.printf "evalStore fonction %s  \n" nomFonc ;afficherListeAS !listeASCoura
 
 					(*Printf.printf "\nsorties %s depend de var de boucle %s\n" nomFonc varB; afficherListeAS !listeASCourant; Printf.printf "fin sorties\n";*)
 						let nc = rond a   !listeASCourant  in
-print_string ("Appel fonction definie: FIN "^nomFonc ^"\n");
+(*print_string ("Appel fonction definie: FIN "^nomFonc ^"\n");*)
 						nc
 			(*Printf.printf "evalStore fonction %s  \n global filter" nomFonc ; afficherListeAS nginterne; Printf.printf "fin res\n" ;*)
 			(*Printf.printf "evalStore fonction %s  \n" nomFonc ;afficherListeAS !listeASCourant; Printf.printf "fin res\n" ;*)

@@ -17,8 +17,8 @@ SOURCES = \
 	
 
 
-OCAML_INC += ../../frontc/frontc
-OCAML_LIB += unix ../../frontc/frontc/frontc
+OCAML_INC += ../../Frontc-3.2-3/frontc/frontc
+OCAML_LIB += unix ../../Frontc-3.2-3/frontc/frontc/frontc
 
 
 $(eval $(call ocaml_prog,orange, $(SOURCES), no_install))

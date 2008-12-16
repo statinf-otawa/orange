@@ -1168,15 +1168,15 @@ let traiterNEQ init borne var c =
 	begin
 		match !estPosInc with
 			INCVIDE  -> (CONSTANTE , NOTHING, NOTHING, NE, false, var, c)(* si init = borne toujours sinon 0*)
-			|POS -> (CROISSANT , init,  borne, LT, false, var, BINARY(LT, VARIABLE(var), borne))(* si init = borne 1 sinon 0*)
-			|NEG-> (DECROISSANT , borne, init, GT, false, var,BINARY(GT, VARIABLE(var), borne))(* si init = borne 1 sinon 0*)
+			|POS -> (CROISSANT , init,  BINARY (SUB, borne, !vEPSILON), LT, false, var, BINARY(LT, VARIABLE(var), borne))(* si init = borne 1 sinon 0*)
+			|NEG-> (DECROISSANT , BINARY (ADD, borne, !vEPSILON), init, GT, false, var,BINARY(GT, VARIABLE(var), borne))(* si init = borne 1 sinon 0 BINARY (ADD, borne, !vEPSILON)*)
 			|_ ->  (CROISSANT , init, borne, NE, true, var, c)(*voir signe INC*)
 		end (*incrément type *// constant*)
 	else
 	begin
 		match !estPosInc with
 			INCVIDE  -> (CONSTANTE , NOTHING, NOTHING, NE, false, var, c)(* case constant = 1 then si init = borne 1 sinon 0*)
-			|POS -> (CROISSANT , init,   borne , LT, false, var, BINARY(LT, VARIABLE(var), borne))
+			|POS -> (CROISSANT , init,   BINARY (SUB, borne, !vEPSILON) , LT, false, var, BINARY(LT, VARIABLE(var), borne))
 			(* case constant > 1  si init = borne toujours sinon 0*)
 			|NEG ->  isExactForm := false;(NONMONOTONE , NOTHING, NOTHING, XOR, true, var, c)
 			|_ ->   (CROISSANT , init, borne, NE, true, var, c)
@@ -2039,9 +2039,9 @@ and  consRefexpression exp =
 	| BINARY (_, exp1, exp2) ->  consRefexpression exp1 ; consRefexpression exp2;	()
 	| QUESTION (exp1, exp2, exp3) -> consRefexpression exp1 ; consRefexpression exp2; consRefexpression exp3;()
 	| CAST (_, e) 		 ->  consRefexpression e ; ()
-	| CALL (e , args) 				->		idAppel := !idAppel+1;
+	| CALL (e , args) 				->		List.iter (fun ep -> consRefexpression ep) args; idAppel := !idAppel+1;
  		 
-				setAssosIdCallFunctionRef !idAppel (!fileCour , !numLine );List.iter (fun ep -> consRefexpression ep) args; ()
+				setAssosIdCallFunctionRef !idAppel (!fileCour , !numLine );(* Printf.printf "setAssosIdCallFunctionRef functiuon %s numAppel %d \n" (nomFonctionDeExp e) !idAppel;*) ()
 	| COMMA e 				->    List.iter (fun ep -> consRefexpression ep) e; ()
 	| MEMBEROF (e , _) 		
 	| MEMBEROFPTR (e , _) 	->		consRefexpression e ; ()
@@ -2513,6 +2513,8 @@ let rec analyse_statement   stat =
 		if !nbImbrications >= !nbImbricationsMaxAppli then nbImbricationsMaxAppli := !nbImbrications;
 
 		listeNextExp := [];
+		 
+		aUneFctNotDEf := false;
 		analyse_expressionaux exp ;
 		let ne = !nouvExp in   
 		idBoucle := !idBoucle +1;
@@ -2544,7 +2546,7 @@ let rec analyse_statement   stat =
 			
 
 
-		aUneFctNotDEf := false;
+		
 		analyse_statement  stat;
 		listeNextExp := [];
 		analyse_expressionaux exp ;
@@ -2557,12 +2559,18 @@ let rec analyse_statement   stat =
 
 			let li = if !aUneFctNotDEf = true then 
 			begin 
-			(*	Printf.printf "traitement particuloier boucle\n";*)
-				listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp ; !listeDesInstCourantes
+				(*Printf.printf "traitement particulier boucle\n";*)
+				let ida = !idAppel in	
+				let maListeDesBoucleOuAppelPredP = !listeBoucleOuAppelCourante in
+				listeDesInstCourantes := []; onlyAexpression   exp ; onlyAstatement stat;onlyAexpression   exp ;
+				idAppel := ida; 
+				(*Printf.printf "traitement particulier boucle FIN\n";  *)
+				listeBoucleOuAppelCourante := 	maListeDesBoucleOuAppelPredP;				
+				!listeDesInstCourantes
 			end 
 			else !listeDesInstCourantes in
 
-
+		listeDesInstCourantes := lesInstDeLaBoucle;
 		let listeVCond =  listeDesVarsDeExpSeules  exp in  
 (*ICI*)
 		let na = extractVarCONDAffect  li listeVCond in
@@ -2629,7 +2637,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 									
 	| DOWHILE (exp, stat) ->		
    		let degPred = !nbImbrications in 
-
+		 
 		nbImbrications := !nbImbrications + 1;
 		let deg = !nbImbrications in  
 		if !nbImbrications >= !nbImbricationsMaxAppli then nbImbricationsMaxAppli := !nbImbrications;
@@ -2669,10 +2677,17 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		let li = if !aUneFctNotDEf = true then 
 		begin 
 			(*Printf.printf "traitement particuloier boucle\n";*)
-			listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp ; !listeDesInstCourantes
+			let maListeDesBoucleOuAppelPredP = !listeBoucleOuAppelCourante in
+			let ida = !idAppel in	
+			listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp ; idAppel := ida; (*Printf.printf "traitement particulier boucle FIN\n";  *)
+			listeBoucleOuAppelCourante := 	maListeDesBoucleOuAppelPredP;			
+			!listeDesInstCourantes
 		end 
 		else !listeDesInstCourantes in
 
+
+		listeDesInstCourantes := lesInstDeLaBoucle;
+ 
 		let listeVCond =  listeDesVarsDeExpSeules  exp in  
 		let na = extractVarCONDAffect  li listeVCond in
 
@@ -2738,7 +2753,7 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 
 	| FOR (exp1, exp2, exp3, stat) ->
 		let degPred = !nbImbrications in 
-
+		 
 		nbImbrications := !nbImbrications + 1;
 		let deg = !nbImbrications in  
 
@@ -2784,11 +2799,15 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 		listeASCourant := [];
 		let li = if !aUneFctNotDEf = true then  
 		begin 
-			
-			listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp3 ;onlyAexpression   exp2; !listeDesInstCourantes
+			let ida = !idAppel in	 
+			let maListeDesBoucleOuAppelPredP = 	!listeBoucleOuAppelCourante		in
+			(*Printf.printf "traitement particulier boucle \n";*)
+			listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp3 ;onlyAexpression   exp2; idAppel := ida; (*Printf.printf "traitement particulier boucle FIN\n"; *) 
+			listeBoucleOuAppelCourante := 	maListeDesBoucleOuAppelPredP;		
+			!listeDesInstCourantes
 		end  
 		else !listeDesInstCourantes in
-
+		listeDesInstCourantes := lesInstDeLaBoucle;
 		let listeVCond =  listeDesVarsDeExpSeules  exp2 in  
 		let na = extractVarCONDAffect  li listeVCond in
  
@@ -3050,22 +3069,21 @@ and  analyse_expressionaux exp =
 	 match exp with
 		NOTHING -> 				nouvExp := exp	
 	| 	UNARY (op, e) -> 	
-			analyse_expressionaux e;	
-			let ne = !nouvExp in
+			 
 			(match op with		(*je ne distingue pas pre et post operation linearise attention aux conditions *)
-				PREINCR  -> 	affectationUnaire ADD ne
+				PREINCR  -> 	analyse_expressionaux e;	 let ne = !nouvExp in affectationUnaire ADD ne
 				| POSINCR -> 	
 					let p = !listeDesInstCourantes in
 								listeDesInstCourantes := [];
-								affectationUnaire ADD ne ;
+								analyse_expressionaux e;	 let ne = !nouvExp in  affectationUnaire ADD ne ;
 								listeNextExp :=  List.append !listeNextExp !listeDesInstCourantes;
 								listeDesInstCourantes := p;
 								
-				| PREDECR  ->   affectationUnaire SUB ne
+				| PREDECR  ->   analyse_expressionaux e;	 let ne = !nouvExp in  affectationUnaire SUB ne
 				| POSDECR ->  
 					let p = !listeDesInstCourantes in
 								listeDesInstCourantes := [];
-								affectationUnaire SUB ne ;
+								analyse_expressionaux e;	 let ne = !nouvExp in  affectationUnaire SUB ne ;
 								listeNextExp :=  List.append !listeNextExp !listeDesInstCourantes;
 								listeDesInstCourantes := p;
 				| ADDROF	->(** "&" . nouvExp :=VARIABLE("&"^v)*)
@@ -3084,36 +3102,35 @@ and  analyse_expressionaux exp =
 							end
 						| _->
 								nouvExp := exp)
-				|_ -> 		if !vDEBUG then Printf.printf "non traite\n";nouvExp := UNARY (op, ne) 
+				|_ -> 		if !vDEBUG then Printf.printf "non traite\n";analyse_expressionaux e;	 let ne = !nouvExp in  nouvExp := UNARY (op, ne) 
 			);
 	| BINARY (op, exp1, exp2) -> 
-		analyse_expressionaux exp1 ;
-		let ne1 = !nouvExp in 	
-		analyse_expressionaux exp2;	
-		let ne = !nouvExp in   
+	(*	analyse_expressionaux exp1 ; let ne1 = !nouvExp in 	
+		analyse_expressionaux exp2;	 let ne = !nouvExp in   *)
 		(	match op with		
 			ASSIGN		->
 			(	match exp1 with
-				VARIABLE n ->  
+				VARIABLE n ->  analyse_expressionaux exp2;	 let ne = !nouvExp in   
 					let newaffect =new_instVar  n  (EXP(ne)) in
 						(* afficherUneAffect newaffect; flush(); new_line(); *)
 					listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect]
 				|INDEX (t,i)-> 
 					( match t with 
-						VARIABLE v -> listeDesInstCourantes := List.append !listeDesInstCourantes 
-									[new_instTab v (EXP(i))	(EXP(ne))]
+						VARIABLE v -> 
+								analyse_expressionaux exp2;	 let ne = !nouvExp in   
+								listeDesInstCourantes := List.append !listeDesInstCourantes [new_instTab v (EXP(i))	(EXP(ne))]
 						| UNARY (opr,e) ->
 							(
 								match e with
 								VARIABLE v ->
 								(
 									match opr with
-									MEMOF		->
+									MEMOF		->analyse_expressionaux exp2;	 let ne = !nouvExp in   
 					(** "*" operator. *)(* revoir e n'est pas forcement une variable *)
 										listeDesInstCourantes := 
 											List.append !listeDesInstCourantes 
 														[new_instTab ("*"^v) (EXP(i))	(EXP(ne))]
-									| ADDROF	->(** "&" operator. *)
+									| ADDROF	->(** "&" operator. *)analyse_expressionaux exp2;	 let ne = !nouvExp in   
 											listeDesInstCourantes := 
 												List.append !listeDesInstCourantes 
 															[new_instTab ("&"^v) (EXP(i))	(EXP(ne))]
@@ -3125,35 +3142,36 @@ and  analyse_expressionaux exp =
 					)
 				| UNARY (opr,e) -> 
 					let p = !listeNextExp in
+					(*
 					analyse_expressionaux e ;
 					listeNextExp := p;
-					let neunary = !nouvExp in 	
+					let neunary = !nouvExp in 	*)
 					(
 						match opr with
 							MEMOF		->
+								analyse_expressionaux e ;listeNextExp := p;
 
-								(match neunary with
-								  VARIABLE v ->
+								(match !nouvExp with
+								  VARIABLE v -> analyse_expressionaux exp2;	 let ne = !nouvExp in   
 									(** "*" operator. *)
 									(* ICI    afficherUneAffect( new_instMem ("*"^v) (EXP(VARIABLE(v))) (EXP(ne))); flush(); new_line(); *)
-									listeDesInstCourantes := List.append !listeDesInstCourantes 
-																		[new_instVar ("*"^v)  (EXP(ne))]
+									listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instVar ("*"^v)  (EXP(ne))]
 								  | UNARY(ADDROF,expaux)	->(** "&" operator. *)
 									(match expaux with
-									 VARIABLE v ->
+									 VARIABLE v -> analyse_expressionaux exp2;	 let ne = !nouvExp in   
 										listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instVar v 	(EXP(ne))]
 								     |_->if !vDEBUG then Printf.printf "expr pour tableau  non traitée\n" )
 								|_->if !vDEBUG then Printf.printf "expr pour tableau  non traitée\n" )
 					
 							
-							| ADDROF	->(** "&" operator. *)
-								(match neunary with
-								  VARIABLE v ->
+							| ADDROF	->(** "&" operator. *)analyse_expressionaux e ;listeNextExp := p;
+								(match  !nouvExp with
+								  VARIABLE v ->analyse_expressionaux exp2;	 let ne = !nouvExp in   
 									  listeDesInstCourantes := List.append !listeDesInstCourantes 
 																			[new_instVar ("&"^v) 	(EXP(ne))]
 									| UNARY(MEMOF,expaux)	->(** "&" operator. *)
 										(match expaux with
-										VARIABLE v ->
+										VARIABLE v ->analyse_expressionaux exp2;	 let ne = !nouvExp in   
 											listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instVar v 	(EXP(ne))]
 										|_->if !vDEBUG then Printf.printf "expr pour tableau  non traitée\n" )
 									|_->if !vDEBUG then Printf.printf "expr pour tableau  non traitée\n" )
@@ -3166,7 +3184,7 @@ and  analyse_expressionaux exp =
 						let lid =	getInitVarFromStruct e  in
 						if lid != [] then 
 						begin
-						
+							analyse_expressionaux exp2;	 let ne = !nouvExp in  
 							let (btype, id) =  ( getBaseType (List.assoc (List.hd lid) !listAssocIdType) , List.hd lid)  in
 							(*Printf.printf "varDefList id %s type :\n"id; printfBaseType btype;new_line();*)
 							let nee = consCommaExp (VARIABLE(id)) btype [id] lid ne  in
@@ -3179,17 +3197,17 @@ and  analyse_expressionaux exp =
 				 |_-> if !vDEBUG then Printf.printf "expr pour tableau  non traitée\n" 		 
 			); 
 			
-			| ADD_ASSIGN	-> affectationBinaire ADD exp1 ne;  nouvExp:=BINARY (op, exp1, ne) 
-			| SUB_ASSIGN	-> affectationBinaire SUB exp1 ne;  nouvExp:=BINARY (op, exp1, ne) 
-			| MUL_ASSIGN	-> affectationBinaire MUL exp1 ne ; nouvExp:=BINARY (op, exp1, ne) 
-			| DIV_ASSIGN	-> affectationBinaire DIV exp1 ne ; nouvExp:=BINARY (op, exp1, ne) 
-			| MOD_ASSIGN	-> affectationBinaire MOD exp1 ne ; nouvExp:=BINARY (op, exp1, ne) 
-			| BAND_ASSIGN	-> affectationBinaire BAND exp1 ne; nouvExp:=BINARY (op, exp1, ne) 
-			| BOR_ASSIGN	-> affectationBinaire BOR exp1 ne ; nouvExp:=BINARY (op, exp1, ne) 
-			| XOR_ASSIGN	-> affectationBinaire XOR exp1 ne ; nouvExp:=BINARY (op, exp1, ne) 
-			| SHL_ASSIGN	-> affectationBinaire SHL exp1 ne ; nouvExp:=BINARY (op, exp1, ne) 
-			| SHR_ASSIGN	-> affectationBinaire SHR exp1 ne ; nouvExp:=BINARY (op, exp1, ne) 
-			| _ -> nouvExp:=BINARY (op, ne1, ne) 
+			| ADD_ASSIGN	->analyse_expressionaux exp2;	 let ne = !nouvExp in    affectationBinaire ADD exp1 ne;  nouvExp:=BINARY (op, exp1, ne) 
+			| SUB_ASSIGN	-> analyse_expressionaux exp2;	 let ne = !nouvExp in   affectationBinaire SUB exp1 ne;  nouvExp:=BINARY (op, exp1, ne) 
+			| MUL_ASSIGN	-> analyse_expressionaux exp2;	 let ne = !nouvExp in   affectationBinaire MUL exp1 ne ; nouvExp:=BINARY (op, exp1, ne) 
+			| DIV_ASSIGN	-> analyse_expressionaux exp2;	 let ne = !nouvExp in   affectationBinaire DIV exp1 ne ; nouvExp:=BINARY (op, exp1, ne) 
+			| MOD_ASSIGN	-> analyse_expressionaux exp2;	 let ne = !nouvExp in   affectationBinaire MOD exp1 ne ; nouvExp:=BINARY (op, exp1, ne) 
+			| BAND_ASSIGN	-> analyse_expressionaux exp2;	 let ne = !nouvExp in   affectationBinaire BAND exp1 ne; nouvExp:=BINARY (op, exp1, ne) 
+			| BOR_ASSIGN	-> analyse_expressionaux exp2;	 let ne = !nouvExp in   affectationBinaire BOR exp1 ne ; nouvExp:=BINARY (op, exp1, ne) 
+			| XOR_ASSIGN	-> analyse_expressionaux exp2;	 let ne = !nouvExp in   affectationBinaire XOR exp1 ne ; nouvExp:=BINARY (op, exp1, ne) 
+			| SHL_ASSIGN	-> analyse_expressionaux exp2;	 let ne = !nouvExp in   affectationBinaire SHL exp1 ne ; nouvExp:=BINARY (op, exp1, ne) 
+			| SHR_ASSIGN	-> analyse_expressionaux exp2;	 let ne = !nouvExp in   affectationBinaire SHR exp1 ne ; nouvExp:=BINARY (op, exp1, ne) 
+			| _ -> analyse_expressionaux exp1 ; let ne1 = !nouvExp in 	analyse_expressionaux exp2;	 let ne = !nouvExp in   nouvExp:=BINARY (op, ne1, ne) 
 		)
 	| QUESTION (exp1, exp2, exp3) ->
 				analyse_expressionaux exp1 ;
@@ -3202,11 +3220,9 @@ and  analyse_expressionaux exp =
 																					
 	| CAST (t, e) 						->  analyse_expressionaux e ; nouvExp:=CAST (t, !nouvExp) 
 	| CALL (e , args) 				->		
-				(* List.iter (fun ep -> analyse_expression ep) args;*)
+				
 				 
-				let listeInstPred = !listeDesInstCourantes in
-				idAppel := !idAppel + 1;
-				let ida = !idAppel in									
+				let listeInstPred = !listeDesInstCourantes in					
 				if existeFonction (nomFonctionDeExp e) then 
 				begin
 
@@ -3214,6 +3230,11 @@ and  analyse_expressionaux exp =
 					let (_, f) = fonction in
 					listeDesInstCourantes := [];
 					construireAsAppel f.declaration	exp ;
+
+					idAppel := !idAppel + 1;
+				    let ida = !idAppel in	
+
+(*Printf.printf "analyse_expressionaux %s num appel %d \n" (nomFonctionDeExp e) ida;	*)	
 
 (*Printf.printf "analyse_expressionaux %s EXISTE \n" (nomFonctionDeExp e) ;*)
 
@@ -3228,7 +3249,7 @@ and  analyse_expressionaux exp =
 					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
 
 (*afficherLesAffectations (  !listeDesInstCourantes) ;new_line () ;*)
-
+(*Printf.printf "FIN analyse_expressionaux %s num appel %d \n" (nomFonctionDeExp e) ida;	*)
 
 					nouvExp:=VARIABLE(nouvar)
 				end
@@ -3236,14 +3257,17 @@ and  analyse_expressionaux exp =
 				begin 
 					listeDesInstCourantes := [];
 					List.iter (fun ep -> analyse_expressionaux ep) args;
-
-(*Printf.printf "analyse_expressionaux %s NON EXISTE \n" (nomFonctionDeExp e) ;*)
+					idAppel := !idAppel + 1;
+				    let ida = !idAppel in	
+(*Printf.printf "analyse_expressionaux %s num appel %d \n" (nomFonctionDeExp e) ida;		
+Printf.printf "analyse_expressionaux %s NON EXISTE \n" (nomFonctionDeExp e) ;*)
 			
 					listeBoucleOuAppelCourante	
-						:= List.append  !listeBoucleOuAppelCourante [IDAPPEL(ida, exp,[],"" , !trueList,!falseList )];
+						:= List.append  !listeBoucleOuAppelCourante [IDAPPEL(ida, exp,!listeDesInstCourantes,"" , !trueList,!falseList )];
 					let isComponant = traiterAppelFonction e args !listeDesInstCourantes ida in
 
-(*if isComponant then Printf.printf "analyse_expressionaux %s NON EXISTE IS COMPOSANT\n" (nomFonctionDeExp e) ;*)
+(*if isComponant then Printf.printf "analyse_expressionaux %s NON EXISTE IS COMPOSANT\n" (nomFonctionDeExp e) 
+else   Printf.printf "analyse_expressionaux %s NON EXISTE IS NOT COMPOSANT\n" (nomFonctionDeExp e) ;*)
 					let nouvar = Printf.sprintf "call%s%d" (nomFonctionDeExp e) ida in
 					let nouvarres = Printf.sprintf "res%s" (nomFonctionDeExp e) in
 					let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
@@ -3251,6 +3275,7 @@ and  analyse_expressionaux exp =
 					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
 
 (*afficherLesAffectations (  !listeDesInstCourantes) ;new_line () ;*)
+(*Printf.printf "FIN analyse_expressionaux %s num appel %d \n" (nomFonctionDeExp e) ida;	*)
 					if isComponant then nouvExp:=VARIABLE(nouvar) else nouvExp:=exp
 				end		;
 	| COMMA e 	-> (*Printf.printf "dans comma\n";print_expression exp 0; new_line();*) List.iter (fun ep -> analyse_expressionaux ep) e;
@@ -3350,7 +3375,12 @@ and traiterAppelFonction exp args init ida =
 	  		if f.lesAffectations = [] then   aUneFctNotDEf := true;
 	  		entrees := init;
       		sorties := [];
+(*Printf.printf "construireListesES La fonction: %s existe=%b \n" nom (existeFonction nom);*)
+
+
 	  		construireListesES f.listeES args;
+
+(*Printf.printf "ap construireListesES La fonction: %s existe=%b \n" nom (existeFonction nom);*)
 	  		ajouterReturn nom f.lesAffectations;
 (*Printf.printf "La fonction: %s existe=%b NEW APPEL \n" nom (existeFonction nom);*)
 	  		listeDesInstCourantes :=  [ new_instAPPEL ida  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  (new_instBEGIN f.lesAffectations) ""];
@@ -3365,14 +3395,14 @@ and traiterAppelFonction exp args init ida =
 				let (absStore,listeES) = (getAbsStoreFromComp nom),(getESFromComp nom) in
 				(*Printf.printf "Il y a %u variables E/S" (List.length listeES);*)
 				construireListesES listeES args;	  
-				Printf.printf "Ici on construit le noeud d'appel du composant: %s %d\n" nom ida;
+				(*Printf.printf "Ici on construit le noeud d'appel du composant: %s %d\n" nom ida;*)
 				listeDesInstCourantes :=  [ new_instAPPELCOMP ida  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  absStore ""]; true
 		) 
 		with  Unix.Unix_error(Unix.ENOENT, _, _)-> 
 			aUneFctNotDEf := true; 
-Printf.printf "La fonction: %s existe=%b NEW APPEL NON 2\n" nom (existeFonction nom);
+(*Printf.printf "La fonction: %s existe=%b NEW APPEL NON 2\n" nom (existeFonction nom);*)
           	listeDesInstCourantes :=  [ new_instAPPEL ida  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  (new_instBEGIN []) ""];false
-        	| Unix.Unix_error (x,y,z) -> 
+        	| Unix.Unix_error (x,y,z) -> aUneFctNotDEf := true; 
            		 Printf.eprintf "%s: %s %s\n%!" y (Unix.error_message x) z;
            		 false
 
@@ -3987,7 +4017,7 @@ Printf.printf "La fonction: %s existe=%b NEW APPEL COMPO \n" nom (existeFonction
 		with  Unix.Unix_error(Unix.ENOENT, _, _)-> 
 			(*aUneFctNotDEf := true; *)
 Printf.printf "La fonction: %s existe=%b NEW APPEL NON ONLY \n" nom (existeFonction nom);
-          	listeDesInstCourantes :=  [ new_instAPPEL !idAppel  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  (new_instBEGIN []) ""];false
+          	listeDesInstCourantes :=  [ new_instAPPEL r  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  (new_instBEGIN []) ""];false
         	| Unix.Unix_error (x,y,z) -> 
            		 Printf.eprintf "%s: %s %s\n%!" y (Unix.error_message x) z;
            		 false
@@ -3995,6 +4025,11 @@ Printf.printf "La fonction: %s existe=%b NEW APPEL NON ONLY \n" nom (existeFonct
 			
 	  
 	)
+
+
+
+
+
 
 
 
