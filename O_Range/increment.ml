@@ -17,7 +17,7 @@ let opEstPlus = ref true
 let estPosInc = ref   INCVIDE (*1 positif 0 nul -1 négatif ou diff si incrément *//*)
 let expressionIncFor = ref NOTHING
 
-
+let isMultiInc = ref false
 	let listAssosExactLoopInit = ref [(-1, 0)]
 	let existAssosExactLoopInit  name  = (List.mem_assoc name !listAssosExactLoopInit)
 	let setAssosExactLoopInit  name t =  
@@ -67,6 +67,22 @@ let getIsAddInc inc =
 match inc with
 	INC(MULTI,_)|INC(DIVI,_) ->false
 	|_->true
+
+
+let rec containtMINIMUMCALL exp =
+match exp with
+		NOTHING -> false
+		| UNARY (_, e1) -> containtMINIMUMCALL e1
+		| BINARY (_, e1, e2) ->containtMINIMUMCALL e1 || containtMINIMUMCALL e2
+		| CALL (exp, args) ->
+			(match exp with VARIABLE("MINIMUM") -> true|_-> false)
+		| _  ->false
+
+
+let getIsMultipleIncrement incValue =
+match incValue with
+NOTHING -> false
+| exp-> containtMINIMUMCALL exp
 
 
 
@@ -522,6 +538,7 @@ and extractIncOfLoop x inst varL nbItL completList=
 			if existAffectVDsListeAS x las then
 			begin
 				let varBPUN = BINARY(SUB, VARIABLE varL, CONSTANT(CONST_INT("1"))) in
+			    isMultiInc := true;
 				let extinc = expVaToExp(applyStoreVA (rechercheAffectVDsListeAS x las)  	[ASSIGN_SIMPLE (varL, EXP(varBPUN))] )   in
 				getInc x extinc inst !listeASCourant true completList
 			end
@@ -537,6 +554,7 @@ and extractIncOfLoop x inst varL nbItL completList=
 			if existAffectVDsListeAS x las then
 			begin
 				let varBPUN = BINARY(SUB, VARIABLE varL, CONSTANT(CONST_INT("1"))) in
+				isMultiInc := true;
 				let extinc = expVaToExp(applyStoreVA (rechercheAffectVDsListeAS x las)  	[ASSIGN_SIMPLE (varL, EXP(varBPUN))] )   in
 				getInc x extinc inst !listeASCourant true completList
 			end
@@ -557,6 +575,7 @@ else (false,NOINC,x, false)
 
 
 and getLoopVarInc v inst =
+isMultiInc := false;
 		let (isindirect,inc,var, before) = getIncOfInstList v inst inst  in
 		opEstPlus := getIsAddInc inc;
 		expressionIncFor :=  getIncValue inc ;
@@ -565,7 +584,7 @@ Printf.printf "getincrement %s \n "v;print_intType (getIncType inc);
 print_expression !expressionIncFor 0; flush();new_line();flush();*)
 
 
-		(isindirect,inc,var, before)
+		(isindirect,inc,var, before, !isMultiInc)
 
 
 

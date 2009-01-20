@@ -1341,7 +1341,7 @@ begin
 	  begin
 			  (*print_expTerm  cond; flush(); space();new_line();	*)
 			   space(); new_line() ;flush();
-		 	  Printf.printf "%sn" (List.hd lfalse) ;	print_expTerm  cond;  space(); new_line() ;flush();
+		 	  Printf.printf "%s" (List.hd lfalse) ;	print_expTerm  cond;  space(); new_line() ;flush();
 	  end;
 	  match cond with
 	    Boolean(true) -> (*Printf.printf "isExecutedFalse non execute %s" (List.hd lfalse) ;*) false
@@ -1359,7 +1359,11 @@ let isExecuted ltrue lfalse contexte appel globales affiche=
 (*	Printf.printf "isExecuted : traiterboucleinterne globales : \n"; afficherListeAS globales; Printf.printf "FIN CONTEXTE \n";*)
   let listeP = !listeASCourant in
   let res = (rond appel contexte) in
-
+  if affiche then
+  begin	
+	 if ltrue <> [] then ( Printf.printf "isExecuted : list of true conditions variables\n"; List.iter (fun e-> Printf.printf "%s "e) ltrue);
+	 if lfalse <> [] then (  Printf.printf "isExecuted : list of false conditions variables\n"; List.iter (fun e-> Printf.printf "%s "e) lfalse)
+  end;
  (*afficherListeAS( res);new_line () ;*)
   let valeur = if ltrue = [] && lfalse = [] then true else (isExecutedTrue ltrue res affiche globales) && (isExecutedFalse lfalse res affiche globales) 	in
   listeASCourant := listeP;
@@ -1404,11 +1408,11 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 	  let nbEngl =getNombreIt (nEC.infoNid.expressionBorne) 
 				  info.conditionConstante info.typeBoucle  info.conditionI  info.conditionMultiple  [] info.estPlus 
 				  info.infoVariation  nEC.varDeBoucleNid []  in
-	  let totalNbEndborneP = rechercheNbTotalIti nomE numAp !docEvalue.maListeNidEval in
+	 (* let totalNbEndborneP = rechercheNbTotalIti nomE numAp !docEvalue.maListeNidEval in
 
 (*print_expVA (EXP(info.conditionI)); flush(); space(); new_line ();*)
 
-	  let totalNbEndborneP = rechercheNbTotalIti nomE numAp !docEvalue.maListeNidEval in
+	  let totalNbEndborneP = rechercheNbTotalIti nomE numAp !docEvalue.maListeNidEval in*)
 
 	  if !vDEBUG then
 	  begin
@@ -1444,7 +1448,7 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 			begin
 				match !dernierAppelFct with
 				TFONCTION (_, _,_,_, _,_,_,_,_,_) ->		
-					let numB  = id in
+					(*let numB  = id in*)
 					let (pred, trouve) = 
 					listejusquafonction (List.rev listeEng) idpred !dernierAppelFct in
 					let calllist = (reecrireCallsInLoop  nEC.varDeBoucleNid nEC.lesAffectationsBNid) in 
@@ -1468,7 +1472,7 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 
 								let aSC =  evalSIDA calllist numF  ainserer  listeInputInst listeEng   in
 								
-								let isExecutedF = isExecuted lFt lFf [] [] [] true in
+								let isExecutedF = isExecuted lFt lFf [] [] [] false in
 								if isExecutedF = false then listeInstNonexe := List.append [pred] !listeInstNonexe;
 								
 								isExeBoucle := isExeE && isExecutedF;
@@ -1532,7 +1536,7 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 				(*Printf.printf "CALCUL DE TNi num %d nom eng %d\n" (getBoucleIdB n.infoNid.laBoucle)	nomE ;*)
 				(*print_expVA resExptni; new_line();Printf.printf "CALCUL DE AS fin\n";*)
 				let listeDesVar = listeDesVarsDeExpSeules exptN in
-				let listeDesVarSansBit = onlyNotLoopVar listeDesVar in
+				(*let listeDesVarSansBit = onlyNotLoopVar listeDesVar in*)
 				(*if listeDesVarSansBit = [] then Printf.printf "on peut arreter indépendant des autres b eng\n"
 				else   Printf.printf "  peut etre dépendant des autres b eng\n";*)
 				let vdij = ( intersection listeDesVar  ( union [ii]  vij)) in 
@@ -1889,7 +1893,7 @@ let rec traiterBouclesInternesComposant 	 	nT (*tete nid contenant bi*)  nEC (*n
 									let ainserer =   (List.append l corps  ) in
 									let aSC =  evalSIDA calllist numF   ainserer listeInputInst listeEng   in
 									
-									let isExecutedF = isExecuted lFt lFf [] [] [] true in
+									let isExecutedF = isExecuted lFt lFf [] [] [] false in
 									if isExecutedF = false then listeInstNonexe := List.append [!dernierAppelFct] !listeInstNonexe;
 									isExeBoucle := isExeE && isExecutedF;
 

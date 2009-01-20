@@ -182,7 +182,8 @@ and convert_def def =
 					let contexteEnglobant = monContexte in
 					monContexte := [];
 						List.map	(fun dec -> convert_name_group dec)		decs;(* !!!!VOIR***)
-						let (decs, stat) = body in OLDFUNDEF (proto, decs, convert_statement (BLOCK (decs, stat)))
+						let ndecs = List.map	(fun dec -> convert_def dec)		decs in
+						let (decs, stat) = body in OLDFUNDEF (proto, ndecs, convert_statement (BLOCK (decs, stat)))
 					monContexte := contexteEnglobant;
 				*)
 			| DECDEF names -> 

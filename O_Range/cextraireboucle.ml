@@ -1254,14 +1254,17 @@ let rec  rechercheConditionBinary init var op exp1 exp2 liste avant dans cte t c
 			| AND -> traiterANDCOND init var exp1 exp2 liste avant dans cte t  (BINARY(op,exp1, exp2)) lv l inst
 			| OR -> (NONMONOTONE , NOTHING, NOTHING, XOR, true, var ,BINARY(op,exp1, exp2))
 			| EQ ->  
-					let ((*isindirect,inc,var, before*)isindirect,_,_,_) =  getLoopVarInc var inst in
+					let ((*isindirect,inc,var, before*)isindirect,_,_,_,isMultiInc) =  getLoopVarInc var inst in
+
+					if isMultiInc then isExactForm := false;
 					if isindirect then
 					begin
 				 		expressionIncFor := NOTHING;
 						(NONMONOTONE , NOTHING, NOTHING, XOR,true, var, BINARY(op,exp1, exp2))
 					end
 					else traiterEQ init ne2 var ne
-			| NE -> let ((*isindirect,inc,var, before*)isindirect,_,_,_) =  getLoopVarInc var inst in
+			| NE -> let ((*isindirect,inc,var, before*)isindirect,_,_,_,isMultiInc) =  getLoopVarInc var inst in
+					if isMultiInc then isExactForm := false;
 					if isindirect then
 					begin
 				 		expressionIncFor := NOTHING;
@@ -1293,14 +1296,16 @@ let rec  rechercheConditionBinary init var op exp1 exp2 liste avant dans cte t c
 					| GE -> (CROISSANT, init ,ne1  , GE,false, var, ne) (*exp1 >= i, i in [ init , exp1 ] *)
 					| AND -> traiterANDCOND init var exp1 exp2 liste avant dans cte t (BINARY(op,exp1, exp2)) lv l inst
 					| OR -> (NONMONOTONE , NOTHING, NOTHING, XOR, true, var, BINARY(op,exp1, exp2))
-					| EQ -> let ((*isindirect,inc,var, before*)isindirect,_,_,_) =  getLoopVarInc var inst in
+					| EQ -> let ((*isindirect,inc,var, before*)isindirect,_,_,_,isMultiInc) =  getLoopVarInc var inst in
+							if isMultiInc then isExactForm := false;
 							if isindirect then
 							begin
 						 		expressionIncFor := NOTHING;
 								(NONMONOTONE , NOTHING, NOTHING, XOR,true, var, BINARY(op,exp1, exp2))
 							end
 							else traiterEQ init ne1 var ne
-					| NE ->  let ((*isindirect,inc,var, before*)isindirect,_,_,_) =  getLoopVarInc var inst in
+					| NE ->  let ((*isindirect,inc,var, before*)isindirect,_,_,_,isMultiInc) =  getLoopVarInc var inst in
+							if isMultiInc then isExactForm := false;
 							if isindirect then
 							begin
 						 		expressionIncFor := NOTHING;
@@ -1409,7 +1414,8 @@ and isTabDependCond exp1 liste avant dans cte t c lv l inst =
 							if isOnlyVar then 
 							begin
 								let var = List.hd inter2 in	
-								let ((*isindirect,inc,var, before*)isindirect,_,_,_) =  getLoopVarInc var inst in
+								let ((*isindirect,inc,var, before*)isindirect,_,_,_,isMultiInc) =  getLoopVarInc var inst in
+								if isMultiInc then isExactForm := false;
 								if isindirect then expressionIncFor := NOTHING;
 								let valinc = calculer (applyStoreVA   (EXP(!expressionIncFor)) [])  !infoaffichNull  [](*appel*) 1 in	
 								let sensinc = 
@@ -1440,9 +1446,9 @@ and isTabDependCond exp1 liste avant dans cte t c lv l inst =
 						opEstPlus:= true;	
 						 
 						(*Printf.printf"expression : \n"; print_expression affect 0; new_line();*)
-						let ((*isindirect,inc,var, before*)isindirect,_,_,_) =  getLoopVarInc name inst in
+						let ((*isindirect,inc,var, before*)isindirect,_,_,_,isMultiInc) =  getLoopVarInc name inst in
 						if isindirect then  expressionIncFor := NOTHING;
-						
+						if isMultiInc then isExactForm := false;
 
 						
 						let valinc = calculer (applyStoreVA   (EXP(!expressionIncFor)) [])  !infoaffichNull  [](*appel*) 1 in	
@@ -1492,7 +1498,8 @@ and setIndexWithSize lidx lsize liste avant dans cte t c lv l inst=
 		if isOnlyVar then 
 		begin
 			let var = List.hd inter2 in	
-			let ((*isindirect,inc,var, before*)isindirect,_,_,_) =  getLoopVarInc var inst in
+			let ((*isindirect,inc,var, before*)isindirect,_,_,_,isMultiInc) =  getLoopVarInc var inst in
+			if isMultiInc then isExactForm := false;
 			expressionIncFor := if isindirect then  NOTHING else !expressionIncFor ;
 				
 			let valinc = calculer (applyStoreVA   (EXP(!expressionIncFor)) [])  !infoaffichNull  [](*appel*) 1 in	
@@ -1596,7 +1603,8 @@ and traiterUn croissant  borneInf borneSup operateur multiple var  cond avant da
 		else 	( ADD, NONMONOTONE, true, var)   in
 	
 
-	let ((*isindirect,inc,var, before*)isindirect,_,_,_) =  getLoopVarInc v inst in
+	let ((*isindirect,inc,var, before*)isindirect,_,_,_,isMultiInc) =  getLoopVarInc v inst in
+	if isMultiInc then isExactForm := false;
 	if isindirect then 
 	begin
 		expressionIncFor := NOTHING;
@@ -2100,7 +2108,8 @@ let isDivInc exp =
 				( let initialvar =expVaToExp(rechercheAffectVDsListeAS v avant) in if  initialvar  = NOTHING then   VARIABLE(v)   else initialvar )
 				(*else !expressionDinitFor*);
 			opEstPlus:= true;	
-			let ((*isindirect,inc,var, before*)isindirect,_,var, before) =  getLoopVarInc v inst in
+			let ((*isindirect,inc,var, before*)isindirect,_,var, before,isMultiInc) =  getLoopVarInc v inst in
+			if isMultiInc then isExactForm := false;
 			if isindirect then 
 			begin 
 				expressionDinitFor := 
@@ -2142,11 +2151,11 @@ let isDivInc exp =
 	let boucleFor = new_boucleFor  info  listeV  var2  inf  nb inc  in
 	let nouvBoucle = new_bouclef boucleFor in
     let borne = (getBorneBoucleFor t boucleFor.n boucleFor.valInit.valeur boucleFor.c typeopPlusouMUL indirectafter) in
-	if !isExactForm then setAssosExactLoopInit  nom borne;
+	if !isExactForm && ((getIsMultipleIncrement !expressionIncFor) =false) then setAssosExactLoopInit  nom borne;
 	doc := 	new_document 
 				(new_ListeDesBoucles !doc.laListeDesBoucles  [nouvBoucle]) 
 				!doc.laListeDesFonctions
-				(new_ListeDesBoucles !doc.laListeDesAssosBoucleBorne [new_infoBorneDeBoucle nouvBoucle  borne [] !isExactForm])
+				(new_ListeDesBoucles !doc.laListeDesAssosBoucleBorne [new_infoBorneDeBoucle nouvBoucle  borne [] (!isExactForm  && ((getIsMultipleIncrement !expressionIncFor) =false))])
 				!doc.laListeDesNids;(*isExactForm*)
 	(nb, indirect)
 
@@ -2162,7 +2171,8 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 		begin
 			expressionDinitFor := (*if !expressionDinitFor = NOTHING then*)    VARIABLE(v)   (*else !expressionDinitFor*);
 			opEstPlus:= true;	
-			let ((*isindirect,inc,var, before*)isindirect,_,var, before) =  getLoopVarInc v inst in
+			let ((*isindirect,inc,var, before*)isindirect,_,var, before,isMultiInc) =  getLoopVarInc v inst in
+			if isMultiInc then isExactForm := false;
 			if isindirect then 
 			begin 
 				expressionDinitFor :=  (*if !expressionDinitFor = NOTHING then *)   VARIABLE(var)   (*else !expressionDinitFor*);
@@ -2197,10 +2207,10 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 				(new_variation (VARIABLE(nv)) nb inc typevar operateur indirectafter) !opEstPlus ) [] []  in
 	let ba = (new_boucleA b )  in	
 	let borne = (getBorneBoucleFor t nb inf inc !opEstPlus indirectafter) in
-	if !isExactForm then setAssosExactLoopInit  nom borne;
+	if (!isExactForm && ((getIsMultipleIncrement !expressionIncFor) =false)) then setAssosExactLoopInit  nom borne;
 	doc := new_document 	(new_ListeDesBoucles !doc.laListeDesBoucles  [ba])  !doc.laListeDesFonctions
 							(new_ListeDesBoucles !doc.laListeDesAssosBoucleBorne
-								[ new_infoBorneDeBoucle ba borne [] !isExactForm] )		
+								[ new_infoBorneDeBoucle ba borne [] (!isExactForm &&( (getIsMultipleIncrement !expressionIncFor) =false))] )		
 							!doc.laListeDesNids;
 (nb, indirect)
 													
@@ -2422,8 +2432,6 @@ begin
 	if suite = [] then IF (test, (listeSwitchStatementToSeq stat), listDefault) else IF (test, (listeSwitchStatementToSeq stat), (buildSwitchStatement suite listDefault ))
 end
 else listDefault
-	
-
 
 let rec analyse_statement   stat =
 	match stat with
@@ -2560,10 +2568,10 @@ let rec analyse_statement   stat =
 			let li = if !aUneFctNotDEf = true then 
 			begin 
 				(*Printf.printf "traitement particulier boucle\n";*)
-				let ida = !idAppel in	
+				let (ida,nbi,idb,id_if) = (!idAppel,!nbImbrications , !idBoucle,!idIf) in	
 				let maListeDesBoucleOuAppelPredP = !listeBoucleOuAppelCourante in
 				listeDesInstCourantes := []; onlyAexpression   exp ; onlyAstatement stat;onlyAexpression   exp ;
-				idAppel := ida; 
+				idAppel := ida; nbImbrications :=nbi;idBoucle:=idb;idIf:=id_if;
 				(*Printf.printf "traitement particulier boucle FIN\n";  *)
 				listeBoucleOuAppelCourante := 	maListeDesBoucleOuAppelPredP;				
 				!listeDesInstCourantes
@@ -2678,8 +2686,8 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		begin 
 			(*Printf.printf "traitement particuloier boucle\n";*)
 			let maListeDesBoucleOuAppelPredP = !listeBoucleOuAppelCourante in
-			let ida = !idAppel in	
-			listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp ; idAppel := ida; (*Printf.printf "traitement particulier boucle FIN\n";  *)
+			let (ida,nbi,idb,id_if) = (!idAppel,!nbImbrications , !idBoucle,!idIf) in	
+			listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp ; idAppel := ida; nbImbrications :=nbi;idBoucle:=idb;idIf:=id_if; (*Printf.printf "traitement particulier boucle FIN\n";  *)
 			listeBoucleOuAppelCourante := 	maListeDesBoucleOuAppelPredP;			
 			!listeDesInstCourantes
 		end 
@@ -2799,10 +2807,10 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 		listeASCourant := [];
 		let li = if !aUneFctNotDEf = true then  
 		begin 
-			let ida = !idAppel in	 
+			let (ida,nbi,idb,id_if) = (!idAppel,!nbImbrications , !idBoucle,!idIf) in	
 			let maListeDesBoucleOuAppelPredP = 	!listeBoucleOuAppelCourante		in
 			(*Printf.printf "traitement particulier boucle \n";*)
-			listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp3 ;onlyAexpression   exp2; idAppel := ida; (*Printf.printf "traitement particulier boucle FIN\n"; *) 
+			listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp3 ;onlyAexpression   exp2; idAppel := ida; nbImbrications :=nbi;idBoucle:=idb;idIf:=id_if; (*Printf.printf "traitement particulier boucle FIN\n"; *) 
 			listeBoucleOuAppelCourante := 	maListeDesBoucleOuAppelPredP;		
 			!listeDesInstCourantes
 		end  

@@ -3,6 +3,10 @@ To use Orange
 Restriction no recurrent functions
 no other restrictions using calipso
 
+It is possible to use the tool to detect recursivity 
+
+
+
 
 
 first you have to use calipso with -P   -rs -rr -rg   -rc -rb -l    options to preprocess c source and to have more easier equivalent c source in term of execution path (no goto only one return no switch, no break) l option keep previous line number.
