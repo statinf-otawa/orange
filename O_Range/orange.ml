@@ -3072,6 +3072,8 @@ let evaluerFonctionsDuDoc  doc=
   if !doc.laListeDesFonctions <> [] then
   begin
   	
+  	  
+  	  print_string ("la fonction est: " ^ (!(!mainFonc)) ^ " \n");
 	  let (_, f) = (rechercherFonctionParNom !(!mainFonc) doc) in
 	  
 	  listeASCourant := [];
