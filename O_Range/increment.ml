@@ -99,6 +99,7 @@ let rec rechercheInc var exp =
 			begin
 				let (a,b) = calculaetbAffineForne var val1 in	
 				let (var1, var2) = (evalexpression a , evalexpression b) in
+				(*Printf.printf"rechercheInc affine\n"; *)
 				if  (estNul var1 = true) || var1 = ConstInt("1") || var1 =  ConstFloat("1.0")  then
 				begin 
 					opEstPlus := true ; 
@@ -112,21 +113,26 @@ let rec rechercheInc var exp =
 					if (estNul var2) then 
 					begin   
 						let val1 = expressionEvalueeToExpression var1 in
-						opEstPlus := false ; 
+
+(*
+
+print_expression val1  0;new_line(); flush();new_line(); flush();new_line(); flush();new_line(); flush();space();new_line(); flush();new_line(); flush();space();*)
+
+						opEstPlus := false ; (*Printf.printf"rechercheInc affine var1 struct pos et val2  nul\n"; *)
 						let varMoinsUn = (evalexpression (Diff( var1,  ConstInt("1")))) in
 						if estStricPositif var1 then
-						begin
+						begin (*Printf.printf"rechercheInc affine test de var1 - 1 \n"; *)
 							if estNul varMoinsUn then	begin estPosInc := INCVIDE; val1 end
 							else  
 							begin
-								estPosInc := POS ;	
+								estPosInc := POS ;	(*Printf.printf"div or mult inc\n"; *)
 								if estStricPositif varMoinsUn then val1
-								else begin (*Printf.printf"div inc\n";*) (* BINARY (DIV, CONSTANT  (CONST_INT "1"),*) val1(* ) *) end
+								else begin estPosInc := NEG ;(*Printf.printf"div inc\n"; *)(* BINARY (DIV, CONSTANT  (CONST_INT "1"),*) val1(* ) *) end
 							end
 						end
 						else 
 						begin
-							estPosInc := NDEF;
+							estPosInc := NDEF;(*Printf.printf"rechercheInc affine var1 struct pos et val2 non nul\n"; *)
 							expressionEvalueeToExpression var1 
 						end
 					end
@@ -146,7 +152,7 @@ print_expression exp 0; new_line(); flush();*)
 				if v = var then
 				begin
 				(	match op with
-					ASSIGN ->  	
+					ASSIGN ->  (*	print_expression exp2 0; new_line(); flush();*)
 						if List.mem var (listeDesVarsDeExpSeules  exp2) =false  then
 						begin
 					(* si j=i+N avec i mofifiée par la boucle alors on peut remplacer la condition sur j dans le test de boucle par une condition sur i+N sans décalage pour un do while mais avec décalage pour les autres boucles*)							
@@ -165,7 +171,7 @@ print_expression exp 0; new_line(); flush();*)
 						else 
 						begin 
 									(*Printf.printf "recherche incremet\n";*)
-							expressionIncFor:= rechercheInc var exp2	; 
+							expressionIncFor:= rechercheInc var exp2	;(* print_expression !expressionIncFor 0; new_line();flush();*)
 							(!expressionIncFor, true, !opEstPlus,(!expressionIncFor != NOTHING),var)			
 						end			
 
@@ -247,8 +253,9 @@ and getIndirectIncrease var exp inst las asAs completList =
 (*afficherLesAffectations completList;*)
 	if listeDesVarsDeExpSeules  exp  = []  then 
 	begin
-		print_expression exp 0; new_line(); flush();
-		Printf.printf "it may be a boolean condition non encore traité\n";
+		(* BOOL en fait de la forme var = cte si cette affectation est gardée par une condition de if alors peut être éventuellement traité *)
+	(*	print_expression exp 0; new_line(); flush();
+		Printf.printf "Dans increment.ml getIndirectIncrease : it may be a boolean condition non encore traité\n";*)
 		(NOTHING, true,true,false,"other")
 	end
 	else
@@ -290,7 +297,7 @@ and getInc var assign inst las asAs completList=
 		let (inc, before, isplus,iscomp,nvar)= analyseIncFor var (BINARY(ASSIGN,VARIABLE(var),assign)) inst las asAs completList in
 		let valinc = calculer (applyStoreVA   (EXP(inc)) [])  !infoaffichNull  [](*appel*) 1 in	
 		let isIndirect = nvar != var in
-		if estNoComp valinc then (false,NODEFINC,"others", before) 
+		if estNoComp valinc then (* si aucun increment alors peut être condition var bool*)(false,NODEFINC,"others", before) 
 		else
 		begin 
 			if isplus (*op +or -*) then 
@@ -312,7 +319,7 @@ and getInc var assign inst las asAs completList=
 							end
 							else 
 							begin
-								(*Printf.printf"isIndirect DIVI\n"; *)(isIndirect, INC(DIVI, inc),nvar, before) 
+								(*Printf.printf"isIndirect DIVI\n";*) (isIndirect, INC(DIVI, inc),nvar, before) 
 							end
 				end
 				else (false,NODEFINC,"others", before) 
@@ -528,7 +535,6 @@ afficherLesAffectations iList;*)
 	end
 
 
-
 and extractIncOfLoop x inst varL nbItL completList=
 	if nbItL = 0 then
 	begin
@@ -574,14 +580,34 @@ end
 else (false,NOINC,x, false)
 
 
+
+
+
+
+
 and getLoopVarInc v inst =
-isMultiInc := false;
+		isMultiInc := false;
 		let (isindirect,inc,var, before) = getIncOfInstList v inst inst  in
-		opEstPlus := getIsAddInc inc;
-		expressionIncFor :=  getIncValue inc ;
-(*
-Printf.printf "getincrement %s \n "v;print_intType (getIncType inc);
-print_expression !expressionIncFor 0; flush();new_line();flush();*)
+
+		(* IDEM match  inc  with 
+				NODEFINC -> (* pas trouvé d'increment peut être condition = var booleenne *)
+						let (isAssignedOK, assign, isConditionnal, ltrue, lfalse) = containBoolxAssignementBody x  inst inst in
+						if isAssignedOK then 
+								getBooleanAssignementInc  assign isConditionnal ltrue lfalse x
+						else 
+						begin
+							opEstPlus := getIsAddInc inc;
+							expressionIncFor :=  getIncValue inc ;
+							(isindirect,inc,var, before, !isMultiInc)
+						end
+				
+		|_->*)
+			opEstPlus := getIsAddInc inc;
+			expressionIncFor :=  getIncValue inc ;
+(*print_expression !expressionIncFor 0; flush();new_line();flush();flush();new_line();flush();flush();new_line();flush();
+Printf.printf "getincrement %s \n "v;print_intType (getIncType inc);*)
+
+
 
 
 		(isindirect,inc,var, before, !isMultiInc)

@@ -1,7 +1,7 @@
 
 (* cvarabs -- use Frontc CAML  abstract store evaluation and evaluation of expression
 *
-** Project:	O_Range
+** Project:	O_Rangero
 ** File:	cvarabs.ml
 ** Version:	1.1
 ** Date:	11.7.2008
@@ -38,6 +38,18 @@ let vEPSILONINT = ref (CONSTANT (CONST_INT "1"))
 let isIntoSwithch = ref false
 
 let estDansBoucle = ref false
+
+let isLoopOrIFId x =
+let resb = 
+				if (String.length x > 4) then
+				begin
+					let var4 = (String.sub x  0 4) in
+					let var3 = (String.sub x  0 3) in
+					if  var3 = "IF_" || var3 = "tN_" || var4 = "max_" || var4 = "tni_" then true else false
+				end
+				else if (String.length x > 3) then 
+						if (String.sub x  0 3) = "IF_" || (String.sub x  0 3) = "tN_" then true else false else false in
+resb
 
 let rec getArrayNameOfexp exp =
 	match exp with
@@ -112,6 +124,7 @@ let new_instAPPEL num instAffectIn nom instAffectSortie corps s = APPEL(num, ins
 let new_instAPPELCOMP num instAffectIn nom instAffectSortie absStore s = APPEL(num, instAffectIn, nom, instAffectSortie, (ABSSTORE absStore), s)
 type listeDesInst = inst list
 let listAssocIdType  = ref []
+let listeAssosPtrNameType = ref []
 
 type decType =
 STRUCTORUNION of (string*newBaseType) list
@@ -134,6 +147,20 @@ match t with
 		 else t
 	|  STRUCT_TYPE s ->  t
 
+
+let isStructAndGetIt t =
+match t with
+	FLOAT_TYPE |INT_TYPE -> (false,t) 
+	| UNION_TYPE s -> (false,t)
+	| TYPEDEF_NAME s->  
+		 if (List.mem_assoc s !listAssosIdTypeTypeDec)= true then 
+		 begin
+			match  (List.assoc s !listAssosIdTypeTypeDec)  with  TYPEDEFTYPE (typ) -> (true, getBaseType typ)  | _->(false,t)
+		 end
+		 else (false, t)
+	|  STRUCT_TYPE s ->  (true,t)
+
+
 let rec getInitVarFromStruct (exp : expression)   =
 	 match exp with
 		 VARIABLE name ->  [name] 
@@ -147,9 +174,26 @@ let rec getInitVarFromStruct (exp : expression)   =
 							|_->(*Printf.printf "not &assign\n";*)[])
 		| _-> []
 
+
+let rec  equalList lid1 lid2 =
+if lid1 = [] && lid2  = [] then true
+else if lid1 = [] || lid2 = [] then false
+	 else
+	 begin
+		( List.hd lid1  = List.hd  lid2) && (equalList (List.tl lid1) (List.tl lid2))
+	 end
+
+(*	let nee = consCommaExp (VARIABLE(id)) btype [id] lid ne  in*)
 let rec consCommaExp front t champlist champlistLookingFor exp=
 match t with
-	FLOAT_TYPE |INT_TYPE  -> front
+	FLOAT_TYPE |INT_TYPE  -> 
+				if champlistLookingFor = [] then front
+				else
+				begin
+					let ncl = getInitVarFromStruct front in 
+					if equalList ncl champlistLookingFor then 	exp	
+					else front
+				end
 	|UNION_TYPE s| TYPEDEF_NAME s->  
 		 if (List.mem_assoc s !listAssosIdTypeTypeDec)= true then 
 		 begin
@@ -162,18 +206,20 @@ match t with
 		 begin
 			match  (List.assoc s !listAssosIdTypeTypeDec)  with  
 				STRUCTORUNION (l) -> 
-			CONSTANT(	CONST_COMPOUND(
-					List.map (
-					fun(n,t)->  
-						let ncl = List.append champlist [n] in
-						if ncl = champlistLookingFor then exp 
-						else consCommaExp ( MEMBEROF (front, n)) t ncl champlistLookingFor exp  
-					)l  ))
+					
+							CONSTANT(	CONST_COMPOUND(
+									List.map (
+									fun(n,t)->  
+											 
+										  consCommaExp ( MEMBEROF (front, n)) t champlist champlistLookingFor exp  
+									)l  ))
+						
 				| _->front
 		 end
 		else front
 
 let rec getconsCommaExp  t  champlistLookingFor lexp =
+
 if champlistLookingFor = [] || lexp = []  then (NOTHING) else 
 match t with
 	FLOAT_TYPE |INT_TYPE  -> (NOTHING)
@@ -187,7 +233,7 @@ match t with
 		 end
 		else (NOTHING)
 	|  STRUCT_TYPE s ->  
-		(*Printf.printf"getconsCommaExp ";*)
+	 
 		if (List.mem_assoc s !listAssosIdTypeTypeDec)= true then 
 		 begin
 			match  (List.assoc s !listAssosIdTypeTypeDec)  with  
@@ -199,14 +245,14 @@ match t with
 					let ((n,typ),suitedec) = (List.hd l,List.tl l) in
 (*Printf.printf "champ=%s, n %s\n"champ n;*)
 					if n = champ then
-						if  suitec = [] then begin (* print_expression expChamp 0; new_line();*)  expChamp end(*trouve*)
+						if  suitec = [] then begin  (*print_expression expChamp 0; new_line(); *) expChamp end(*trouve*)
 						else getconsCommaExp  typ  suitec suiteexpc(*dans sous champs*)
 					else getNextChamp  champlistLookingFor  suiteexpc suitedec (*dans autre champs*)
 				end
 				
-			| _->(NOTHING)
+			| TYPEDEFTYPE (n)->(Printf.printf "bot membrer \n"; NOTHING)
 		 end
-		else (NOTHING)
+		else (Printf.printf "not def struct\n"; NOTHING)
 
 and getNextChamp lchamps  lexp ldec =
 if lchamps = [] || lexp = [] || ldec = [] then (NOTHING)
@@ -229,14 +275,14 @@ match t with
 	| TYPEDEF_NAME s->  Printf.printf " type of %s" s;
 		 if (List.mem_assoc s !listAssosIdTypeTypeDec)= true then 
 		 begin
-			match  (List.assoc s !listAssosIdTypeTypeDec)  with  TYPEDEFTYPE (typ) -> printfBaseType typ  | _->Printf.printf " inconnu "
+			match  (List.assoc s !listAssosIdTypeTypeDec)  with  TYPEDEFTYPE (typ) -> printfBaseType typ  | _->Printf.printf " inconnu TYPEDEFTYPE"
 		 end
 	|  STRUCT_TYPE s ->  Printf.printf " struct of %s" s;
 		if (List.mem_assoc s !listAssosIdTypeTypeDec)= true then 
 		 begin
 			match  (List.assoc s !listAssosIdTypeTypeDec)  with  
 				STRUCTORUNION (l) -> List.iter (fun(n,t)-> Printf.printf " champ %s type\n" n ; printfBaseType t; new_line() )l  
-				| _->Printf.printf " inconnu "
+				| TYPEDEFTYPE (n)->Printf.printf " inconnu \n ";printfBaseType n
 		 end
 		
 let print_expVA e = match e with MULTIPLE -> Printf.printf "MULTIPLEDEF \n"| EXP (e) -> if e = NOTHING then Printf.printf "NOTHING" else print_expression e 0
@@ -699,10 +745,11 @@ let rec evalexpression  exp =
 			match val1 with
 			ConstInt (i) ->
 				begin
+					let nbdec = (int_of_string  i) in 
 					match val2 with 
-					ConstInt(j) ->  ConstInt(Printf.sprintf "%d"  ((int_of_string  i) lsr (int_of_string  j)))
-					|ConstFloat (j)->  ConstInt(Printf.sprintf "%d" ((int_of_string   i) lsr (int_of_string  j)))
-					|Var(v) -> if (int_of_string  i) = 0 then ConstInt("0") else Shr (val1,val2)
+					ConstInt(j) ->  ConstInt(Printf.sprintf "%d"  (nbdec lsr (int_of_string  j)))
+					|ConstFloat (j)->  ConstInt(Printf.sprintf "%d" (nbdec lsr (int_of_string  j)))
+					|Var(v) ->  if nbdec = 0 then ConstInt("0") else Quot (val1,Puis (ConstInt("2"), Var(v)) )
 					|_->exp
 				end				
 			|ConstFloat (i)->	
@@ -711,15 +758,15 @@ let rec evalexpression  exp =
 					match val2 with 
 					ConstInt(j) ->  ConstInt(Printf.sprintf "%d" (valeur1 lsr (int_of_string  j)))
 					|ConstFloat (j)->ConstInt(Printf.sprintf "%d" (valeur1 lsr (int_of_string  j)))
-					|Var(v) -> if valeur1 = 0 then ConstInt("0")  else  Shr(val1,val2)
+					|Var(v) -> if valeur1 = 0 then ConstInt("0")  else  Quot (val1,Puis (ConstInt("2"), Var(v)) )
 					|_->exp
 				end
 			|Var(v) -> 
 				begin
 					match val2 with 
-					ConstInt(j) -> if (int_of_string  j) = 0 then val1 else Shr(val1,val2)
-					|ConstFloat (j)-> if (int_of_string  j) = 0 then val1 else  Shr(val1,val2)
-					|Var(v) ->  Shr(val1,val2)
+					ConstInt(j) -> let nbdec = (int_of_string  j) in  if nbdec = 0 then val1 else Shr(val1,val2)
+					|ConstFloat (j)-> let nbdec = (int_of_string  j) in  if nbdec = 0 then val1 else  Shr(val1,val2)
+					|Var(v) -> Quot (val1,Puis (ConstInt("2"), Var(v)) )
 					|_->exp
 				end					
 			|_->exp
@@ -737,7 +784,7 @@ let rec evalexpression  exp =
 						match val2 with 
 						ConstInt(j) ->      ConstInt(Printf.sprintf "%d"  ((int_of_string  i) lsl (int_of_string  j)))
 						|ConstFloat (j)->   ConstInt(Printf.sprintf "%d" ((int_of_string   i) lsl (int_of_string  j)))
-						|Var(v) -> if (int_of_string  i) = 0 then ConstInt("0") else Shl (val1,val2)
+						|Var(v) -> if (int_of_string  i) = 0 then ConstInt("0") else Prod (val1,Puis (ConstInt("2"), Var(v)) )
 						|_->exp
 					end				
 				|ConstFloat (i)->	
@@ -746,15 +793,15 @@ let rec evalexpression  exp =
 						match val2 with 
 						ConstInt(j) ->  ConstInt(Printf.sprintf "%d" (valeur1 lsl (int_of_string  j)))
 						|ConstFloat (j)->  ConstInt(Printf.sprintf "%d" (valeur1 lsl (int_of_string  j)))
-						|Var(v) -> if valeur1 = 0 then ConstInt("0") else  Shl(val1,val2)
+						|Var(v) -> if valeur1 = 0 then ConstInt("0") else  Prod (val1,Puis (ConstInt("2"), Var(v)) )
 						|_->exp
 					end
 				|Var(v) -> 
 					begin
 						match val2 with 
-						ConstInt(j) -> 		if (int_of_string  j) = 0 then val1 else Shl(val1,val2)
-						|ConstFloat (j)-> 	if (int_of_string  j) = 0 then val1 else Shl(val1,val2)
-						|Var(v) ->  Shl(val1,val2)
+						ConstInt(j) -> 		let nbdec = (int_of_string  j) in  if nbdec = 0 then val1 else Prod (val1,Puis (ConstInt("2"), Var(v)) )
+						|ConstFloat (j)-> 	let nbdec = (int_of_string  j) in if nbdec = 0 then val1 else Prod (val1,Puis (ConstInt("2"), Var(v)) )
+						|Var(v) ->  Prod (val1,Puis (ConstInt("2"), Var(v)) )
 						|_->exp
 					end				
 				|_->exp
@@ -779,7 +826,7 @@ let rec evalexpression  exp =
 						match val2 with 
 						ConstInt(j) -> if (float_of_string  j) = 1.0 then val1 else Mod(val1,val2)
 						|ConstFloat(j)->if (float_of_string  j) = 1.0 then val1 else Mod(val1,val2)
-						|Var(v) ->  Mod(val1,val2)
+						|Var(v1) ->  if v = v1 then ConstInt("0") else  Mod(val1,val2)
 						|_->exp
 					)				  
 				|_->exp
@@ -813,9 +860,21 @@ let rec evalexpression  exp =
 						match val2 with 
 						ConstInt(j) ->     if (float_of_string  j) = 1.0 then	val1	else Quot(val1,val2)
 						|ConstFloat (j)->  if (float_of_string  j) = 1.0 then	val1	else Quot(val1,val2)
-						|Var(v) ->  Quot(val1,val2)
+						|Var(v1) ->  
+							if v = v1 then (  ConstInt("1"))
+							else  (   Quot(val1,val2))
 						|_->exp
 					)
+				| Prod (e1, e2)  	-> 
+							let ne1 = evalexpression( Quot(e1,val2)) in
+							let ne2 = evalexpression( Quot(e2,val2)) in
+							(match ne1 with 
+								ConstInt(j) -> Prod (ne1, e2)
+								|_->
+										(match ne2 with
+												ConstInt(j)  ->Prod (e1, ne2)
+												|_-> exp)
+							)
 				|_->exp
 		end
    | PartieEntiereSup (e)-> 
@@ -892,7 +951,7 @@ let rec reecrireSygma var expO =
 		| CALL (exp, args) ->	
 			begin
 				match exp with		
-					VARIABLE("SYGMA") -> (*	Printf.printf "reecrireSygma :"	;	*)
+					VARIABLE("SYGMA") -> Printf.printf "reecrireSygma :"	;	
 						(*print_expression expO 0; new_line();*)
 						let varexp = List.hd args in
 					 	let suite = List.tl args in
@@ -930,7 +989,12 @@ let rec remplacerValPar0  var expr =
 	| CALL (exp, args) 			->	CALL (exp, List.map(fun a-> remplacerValPar0  var a)args)
 	| VARIABLE (s) 				->	if s = var then CONSTANT (CONST_INT "0") else expr
 	| INDEX (n,exp) 			->	INDEX (n, remplacerValPar0   var exp)
+	| CONSTANT ( CONST_COMPOUND expsc)  -> CONSTANT ( CONST_COMPOUND ( List.map(fun a-> remplacerValPar0  var  a)expsc))
+	| COMMA exps 					->	(COMMA ( List.map (fun a -> remplacerValPar0  var  a) exps))
 	| _ 						-> 	expr
+
+(*		| MEMOF -> ("*", 13)
+		| ADDROF -> ("&", 13)*)
 
 let rec remplacerValPar  var nouexp expr =
 	match expr with
@@ -940,7 +1004,20 @@ let rec remplacerValPar  var nouexp expr =
 	| CALL (exp, args) 			->	CALL (exp, List.map(fun a-> remplacerValPar  var nouexp a)args)
 	| VARIABLE (s) 				->	if s = var then nouexp else expr
 	| INDEX (n,exp) 			->	INDEX (n, remplacerValPar  var nouexp exp)
+	| CONSTANT ( CONST_COMPOUND expsc)  -> CONSTANT ( CONST_COMPOUND ( List.map(fun a-> remplacerValPar  var nouexp a)expsc))
+	| COMMA exps 					->	(COMMA ( List.map (fun a -> remplacerValPar  var nouexp a) exps))
+	| MEMBEROF (ex, c) 			->  (match nouexp with 
+											VARIABLE (v) -> MEMBEROF (remplacerValPar   var nouexp ex,   c) 
+										|  	UNARY (MEMOF, VARIABLE(v)) -> MEMBEROF (remplacerValPar   var (VARIABLE(v)) ex,   c) 
+					
+										|_-> expr)
+	| MEMBEROFPTR (ex, c) 		->	(match nouexp with 
+											VARIABLE (v) -> MEMBEROF (remplacerValPar   var nouexp ex,   c) 
+										|  	UNARY (ADDROF, VARIABLE(v)) -> MEMBEROF (remplacerValPar   var (VARIABLE(v)) ex,   c) 
+					
+										|_-> expr)
 	| _ 						-> 	expr
+
 
 let rec mapVar fct = function 
          NOTHING				-> NOTHING
@@ -949,6 +1026,10 @@ let rec mapVar fct = function
 	| CALL (exp, args) 			->	CALL (exp, List.map(fun a-> mapVar fct a)args)
 	| VARIABLE (s) 				->	VARIABLE (fct s)
 	| INDEX (n,exp) 			->	INDEX (n, mapVar fct exp)
+	| CONSTANT ( CONST_COMPOUND expsc)  -> CONSTANT ( CONST_COMPOUND ( List.map(fun a-> mapVar fct a)expsc))
+	| COMMA exps 					->	(COMMA ( List.map (fun a -> mapVar fct a) exps))
+(*	| MEMBEROF (ex, c) 			-> MEMBEROF ( mapVar fct ex,   c)
+	| MEMBEROFPTR (ex, c) 		->	MEMBEROFPTR (  mapVar fct ex,    c)*)
 	| expr 					-> 	expr
 	
 let rec remplacerNOTHINGPar  expr =
@@ -959,7 +1040,23 @@ let rec remplacerNOTHINGPar  expr =
 	| CALL (exp, args) 			->	CALL (exp, List.map(fun a-> remplacerNOTHINGPar a)args)
 	| VARIABLE (s) 				->	expr
 	| INDEX (n,exp) 			->	INDEX (n, remplacerNOTHINGPar    exp)
+(*	| CONSTANT ( CONST_COMPOUND expsc)  -> CONSTANT ( CONST_COMPOUND ( List.map(fun a-> remplacerNOTHINGPar a)expsc))
+	| COMMA exps 					->	(COMMA ( List.map (fun a -> remplacerNOTHINGPar    a) exps))*)
 	| _ 						-> 	expr
+
+let rec isNoDef  expr =
+	match expr with
+	NOTHING 					-> true
+	| UNARY (op, exp) 			-> isNoDef   exp
+	| BINARY (op, exp1, exp2) 	-> isNoDef exp1 || isNoDef exp2
+	| CALL (exp, args) 			->	isNoDef exp ||  traiterCOMMADEF args
+	| VARIABLE (s) 				->	false
+	| INDEX (n,exp) 			->	isNoDef n || isNoDef    exp
+	| _ 						-> 	false
+
+and traiterCOMMADEF args =
+if args = [] then false
+else isNoDef (List.hd  args) || traiterCOMMADEF (List.tl  args)
 
 let rec mapAffect fct = function
   (VAR(ident, expr)) -> (VAR((fct ident), expr))
@@ -1300,6 +1397,12 @@ let rec  calculer expressionVA ia l sign =
 				)
 			| VARIABLE (s) ->		 (Var(s))
 			| _ -> 	NOCOMP
+
+
+(*
+		 EXPR_SIZEOF e ->
+		 | TYPE_SIZEOF _ -> false		
+*)
 	)
 |	MULTIPLE -> NOCOMP
 
@@ -1472,41 +1575,41 @@ and calculaetbAffineForne x expre = (* a*x+b d'une foction affine en x *)
 			end
 		| Prod (f, g)  ->  
 			if (estVarDsExpEval x f = false) then (* f constante*) 
-			begin
+			begin  
 			 	if (estVarDsExpEval x g = false) then 
 					(ConstInt("0"),evalexpression (Prod (evalexpression f, evalexpression g) ))
 				else
-				begin (*Printf.printf "pas dans f mais dans g\n";*)
+				begin 
 					let (a1, b1) = calculaetbAffineForne x g in
 					(evalexpression (Prod (evalexpression f, a1)), evalexpression (Prod (evalexpression f, b1)))
 				end
-				end
-			else
+			end
+			else (
 				if (estVarDsExpEval x g = false) then 
-				begin
+				begin 
 					let (a1, b1) = calculaetbAffineForne x f in
 					(evalexpression (Prod (evalexpression g, a1)), evalexpression (Prod (evalexpression g, b1)))
 				end
-			else (ConstInt("0"),ConstInt("0"))
-		| Shr (f, g)  ->  
-				if (estVarDsExpEval x f = false) then (* f constante*) 
+				else (* Printf.printf " affine prod cas 3 \n";*) (ConstInt("0"),ConstInt("0") ) )
+		| Shr (f, g)  -> 
+				
+				if (estVarDsExpEval x g = false) then 
 				begin
-					 if (estVarDsExpEval x g = false) then 
+					if (estVarDsExpEval x f = false) then 
 						(ConstInt("0"),evalexpression (Shr (evalexpression f, evalexpression g) ))
-					 else
-					 begin (*Printf.printf "pas dans f mais dans g\n";*)
-						let (a1, b1) = calculaetbAffineForne x g in
-						 (evalexpression (Shr (evalexpression f, a1)), evalexpression (Shr (evalexpression f, b1)))
-					 end
-				end
-				else
-				 	if (estVarDsExpEval x g = false) then 
-					begin
-						 let (a1, b1) = calculaetbAffineForne x f in
-						 (evalexpression (Shr (evalexpression g, a1)), evalexpression (Shr (evalexpression g, b1)))
+					else					
+					begin 
+						let (a1, b1) = calculaetbAffineForne x f in
+						let (fa1, fb1) = (( match a1 with  ConstInt(j) -> ConstFloat(j) |_-> a1),
+										  ( match b1 with  ConstInt(j) -> ConstFloat(j) |_-> b1) ) in
+						let eg = evalexpression (Puis (ConstInt("2"), g)) in
+
+
+						(evalexpression (Quot ( fa1,  eg)), evalexpression(Quot ( fb1, eg)))
 					end
-					else (ConstInt("0"),ConstInt("0"))
-		| Quot (f, g)	->  
+				end
+				else (ConstInt("0"),ConstInt("0"))
+		| Quot (f, g)	->   
 				if (estVarDsExpEval x g = false) then 
 				begin
 					if (estVarDsExpEval x f = false) then 
@@ -1535,20 +1638,28 @@ and calculaetbAffineForne x expre = (* a*x+b d'une foction affine en x *)
 					end
 				end
 				else (ConstInt("0"),ConstInt("0"))
-		|  Shl (f, g)	->  
-				if (estVarDsExpEval x g = false) then 
+		|  Shl (f, g)	->    
+				if (estVarDsExpEval x f = false) then (* f constante*) 
 				begin
-					if (estVarDsExpEval x f = false) then 
+					 if (estVarDsExpEval x g = false) then 
 						(ConstInt("0"),evalexpression (Shl (evalexpression f, evalexpression g) ))
-					else					
-					begin
-						let (a1, b1) = calculaetbAffineForne x f in
-						let (fa1, fb1) = (( match a1 with  ConstInt(j) -> ConstFloat(j) |_-> a1),
-										  ( match b1 with  ConstInt(j) -> ConstFloat(j) |_-> b1) ) in
-						(evalexpression (Shl ( fa1, evalexpression g)), evalexpression(Shl ( fb1, evalexpression g)))
-					end
+					 else
+					 begin (*Printf.printf "pas dans f mais dans g\n";*)
+						(*let (a1, b1) = calculaetbAffineForne x g in
+						
+						 (evalexpression (Shl (evalexpression f, a1)), evalexpression (Shl (evalexpression f, b1)))*)(ConstInt("0"),ConstInt("0"))
+					 end
 				end
-				else (ConstInt("0"),ConstInt("0"))
+				else
+				 	if (estVarDsExpEval x g = false) then 
+					begin
+						 let eg = evalexpression (Puis (ConstInt("2"), g)) in
+						 let (a1, b1) = calculaetbAffineForne x f in
+						 (evalexpression (Prod (evalexpression a1, eg)), evalexpression (Prod (evalexpression b1, eg)))
+					end
+					else (ConstInt("0"),ConstInt("0"))
+
+
 		| ConstInt(_) -> (ConstInt("0"),evalexpression expre)
 		| ConstFloat (_) -> (ConstInt("0"),evalexpression expre)
 		| Var (v) -> if v = x then (ConstInt("1"), ConstInt("0")) else (ConstInt("0"),Var (v))
@@ -2320,6 +2431,33 @@ Printf.printf  "\t\t\t\t FIN  OUTPUT %d %s\n" num nom;
 Printf.printf  "\t\t\t\t FIN  OUTPUT %d %s\n" num nom;  
 Printf.printf  "\n\t\t\t\tFUNCTION CALL INPUT APPEL numbero %d %s FIN \n" num nom
 
+
+
+
+let rec getCondIntoList ifid listeAffect = 
+if listeAffect = [] then (false, EXP(NOTHING))
+else
+begin
+	let (trouve, exp) = getCond ifid (List.hd listeAffect) in
+	if trouve then (trouve, exp) else getCondIntoList ifid  (List.tl listeAffect) 
+end
+
+
+and getCond ifid affect =
+	match affect with
+	 VAR ( id, expVA1) 				->	 if id = ifid then (true, expVA1) else  (false, EXP(NOTHING))
+	|  MEMASSIGN ( _, _, _)	| TAB  ( _, _, _)	->	 (false, EXP(NOTHING))
+									
+	| IFVF (_, i1, i2) 		->
+			let (trouve, exp) = getCond ifid i1 in
+			if trouve then  (trouve, exp)  else getCond ifid i2
+	| IFV ( _, i1) 		->getCond ifid i1 
+	| BEGIN (liste)			-> getCondIntoList ifid liste 		
+	| FORV ( _, _,_, _, _, _, i) -> 	getCond ifid i
+	| APPEL (_, _, _, _,CORPS c,_) ->getCond ifid c
+	| APPEL (_, _, _, _,ABSSTORE a,_) ->(false, EXP(NOTHING))
+			 
+
 let afficherListeDesFctAS liste=
 if liste <> [] then
 begin
@@ -2402,7 +2540,7 @@ else
 	end
 	
 let existeAffectationVarListe var liste =
-  List.exists (fun aSCourant ->  match aSCourant with ASSIGN_SIMPLE (id, _) |ASSIGN_DOUBLE (id, _, _) |ASSIGN_MEM (id, _, _)->  id = var ) liste  
+if liste = [] then false else  List.exists (fun aSCourant ->  match aSCourant with ASSIGN_SIMPLE (id, _) |ASSIGN_DOUBLE (id, _, _) |ASSIGN_MEM (id, _, _)->  id = var ) liste  
 			 
 let ro var liste =
    List.find  (fun aSCourant -> match aSCourant with ASSIGN_SIMPLE (id, _)  |ASSIGN_DOUBLE (id, _, _)  |ASSIGN_MEM (id, _, _)-> id = var ) liste
@@ -2564,14 +2702,182 @@ let rec simplifierValeur exp =
 		|_-> exp
 	
 
+let isRenameVar = ref false
+
+let getStuctValueOfExpression assign listType=
+	let assignedValue = (simplifierValeur assign) in
+		match  assignedValue with  
+				CONSTANT(	CONST_COMPOUND(expsc))  -> (expsc, true) 
+				|  UNARY (op, e) ->
+							(match op with
+								ADDROF -> (match e with  CONSTANT(	CONST_COMPOUND(expsc)) -> (expsc, true) |_->([], true)  )
+								 |_-> ([], true)
+									 
+							)	
+				| VARIABLE(v)->		let rescons = consCommaExp  assignedValue  listType [] []  NOTHING  in
+									(match rescons with  CONSTANT(	CONST_COMPOUND(expsc)) -> (expsc, true) |_->([], true)  )
+				(*|CALL(VARIABLE "SET", args)->	
+									let rescons = consCommaExp  assignedValue  listType [] []  NOTHING  in
+									(match rescons with  CONSTANT(	CONST_COMPOUND(expsc)) -> (expsc, true) |_->([], true)  )*)
+				|_-> ([], true)
+	 
+let rec completeType typ =
+if typ = [] then []
+else List.append [NOTHING] (completeType (List.tl typ))
+
+
+let rec compareComma exp exp1 res typ=
+if exp = [] && exp1 = [] then List.rev res
+else if exp = [] || exp1 = [] then List.append (List.rev res) (completeType typ)
+	 else  
+	 begin
+			let (first1, last1,first2, last2,listT) = (List.hd exp, List.tl exp, List.hd exp1, List.tl exp1, if typ = [] then typ else List.tl typ) in
+			let lid1 = getInitVarFromStruct ((first1))  in
+			let lid2 =	getInitVarFromStruct ((first2))  in
+
+			(*print_expression first1 0;*)
+										
+			let egal = equalList lid1 lid2 in
+			if egal then compareComma last1 last2 (List.append  [first1] res) listT  
+			else  compareComma last1 last2 (List.append [NOTHING] res) listT
+	 end
+
+
+
+
+let rec simplifierStructSet btype lid listexp e id=
+if listexp = [] || List.tl listexp = [] then NOTHING
+else
+begin  
+	let (firstarg,secondarg) = (List.hd listexp, List.hd(List.tl listexp)) in
+	let simplifiedfirst =
+		match  firstarg with  
+				CALL(VARIABLE "SET", args) -> simplifierStructSet btype lid  args e id
+			|	CONSTANT(CONST_COMPOUND expsc) ->  getconsCommaExp  btype  lid expsc
+			|	_	->remplacerValPar  id  firstarg e in
+	let lid1 = getInitVarFromStruct (simplifiedfirst)  in
+
+	let simplifiedsecond =
+		match  secondarg with  
+				CALL(VARIABLE "SET", args) -> simplifierStructSet btype lid  args e id
+			|	CONSTANT(CONST_COMPOUND expsc) ->  getconsCommaExp  btype  lid expsc
+			|	_	->remplacerValPar  id  secondarg e in
+	let lid2 =	getInitVarFromStruct (simplifiedsecond)  in
+	let egal = equalList lid1 lid2 in
+			if egal then simplifiedfirst
+			else CALL(VARIABLE "SET", List.append [simplifiedfirst] [simplifiedsecond])
+end
+
+let traiterChampOfstruct id a e idsaufetoile lid=
+
+(*		| MEMOF -> ("*", 13)
+		| ADDROF -> ("&", 13)*)
+
+let (btype, isdeftype) = 
+			if List.mem_assoc idsaufetoile !listAssocIdType then (getBaseType (List.assoc idsaufetoile !listAssocIdType), true) 
+			else 
+				if List.mem_assoc idsaufetoile !listeAssosPtrNameType then (getBaseType (List.assoc idsaufetoile !listeAssosPtrNameType), true) 
+				else (INT_TYPE, false)
+in
+	if isdeftype then 
+	begin			
+		 
+		if (existeAffectationVarListe id a ) then 
+		begin
+			(*Printf.printf "traiterChampOfstruct MEMBEROFPTR   existe \n" ;print_expression e 0; new_line(); new_line() ;flush();space();*)
+			let assignedid =  (ro id a) in
+			(match assignedid with 
+				ASSIGN_SIMPLE (id, EXP(valeur)) ->  
+				(	
+					let assignedValue = (simplifierValeur valeur) in
+					match  assignedValue with  
+						CONSTANT cst ->
+							(match cst with 
+								CONST_COMPOUND expsc -> (* Printf.printf "traiterChampOfstruct MEMBEROFPTR lid non vide  assigncomma%s\n" id;*)
+									(*List.iter (fun x-> Printf.printf "%s." x)lid;	Printf.printf "\n"; *) 
+									let na = getconsCommaExp  btype (List.tl lid) expsc in
+									(*printfBaseType btype;*)
+									(na)
+									|_->  assignedValue
+							)
+						|  UNARY (op, ex) ->
+							(match op with
+								ADDROF ->
+										(*Printf.printf "traiterChampOfstruct &assign\n";*)
+									(match ex with 
+										CONSTANT cst ->
+											(match cst with
+												CONST_COMPOUND expsc ->  
+													(*Printf.printf "traiterChampOfstruct MEMBEROFPTR lid non vide  &assigncomma%s\n" id;*) 
+													(*List.iter (fun x-> Printf.printf "%s." x)lid;	Printf.printf "\n"; *)
+													let na = getconsCommaExp  btype (List.tl lid) expsc in
+													(*printfBaseType btype;*) (*Printf.printf "new\n";print_expression na 0; new_line() ;  *)
+													(na)
+												|_->   remplacerValPar  id  ( UNARY (op, ex)) e 
+											)
+										|_-> begin (*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas 1 %s\n" id;     *)
+										remplacerValPar  id  ( UNARY (op, ex)) e end 
+									)
+								| MEMOF -> (*Printf.printf "traiterChampOfstruct *assign id : %s\n" id; *)
+									let (value,trouve, direct) =   
+										if existeAffectationVarListe id a  then 
+											(expVaToExp (rechercheAffectVDsListeAS (id) a ), true, true) 
+										else 	if  (existeAffectationVarListe ("*"^id) a ) then 
+													(expVaToExp (rechercheAffectVDsListeAS ("*"^id) a) , true, false) 
+												else (e, false, false) in
+									if trouve  then
+									begin 
+										(*	Printf.printf "traiterChampOfstruct *assign id : %s TROUVE\n" id; print_expression value 0; new_line() ; 
+											if direct then Printf.printf "  TROUVE direct\n"  else Printf.printf "  TROUVE indirect\n" ; *)
+											match value with 
+											 CONSTANT cst ->
+												(match cst with
+													CONST_COMPOUND expsc ->  
+												(*		Printf.printf "traiterChampOfstruct MEMBEROFPTR lid non vide  & *assigncomma%s\n" id;*) 
+														(*List.iter (fun x-> Printf.printf "%s." x)lid;	Printf.printf "\n"; *)
+														let na = getconsCommaExp  btype (List.tl lid) expsc in
+														(*printfBaseType btype;*) (*Printf.printf "new\n";print_expression na 0; new_line() ;*)
+														(na)
+													|_->  if direct then remplacerValPar  id  ( UNARY (op, ex)) e else remplacerValPar  id  value e
+												)
+											|_-> begin (*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas 1 %s\n" id;   *) 
+													remplacerValPar  id  ( UNARY (op, ex)) e end 
+
+									 end
+									else remplacerValPar  id  ( UNARY (op, ex)) e
+								|_-> begin (*Printf.printf "traiterChampOfstruct MEMBEROFPTR cas 2 %s\n" id;   *)  e end 
+							)(*voir autres cas*)
+						
+						| VARIABLE (varn) ->  if id = varn then e else remplacerValPar  id  (VARIABLE (varn)) e
+						| CALL (VARIABLE "SET", args) ->  
+								
+								let na2 = simplifierStructSet btype (List.tl lid) args e id in
+								(*Printf.printf "traiterChampOfstruct MEMBEROFPTR SET %s  expression\n" id ;
+								print_expression e 0; new_line() ; new_line() ;flush();space();new_line() ;flush();space(); 
+								Printf.printf "traiterChampOfstruct MEMBEROFPTR SET %s  changed set 2\n" id ; print_expression na2 0; new_line() ; ; 
+								Printf.printf "traiterChampOfstruct MEMBEROFPTR SET %s  \n" id ;*)
+								na2 
+						|_->	(*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas 3 %s non traité\n" id;*)(* print_expression assignedValue 0;*) 								remplacerValPar  id  assignedValue e 				 
+				)
+				| _ -> begin (*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas 4 %s non traité\n" id; *) boolAS:= true; (NOTHING)end
+			)
+		end
+		else begin(* Printf.printf "AS non exist \n" ; *)(e)end
+	end
+	else e
 
 let rec applyStore e a =
 match e with
 	NOTHING  -> NOTHING
 	| VARIABLE name ->  
+
 		if (existeAffectationVarListe name a ) then 
-			match (ro name a) with ASSIGN_SIMPLE (_(*id*), EXP(valeur)) -> (valeur) |ASSIGN_SIMPLE (_(*id*), MULTIPLE) ->NOTHING| _ ->(*impossible ou erreur code c*)	e
-		else (e)
+		begin
+			let newassign = (ro name a) in
+			isRenameVar := true; 
+			match newassign with ASSIGN_SIMPLE (_, EXP(valeur)) ->(valeur) |ASSIGN_SIMPLE (_, MULTIPLE) ->isRenameVar := true; NOTHING| _ ->	e
+		end
+		else (e) 
 	| CONSTANT 	cst	->
 		(match cst with 
 			CONST_COMPOUND expsc ->(*Printf.printf "consta conpound 1\n"; print_expression e 0; new_line();*)
@@ -2583,6 +2889,7 @@ match e with
 	| UNARY (op, exp1) 				-> 
 		(	match op with 
 				MEMOF ->
+						
 (*Printf.printf"MEMOF\n";
 print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 						let exp1e = applyStore exp1 a in
@@ -2611,9 +2918,11 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 								end
 								else 
 								begin 
-									
-										let nexp =	if (existeAffectationVarListe tab1 a ) then 
-									match (ro tab1 a) with ASSIGN_SIMPLE (_, EXP(valeur)) -> (valeur) | _ -> 	NOTHING else NOTHING in
+									let nexp =	
+										if (existeAffectationVarListe tab1 a ) then 
+											match (ro tab1 a) with ASSIGN_SIMPLE (_, EXP(valeur)) -> (valeur)  
+												|ASSIGN_SIMPLE (_, MULTIPLE) ->NOTHING| _ -> e
+										else NOTHING in
 										(*print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 
 										match nexp with
@@ -2627,13 +2936,19 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 								Printf.printf "les as rofilter array %s tab\n" tab1 ;*)
 								match exp1 with VARIABLE(v) -> 
 									if (existeAffectationVarListe ("*"^v) a ) then 
-											match (ro ("*"^v) a ) with ASSIGN_SIMPLE (_(*id*), EXP(valeur)) -> (valeur) | _ ->(*impossible ou erreur code c*)	(NOTHING)
-									else UNARY (op,  applyStore exp1e  [ro v a] )
+											match (ro ("*"^v) a ) with 
+											ASSIGN_SIMPLE (_, EXP(valeur)) -> (valeur) 
+											 |ASSIGN_SIMPLE (_, MULTIPLE) ->NOTHING| _ -> e
+									else if (existeAffectationVarListe (v) a) then UNARY (op,  applyStore exp1e  [ro v a] ) else e
 									|_->
-										let nexp =	if (existeAffectationVarListe tab1 a ) then 
-													 match (ro tab1 a) with ASSIGN_SIMPLE (_, EXP(valeur)) -> (valeur) | _ -> 	NOTHING else NOTHING in
+										let nexp =	
+											if (existeAffectationVarListe tab1 a ) then 
+												match (ro tab1 a) with
+													ASSIGN_SIMPLE (_, EXP(valeur)) -> (valeur) 
+													|ASSIGN_SIMPLE (_, MULTIPLE) ->NOTHING| _ ->	e
+											else NOTHING in
 										(*print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
-										(match nexp with NOTHING ->   UNARY (op, exp1e  )  |_->   (*( *) UNARY (op,  applyStore exp1e  [ro tab1 a] ))
+										(match nexp with NOTHING ->   UNARY (op, exp1e  )  |_->    UNARY (op,  applyStore exp1e  [ro tab1 a] )  )
 									
 							end
 						end 
@@ -2641,7 +2956,7 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 						begin 
 (* Printf.printf "les as rofilter array 2\n" ;*)
 							(match exp1 with
-							 UNARY (ADDROF, next) ->  Printf.printf "les as rofilter*&\n" ;  applyStore next a 
+							 UNARY (ADDROF, next) ->  (*Printf.printf "les as rofilter*&\n" ;*)  applyStore next a 
 							 |_->	(match exp1e with 	 UNARY (ADDROF, next) ->    applyStore next a  |_->  UNARY (op, exp1e  ) ))
 						end
 			|ADDROF->    	(match exp1 with
@@ -2652,7 +2967,7 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 	| QUESTION (exp1, exp2, exp3) ->  	(QUESTION ((applyStore exp1 a), (applyStore exp2 a) , (applyStore exp3 a) ))
 	| CAST (typ, exp1) 				->	let res = (applyStore exp1 a) in 
 										if res = NOTHING then NOTHING else res
-	| CALL (exp1, args) 			->	(CALL ( exp1 , List.map (fun arg -> applyStore (arg) a) args))
+	| CALL (exp1, args) 			->	(CALL (  exp1  , List.map (fun arg -> applyStore (arg) a) args))
 	| COMMA exps 					->	(COMMA ( List.map (fun arg -> applyStore (arg) a) exps))
 	| EXPR_SIZEOF exp 				->	(EXPR_SIZEOF (applyStore exp a))
 	| TYPE_SIZEOF _ 				->	(e)
@@ -2685,56 +3000,135 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 		
 		
 				let lid =	getInitVarFromStruct e  in
+				(*Printf.printf "variable source %s\n"(List.hd lid);*)
 				if lid != [] && (isCallVarStruct lid = false )then 
 				begin
-					let (btype, id) =  ( getBaseType (List.assoc (List.hd lid) !listAssocIdType) , List.hd lid)  in (*Printf.printf "applystore MEMBEROFPTR  avant existe \n" ;*)
-					if (existeAffectationVarListe id a ) then 
-					begin
-						(*Printf.printf "applystore MEMBEROFPTR   existe \n" ;*)
-						(match (ro id a) with 
-							ASSIGN_SIMPLE (id, EXP(valeur)) -> (*Printf.printf "applystore assign %s\n" id;print_expression valeur 0; new_line();*)
-							(	match (simplifierValeur valeur) with  
-								CONSTANT cst ->
-									(match cst with 
-										CONST_COMPOUND expsc ->  (*Printf.printf "applystore MEMBEROFPTR lid non vide  assigncomma%s\n" id;
-											List.iter (fun x-> Printf.printf "%s." x)lid;	Printf.printf "\n"; *)
-											let na = getconsCommaExp  btype (List.tl lid) expsc in
-			 								(*Printf.printf "new\n";print_expression na 0; new_line() ;*)
-											(na)
-										|_->(valeur)	
-									)
-								|  UNARY (op, e) ->
-									(match op with
-										ADDROF ->
-										(*	Printf.printf "&assign\n";*)
-											(match e with 
-												CONSTANT cst ->
-													(match cst with
-														CONST_COMPOUND expsc ->  
-														(*Printf.printf "applystore MEMBEROFPTR lid non vide  &assigncomma%s\n" id;
-														List.iter (fun x-> Printf.printf "%s." x)lid;	Printf.printf "\n"; *)
-														let na = getconsCommaExp  btype (List.tl lid) expsc in
-		 												(*Printf.printf "new\n";print_expression na 0; new_line() ;*)
-														(na)
-														|_->(valeur)
-													)
-												|UNARY(MEMOF, ne)-> begin (*Printf.printf "applystore MEMBEROFPTRcas 1.1 %s\n" id;  *)  boolAS:= true; (NOTHING) end 
-												|_-> begin (*Printf.printf "applystore MEMBEROFPTRcas 1 %s\n" id;*) boolAS:= true; (NOTHING) end 
-											)
-										|_-> begin (*Printf.printf "applystore MEMBEROFPTRcas 2 %s\n" id; *) boolAS:= true; (NOTHING) end 
-									)(*voir autres cas*)
-								|_->	begin (*Printf.printf "applystore MEMBEROFPTRcas 3 %s\n" id; *)boolAS:= true; (NOTHING)end
-							)
-							| _ ->(*impossible ou erreur code c*)	begin (*Printf.printf "applystore MEMBEROFPTRcas 4 %s\n" id; *) boolAS:= true; (NOTHING)end
-						)
-					end
-					else begin (*Printf.printf "AS non exist \n" ;*) (e)end
+					let fid =  (List.hd lid) in
+				    let (id, pid) = if  String.length fid > 1 then 
+											if (String.sub fid  0 1)="*" then 
+												(String.sub fid 1 ((String.length fid)-1) ,fid) 
+											else (fid ,fid )
+									else (fid ,fid ) in 
+					if id != fid then Printf.printf "id %s, fid %s\n" id pid;
+					traiterChampOfstruct pid a e id lid
+			
+					
 				end
-				else begin (*Printf.printf "applystore MEMBEROFPTRcas 5 \n" ;*) boolAS:= true; (NOTHING)end
+				else  e 
 
 	| _	-> if !vDEBUG then Printf.printf "struct et gnu body non traités pour le moment \n"; 
 			boolAS:= true; 
 			(NOTHING)
+
+
+
+
+let rec independantDesVarsDeExpSeules exp asL listeIntersection=
+ let (resbool, resliste) = isindependent  listeIntersection asL [] in
+
+(*Printf.printf "independantDesVarsDeExpSeules \n";
+
+Printf.printf "expression\n";print_expression exp 0; new_line() ; new_line() ;flush();space();new_line() ;flush();space();*)
+(*Printf.printf "independantDesVarsDeExpSeules \n";
+Printf.printf "  independantDesVarsDeExpSeulesAux liste inter \n";List.iter (fun x-> Printf.printf "%s " x)listeIntersection;	Printf.printf "   fin \n";*)
+(*if resbool then Printf.printf "resbool true  \n" else  Printf.printf "resbool false  \n";*)
+
+
+
+
+ if resbool then(*afficherListeAS( asL);new_line() ; new_line() ;flush();space();new_line() ;flush();space(); *)
+  independantDesVarsDeExpSeulesAux exp asL resliste
+
+ else false
+
+
+
+and independantDesVarsDeExpSeulesAux exp asL liste =  (*expression ,abstract store, liste des variables modifiées de l'as*)
+	match exp with
+		UNARY (_, e) -> 				independantDesVarsDeExpSeulesAux e asL liste
+	| BINARY (_, exp1, exp2)| 
+		INDEX (exp1, exp2) -> 	 		independantDesVarsDeExpSeulesAux  exp1 asL liste && independantDesVarsDeExpSeulesAux  exp2 asL liste
+	| QUESTION (exp1, exp2, exp3) ->	independantDesVarsDeExpSeulesAux  exp1 asL liste && independantDesVarsDeExpSeulesAux  exp2 asL liste && independantDesVarsDeExpSeulesAux  exp3 asL liste
+	| CAST (_, e) ->					independantDesVarsDeExpSeulesAux  e asL liste
+	| CALL (e, args) ->					independantDesVarsDeExpSeulesAux  e asL liste && independantCommaExpaux args asL liste
+	| COMMA e -> 						independantCommaExpaux e asL liste
+	| EXPR_SIZEOF e ->					independantDesVarsDeExpSeulesAux  e asL liste
+	| MEMBEROF (_, _)| MEMBEROFPTR (_, _) ->	
+			let lid1 =	getInitVarFromStruct exp  in
+			if lid1 != [] && (isCallVarStruct lid1 = false )then 
+			begin
+				let id = (List.hd lid1) in
+				if List.mem id liste then
+				begin 
+						if (existeAffectationVarListe id asL ) then 
+						begin
+								let na = applyStore exp asL in 
+								(*Printf.printf "new\n";print_expression na 0; new_line() ; new_line() ;flush();space();new_line() ;flush();space();*)
+									if na = exp || na  = NOTHING then ((*Printf.printf "  independantDesVarsDeExpSeulesAux ok \n";*) true) 
+									else 
+									begin
+									
+										let lid2 =	getInitVarFromStruct na  in
+										(*Printf.printf "  independantDesVarsDeExpSeulesAux liste1 \n";List.iter (fun x-> Printf.printf "%s." x)lid1;	Printf.printf "\n";
+										Printf.printf "  independantDesVarsDeExpSeulesAux liste2 \n";List.iter (fun x-> Printf.printf "%s." x)lid2;	Printf.printf "\n";*)
+										let egal = equalList lid1 lid2 in
+										if egal then ((*Printf.printf "  independantDesVarsDeExpSeulesAux ok 2 \n";*) true)  else ((*Printf.printf "  independantDesVarsDeExpSeulesAux NOTok \n";*) false)
+									end
+						end
+						else true
+				end
+				else true
+			end
+			else false
+			
+	| _ -> 						 	true
+
+	 
+	
+and independantCommaExpaux liste asL dep=
+if liste = [] then true 
+else   (independantDesVarsDeExpSeulesAux (List.hd liste) asL dep) && (independantCommaExpaux (List.tl liste) asL dep) 
+	
+
+
+
+
+
+(*si id est un champ de struct alors le nom du champ sinon construire le nom isindependent maxinit listeIntersection lesAs*)
+and isindependent  listeIntersection lesAs listeDep =
+if listeIntersection = [] then (true,listeDep)
+else
+begin
+	let (first, next) = (List.hd listeIntersection, List.tl listeIntersection) in
+
+	let (btype, isdeftype) = 
+			if List.mem_assoc first !listAssocIdType then (getBaseType (List.assoc first !listAssocIdType), true) 
+			else 
+				if List.mem_assoc first !listeAssosPtrNameType then (getBaseType (List.assoc first !listeAssosPtrNameType), true) 
+				else (INT_TYPE, false)
+	in
+
+	if (isdeftype)= true then 
+	begin
+		let (isStruct, _) = isStructAndGetIt btype   in
+		if isStruct then 
+		begin
+			if (existeAffectationVarListe first lesAs ) then 
+			begin 
+				(	match (ro first lesAs ) with 
+					ASSIGN_SIMPLE (id, EXP(valeur)) ->  
+						 let (resbool, resliste) = isindependent next lesAs listeDep in 
+						 (resbool, List.append [first] resliste)
+				
+					| _ ->  ((*Printf.printf "  isindependent %s  not single assign \n" first ;*) (false,[])))
+			end
+			else ((*Printf.printf "  isindependent %s  not exist \n" first ;*) (false,[]))
+		end
+		else ((*Printf.printf "  isindependent %s  not struct \n" first ;*) (false,[]))
+	end
+	else (false,[])
+end
+
 
 let rec hasSygmaExp e =
 (*Printf.printf "  asSygmaExp \n";*)
@@ -2762,8 +3156,39 @@ match exp with
 			let res = applyStore e a  in
 			if (!boolAS = false) then EXP(res) else MULTIPLE
 		
-let listWithoutVarAssignSingle var liste =
- List.filter (fun aS ->  match aS with ASSIGN_SIMPLE (id, _) -> 	(id <> var)  |_ ->  true  ) liste  
+let listWithoutVarAssignSingle var liste isstruct   =
+if isstruct = false then List.filter (fun aS ->  match aS with ASSIGN_SIMPLE (id, _) -> 	(id <> var)  |_ ->  true  ) liste  
+else
+begin  
+	if  (existeAffectationVarListe var liste ) then 
+	begin
+		let assignBefore =  (ro var liste)  in
+(*Printf.printf "dans listWithoutVarAssignSingle liste\n";
+		afficherListeAS liste;*)
+		let (before, after) =    roavant liste assignBefore  [] in
+		
+		let nl = if after = [] then before
+				 else
+				 begin
+						let (assign,v) = match assignBefore with ASSIGN_SIMPLE (id, EXP(VARIABLE(v)) ) ->   (VARIABLE(v),v)   |_->(NOTHING,"") in
+						if assign != NOTHING && v != var then ((*Printf.printf "dans listWithoutVarAssignSingle liste\n";*)
+						 List.append before (List.map (fun aS ->  
+										match aS with 		ASSIGN_SIMPLE (id, exp) ->ASSIGN_SIMPLE (id, EXP (remplacerValPar  var assign (expVaToExp exp)) ) 
+														|	ASSIGN_DOUBLE (id, i, exp) ->ASSIGN_DOUBLE  (id, EXP (remplacerValPar  var assign (expVaToExp i)), EXP (remplacerValPar  var assign  (expVaToExp exp)))  
+														|	ASSIGN_MEM (id, i, exp) -> ASSIGN_MEM  (id, EXP (remplacerValPar  var assign  (expVaToExp i)), EXP (remplacerValPar  var assign  (expVaToExp exp)))  
+								) after) )
+						else
+
+(* peut ere que si var dans .. alors nothing ???? COIR*)
+					 List.append before after
+				end
+	in
+(*Printf.printf "dans listWithoutVarAssignSingle nl\n";
+		afficherListeAS nl;*)
+       nl
+	end
+	else List.filter (fun aS ->  match aS with ASSIGN_SIMPLE (id, _) -> 	(id <> var)  |_ ->  true  ) liste  
+end
 
 let listWithoutVarAssignLetfRight   liste =
  List.filter (fun aS ->  
@@ -2785,17 +3210,86 @@ let listWithoutIndexAssign n index l =
  List.filter 
 	(fun aS -> match aS with ASSIGN_SIMPLE (id, _) -> true |ASSIGN_DOUBLE (id, i, _) -> if id = n &&  (eqindex index  i) then false else true|ASSIGN_MEM (id, i, _) -> if id = n &&  (eqindex index  i) then false else true) l  
 	
+
+ 
 let rondListe a1  ro2x =
 		
 		match ro2x with 
 			ASSIGN_SIMPLE (x, exp) ->
-			 
-			
+				(*let resb2 = 
+				if (String.length x > 13) then
+				begin
+					
+					let var3 = (String.sub x  0 14) in
+					if  var3 = "ADC_parameters"  then true else false
+				end else false in
+*)
+				isRenameVar := false;
 				let assign =   applyStoreVA exp a1   in	
 
+
+(*let (btype, isdeftype) = 
+			if List.mem_assoc idsaufetoile !listAssocIdType then (getBaseType (List.assoc idsaufetoile !listAssocIdType), true) 
+			else 
+				if List.mem_assoc idsaufetoile !listeAssosPtrNameType then (getBaseType (List.assoc idsaufetoile !listeAssosPtrNameType), true) 
+				else (INT_TYPE, false)
+in*)
+
+
+
+				let isStruct = if (List.mem_assoc x !listAssocIdType) then  begin let (isstruct, _) =   isStructAndGetIt (List.assoc x !listAssocIdType) in isstruct end 
+
+				else if List.mem_assoc x !listeAssosPtrNameType then let (isstruct, _) =   isStructAndGetIt (List.assoc x !listeAssosPtrNameType) in isstruct else false  in
+
+
+
+				let hasstructtorename =  !isRenameVar && isStruct in
+											
+				(*let aff = 
+					if isLoopOrIFId x || resb2 then
+					(match assign with
+					  MULTIPLE -> true
+					  | EXP (e) -> if estNothing assign then true else false
+					) 
+					else false in *)
+
+
+		
+
 				 
-				let na =  new_assign_simple x assign in
-			([ na], listWithoutVarAssignSingle x a1)
+				let na = if isStruct && (existeAffectationVarListe x a1 )  then 
+						 begin
+
+									let assignBefore = match  (ro x a1)  with ASSIGN_SIMPLE (id, exp) ->expVaToExp exp |_->NOTHING in
+									(*if resb2 then 
+									begin
+										Printf.printf "rondListe %s \n" x;
+					
+										print_expVA   exp ;new_line(); flush() ;space(); flush(); new_line(); flush();
+										Printf.printf "les as rondListe \n" ;
+										print_expVA   assign ;new_line(); flush() ;space(); flush(); new_line(); flush();
+										Printf.printf "fin rondListe\n";
+
+										Printf.printf "fin rondListe isStruct\n";
+
+								
+										print_expression    assignBefore 0;new_line(); flush() ;space(); flush(); new_line(); flush();
+										Printf.printf "fin rondListe\n"; 
+									end ;*)
+
+									new_assign_simple x 
+														(EXP (remplacerValPar  x assignBefore (expVaToExp assign)))
+
+
+									(* match assignBefore with VARIABLE(v)->
+											if v != x then
+												
+											else new_assign_simple x assign 
+											|_->new_assign_simple x assign 
+									*)
+						 end 
+						 else  	new_assign_simple x assign in
+			([ na], listWithoutVarAssignSingle x a1 hasstructtorename )
 				
 		|	ASSIGN_DOUBLE (x, exp1, exp2) ->  
 			let index =  applyStoreVA exp1  a1 in
@@ -2849,6 +3343,7 @@ let rec consRondList a1  revl2=
 	begin
 		let (first, next) = (List.hd  revl2, List.tl  revl2) in
 	(*	let filtera1 = listWithoutVarAssignLetfRight   a1 in *)
+		
 		let (nax,newa1)= (rondListe a1  first ) in
 (*Printf.printf "les as 1 \n" ;
 		afficherListeAS a1;
@@ -3029,13 +3524,14 @@ let (predna,na) =
 				end 
 				else (assign, assign))		
 		 end
-	|ASSIGN_SIMPLE (id, e)->	(*Printf.printf "closeForm varB ASSIGN_SIMPLE = %s id %s =" varB id; *)
+	|ASSIGN_SIMPLE (id, e)->	
+
 	if id = varB then begin estModifie:= false; (assign, assign) end
 	else
 	begin
 		let varBPUN = BINARY(ADD, VARIABLE varB, CONSTANT(CONST_INT("1"))) in
 	(	match e with 
-		MULTIPLE -> listeDesVarDependITitcour :=List.append !listeDesVarDependITitcour [assign] ;(assign, assign)
+		MULTIPLE ->   	(*Printf.printf "closeForm varB ASSIGN_SIMPLE id %s = MULTIPLE\n"  id;);*)listeDesVarDependITitcour :=List.append !listeDesVarDependITitcour [assign] ;(assign, assign)
 		|EXP (exp) ->
 		(	match exp with
 			UNARY (op, exp1) ->(*Printf.printf "closeForm varB ASSIGN_SIMPLE = %s id %s = UNARY" varB id;  *)
@@ -3048,7 +3544,7 @@ let (predna,na) =
 									CALL (VARIABLE("pow"),List.append [CONSTANT(CONST_INT("-1"))] [varBPUN])))) )	
 									else (assign, assign)
 				| _ -> 		if List.mem id (listeDesVarsDeExpSeules exp1) then 
-								(assign,ASSIGN_SIMPLE (id,MULTIPLE)) 
+							((*Printf.printf "closeForm varB ASSIGN_SIMPLE = %s id %s = UNARY" varB id;*)	(assign,ASSIGN_SIMPLE (id,MULTIPLE)) )
 							else (assign, assign) 
 			)	
 			| BINARY (op, exp1, exp2) ->(*Printf.printf "closeForm varB ASSIGN_SIMPLE = %s id %s = BINARY" varB id;  *)
@@ -3112,9 +3608,9 @@ let (predna,na) =
 						  else (assign, assign)
 				)
 				end (* binary*)
-			| _-> (* Printf.printf "closeForm varB OTHER = %s id %s = BINARY" varB id; *)
+			| _-> (*  *)
 				   if List.mem id (listeDesVarsDeExpSeules exp) then 
-							(assign,ASSIGN_SIMPLE ( id, MULTIPLE)) 
+					((*Printf.printf "closeForm varB OTHER = %s id %s = MULTIPLE \n" varB id; 	*)	(assign,ASSIGN_SIMPLE ( id, MULTIPLE)) )
 					else (assign, assign) 
 		))
 	end
@@ -3142,9 +3638,13 @@ let rec majexpaux var e	=
 									  else e
 	| 	EXPR_SIZEOF exp 		->	  EXPR_SIZEOF  (majexpaux var exp)
 	| 	INDEX (exp, idx) 		->	  INDEX ( (majexpaux var exp), idx)
-	|	_ ->	e
+	| CONSTANT ( CONST_COMPOUND expsc)  -> CONSTANT ( CONST_COMPOUND ( List.map(fun e-> majexpaux var e)expsc))
+	| COMMA exps 					->	(COMMA ( List.map (fun e ->majexpaux var e) exps))
+
 (*	| 	MEMBEROF (exp, fld) 	->	  MEMBEROF ( (majexpaux var exp) , fld)
-	| 	MEMBEROFPTR (exp, fld) 	->	  MEMBEROFPTR ( (majexpaux var exp) , fld)*)
+	| 	MEMBEROFPTR (exp, fld) 	->	  MEMBEROFPTR ( (majexpaux var exp) , fld)
+*)
+	|	_ ->	e
 
 let majexpauxaux varB e = match e with MULTIPLE -> MULTIPLE |EXP  (expr) ->  EXP(majexpaux varB expr )
 
@@ -3159,9 +3659,12 @@ let  rec majexpauxInit var e	init =
 	| 	VARIABLE id				->	if id = var then   init else e
 	| 	EXPR_SIZEOF exp 		->	EXPR_SIZEOF  (majexpauxInit var exp init)
 	| 	INDEX (exp, idx) 		->	INDEX ( (majexpauxInit var exp init), idx)
+	| CONSTANT ( CONST_COMPOUND expsc)  -> CONSTANT ( CONST_COMPOUND ( List.map(fun e-> majexpauxInit var e init)expsc))
+	| COMMA exps 					->	(COMMA ( List.map (fun e ->majexpauxInit var e init) exps))
+(*	| 	MEMBEROF (exp, fld) 	->	MEMBEROF ( (majexpauxInit var exp init) , fld)
+	| 	MEMBEROFPTR (exp, fld) 	->	MEMBEROFPTR ( (majexpauxInit var exp init) , fld)
+*)
 	|	_ ->	e
-	(*| 	MEMBEROF (exp, fld) 	->	MEMBEROF ( (majexpauxInit var exp init) , fld)
-	| 	MEMBEROFPTR (exp, fld) 	->	MEMBEROFPTR ( (majexpauxInit var exp init) , fld)*)
 	
 let majexpauxauxInit varB e init= (* replace varB by init expression*)
 match e with MULTIPLE -> MULTIPLE |EXP  (expr) -> EXP(majexpauxInit varB expr init)
@@ -3242,6 +3745,65 @@ fun prem ->
 ) ascour
 
 
+let structmultidef var firstAssign secondAssign =
+ 
+(*let resb = 
+				if (String.length var >= 14) then
+				begin
+					
+					let var3 = (String.sub var  0 14) in
+					if  var3 = "ADC_parameters"  then true else false
+				end else false in
+				
+if resb then
+begin
+Printf.printf "structmultidef\n";
+afficherAS firstAssign;space();flush();new_line();
+afficherAS secondAssign;space();flush();new_line()
+end;*)
+	let (btype, isdeftype) = 
+			if List.mem_assoc var !listAssocIdType then (getBaseType (List.assoc var !listAssocIdType), true) 
+			else 
+				if List.mem_assoc var !listeAssosPtrNameType then (getBaseType (List.assoc var !listeAssosPtrNameType), true) 
+				else (INT_TYPE, false)
+	in
+
+	if isdeftype then 
+	begin
+		let (isStruct, typ) = isStructAndGetIt btype    in
+		let listType = (match typ with  
+						TYPEDEF_NAME s ->
+									if List.mem_assoc s !listAssosIdTypeTypeDec then 
+										( match  List.assoc s !listAssosIdTypeTypeDec  with  STRUCTORUNION (l )->l |_-> [])
+									else []
+						|_-> [] )in
+
+		
+		if isStruct then 
+		begin 	
+			(match firstAssign with 
+				ASSIGN_SIMPLE (id, EXP(valeur)) ->  
+					let (exp, isCCOMP) = getStuctValueOfExpression valeur typ in	
+					(	match secondAssign with 
+						ASSIGN_SIMPLE (id, EXP(valeur)) ->  
+							let (exp2, isCCOMP2) = getStuctValueOfExpression valeur typ in		
+
+							if exp2 = exp && exp != [] then 	ASSIGN_SIMPLE (id, EXP(valeur))			
+							else 	ASSIGN_SIMPLE (id, 
+								EXP(CONSTANT(	CONST_COMPOUND
+											(compareComma exp exp2 [] listType)
+									)))		
+								
+						|_->	 ASSIGN_SIMPLE (id, MULTIPLE) (* not single assign  type *)
+					)
+				|_->  ASSIGN_SIMPLE (var, MULTIPLE) (* not single assign  type *)
+			)
+		end
+		else ASSIGN_SIMPLE (var, MULTIPLE) (* not a  type *)
+	end
+	else ASSIGN_SIMPLE (var, MULTIPLE) (* unknowned type *)
+
+
 let absMoinsT x a1 a2 =
 (*Printf.printf "dans absMoinsT variable traitee %s \n" x;*)
 	if ( existeAffectationVarListe x a1) then
@@ -3257,7 +3819,9 @@ let absMoinsT x a1 a2 =
 			begin
 				(*Printf.printf "MULTIPLE %s dans absMoinsT\n" x;*)
 				match ro1 with
-						ASSIGN_SIMPLE (_, _)->ASSIGN_SIMPLE (x, MULTIPLE)(*var MULTIPLE def voir si on
+						ASSIGN_SIMPLE (_, _)-> (*Printf.printf "MULTIPLE %s dans absMoinsT\n" x;*) structmultidef x ro1 ro2
+
+(*ASSIGN_SIMPLE (x, MULTIPLE)*)(*var MULTIPLE def voir si on
 						utilise le max*)
 					|	ASSIGN_DOUBLE (_, exp, _)-> ASSIGN_DOUBLE (x, exp, MULTIPLE) 
 					|   ASSIGN_MEM (_, exp, _)-> ASSIGN_DOUBLE (x, exp, MULTIPLE) 
@@ -3277,6 +3841,11 @@ let getVarDeAffect affect = match affect with ASSIGN_SIMPLE (id, _) ->id |	ASSIG
 
 let rec paux a1 a2 l =
 if l = [] then [] else  List.append  [absMoinsT (List.hd l) a1 a2 ] (paux a1 a2 (List.tl l) ) 
+
+
+
+
+
 
 let  produit a1 a2  = 
 (*Printf.printf "produit\n";*)
@@ -3299,7 +3868,9 @@ let absMoinsTEm x a1 a2 listeT=
 				begin
 					(*Printf.printf "MULTIPLE %s dans absMoinsTEm\n" x;*)
 					match ro1 with
-							ASSIGN_SIMPLE (_, _)->ASSIGN_SIMPLE (x, MULTIPLE)(*var MULTIPLE def voir si on utilise le max*)
+							ASSIGN_SIMPLE (_, _)->(*Printf.printf "MULTIPLE %s dans absMoinsTEm\n" x;*)
+								structmultidef x ro1 ro2 
+							(*ASSIGN_SIMPLE (x, MULTIPLE)*)(*var MULTIPLE def voir si on utilise le max*)
 						|	ASSIGN_DOUBLE (_, exp, _)-> ASSIGN_DOUBLE (x, exp, MULTIPLE) 
 						|	ASSIGN_MEM (_, exp, _)-> ASSIGN_MEM (x, exp, MULTIPLE) 
 				end 
@@ -3338,6 +3909,8 @@ let rec pauxEm a1 a2 l listeT=
 if l = [] then [] else  List.append  [absMoinsTEm (List.hd l) a1 a2 listeT] (pauxEm a1 a2 (List.tl l) listeT) 
 
 let produitEm a1 a2 listeT =  pauxEm a1 a2 (rechercheLesVar a2  (rechercheLesVar a1 [])) listeT
+
+
 
 
 let corpsNouv = ref []
@@ -3401,7 +3974,7 @@ begin
 end
 
 let rec rewriteEndOthers asl oldOthers newOthers =
-if oldOthers = [] || asl = [] then asl 
+if oldOthers = [] || asl = [] || newOthers = [] then asl 
 else 
 begin
 	let (oinit, onext )= (List.hd oldOthers, List.tl oldOthers) in
@@ -3417,10 +3990,26 @@ end
 
 let rec evalStore i a g=
 match i with 
-	VAR (id, exp) -> (*Printf.printf "evalStore var %s valeur du contexte  \n" id;*) (*afficherListeAS a;
-			Printf.printf "evalStore var apres contexte\n";*)
-		rond a [new_assign_simple id exp];
+	VAR (id, exp) -> let res = rond a [new_assign_simple id exp] in
+
+				(*let resb2 = 
+				if (String.length id > 13) then
+				begin
+					
+					let var3 = (String.sub id  0 14) in
+					if  var3 = "AD_voltage_par"  then true else false
+				end else false in
+
+			if resb2 then
+			begin
+				Printf.printf "evalStore var %s valeur du contexte  \n" id;
+				afficherListeAS a;Printf.printf "evalStore var %s valeur de exp  \n" id;
+				print_expVA exp ; flush();space() ;new_line(); flush();space(); new_line();
+				Printf.printf "evalStore var apres contexte\n";
+				afficherListeAS res;
+			end;*)
 		
+		res
 	| TAB (id, exp1, exp2) -> (*Printf.printf "evalStore tab\n";*)
 		rond a [new_assign_double id exp1 exp2]
 		(*afficherListeAS !listeASCourant;*)
@@ -3677,20 +4266,22 @@ Printf.printf "fin \n";*)
 										let nouvar = Printf.sprintf "%s%s_%d" id nomFonc n in
 										let idsortie = rechercheAffectVDsListeAS  id affectSortie in
 										if idsortie = EXP(NOTHING) then corpsNouvI:= List.append !corpsNouvI [VAR (id, EXP(VARIABLE(nouvar)))]
-									|_-> ()
+									
+									| MEMASSIGN ( id, _, _)-> Printf.printf"memassign INPUT %s" id; ()
+									| _ ->   ()
 								)entrees;
 
 						end;
 
-					(*	Printf.printf "le sorties a apere reecrire %s depend de var de boucle %s\n" nomFonc varB;*)
-					(*	afficherUneAffect (BEGIN(corps)); new_line(); Printf.printf "affect a apere reecrire fin\n";*)
+						(*Printf.printf "le sorties a apere reecrire %s depend de var de boucle %s\n" nomFonc varB;*)
+						(*afficherUneAffect (BEGIN(corps)); new_line(); Printf.printf "affect a apere reecrire fin\n";*)
 						let memoutput = !corpsNouvI in
 						let listeInput =   (evalInputFunction a entrees [] ) in
 
 						
-
-			
-						let rc =if (isAbs)  then  rond listeInput absStore else evalStore (BEGIN(corps)) (*rond a*) listeInput [] in
+						(*afficherListeAS listeInput;	*)
+					(*	Printf.printf "le sorties a apere reecrire %s depend de var de boucle fin inputs%s\n" nomFonc varB;*)
+						let rc =if (isAbs)  then ( rond listeInput absStore) else evalStore (BEGIN(corps)) (*rond a*) listeInput [] in
 			
 						listeASCourant := [];
 						if memoutput <> [] then
@@ -3718,8 +4309,8 @@ Printf.printf "fin \n";*)
 							listeASCourant :=  List.append [affectres] (List.append (List.append aPart nginterne) !listeASCourant )
 						end
 						else listeASCourant :=   (List.append (List.append aPart nginterne) !listeASCourant );
-(*afficherListeAS rc;			
-Printf.printf "evalStore fonction %s  \n" nomFonc ;afficherListeAS !listeASCourant; Printf.printf "fin res\n" ;*)			 
+(*afficherListeAS rc;		*)	
+(*Printf.printf "evalStore fonction %s  \n" nomFonc ;*)(*afficherListeAS !listeASCourant; Printf.printf "fin res\n" ;*)		 
 
 					(*Printf.printf "\nsorties %s depend de var de boucle %s\n" nomFonc varB; afficherListeAS !listeASCourant; Printf.printf "fin sorties\n";*)
 						let nc = rond a   !listeASCourant  in
@@ -3743,8 +4334,10 @@ and evalInputFunction a entrees  globales =
 					let new_exp =  applyStoreVA (applyStoreVA exp a) globales in
 					
 					List.append   [new_assign_simple id  new_exp]  (evalInputFunction a others globales)
-						
-				|_-> (evalInputFunction a others globales)
+				
+				| MEMASSIGN ( id, _, _)-> Printf.printf"memassign evalInputFunction %s" id; (evalInputFunction a others globales)	
+				|  _ ->   (evalInputFunction a others globales)
+				(*|_-> (evalInputFunction a others globales)*)
 	end	
 	else []
 
@@ -3782,7 +4375,7 @@ and closeFormPourToutXdelisteES l id  =
 
 
 and traiterOthers asl  others newothers =
-if others = [] || asl = [] then asl 
+if others = [] || asl = [] || newothers = [] then asl 
 else 
 begin
 	
@@ -3848,6 +4441,8 @@ match assign with
 and rewriteOthers assign = 
 match assign with
 		ASSIGN_SIMPLE (id, e)->    
+
+(* changestruct*)
 
 		let na = ASSIGN_SIMPLE (id,    EXP(CALL (VARIABLE("SET") , List.append [VARIABLE(id)] [expVaToExp e])))  in
 		if (String.length id > 4) then
@@ -4082,13 +4677,19 @@ begin
 			begin
 				let next1 = if newi1 = [] then BEGIN([]) else List.hd newi1 in
 				let next2 = if newi2 = [] then BEGIN([]) else List.hd newi2 in
-				(List.append [IFVF ( expVA1, next1, next2) ] newSuite, union (union listeaux1 listeaux2) listeaux)
+				let unionOfAll = match  expVA1 with EXP(VARIABLE(varIfN)) ->
+								 union [varIfN] (union (union listeaux1 listeaux2) listeaux)|_-> union (union listeaux1 listeaux2) listeaux  in
+				(List.append [IFVF ( expVA1, next1, next2) ] newSuite, unionOfAll)
 			end
 	| IFV ( expVA1, i1) 		->
 			let (newi1, listeaux1) = extractVarCONDAffectaux [i1] listeCondVar in
 			
 			if newi1 = []  then (newSuite, listeaux)
-			else (List.append [IFV ( expVA1, List.hd newi1)] newSuite, union listeaux1 listeaux)
+			else
+				(
+						let unionOfAll = match  expVA1 with EXP(VARIABLE(varIfN)) -> union [varIfN] (union listeaux1 listeaux)|_-> union listeaux1 listeaux in
+						(List.append [IFV ( expVA1, List.hd newi1)] newSuite, unionOfAll)
+				)
 	| BEGIN (liste)			->  
 			let (newi1, listeaux1) = extractVarCONDAffectaux liste listeCondVar in		
 			if newi1 = []  then (newSuite, listeaux)

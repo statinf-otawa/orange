@@ -947,9 +947,9 @@ let  evalSIDA listeInst saufId   ainserer  input le =
   listeIF := [];
   let nc = new_instBEGIN(listeSAUFIDA listeInst saufId ainserer  input le) in
   
- (*Printf.printf "evalSIDA nc\n"; afficherUneAffect nc; Printf.printf "evalSIDA fin\n"; *)
+(* Printf.printf "evalSIDA nc\n"; (*afficherUneAffect nc;*)Printf.printf "evalSIDA fin\n"; *)
   let res= evalStore  nc [] []	in
-(*  print_string "Affichage du resultat du evalStore:\n";
+ (* print_string "Affichage du resultat du evalStore:\n";
   afficherListeAS res;
   print_string "Fin d affichage.\n";*)
   res
@@ -1380,6 +1380,7 @@ fun name -> if (String.length name > 4) then
 		if (String.sub name  0 4) = "bIt_" then false else true else true)liste
 
 
+
 let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englobantcourant *) 
 							  idEng (*id noeud englobant  où stopper *)
 							  id (*courant à  évaluer bi*)  tN
@@ -1456,7 +1457,7 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 					(match pred with
 						TFONCTION (nomf, numF,corps,listeInputInst, contexteAvantAppel,appelF,lFt,lFf,_,_) ->		
 					
-						(*Printf.printf"traiterboucleinterne Dans evaluation de la fonction...%s %d %s \n "nomf numB nEC.varDeBoucleNid ;*)
+						(*Printf.printf"traiterboucleinterne Dans evaluation de la fonction...%s %d %s \n "nomf id nEC.varDeBoucleNid ;*)
 						if appelF = [] then ([], true)
 						else
 						begin
@@ -1466,10 +1467,10 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 								(*Printf.printf "ces as\n";
 								afficherLesAffectations( ainserer);new_line () ;*)
 								(*Printf.printf "ces as\n";*)
-
+								
 								(*afficherLesAffectations( ainserer);new_line () ;*)
 								(*Printf.printf "ces as\n";*)
-
+								(*Printf.printf "evalUneBoucleOuAppel  appel FONCTION %s:\n ENTREES : call %s\n " nomf nomFonc;*)
 								let aSC =  evalSIDA calllist numF  ainserer  listeInputInst listeEng   in
 								
 								let isExecutedF = isExecuted lFt lFf [] [] [] false in
@@ -1539,9 +1540,18 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 				(*let listeDesVarSansBit = onlyNotLoopVar listeDesVar in*)
 				(*if listeDesVarSansBit = [] then Printf.printf "on peut arreter indépendant des autres b eng\n"
 				else   Printf.printf "  peut etre dépendant des autres b eng\n";*)
+
+
 				let vdij = ( intersection listeDesVar  ( union [ii]  vij)) in 
+				
+				let estIndependantTN  = 	if vdij = [] 
+											then true 
+											else ( 	let isindependent = independantDesVarsDeExpSeules exptN lesAs vdij in
+													(*if isindependent then Printf.printf "exptN is independant \n" 
+													else Printf.printf "exptN is dependant \n";*) (*false*)isindependent ) in
+
 				(* idenpendant*)
-				if vdij = [] then
+				if estIndependantTN then
 				begin
 					if !vDEBUG then  Printf.printf "intersection vide\n";
 					(* si les deux contiennent une même variable max * max ici ou dans evaluation ???*)
@@ -1599,8 +1609,19 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 					end	
 					else  EXP(NOTHING)
 				  | EXP (e)->(*Printf.printf"resAuxTN def\n";*)
-					if (intersection (listeDesVarsDeExpSeules e) (union [ii] vij)) = [] then 
-					begin (*Printf.printf "la borne max ne contient pas de var fct de ii :%s\n" ii;*)
+
+
+					let listVarOfExp = intersection (listeDesVarsDeExpSeules e) (union [ii] vij) in
+					
+					let estIndependantE  = 	if listVarOfExp = [] 
+											then true 
+											else ( 	let isindependent = independantDesVarsDeExpSeules e lesAs listVarOfExp in
+													(*if isindependent then Printf.printf "e is independant \n" 
+													else Printf.printf "e is dependant \n";*) (*false*)isindependent ) in
+
+					if estIndependantE then 
+					begin (* Printf.printf "la borne max ne contient pas de var fct de ii :%s boucle %d\n" ii id;*)
+
 						EXP (e);
 					(*	print_expVA !maxAuxTN; new_line ();Printf.printf"\n"	*)
 					end
@@ -1634,8 +1655,6 @@ Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA !resAuxTN; new_l
 Printf.printf"traiter calcul MAX pour %s =\n" ii; print_expVA !maxAuxTN; new_line ();Printf.printf"\n";
 Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA !resAuxTN; new_line ();Printf.printf"\n";*)
 
-(*if nT != idEng
-*)
  		dernierAppelFct := !predDernierAppelFct; 
 
 		let fini = ((nomE = idEng) && (nomE =  (getBoucleIdB nT.infoNid.laBoucle)))  in
@@ -1652,9 +1671,6 @@ Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA !resAuxTN; new_l
 			(*if !isExeBoucle = true then Printf.printf "!isExeBoucle= true" else Printf.printf "!isExeBoucle= false" ;*)
 					 
 (*Printf.printf "av traiterBouclesInternes num %d nom eng %d \n"  (getBoucleIdB n.infoNid.laBoucle) nomE ;*)
- 
-
-
 			(*  afficherListeAS( endcontexte);new_line () ;*)
 
  
@@ -1671,9 +1687,26 @@ Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA !resAuxTN; new_l
 					let nTN =  applyStoreVA(applyStoreVA (!resAuxTN) appel) globales in
 					let inter = applyStoreVA(applyStoreVA (!maxAuxTN) appel) globales in
 
-					let expmaxinit = if (intersection (listeDesVarsDeExpSeules maxinit ) (union [ii] vij)) = [] then 
-											applyStoreVA( applyStoreVA (EXP( maxinit)) appel) globales
-								     else  EXP(NOTHING)  in
+
+					let listeIntersection = (intersection (listeDesVarsDeExpSeules maxinit ) (union [ii] vij)) in
+					 
+					(*print_expression maxinit 0; new_line ();Printf.printf"\n";flush(); space(); new_line();*)
+
+					let estIndependantM  = 	if listeIntersection = [] 
+											then true 
+											else ( 	let isindependent = independantDesVarsDeExpSeules maxinit lesAs  listeIntersection in
+													(*if isindependent then Printf.printf "maxinit is independant \n" 
+													else Printf.printf "maxinit is dependant \n";*) (*false*)isindependent ) in
+
+					(*List.iter (fun elem -> Printf.printf "%s " elem)listeIntersection;*)
+
+					let expmaxinit = if estIndependantM then 
+											((*Printf.printf"borne   max inter vide \n";*)applyStoreVA( applyStoreVA (EXP( maxinit)) appel) globales)
+								     else  ((*Printf.printf"borne   max inter non vide \n";*)EXP(NOTHING) ) in
+
+
+
+					 
 					let resauxmax2 = calculer expmaxinit   !infoaffichNull [] 1 in
 					let nMax =
 						( match inter with
@@ -1721,31 +1754,7 @@ afficheUnNidEval nouNidEval;*)
 			end
 		end
 		else
-(*
-  let saBENG = (if aBoucleEnglobante info then info.nomEnglobante else 0) in
-  (*if !vDEBUG then *)
-  begin
 
-	  Printf.printf "1 traiterBouclesInternes num %d nom eng %d ou stopper %d sa eng %d tete nid %d\n" id	nomE idEng saBENG (getBoucleIdB nT.infoNid.laBoucle);
-	  (* afficheNidEval !docEvalue.maListeNidEval; *)
-  (*	Printf.printf "FIN NID ENG COURANT \n"*)
-  end;
-
-1 traiterBouclesInternes num id 51 nom eng nomE 26 ou stopper 26 sa eng 0 tete nid 68
-nomE = idEng
-1 traiterBouclesInternes num id 51 nom eng nomE (getBoucleInfoB (nEC.infoNid.laBoucle)) 68 ou stopper idEng 0 sa eng saBENG 0 tete nid 68
-
-TRAITEMENT  DE 51 
-REMONTER JUSQU4A SUIVANT DE 68 suivant 26
-REMONTER JUSQU4A SUIVANT DE 68 suivant 26 dans grids_computation
-derniere passe
-1 traiterBouclesInternes num 51 nom eng 26 ou stopper 68 sa eng 0 tete nid 68
-fin...
-1 traiterBouclesInternes num 51 nom eng 68 ou stopper 68 sa eng 0 tete nid 68
-traiterboucleinterne Dans evaluation de la fonction...grids_computation 51 bIt_68 
-
-
-*)
 		begin
 
 			if  ((*idEng <> 0) &&*) (idEng <> (getBoucleIdB nT.infoNid.laBoucle))) then
@@ -1787,10 +1796,6 @@ traiterboucleinterne Dans evaluation de la fonction...grids_computation 51 bIt_6
 				end
 		end
 	end
-
-		 
-
-
 
 
 let rec traiterBouclesInternesComposant 	 	nT (*tete nid contenant bi*)  nEC (*noeud englobantcourant *) 
@@ -1935,8 +1940,16 @@ let rec traiterBouclesInternesComposant 	 	nT (*tete nid contenant bi*)  nEC (*n
 		|EXP  ( exptN) -> 
 			if sansP = false then	
 			begin 
-				let vdij = ( intersection (listeDesVarsDeExpSeules exptN)  ( union [ii]  vij)) in 
-				if vdij = [] then
+				let vdij = ( intersection  (listeDesVarsDeExpSeules exptN)  ( union [ii]  vij)) in 
+				
+				let estIndependantTN  = 	if vdij = [] 
+											then true 
+											else ( 	let isindependent = independantDesVarsDeExpSeules exptN lesAs vdij in
+													(*if isindependent then Printf.printf "exptN is independant \n" 
+													else Printf.printf "exptN is dependant \n";*) (*false*)isindependent ) in
+
+				(* idenpendant*)
+				if estIndependantTN then
 				begin
 					 (match nbEngl with 
 						MULTIPLE->  MULTIPLE 
@@ -1974,7 +1987,17 @@ let rec traiterBouclesInternesComposant 	 	nT (*tete nid contenant bi*)  nEC (*n
 					end	
 					else  EXP(NOTHING)
 				  | EXP (e)-> 
-					if (intersection (listeDesVarsDeExpSeules e) (union [ii] vij)) = [] then  EXP (e)
+
+
+					let listVarOfExp = intersection (listeDesVarsDeExpSeules e) (union [ii] vij) in
+					
+					let estIndependantE  = 	if listVarOfExp = [] 
+											then true 
+											else ( 	let isindependent = independantDesVarsDeExpSeules e lesAs listVarOfExp in
+													(*if isindependent then Printf.printf "e is independant \n" 
+													else Printf.printf "e is dependant \n";*) (*false*)isindependent ) in
+
+					if estIndependantE then  EXP (e)
 					else  
 						(match nbEngl with 
 							MULTIPLE ->   MULTIPLE
@@ -2014,7 +2037,20 @@ let rec traiterBouclesInternesComposant 	 	nT (*tete nid contenant bi*)  nEC (*n
 					
 					let nTN =  applyStoreVA(applyStoreVA (!resAuxTN) appel) globales in
 					let inter = applyStoreVA(applyStoreVA (!maxAuxTN) appel) globales in
-					let expmaxinit = if (intersection (listeDesVarsDeExpSeules maxinit ) (union [ii] vij)) = [] then 
+					let listeIntersection = (intersection (listeDesVarsDeExpSeules maxinit ) (union [ii] vij)) in
+					 
+					 
+
+					let estIndependantM  = 	if listeIntersection = [] 
+											then true 
+											else ( 	let isindependent = independantDesVarsDeExpSeules maxinit lesAs  listeIntersection in
+													(*if isindependent then Printf.printf "maxinit is independant \n" 
+													else Printf.printf "maxinit is dependant \n";*) (*false*)isindependent ) in
+
+					(*List.iter (fun elem -> Printf.printf "%s " elem)listeIntersection;*)
+
+				
+					let expmaxinit = if estIndependantM then 
 											applyStoreVA( applyStoreVA (EXP( maxinit)) appel) globales
 								     else  EXP(NOTHING)  in
 					(*Printf.printf "dans le else 2\n";		*)	  
@@ -2721,7 +2757,7 @@ if !vDEBUG then  Printf.printf "evalNid NID av eval nid de %d \n" (getBoucleIdB 
 		
 		let aSC =    appel in 
 		if !vDEBUG then Printf.printf "evalNid contexte  boucle: \n";
-		(*afficherListeAS aSC;flush(); space(); new_line();
+	(*	afficherListeAS aSC;flush(); space(); new_line();
 Printf.printf "evalNid contexte  boucle: tete\n";
 		Printf.printf "FIN CONTEXTE globale \n";*)
 
@@ -3379,7 +3415,7 @@ let printFile (result : out_channel)  (defs2 : file)=
 
 
   analyse_defs defs2; (*step 1*)
-  (*afficherNidDeBoucle doc;	*) 
+  (*afficherNidDeBoucle doc;	*)
   (*Printf.printf "les globales\n";
   List.iter(fun x->Printf.printf "%s\t" x)!alreadyAffectedGlobales;
   Printf.printf "les tableaux\n";
@@ -3387,7 +3423,7 @@ print_AssosArrayIDsize !listAssosArrayIDsize;
   Printf.printf "les typesdefs tableaux\n";
   print_AssosArrayIDsize !listAssosTypeDefArrayIDsize;
   Printf.printf "les pointeurs\n";
-  print_AssosPtrTypeList !listeAssosPtrNameType;*)
+ *)
 
 (*	evaluerCaseFonctionsDuDoc  doc;
   printFuncCaseAssos !listCaseFonction;*)

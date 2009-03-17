@@ -77,7 +77,13 @@ let rec listeDesVarsDeExpSeules exp =
 	
 and traiterCommaExp liste =
 if liste = [] then [] else union (listeDesVarsDeExpSeules (List.hd liste)) (traiterCommaExp (List.tl liste)) 
- 
+
+(*
+
+
+
+*)
+
 
 let afficherListeVarExp l =
 List.iter (fun e-> Printf.printf "%s " e)l;
