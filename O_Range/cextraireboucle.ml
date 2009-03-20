@@ -2505,9 +2505,10 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 
 	let isExecutedV = (match const with Boolean(b)	->  if b = false then false  else true 
 										|_->if estDefExp const then if estNul const then false else true else true) in	
-	(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var; print_expTerm const; new_line ();*)
+	(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var;*) (*print_expTerm const; new_line ();*)
 	(*if isExecutedV  then Printf.printf "isexecuted \n" else Printf.printf "is not executed \n" ;Printf.printf "FIN...\n";*)
-
+	(*let isConstructVar = if (String.length var > 4) then begin if (String.sub var  0 4) = "bIt_" then  true else   false end else false in*)
+ 
 	if isExecutedV then
 	begin
 
@@ -2565,7 +2566,7 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 					let bornesup = if listeDesVarsDeExpSeules bse = [] then calculer  (EXP ( bse)) !infoaffichNull  [] 1 else NOCOMP in
 					let typeSup = expressionType bornesup in 
 
-					let valEPSILON = if typeInf = INTEGERV && typeSup  = INTEGERV && typeInc  = INTEGERV then (CONSTANT (CONST_INT "1")) 
+					let valEPSILON = if  ( typeInf = INTEGERV && typeSup  = INTEGERV && typeInc  = INTEGERV) then (CONSTANT (CONST_INT "1")) 
 									 else if typeInf = FLOATV || typeSup  = FLOATV || typeInc  = FLOATV then !vEPSILONFLOAT
 										  else  if 	espIsNotOnlyVar bornesup || espIsNotOnlyVar borneinf  || espIsNotOnlyVar valinc then !vEPSILON
 												else !vEPSILONFLOAT in
@@ -2575,14 +2576,15 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 					let bi = applyStoreVA(applyStoreVA   (EXP ( infoVar.borneInf)) appel)globales in
 					let bu = applyStoreVA(applyStoreVA   (EXP ( une )) appel)globales in
 					(*print_expVA bs; new_line();*)
-
-(*Printf.printf "getNombreIt recherche de affect : \n";
-print_expression infoVar.borneSup 0; space() ;flush() ;new_line(); flush();new_line(); 
+(*
+Printf.printf "getNombreIt recherche de affect : \n";
+(*print_expression infoVar.borneSup 0; space() ;flush() ;new_line(); flush();new_line(); 
 print_expression infoVar.borneInf 0; space() ;flush() ;new_line(); flush();new_line(); 
 
-print_expression infoVar.increment 0; space() ;flush() ;new_line(); flush();new_line(); 
+print_expression infoVar.increment 0; space() ;flush() ;new_line(); flush();new_line(); *)
 print_expression  une 0; space() ;flush() ;new_line(); flush();new_line(); 
-Printf.printf "getNombreIt recherche de affect : \n";*)
+Printf.printf "getNombreIt recherche de affect : \n";
+print_expression  valEPSILON 0; space() ;flush() ;new_line(); flush();new_line(); *)
 
 					let (rep, var) = hasPtrArrayBoundCondition bs in
 					let (bsup, binf,expune)=
@@ -2907,31 +2909,40 @@ Printf.printf "cas 3 EQ peut être booleen var2 %s\n" var2;
 		 	else
 				if !opEstPlus && typevar = DECROISSANT then  (!borne,!initialisation, !expressionIncFor)  
 		 		else  (!borne,!initialisation,!expressionIncFor) in
-	borne := sup;
-(*Printf.printf"inf sup...\n";
-print_expression inf 0;flush(); new_line();space(); new_line();
-								print_expression sup 0;flush(); new_line();space(); new_line();
-								print_expression inc 0;flush(); new_line();space(); new_line();
-								if indirectafter = false then Printf.printf "before\n" else Printf.printf "after\n";*)
-	 
-	(*if !opEstPlus then Printf.printf"pas opestplus.\n" else  Printf.printf" opestplus.\n" ;*)
-	 
-	initialisation := inf;
+
 	expressionIncFor := inc;
+
+
+	let isConstructVar = if (String.length nv > 4) then begin if (String.sub nv  0 4) = "bIt_" then  true else   false end else false in
+	let isIntVar = 	if isConstructVar = false &&  List.mem_assoc nv !listAssocIdType then   ( match getBaseType (List.assoc nv !listAssocIdType) with INT_TYPE-> true|_-> false) else  false in
+
+
+	let ( ninf ,nsup) =
+	if  isIntVar then
+	begin
+		expressionDinitFor := remplacerValPar  "EPSILON" (CONSTANT (CONST_INT "1")) !expressionDinitFor;
+		( remplacerValPar  "EPSILON" (CONSTANT (CONST_INT "1"))  inf,   remplacerValPar  "EPSILON" (CONSTANT (CONST_INT "1"))  sup)
+    end
+	else ( inf, sup) in
+
+
+	borne := nsup; 
+	initialisation := ninf;
+
 
 	(*Printf.printf "\n\ntraiterConditionBoucleFor  2\n" ;*)
 	let typeopPlusouMUL =  !opEstPlus	in
 	(*if !expressionDinitFor = NOTHING then expressionDinitFor := VARIABLE(nv);*)
-	let infoVar =   new_variation inf sup inc typevar  operateur indirectafter in
+	let infoVar =   new_variation ninf nsup inc typevar  operateur indirectafter in
 	let nc = if (typevar=CONSTANTE||cte) then cond else vcond in
-	let nb = expVaToExp (getNombreIt sup (typevar=CONSTANTE||cte) t nc multiple [] typeopPlusouMUL  infoVar v []) in
+	let nb = expVaToExp (getNombreIt nsup (typevar=CONSTANTE||cte) t nc multiple [] typeopPlusouMUL  infoVar nv []) in
 	listeBoucleOuAppelCourante := reecrireCAll var2 !listeBoucleOuAppelCourante;
 	 
 
 	let info = (new_boucleInfo t nom listeV nbIt eng (typevar=CONSTANTE||cte) nc multiple !listeBoucleOuAppelCourante 
 				( new_variation !expressionDinitFor nb inc typevar operateur indirectafter) typeopPlusouMUL) in
 	
-	let boucleFor = new_boucleFor  info  listeV  var2  inf  nb inc  in
+	let boucleFor = new_boucleFor  info  listeV  var2  ninf  nb inc  in
 	let nouvBoucle = new_bouclef boucleFor in
     let borne = (getBorneBoucleFor t boucleFor.n boucleFor.valInit.valeur boucleFor.c typeopPlusouMUL indirectafter) in
 	if !isExactForm && ((getIsMultipleIncrement !expressionIncFor) =false) then setAssosExactLoopInit  nom borne;
@@ -3015,21 +3026,38 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 		 	else
 				if !opEstPlus && typevar = DECROISSANT then  (!borne,!initialisation, !expressionIncFor)  
 		 		else  (!borne,!initialisation,!expressionIncFor) in
-	borne := sup;
-	initialisation := inf;	
+	 
+	 
 	expressionIncFor := inc;
 
+
+	let isConstructVar = if (String.length nv > 4) then begin if (String.sub nv  0 4) = "bIt_" then  true else   false end else false in
+	let isIntVar = 	if isConstructVar = false &&  List.mem_assoc nv !listAssocIdType then   ( match getBaseType (List.assoc nv !listAssocIdType) with INT_TYPE-> true|_-> false) else  false in
+
+
+	let ( ninf ,nsup) =
+	if  isIntVar then
+	begin
+		
+		( remplacerValPar  "EPSILON" (CONSTANT (CONST_INT "1"))  inf,   remplacerValPar  "EPSILON" (CONSTANT (CONST_INT "1"))  sup)
+    end
+	else ( inf, sup) in
+
+
+	borne := nsup; 
+	initialisation := ninf;
+
 	(*Printf.printf "\n\ntraiterConditionBoucleFor  2\n" ;*)
- 	let infoVar =   new_variation inf sup inc typevar  operateur indirectafter in
+ 	let infoVar =   new_variation ninf nsup inc typevar  operateur indirectafter in
 	let nc = if (typevar=CONSTANTE||cte) then cond else vcond in
-	let nb = expVaToExp (getNombreIt sup (typevar=CONSTANTE||cte) t nc multiple [] !opEstPlus   infoVar v []) in
+	let nb = expVaToExp (getNombreIt nsup (typevar=CONSTANTE||cte) t nc multiple [] !opEstPlus   infoVar v []) in
 	listeBoucleOuAppelCourante := reecrireCAll var2 !listeBoucleOuAppelCourante;
    
 	let b = new_boucleWhileOuDoWhile 
 				(new_boucleInfo t nom liste nbIt eng (typevar=CONSTANTE||cte)  nc  multiple !listeBoucleOuAppelCourante
 				(new_variation (VARIABLE(nv)) nb inc typevar operateur indirectafter) !opEstPlus ) [] []  in
 	let ba = (new_boucleA b )  in	
-	let borne = (getBorneBoucleFor t nb inf inc !opEstPlus indirectafter) in
+	let borne = (getBorneBoucleFor t nb ninf inc !opEstPlus indirectafter) in
 	if (!isExactForm && ((getIsMultipleIncrement !expressionIncFor) =false)) then setAssosExactLoopInit  nom borne;
 	doc := new_document 	(new_ListeDesBoucles !doc.laListeDesBoucles  [ba])  !doc.laListeDesFonctions
 							(new_ListeDesBoucles !doc.laListeDesAssosBoucleBorne
