@@ -28,7 +28,7 @@ let version = "cvarabs Marianne de Michiel"
 
 let (alreadyAffectedGlobales: string list ref) = ref []
 let (withoutTakingCallIntoAccount: bool ref) = ref false
-        
+let (getOnlyBoolAssignment: bool ref) = ref false        
 let aAntiDep = ref false
 let vDEBUG = ref false
 let vEPSILON = ref (VARIABLE("EPSILON"))
@@ -45,10 +45,10 @@ let resb =
 				begin
 					let var4 = (String.sub x  0 4) in
 					let var3 = (String.sub x  0 3) in
-					if  var3 = "IF_" || var3 = "tN_" || var4 = "max_" || var4 = "tni_" then true else false
+					if  var3 = "IF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" then true else false
 				end
 				else if (String.length x > 3) then 
-						if (String.sub x  0 3) = "IF_" || (String.sub x  0 3) = "tN_" then true else false else false in
+						if (String.sub x  0 3) = "IF-" || (String.sub x  0 3) = "tN-" then true else false else false in
 resb
 
 let rec getArrayNameOfexp exp =
@@ -311,6 +311,19 @@ match e with
 let hasPtrArrayBoundCondition e = match e with MULTIPLE -> (false, "") | EXP (e) -> hasPtrArrayBoundConditionExp e 
 
 let estNothing e = match e with MULTIPLE -> 	false | EXP (e) -> 	match e with NOTHING -> true |_-> false
+
+
+let rec containtNothing e = match e with 
+		NOTHING -> true
+		| UNARY (_, exp) | CAST (_, exp)| EXPR_SIZEOF exp  | EXPR_LINE (exp, _, _)->containtNothing exp
+		| BINARY (_, exp1, exp2) ->containtNothing exp1 || containtNothing exp2
+		| QUESTION (exp1, exp2, exp3) ->containtNothing exp1 || containtNothing exp2|| containtNothing exp3
+		| CALL (exp, args) ->containtNothing exp||listnothing args
+		| COMMA exps ->listnothing exps
+		| CONSTANT _ | VARIABLE _ | TYPE_SIZEOF _| MEMBEROF (_, _) | MEMBEROFPTR (_, _) | GNU_BODY (_, _)->false
+		| INDEX (exp, idx) ->containtNothing exp || containtNothing idx
+and listnothing l = 
+if l = [] then false else containtNothing (List.hd l) || listnothing (List.tl l) 
 
 type sens =	CROISSANT|   DECROISSANT|   NONMONOTONE|   CONSTANTE
 
@@ -938,7 +951,7 @@ let rec evalexpression  exp =
 		let val2 = evalexpression g in
 		if estNoComp val1  &&  estNoComp val2 then NOCOMP
 		else if estDefExp val1  &&  estDefExp val2 then mini val1 val2
-			 else if  estDefExp val1 then val1 else val2
+			 else((*Printf.printf "minimum"*) (*if  estDefExp val1 then val1 else val2*)NOCOMP)
 
 		
 
@@ -2665,7 +2678,7 @@ let rec consArrayFromPtrExp exp arrayName =
 		| CONSTANT c-> (exp,false)
 		| VARIABLE name ->  if name = arrayName then (NOTHING, true) 
 							else if (String.length name > 4) then
-									if (String.sub name  0 4) = "bIt_" then  (exp, false) else (NOTHING, false)
+									if (String.sub name  0 4) = "bIt-" then  (exp, false) else (NOTHING, false)
 								 else (NOTHING, false)		(* sinon pb si ptr=tab+k ; k=k+1; *ptr=... donc pour le moment que constante*)						
 		|_ ->(* actuellement  non traitée *)(NOTHING, false)
 
@@ -3744,23 +3757,42 @@ fun prem ->
 		| ASSIGN_DOUBLE (_, _, _)  | ASSIGN_MEM	 (_, _, _)  ->  false
 ) ascour
 
+let consSETASSIGN var firstAssign secondAssign =
+(*let isBool = 
+if (String.length var > 5) && (String.sub var  0 5) = "__tmp" then true 
+else if (String.length var > 4) && (String.sub var  0 4) = "TWH_" then true
+	 else if (String.length var > 3)&& (String.sub var  0 3) = "IF-" then  true else false  in
+
+if isBool || !getOnlyBoolAssignment  = true then  ASSIGN_SIMPLE (var, MULTIPLE) 
+else
+	match firstAssign with  
+		ASSIGN_SIMPLE (var, first) ->
+				(
+				match secondAssign with  
+					ASSIGN_SIMPLE (var, second) ->
+						if first = MULTIPLE || second = MULTIPLE 
+								|| containtNothing (expVaToExp first )|| containtNothing (expVaToExp second) then ASSIGN_SIMPLE (var, MULTIPLE) 
+						else if second = first then ASSIGN_SIMPLE (var, first) 
+							else
+							begin
+							(*Printf.printf "consSETASSIGN %s\n" var;*)
+									(*afficherAS firstAssign;space();flush();new_line();
+								afficherAS secondAssign;space();flush();new_line(); *)
+								ASSIGN_SIMPLE (var,    
+									EXP(CALL (VARIABLE("SET") , List.append [expVaToExp first] [expVaToExp second])))  
+							end
+					|_-> ASSIGN_SIMPLE (var, MULTIPLE) 
+				)
+	  	|_->*) ASSIGN_SIMPLE (var, MULTIPLE) 
+
 
 let structmultidef var firstAssign secondAssign =
  
-(*let resb = 
-				if (String.length var >= 14) then
-				begin
-					
-					let var3 = (String.sub var  0 14) in
-					if  var3 = "ADC_parameters"  then true else false
-				end else false in
-				
-if resb then
-begin
+(*
 Printf.printf "structmultidef\n";
 afficherAS firstAssign;space();flush();new_line();
 afficherAS secondAssign;space();flush();new_line()
-end;*)
+*)
 	let (btype, isdeftype) = 
 			if List.mem_assoc var !listAssocIdType then (getBaseType (List.assoc var !listAssocIdType), true) 
 			else 
@@ -3799,9 +3831,9 @@ end;*)
 				|_->  ASSIGN_SIMPLE (var, MULTIPLE) (* not single assign  type *)
 			)
 		end
-		else ASSIGN_SIMPLE (var, MULTIPLE) (* not a  type *)
+		else (*ASSIGN_SIMPLE (var, MULTIPLE)*)(* not a  type *)consSETASSIGN var firstAssign secondAssign 
 	end
-	else ASSIGN_SIMPLE (var, MULTIPLE) (* unknowned type *)
+	else (* ASSIGN_SIMPLE (var, MULTIPLE)*)(* unknowned type *)consSETASSIGN var firstAssign secondAssign 
 
 
 let absMoinsT x a1 a2 =
@@ -3888,17 +3920,37 @@ let absMoinsTEm x a1 a2 listeT=
 				begin
 					let var4 = (String.sub x  0 4) in
 					let var3 = (String.sub x  0 3) in
-					if  var3 = "IF_" || var3 = "tN_" || var4 = "max_" || var4 = "tni_" then true else false
+					if  var3 = "IF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" ||  var4 = "TWH_"then true else false
 				end
 				else if (String.length x > 3) then 
-						if (String.sub x  0 3) = "IF_" || (String.sub x  0 3) = "tN_" then true else false else false in
+						if (String.sub x  0 3) = "IF-" || (String.sub x  0 3) = "tN-" then true else false else false in
 			
 			if resb then ro x a2
 			else
 			begin
 					(*Printf.printf "MULTIPLE %s dans absMoinsTEm 2\n" x;Printf.printf "que dans a1 %s \n" x;afficherAS (ro x a2 );*)
 					match ro x a2  with
-							ASSIGN_SIMPLE (x, y)->if y = EXP(VARIABLE(x)) then ro x a2  else ASSIGN_SIMPLE (x, MULTIPLE)
+							ASSIGN_SIMPLE (x, y)-> 
+							if (String.length x > 5) && (String.sub x  0 5) = "__tmp" then ASSIGN_SIMPLE (x, MULTIPLE)
+							else
+								if y = EXP(VARIABLE(x)) then ro x a2  else 
+								begin
+									if !getOnlyBoolAssignment = true then ASSIGN_SIMPLE (x, MULTIPLE)
+									else if y = MULTIPLE || containtNothing (expVaToExp y )  then ASSIGN_SIMPLE (x,MULTIPLE)
+								  		 else 
+										 begin	
+
+											
+
+											(match y with EXP(CONSTANT(_)) ->(*Printf.printf "produit 1 %s\n" x;
+												afficherAS (ro x a2);space();flush();new_line();*)
+													ASSIGN_SIMPLE (x,    EXP(CALL (VARIABLE("SET") , List.append [VARIABLE(x)] [expVaToExp y])))
+
+											
+								 			(*ASSIGN_SIMPLE (x, MULTIPLE) *)
+											|_->(*Printf.printf "produit 2 %s\n" x; *)ASSIGN_SIMPLE (x,MULTIPLE))
+										 end
+								end
 						|	ASSIGN_DOUBLE (_, exp, _)-> ASSIGN_DOUBLE (x, exp, MULTIPLE) 
 						|	ASSIGN_MEM (_, exp, _)-> ASSIGN_MEM (x, exp, MULTIPLE) 
 			end
@@ -3946,30 +3998,52 @@ begin
 	let (first, next) =(List.hd liste, List.tl liste )in
 	List.append (listeDesVarDuCorps first) (listeDesVarBegin next)
 end
+
+let filterGlobales ascour globales =
+List.filter(
+fun prem ->
+		match prem with  
+		ASSIGN_SIMPLE (x, _) 
+		| ASSIGN_DOUBLE (x, _, _)  -> if (List.mem x globales ) then begin  true end else false
+		| ASSIGN_MEM	 (x, _, _)  -> if (List.mem x globales ) then begin  true end 
+			else 
+			begin
+				false
+			end
+) ascour
+
 	
-let rec splitTotalAndOthers ascour= 
-if ascour = [] then ([], [])
+let rec splitTotalAndOthers ascour globales = 
+if ascour = [] then []
 else 
 begin
 	let (prem, next) = (List.hd ascour, List.tl ascour) in
-	let (nextGlobal, nextOthers) =splitTotalAndOthers next  in
+	let nextGlobal = splitTotalAndOthers next globales in
 
 
 	(match prem with  
 		ASSIGN_SIMPLE (id, _) ->
-			let rep =if (String.length id > 4) then
-			begin
-				let var4 = (String.sub id  0 4) in
-				let var3 = (String.sub id  0 3) in
-				if  var3 = "IF_" || var3 = "tN_" || var4 = "max_" || var4 = "tni_" || var4 = "TWH_" then true else false
-			end
-			else if (String.length id > 3) then 
-						if (String.sub id  0 3) = "IF_" || (String.sub id  0 3) = "tN_" then true else false
-						else false	
-			in
-			if rep then (List.append [prem] nextGlobal, nextOthers) else  (nextGlobal, List.append [prem] nextOthers)
-		| ASSIGN_DOUBLE (_, _, _)  
-		| ASSIGN_MEM	 (_, _, _)  ->    (nextGlobal, List.append [prem] nextOthers))
+			
+			let rep =
+				if (List.mem id globales ) then true
+				else
+				begin
+					if (String.length id > 4) then
+					begin
+						let var4 = (String.sub id  0 4) in
+						let var3 = (String.sub id  0 3) in
+						if  var3 = "IF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" || var4 = "TWH-" then true else false
+					end
+					else if (String.length id > 3) then 
+								if (String.sub id  0 3) = "IF-" || (String.sub id  0 3) = "tN-" then true else false
+						 else false	
+				end
+				in
+			if rep then 
+					List.append [prem] nextGlobal 
+			else  nextGlobal
+		| ASSIGN_DOUBLE (x, _, _)  
+		| ASSIGN_MEM	 (x, _, _)  ->    if (List.mem x globales ) then List.append [prem] nextGlobal else  nextGlobal)
 
 end
 
@@ -4299,21 +4373,27 @@ Printf.printf "fin \n";*)
 								|_-> ())
 								)memoutput	
 						end;
-						let nginterne = filterGlobales rc  !alreadyAffectedGlobales in
-						let (aPart, _) = splitTotalAndOthers rc in
+						(*let nginterne = filterGlobales rc  !alreadyAffectedGlobales in*)
+						let aPart = splitTotalAndOthers rc !alreadyAffectedGlobales in
+(*Printf.printf "evalStore fonction %s  \n" nomFonc ;
+afficherListeAS aPart;		*)
 
 						let returnf = Printf.sprintf "res%s"  nomFonc in
 						if existeAffectationVarListe returnf rc then
 						begin
 							let affectres = ro returnf rc in
-							listeASCourant :=  List.append [affectres] (List.append (List.append aPart nginterne) !listeASCourant )
+							listeASCourant :=  List.append [affectres] (List.append (*List.append aPart nginterne*)aPart !listeASCourant )
 						end
-						else listeASCourant :=   (List.append (List.append aPart nginterne) !listeASCourant );
+						else listeASCourant :=   (List.append (*List.append aPart nginterne*)aPart !listeASCourant );
+
+(*Printf.printf "evalStore fonction %s  \n" nomFonc ;*)
 (*afficherListeAS rc;		*)	
 (*Printf.printf "evalStore fonction %s  \n" nomFonc ;*)(*afficherListeAS !listeASCourant; Printf.printf "fin res\n" ;*)		 
 
 					(*Printf.printf "\nsorties %s depend de var de boucle %s\n" nomFonc varB; afficherListeAS !listeASCourant; Printf.printf "fin sorties\n";*)
 						let nc = rond a   !listeASCourant  in
+
+(*afficherListeAS nc;*)
 (*print_string ("Appel fonction definie: FIN "^nomFonc ^"\n");*)
 						nc
 			(*Printf.printf "evalStore fonction %s  \n global filter" nomFonc ; afficherListeAS nginterne; Printf.printf "fin res\n" ;*)
@@ -4410,7 +4490,7 @@ and applynewothers before firstChange=
 							if (String.length id > 4) then
 							begin
 									let var3 = (String.sub id  0 3) in
-									if  var3 = "IF_" then  asc else na
+									if  var3 = "IF-" then  asc else na
 							end
 							else na
 						end else na								
@@ -4430,10 +4510,10 @@ match assign with
 		begin
 			let var4 = (String.sub id  0 4) in
 			let var3 = (String.sub id  0 3) in
-			if  var3 = "IF_" || var3 = "tN_" || var4 = "max_" || var4 = "tni_" || var4 = "TWH_" then false else true
+			if  var3 = "IF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" || var4 = "TWH-" then false else true
 		end
 		else if (String.length id > 3) then 
-					if (String.sub id  0 3) = "IF_" || (String.sub id  0 3) = "tN_" then false else true
+					if (String.sub id  0 3) = "IF-" || (String.sub id  0 3) = "tN-" then false else true
 					else true	
 	|  _-> true
 ) others
@@ -4449,10 +4529,10 @@ match assign with
 		begin
 			let var4 = (String.sub id  0 4) in
 			let var3 = (String.sub id  0 3) in
-			if  var3 = "IF_" || var3 = "tN_" || var4 = "max_" || var4 = "tni_" || var4 = "TWH_" then [] else [na]
+			if  var3 = "IF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" || var4 = "TWH-" then [] else [na]
 		end
 		else if (String.length id > 3) then 
-					if (String.sub id  0 3) = "IF_" || (String.sub id  0 3) = "tN_"  then [] else [na]
+					if (String.sub id  0 3) = "IF-" || (String.sub id  0 3) = "tN-"  then [] else [na]
 					else [na]
 		
 			

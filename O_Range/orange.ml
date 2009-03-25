@@ -1073,9 +1073,9 @@ let afficheUnNidEval n =
 let afficheNidEval l = List.iter (fun unNid -> afficheUnNidEval unNid) l
 
 let creerLesAffect tN max tni num nappel=
-  let varBoucleTN =  Printf.sprintf "%s_%d_%d" "tN" num nappel in	
-  let varBouclemax =  Printf.sprintf "%s_%d_%d" "max" num nappel in	
-  let varBoucleTNI =  Printf.sprintf "%s_%d_%d" "tni" num nappel in	
+  let varBoucleTN =  Printf.sprintf "%s-%d_%d" "tN" num nappel in	
+  let varBouclemax =  Printf.sprintf "%s-%d_%d" "max" num nappel in	
+  let varBoucleTNI =  Printf.sprintf "%s-%d_%d" "tni" num nappel in	
   let output = 	List.append  [new_instVar varBoucleTN (EXP(VARIABLE(varBoucleTN)))] 
 	  (List.append [new_instVar varBouclemax (EXP(VARIABLE(varBouclemax)))]  [new_instVar varBoucleTNI (EXP(VARIABLE(varBoucleTNI)))]) in
   (varBoucleTN,varBouclemax,varBoucleTNI,
@@ -1175,7 +1175,7 @@ TBOUCLE(num, appel, _,_,_,_,_) ->
 					  else ConstInt("0"))
 	  end;
 	
-	  let varBoucleIfN =  Printf.sprintf "%s_%d" "bIt" num in	
+	  let varBoucleIfN =  Printf.sprintf "%s-%d" "bIt" num in	
 	  listeVB := listeSansAffectVar !listeVB varBoucleIfN;
 
       estNulEng := false;
@@ -1391,18 +1391,23 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
   jusqu'à la mère du nid faire*) (*donc en remonté de recursivité*)
 
   let info = (getBoucleInfoB (nEC.infoNid.laBoucle)) in
+
+
  
   let nomE = info.identifiant  in
   let saBENG = (if aBoucleEnglobante info then info.nomEnglobante else 0) in
-  if !vDEBUG then 
+
+ if !vDEBUG then
   begin
 
-	  Printf.printf "1 traiterBouclesInternes num %d nom eng %d ou stopper %d sa eng %d tete nid %d\n" id	nomE idEng saBENG (getBoucleIdB nT.infoNid.laBoucle);
+	  Printf.printf "1 traiterBouclesInternes num %d nom eng %d ou stopper %d sa eng %d tete nid %d \n" id	nomE idEng saBENG (getBoucleIdB nT.infoNid.laBoucle)  ;
+
 	  (* afficheNidEval !docEvalue.maListeNidEval; *)
   (*	Printf.printf "FIN NID ENG COURANT \n"*)
   end;
   let conte = match typeE with  TBOUCLE(n,ap,_,_,_,_,_) -> ap |_-> 0 in
-  if nomE = idEng (*|| (nomE = (getBoucleIdB nT.infoNid.laBoucle) && nomE != 0*) then 
+  (*if (nomE = (getBoucleIdB nT.infoNid.laBoucle) && nomE != 0) then if nomE != idEng then Printf.printf "CASPB\n";*)
+  if nomE = idEng (*|| (nomE = (getBoucleIdB nT.infoNid.laBoucle) && nomE != 0)*) then 
   begin	
 	  if nomE = 0 then Printf.printf "fin de la remontée\n";
 	  let info = (getBoucleInfoB nEC.infoNid.laBoucle) in
@@ -1441,7 +1446,7 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 		isExeBoucle := isExeE;
 		(*if !isExeBoucle then  Printf.printf "la boucle englobante est exécutée\n"  
 		else  Printf.printf "la boucle englobante n'est pas exécutée\n";*)
-		(*let varIfN =  Printf.sprintf "%s_%d" "TWH" id  in	*)
+		(*let varIfN =  Printf.sprintf "%s-%d" "TWH" id  in	*)
 
 		let (lesAs, intofunction) = 
 		(	if (!dernierAppelFct <> !predDernierAppelFct)  
@@ -1750,7 +1755,7 @@ afficheUnNidEval nouNidEval;*)
 			begin			
 				let (_,_,nid) =List.hd liste in
 (*Printf.printf "TRAITEMENT  DE %d AAA\n"	id;*)
-				traiterBouclesInternes nT  nid idEng id  !resAuxTN appel listeEng typeE  numAp !maxAuxTN isExeE lt lf borne true globales(* true = sans prod*) maxinit varLoop direction idpred
+				traiterBouclesInternes nT  nid idEng id  tN appel listeEng typeE  numAp max isExeE lt lf borne false globales(* true = sans prod*) maxinit varLoop direction idpred
 			end
 		end
 		else
@@ -1772,8 +1777,8 @@ afficheUnNidEval nouNidEval;*)
 								(*Printf.printf "REMONTER JUSQU4A SUIVANT DE %d suivant %d dans %s\n"	(getBoucleIdB nEC.infoNid.laBoucle) nbou nomf; *)
 								(*if fin then Printf.printf "on continu\n" else Printf.printf "derniere passe\n";*)
 									traiterBouclesInternes nT  nidCourantCC nomE id   
-								!resAuxTN appel listeEng typeE  numF  
-								!maxAuxTN isExeE lt lf borne  fin globales(* true = sans prod*) maxinit varLoop direction  idpred
+								tN appel listeEng typeE  numF  
+								max isExeE lt lf borne  fin globales(* true = sans prod*) maxinit varLoop direction  idpred
 							|_-> 			
 							 (* Printf.printf "FIN 1 pas de boucle englobante fin traiterBouclesInternes apres creer\n"*)())
 								(*traiterBouclesInternes nT  nT nomE id   
@@ -1791,8 +1796,8 @@ afficheUnNidEval nouNidEval;*)
 					Printf.printf "REMONTER JUSQU4A SUIVANT DE %d suivant %d\n"	(getBoucleIdB nEC.infoNid.laBoucle) nbou;*)
 
 					 traiterBouclesInternes nT  nT idEng id   
-								!resAuxTN appel listeEng typeE  numAp  
-								!maxAuxTN isExeE lt lf borne  false globales(* true = sans prod*) maxinit varLoop direction  idpred
+								tN appel listeEng typeE  numAp  
+								max isExeE lt lf borne  true globales(* true = sans prod*) maxinit varLoop direction  idpred
 				end
 		end
 	end
@@ -1825,8 +1830,8 @@ let rec traiterBouclesInternesComposant 	 	nT (*tete nid contenant bi*)  nEC (*n
 
 (*print_expVA (EXP(info.conditionI)); flush(); space(); new_line ();*)
 
-	(*let varTN =  Printf.sprintf "%s_%d" "total" id in	
-	let varmax =  Printf.sprintf "%s_%d" "max" id in	
+	(*let varTN =  Printf.sprintf "%s-%d" "total" id in	
+	let varmax =  Printf.sprintf "%s-%d" "max" id in	
 	
 	let l = List.append  [new_instVar varTN tN]  [new_instVar varmax max] 	in
     let output = 	List.append  [new_instVar varTN (EXP(VARIABLE(varTN)))]    [new_instVar varmax (EXP(VARIABLE(varmax)))] in*)
@@ -2107,7 +2112,7 @@ afficheUnNidEval nouNidEval;*)
 			begin			
 				let (_,_,nid) =List.hd liste in
 (*Printf.printf "TRAITEMENT  DE %d AAA\n"	id;*)
-				traiterBouclesInternes nT  nid idEng id  !resAuxTN appel listeEng typeE  numAp !maxAuxTN isExeE lt lf borne true globales(* true = sans prod*) maxinit varLoop direction idPred
+				traiterBouclesInternes nT  nid idEng id  !resAuxTN appel listeEng typeE  numAp !maxAuxTN isExeE lt lf borne false globales(* true = sans prod*) maxinit varLoop direction idPred
 			end
 		end
 		else
@@ -2596,17 +2601,17 @@ afficherListeAS( globalesBefore);new_line () ;*)
 and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEng typeE comp_base =
   let absolutize valname = 
         try
-          Scanf.sscanf valname "bIt_%d" (fun x -> (sprintf "bIt_%d" (x + comp_base)))
+          Scanf.sscanf valname "bIt-%d" (fun x -> (sprintf "bIt-%d" (x + comp_base)))
         with Scanf.Scan_failure str -> valname
         in
   let absolutizeTotal valname = 
         try
-          Scanf.sscanf valname "total_%d" (fun x -> (sprintf "total_%d" (x + comp_base)))
+          Scanf.sscanf valname "total-%d" (fun x -> (sprintf "total-%d" (x + comp_base)))
         with Scanf.Scan_failure str -> valname
         in	
   let absolutizeMax valname = 
         try
-          Scanf.sscanf valname "max_%d" (fun x -> (sprintf "max_%d" (x + comp_base)))
+          Scanf.sscanf valname "max-%d" (fun x -> (sprintf "max-%d" (x + comp_base)))
         with Scanf.Scan_failure str -> valname
         in
 	
@@ -2621,7 +2626,7 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEn
     let expMax = mapVar absolutize expMax in
     let expTotal = mapVar absolutize expTotal in
     let id = id + (!idBoucle) + 1 in 
-    let varLoop = sprintf "bIt_%d" id in
+    let varLoop = sprintf "bIt-%d" id in
 	let direction = sens in
 	let corpsCompo =  (mapListAffect absolutizeTotalMax (getInstListFromPartial (getPartialResult nomComp))) in
 	
@@ -3412,7 +3417,7 @@ let printFile (result : out_channel)  (defs2 : file)=
   numAppel :=  0;
   estNulEng :=  false;
   estDansBoucle :=  false;
-
+	getOnlyBoolAssignment := true;
 
   analyse_defs defs2; (*step 1*)
   (*afficherNidDeBoucle doc;	*)
@@ -3437,6 +3442,7 @@ print_AssosArrayIDsize !listAssosArrayIDsize;
 	 (*if !doc.laListeDesNids <> [] then
 	  begin*)
 		  evaluerNbFunctionOfDoc  doc  !evalFunction;
+getOnlyBoolAssignment := false;
 		  Printf.printf "\n\n\n DEBUT EVALUATION \n\n\n";
 		  evaluerFonctionsDuDoc doc ; 
 		  (*afficheNidEval !docEvalue.maListeNidEval; *)

@@ -465,7 +465,7 @@ module TreeList = struct
       (current, stack) -> 
         let relativize valname = 
 	  try
-	    Scanf.sscanf valname "bIt_%d" (fun x -> (sprintf "bIt_%d" (x-1)))
+	    Scanf.sscanf valname "bIt-%d" (fun x -> (sprintf "bIt-%d" (x-1)))
 	  with Scanf.Scan_failure str -> valname
 	  in
         let maxexp = mapVar relativize maxexp in
@@ -1506,7 +1506,9 @@ end
 
 and containBoolxAssignementBody x  body completList =
 (* x isAssignedOk ? assignement, isConditionnalAssignment, conditionTrueList, conditionFalseList, ifVar *)
+				(*getOnlyBoolAssignment := true;*)
 				let las = evalStore (new_instBEGIN(body)) [] [] in
+				(*getOnlyBoolAssignment := false;*)
 				if existAffectVDsListeAS x las then
 				begin
 					let extinc =  rechercheAffectVDsListeAS x las  in
@@ -1529,10 +1531,11 @@ and containBoolxAssignementBody x  body completList =
 
 and getBooleanAssignementInc  assign isConditionnal ltrue lfalse  init var o e1 e2 liste avant dans cte t c lv l inst ifvar=(* voir indirect*)
 let isBoolEq = (match o with EQ-> false |_-> true) in
-
+(*getOnlyBoolAssignment := true;*)
 (*Printf.printf "getBooleanAssignementInc  \n"; *)
 (* ici il faudra tester si l'operateur est EQ ou NE*)
 let cas =evalStore (new_instBEGIN(inst)) [] [] in
+(*getOnlyBoolAssignment := false;*)
 (*afficherListeAS cas;*)
 opEstPlus:= true;  
 
@@ -2507,7 +2510,7 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 										|_->if estDefExp const then if estNul const then false else true else true) in	
 	(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var;*) (*print_expTerm const; new_line ();*)
 	(*if isExecutedV  then Printf.printf "isexecuted \n" else Printf.printf "is not executed \n" ;Printf.printf "FIN...\n";*)
-	(*let isConstructVar = if (String.length var > 4) then begin if (String.sub var  0 4) = "bIt_" then  true else   false end else false in*)
+	(*let isConstructVar = if (String.length var > 4) then begin if (String.sub var  0 4) = "bIt-" then  true else   false end else false in*)
  
 	if isExecutedV then
 	begin
@@ -2913,7 +2916,7 @@ Printf.printf "cas 3 EQ peut être booleen var2 %s\n" var2;
 	expressionIncFor := inc;
 
 
-	let isConstructVar = if (String.length nv > 4) then begin if (String.sub nv  0 4) = "bIt_" then  true else   false end else false in
+	let isConstructVar = if (String.length nv > 4) then begin if (String.sub nv  0 4) = "bIt-" then  true else   false end else false in
 	let isIntVar = 	if isConstructVar = false &&  List.mem_assoc nv !listAssocIdType then   ( match getBaseType (List.assoc nv !listAssocIdType) with INT_TYPE-> true|_-> false) else  false in
 
 
@@ -3031,7 +3034,7 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 	expressionIncFor := inc;
 
 
-	let isConstructVar = if (String.length nv > 4) then begin if (String.sub nv  0 4) = "bIt_" then  true else   false end else false in
+	let isConstructVar = if (String.length nv > 4) then begin if (String.sub nv  0 4) = "bIt-" then  true else   false end else false in
 	let isIntVar = 	if isConstructVar = false &&  List.mem_assoc nv !listAssocIdType then   ( match getBaseType (List.assoc nv !listAssocIdType) with INT_TYPE-> true|_-> false) else  false in
 
 
@@ -3292,7 +3295,7 @@ let rec analyse_statement   stat =
 		idIf := !idIf + 1;
 		analyse_expression   exp ;
 		let ne = !nouvExp in   
-		let varIfN =  Printf.sprintf "%s_%d" "IF" !idIf  in	 
+		let varIfN =  Printf.sprintf "%s-%d" "IF" !idIf  in	 
 		let newaffect =new_instVar  varIfN  (EXP(ne)) in 
 
 		listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect]; 
@@ -3349,12 +3352,12 @@ let rec analyse_statement   stat =
 		let idBoucleEngPred = !idBoucleEng in	
 		idBoucleEng := numBoucle;
 
-		let varIfN =  Printf.sprintf "%s_%d" "TWH" numBoucle  in	 
+		let varIfN =  Printf.sprintf "%s-%d" "TWH" numBoucle  in	 
 		let newaffect =new_instVar  varIfN  (EXP(ne)) in 
 		listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect]; 
 
 
-		let varBoucleIfN =  Printf.sprintf "%s_%d" "bIt" !idBoucle in	
+		let varBoucleIfN =  Printf.sprintf "%s-%d" "bIt" !idBoucle in	
 		listAssocIdType := List.append !listAssocIdType [(varBoucleIfN, INT_TYPE)] ;
 		let listePred = !listeDesInstCourantes in
 		listeDesInstCourantes := !listeNextExp;																	
@@ -3457,7 +3460,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 	(*	analyse_expression   exp ;*)
 		idBoucle := !idBoucle +1;
 		let numBoucle = !idBoucle in
-		let varBoucleIfN =  Printf.sprintf "%s_%d" "bIt" !idBoucle in	
+		let varBoucleIfN =  Printf.sprintf "%s-%d" "bIt" !idBoucle in	
 		let listePred = !listeDesInstCourantes in
 		listeDesInstCourantes := [];
 		listAssocIdType := List.append !listAssocIdType [(varBoucleIfN, INT_TYPE)] ;									
@@ -3480,7 +3483,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		listeNextExp := [];
 		analyse_expressionaux exp ;
 		let ne = !nouvExp in   
-		let varIfN =  Printf.sprintf "%s_%d" "TWH" numBoucle  in	 
+		let varIfN =  Printf.sprintf "%s-%d" "TWH" numBoucle  in	 
 		let newaffect =new_instVar  varIfN  (EXP(ne)) in 
 		listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect]; 
 		listeDesInstCourantes := List.append !listeDesInstCourantes  !listeNextExp; 
@@ -3578,12 +3581,12 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 	
 		analyse_expressionaux  exp2;
 		let ne = !nouvExp in   
-		let varIfN =  Printf.sprintf "%s_%d" "TWH" num  in	 
+		let varIfN =  Printf.sprintf "%s-%d" "TWH" num  in	 
 		let newaffect =new_instVar  varIfN  (EXP(ne)) in 
 		listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect]; 
 
 
-		let varBoucleIfN =  Printf.sprintf "%s_%d" "bIt" !idBoucle in	
+		let varBoucleIfN =  Printf.sprintf "%s-%d" "bIt" !idBoucle in	
 		let listePred = !listeDesInstCourantes in
 		listAssocIdType := List.append !listAssocIdType [(varBoucleIfN, INT_TYPE)] ;
 		listeDesInstCourantes := !listeNextExp;	
@@ -3686,14 +3689,14 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 								listeNextExp := [];
 								analyse_expressionaux  exp ;
 								let ne = !nouvExp in
-								let nouvarres = Printf.sprintf "res%s" !nomFctCour  in
+								let nouvarres = Printf.sprintf "res-%s" !nomFctCour  in
 								let newaffect = new_instVar  (nouvarres)  (EXP(ne))in
 								listeDesInstCourantes :=List.append ( List.append !listeDesInstCourantes  [newaffect]) !listeNextExp
 							end
 	| SWITCH (exp, stat) ->			analyse_expression   exp ;
 									let ne = !nouvExp in   
 									idSwitch := !idSwitch + 1;
-									let varIfNaux =  Printf.sprintf "%s_%d" "SW" !idSwitch  in	 
+									let varIfNaux =  Printf.sprintf "%s-%d" "SW" !idSwitch  in	 
 									let newaffect =new_instVar  varIfNaux  (EXP(ne)) in 
 									listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect]; 
 									listOfCase := [];
@@ -3866,12 +3869,12 @@ and contruireAux par args	=
 	end			
 																
 and  construireAsAppel dec	appel =
- 	let (_, _, name) = dec in 
+ 	let (t, _, name) = dec in 
  	let (_, typep, _, _) = name in
  	let base = get_base_type typep in
  	let liste =
 		(match base with
-			PROTO (_, pars, _) -> List.map( fun pc -> let (_, _, n) = pc in let (id, _, _, _) = n in id)  pars 
+			PROTO (t, pars, _) -> List.map( fun pc -> let (_, _, n) = pc in let (id, _, _, _) = n in id)  pars 
 			| OLD_PROTO (_, pars, _) ->	pars 
 			| _ -> []) in	
  	match appel with
@@ -4060,7 +4063,11 @@ and  analyse_expressionaux exp =
 					let (_, f) = fonction in
 					listeDesInstCourantes := [];
 					construireAsAppel f.declaration	exp ;
-
+					(*let (t, _, _) = f.declaration in 
+  
+					let isvoid =	if t = VOID then true else false in*)
+					(*if isvoid then Printf.printf "la fonction %s is void \n"(nomFonctionDeExp e) 
+					else Printf.printf "la fonction %s is NOT void \n"(nomFonctionDeExp e) ;*)
 					idAppel := !idAppel + 1;
 				    let ida = !idAppel in	
 
@@ -4071,11 +4078,14 @@ and  analyse_expressionaux exp =
 					listeBoucleOuAppelCourante	:= 
 						List.append  !listeBoucleOuAppelCourante  [IDAPPEL(ida, exp, !listeDesInstCourantes,"", !trueList,!falseList )];
 					let _ = traiterAppelFonction e args !listeDesInstCourantes ida in
-					
-					let nouvar = Printf.sprintf "call%s%d" (nomFonctionDeExp e) ida in
-					let nouvarres = Printf.sprintf "res%s" (nomFonctionDeExp e) in
-					let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
-					listeDesInstCourantes :=  List.append !listeDesInstCourantes  [newaffect];
+					let nouvar = Printf.sprintf "call-%s%d" (nomFonctionDeExp e) ida in
+					(*if isvoid = false then *)
+					begin 
+						
+						let nouvarres = Printf.sprintf "res-%s" (nomFonctionDeExp e) in
+						let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
+						listeDesInstCourantes :=  List.append !listeDesInstCourantes  [newaffect]
+					end;
 					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
 
 (*afficherLesAffectations (  !listeDesInstCourantes) ;new_line () ;*)
@@ -4098,8 +4108,8 @@ Printf.printf "analyse_expressionaux %s NON EXISTE \n" (nomFonctionDeExp e) ;*)
 
 (*if isComponant then Printf.printf "analyse_expressionaux %s NON EXISTE IS COMPOSANT\n" (nomFonctionDeExp e) 
 else   Printf.printf "analyse_expressionaux %s NON EXISTE IS NOT COMPOSANT\n" (nomFonctionDeExp e) ;*)
-					let nouvar = Printf.sprintf "call%s%d" (nomFonctionDeExp e) ida in
-					let nouvarres = Printf.sprintf "res%s" (nomFonctionDeExp e) in
+					let nouvar = Printf.sprintf "call-%s%d" (nomFonctionDeExp e) ida in
+					let nouvarres = Printf.sprintf "res-%s" (nomFonctionDeExp e) in
 					let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
 					listeDesInstCourantes :=  List.append !listeDesInstCourantes  [newaffect];
 					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
@@ -4212,7 +4222,7 @@ List.append [n] (convael  (List.tl l)  )
 end
 									
 and ajouterReturn nomF lesAffectations =
-	let nouvarres = Printf.sprintf "res%s" nomF  in
+	let nouvarres = Printf.sprintf "res-%s" nomF  in
 	
 	if lesAffectations = [] then begin  ()end
 	else
@@ -4257,7 +4267,7 @@ and expBornesToListeAffect expBornes =
   	| Function (x, subtree) ->  List.fold_left aux res subtree
   	| Call (x, subtree) -> List.fold_left aux res subtree
   	| Loop ((id, line, source, exact, max, total, expMax, expTotal, expinit, sens), subtree) -> 
-	  (new_instVar (sprintf "max_%d" id) (EXP expMax))::(new_instVar (sprintf "total_%d" id) (EXP expTotal))::(List.fold_left aux res subtree)
+	  (new_instVar (sprintf "max-%d" id) (EXP expMax))::(new_instVar (sprintf "total-%d" id) (EXP expTotal))::(List.fold_left aux res subtree)
 	in
     aux [] expBornes 
 
@@ -4561,7 +4571,7 @@ and  onlyAstatement   stat =
 										listeNextExp := [];
 										onlyAexpressionaux  exp ;
 										let ne = !nouvExp in
-										let nouvarres = Printf.sprintf "res%s" !nomFctCour  in
+										let nouvarres = Printf.sprintf "res-%s" !nomFctCour  in
 										let newaffect = new_instVar  (nouvarres)  (EXP(ne))in
 										listeDesInstCourantes :=  List.append ( List.append !listeDesInstCourantes  [newaffect]) !listeNextExp
 									end
@@ -4571,7 +4581,7 @@ and  onlyAstatement   stat =
 
 									let ne = !nouvExp in   
 									idSwitch := !idSwitch + 1;
-									let varIfNaux =  Printf.sprintf "%s_%d" "SW" !idSwitch  in	 
+									let varIfNaux =  Printf.sprintf "%s-%d" "SW" !idSwitch  in	 
 									let newaffect =new_instVar  varIfNaux  (EXP(ne)) in 
 									listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect]; 
 
@@ -4725,8 +4735,8 @@ and  onlyAexpressionaux exp =
 					construireAsAppelAux f.declaration	exp ;(*pb si arg est un appel de fonction revoir*)
 					let _ = onlytraiterAF e args !listeDesInstCourantes in
 					
-					let nouvar = Printf.sprintf "call%s%d" (nomFonctionDeExp e) 0 in
-					let nouvarres = Printf.sprintf "res%s" (nomFonctionDeExp e) in
+					let nouvar = Printf.sprintf "call-%s%d" (nomFonctionDeExp e) 0 in
+					let nouvarres = Printf.sprintf "res-%s" (nomFonctionDeExp e) in
 					let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
 					listeDesInstCourantes :=  List.append !listeDesInstCourantes  [newaffect];
 					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
@@ -4739,8 +4749,8 @@ and  onlyAexpressionaux exp =
 			
 					
 					let isComponant =  onlytraiterAF e args !listeDesInstCourantes in
-					let nouvar = Printf.sprintf "call%s%d" (nomFonctionDeExp e) 0 in
-					let nouvarres = Printf.sprintf "res%s" (nomFonctionDeExp e) in
+					let nouvar = Printf.sprintf "call-%s%d" (nomFonctionDeExp e) 0 in
+					let nouvarres = Printf.sprintf "res-%s" (nomFonctionDeExp e) in
 					let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
 					listeDesInstCourantes :=  List.append !listeDesInstCourantes  [newaffect];
 					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
