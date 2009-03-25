@@ -1409,6 +1409,7 @@ let rec  calculer expressionVA ia l sign =
 						| CONST_CHAR _ 	|CONST_STRING _ | CONST_COMPOUND _ ->	NOCOMP
 				)
 			| VARIABLE (s) ->		 (Var(s))
+			| INDEX(n,i)->Printf.printf"calculer tab\n";print_expression expr 0; new_line ();flush(); space();  new_line ();NOCOMP
 			| _ -> 	NOCOMP
 
 
