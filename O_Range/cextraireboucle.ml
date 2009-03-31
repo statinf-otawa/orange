@@ -3963,7 +3963,7 @@ and  analyse_expressionaux exp =
 						| _->	 if !vDEBUG then  Printf.printf "expr pour tableau  non traitée\n" 	
 					)
 				| UNARY (opr,e) -> 
-					let p = !listeNextExp in
+					(*let p = !listeNextExp in*)
 					(*
 					analyse_expressionaux e ;
 					listeNextExp := p;
@@ -3971,13 +3971,13 @@ and  analyse_expressionaux exp =
 					(
 						match opr with
 							MEMOF		->
-								analyse_expressionaux e ;listeNextExp := p;
+								analyse_expressionaux e ;(*listeNextExp := p;*)
 
 								(match !nouvExp with
 								  VARIABLE v -> analyse_expressionaux exp2;	 let ne = !nouvExp in   
-									(** "*" operator. *)
-									(* ICI    afficherUneAffect( new_instMem ("*"^v) (EXP(VARIABLE(v))) (EXP(ne))); flush(); new_line(); *)
-									listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instVar ("*"^v)  (EXP(ne))]
+									(** "*" operator. *)(*Printf.printf "expr pour tableau  MEMOF\n" ;
+									     afficherUneAffect( new_instMem ("*"^v) (EXP(VARIABLE(v))) (EXP(ne))); flush(); new_line(); *)
+									listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instMem ("*"^v) (EXP(VARIABLE(v))) (EXP(ne))]
 								  | UNARY(ADDROF,expaux)	->(** "&" operator. *)
 									(match expaux with
 									 VARIABLE v -> analyse_expressionaux exp2;	 let ne = !nouvExp in   
@@ -3986,7 +3986,7 @@ and  analyse_expressionaux exp =
 								|_->if !vDEBUG then Printf.printf "expr pour tableau  non traitée\n" )
 					
 							
-							| ADDROF	->(** "&" operator. *)analyse_expressionaux e ;listeNextExp := p;
+							| ADDROF	->(** "&" operator. *)analyse_expressionaux e ;(*listeNextExp := p;*)
 								(match  !nouvExp with
 								  VARIABLE v ->analyse_expressionaux exp2;	 let ne = !nouvExp in   
 									  listeDesInstCourantes := List.append !listeDesInstCourantes 

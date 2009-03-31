@@ -1109,6 +1109,7 @@ let borneAux = ref NOCOMP
 let borneMaxAux = ref NOCOMP 
 
 let listeVB = ref [] 
+let listeVBDEP = ref [] 
 (*let listeVBPredNonNidNonNul = ref [] *)
 let isProd = ref false
 let isExactEng = ref true
@@ -1130,7 +1131,7 @@ TBOUCLE(num, appel, _,_,_,_,_) ->
   let nm =  nnE.maxUneIt  in
   isProd := false;
 
-  let new_expmax = (applyStoreVA nm  !listeVB) in (* l'expression du max avec propagation *)
+  let new_expmax = (*(applyStoreVA nm  !listeVB) in (* l'expression du max avec propagation *)*) applyif nm !listeVBDEP in
   let c1 = calculer  nm   nia [] 1 in
   let (expmax1, reseval) =(
 	  
@@ -1140,7 +1141,9 @@ TBOUCLE(num, appel, _,_,_,_,_) ->
   let myMaxIt = if estNulEngPred =false then expmax1 else  ConstInt("0") in
 
   let ne =  nnE.expressionBorneToutesIt  in
-  let new_exptt = (applyStoreVA ne !listeVB) in (* expression total apres propagation*)
+  let new_exptt =(* (applyStoreVA ne !listeVB) in (* expression total apres propagation*)*)applyif ne !listeVBDEP in
+
+
   let c2 = calculer  nnE.expressionBorneToutesIt   nia [] 1 in
   let exptt1 =
   ( if estDefExp c2 =false|| reseval = false then calculer new_exptt  nia [] 1 else c2 ) in
@@ -1177,7 +1180,7 @@ TBOUCLE(num, appel, _,_,_,_,_) ->
 	
 	  let varBoucleIfN =  Printf.sprintf "%s-%d" "bIt" num in	
 	  listeVB := listeSansAffectVar !listeVB varBoucleIfN;
-
+	  listeVBDEP := listeSansAffectVar !listeVBDEP varBoucleIfN;	
       estNulEng := false;
 
 	  if estDefExp !borneAux && estNul !borneAux then 
@@ -1224,33 +1227,40 @@ TBOUCLE(num, appel, _,_,_,_,_) ->
 
 	  let mymax = !borneMaxAux in
 	  let result = Listener.onLoop result num lig fic iAmExact  !borneMaxAux !borneAux  (expVaToExp new_expmax) (expVaToExp new_exptt) ((rechercheNid num).infoNid.expressionBorne) nia in
-	  let result = afficherCorpsUML liste  (tab+5) result in  
-	  let result = Listener.onLoopEnd (result:Listener.t) in
+
+
+
+
 
 	  
 	  let nb = expressionEvalueeToExpression (evalexpression  (Diff (mymax, ConstInt ("1"))))  in
 	  let exp_nb = (BINARY(SUB, (expVaToExp new_expmax), CONSTANT (CONST_INT "1"))) in
-	  if iAmExact   then  
-			  listeVB := rond !listeVB  [ASSIGN_SIMPLE (myVar, EXP(nb))]  
+
+	 
+
+	let assignVB =
+	  if iAmExact   then   ASSIGN_SIMPLE (myVar, EXP(nb))
 	  else
 	  begin
 		  if  iAmNotNul	 then 
 		  begin
 				if (not (estNothing (EXP nb))) then
-				begin 
-		   		listeVB := rond !listeVB  
-						[ASSIGN_SIMPLE (myVar,  EXP(CALL (VARIABLE("SET") ,  List.append [CONSTANT (CONST_INT "0")] [nb] )) )]  
-				end
+					ASSIGN_SIMPLE (myVar,  EXP(CALL (VARIABLE("SET") ,  List.append [CONSTANT (CONST_INT "0")] [nb] )) )
 				else
-				begin
-		   		listeVB := rond !listeVB  
-						[ASSIGN_SIMPLE (myVar,  EXP(CALL (VARIABLE("SET") ,  List.append [CONSTANT (CONST_INT "0")]
-						[exp_nb] )) )]				
-				end
+				 ASSIGN_SIMPLE (myVar,  EXP(CALL (VARIABLE("SET") ,  List.append [CONSTANT (CONST_INT "0")]
+						[exp_nb] )) )		
+				
 				
 		  end
-		  else listeVB := rond !listeVB   [ASSIGN_SIMPLE (varBoucleIfN, EXP(CONSTANT  (CONST_INT "-1")))]  ;
-	  end;
+		  else  ASSIGN_SIMPLE (varBoucleIfN, EXP(CONSTANT  (CONST_INT "-1"))) ;
+	  	end in
+
+	   listeVBDEP := rond !listeVBDEP  [assignVB];
+	   let result = afficherCorpsUML liste  (tab+5) result in  
+	   let result = Listener.onLoopEnd (result:Listener.t) in
+(*listeVB := rond !listeVB [assignVB];*)
+
+
 	  isExactEng := exactEng;
 	  estNulEng := estNulEngPred;
 	  valeurEng := borneEng;
@@ -2389,7 +2399,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 							  begin				
 								  let (_, func) = (rechercherFonctionParNom nomFonction doc) in
 								  let ne = (match e with BEGIN(eee)-> (List.append listeInputInstruction eee) |_->listeInputInstruction) in
- (*Printf.printf "evalUneBoucleOuAppel Eval appel FONCTION %s: num appel EXISTE %d \n" nomFonction numf;*)
+(* Printf.printf "evalUneBoucleOuAppel Eval appel FONCTION %s: num appel EXISTE %d \n" nomFonction numf;*)
 								  ([APPEL (n,e,nomFonc,s,CORPS(BEGIN(func.lesAffectations)),v)], ne,func.lesAffectations, false)
 							  end
 							  else 
@@ -2424,11 +2434,11 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 					 		(*let localUsedGlobales = intersection( listeDesVarBegin lesAffectations)  !globalesVar in
 						  	let localUsedGlobalesAffect = filterGlobales contexteAvantAppel localUsedGlobales in*)
 							
-(*afficherListeAS( others);new_line () ;
-afficherLesAffectations ( entrees) ;new_line () ;*)
+(*afficherListeAS( others);new_line () ;*)
+(*afficherLesAffectations ( entrees) ;new_line () ;*)
 							let input = evalInputFunction others   entrees newGlobales in
-(*Printf.printf "evalUneBoucleOuAppel  appel FONCTION %s:\n ENTREES :\n" nomFonction ;*)
-				(*  afficherListeAS( input);new_line () ;*)
+(*Printf.printf "evalUneBoucleOuAppel  appel FONCTION %s:\n ENTREES :\n" nomFonction ;
+				  afficherListeAS( input);new_line () ;*)
 
 						  ( input ,others, newGlobales) 
 					  end
@@ -2478,17 +2488,18 @@ afficherListeAS( globalesBefore);new_line () ;*)
 							  List.iter (
 								  fun sortie -> 
 								  (match sortie with 
-								  VAR (id, e) ->   
+								  VAR (id, e) ->    (*Printf.printf "\nevalUneBoucleOuAppel var SORTIE %s  %s\n" nomFonction id ;*)
 									  listeASCourant :=  List.append 
 									  [new_assign_simple id (applyStoreVA (applyStoreVA e rc)globalesAA) ]  !listeASCourant; 
 									  ()
-								  | TAB (id, e1, e2) ->  
+								  | TAB (id, e1, e2) -> (* Printf.printf "\nvar SORTIEn %s  tab %s\n" nomFonction id ;*)
 									  listeASCourant := List.append
-										  [ASSIGN_DOUBLE (id, applyStoreVA (applyStoreVA e1 rc)globalesAA,  applyStoreVA(applyStoreVA e2 rc)globalesAA)] !listeASCourant;
+										  [ASSIGN_DOUBLE (id, applyStoreVA (applyStoreVA e1 rc)globalesAA, 
+								 applyStoreVA(applyStoreVA e2 rc)globalesAA)] !listeASCourant;
 										  ()
-									  |_-> ())
+									  |_-> (* Printf.printf "\nvar SORTIE memassign %s  \n" nomFonction  ;*)())
 								  )sorties	
-						  end;
+						  end ;
 						  let returnf = Printf.sprintf "res%s"  nomFonc in
 						 (* if existeAffectationVarListe returnf rc then
 						  begin
@@ -2505,10 +2516,10 @@ afficherListeAS( globalesBefore);new_line () ;*)
 							end
 							else listeASCourant :=     (List.append nginterne  !listeASCourant );
 						 
-						 (*afficherListeAS( nginterne);new_line () ;*)
+					(*	 afficherListeAS( nginterne);new_line () ;*)
 						  let ncont = rond others   !listeASCourant  in(*voir remarque cvarabs.ml*)
- 						(*Printf.printf "evalUneBoucleOuAppel FIN Eval appel FONCTION %s:\n SORTIE :\n" nomFonction ;*)
-						(* afficherListeAS( ncont);new_line () ;*)
+ 						(*Printf.printf "evalUneBoucleOuAppel FIN Eval appel FONCTION %s:\n SORTIE :\n" nomFonction ;
+						 afficherListeAS( ncont);new_line () ;*)
 						  (ncont, globalesAA)
 
 					  end	
