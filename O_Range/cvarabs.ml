@@ -1146,11 +1146,11 @@ match a with
 						 	|_->print_expression  (BINARY(ASSIGN,INDEX(VARIABLE(s),  e),  VARIABLE("?"))) 0)
 					| _->print_expression  (BINARY(ASSIGN,INDEX(VARIABLE(s),  VARIABLE("NODEF")),  VARIABLE("NODEF"))) 0)
 				 
-	|   ASSIGN_MEM (s, e1, e2)	-> 		Printf.printf "mem assign affich\n";
+	|   ASSIGN_MEM (s, e1, e2)	-> 		(*Printf.printf "mem assign affich\n";*)
 			(match e1 with EXP(e) ->  
-						(match e2 with EXP(ex) ->print_expression  (BINARY(ASSIGN,INDEX(VARIABLE("*"^s),  e),  ex)) 0
-						 	|_->print_expression  (BINARY(ASSIGN,INDEX(VARIABLE("*"^s),  e),  VARIABLE("NODEF"))) 0)
-					| _->print_expression  (BINARY(ASSIGN,INDEX(VARIABLE("*"^s),  VARIABLE("NODEF")),  VARIABLE("NODEF"))) 0)
+						(match e2 with EXP(ex) ->print_expression  (BINARY(ASSIGN,INDEX(VARIABLE(s),  e),  ex)) 0
+						 	|_->print_expression  (BINARY(ASSIGN,INDEX(VARIABLE(s),  e),  VARIABLE("NODEF"))) 0)
+					| _->print_expression  (BINARY(ASSIGN,INDEX(VARIABLE(s),  VARIABLE("NODEF")),  VARIABLE("NODEF"))) 0)
 
 let afficherListeAS asL =space(); new_line() ;flush(); List.iter (fun a-> afficherAS a; space(); new_line() ;flush(); )asL
 let  expVaToExp exp = match exp with EXP(e) ->e| _->NOTHING
@@ -2973,10 +2973,15 @@ match e with
 		if (existeAffectationVarListe name a ) then 
 		begin
 			let newassign = (ro name a) in
-			isRenameVar := true; 
-			match newassign with ASSIGN_SIMPLE (_, EXP(valeur)) ->(valeur) |ASSIGN_SIMPLE (_, MULTIPLE) ->isRenameVar := true;boolAS:= true; NOTHING| _ ->	e
+			
+			match newassign with 
+				ASSIGN_SIMPLE  (_,EXP(va)) ->isRenameVar := true;  va
+				|ASSIGN_SIMPLE  (_,MULTIPLE) ->isRenameVar := true; boolAS:= true;NOTHING
+				|_->e
+
+			(*ASSIGN_SIMPLE (_, EXP(valeur)) ->(valeur) |ASSIGN_SIMPLE (_, MULTIPLE) ->isRenameVar := true;boolAS:= true; NOTHING| _ ->	e*)
 		end
-		else  e  
+		else ( e  )
 	| CONSTANT 	cst	->
 		(match cst with 
 			CONST_COMPOUND expsc ->(*Printf.printf "consta conpound 1\n"; print_expression e 0; new_line();*)
@@ -2986,90 +2991,82 @@ match e with
 			|_->(*Printf.printf "consta\n";*)(e)	)
 		 (*	Printf.printf " expression applystore constante\n";*)
 	| UNARY (op, exp1) 				-> 
-		(
-			match op with 
+		(match op with 
 				MEMOF -> 
-				(	match exp1 with
-						VARIABLE(v) ->  
-							if (existeAffectationVarIndexListe ("*"^v) a (EXP(VARIABLE(v)))) then
+				(
+(*Printf.printf"MEMOF\n";
+print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
+						let exp1e = applyStore exp1 a in
+(*print_expression  (exp1e) 0; space();  flush() ; new_line();flush();*)
+						let (tab1,_, _) =getArrayNameOfexp  exp1e  in
+						if tab1 != "" then
+						begin
+							let (indexexp , isok) = consArrayFromPtrExp ( exp1  )  tab1 in
+							if isok then 
 							begin
-								 
-								(match (roindex ("*"^v) a (EXP(VARIABLE(v))) ) with 
-									ASSIGN_MEM (_,_, EXP(va))|ASSIGN_DOUBLE (_,_, EXP(va)) | ASSIGN_SIMPLE (_, EXP(va))->  (va) 
-									|_->NOTHING )
-							end
-							else 
-								if ( existeAffectationVarListe ("*"^v) a ) then 
+								let resindex = expressionEvalueeToExpression( calculer  (EXP(applyStore indexexp a))  !infoaffichNull [] 1) in
+								if existAssosArrayIDsize tab1  then 
 								begin
-									 
-									let newassign = (ro ("*"^v) a) in
-									(match newassign with ASSIGN_MEM (_,_, EXP(va))|ASSIGN_DOUBLE (_,_, EXP(va)) | ASSIGN_SIMPLE (_, EXP(va))->  va
-										 |_->NOTHING)
-								end
-								else
-									if (existeAffectationVarListe (v) a) then UNARY (op,   ( applyStore exp1 a )   ) else e 
-									 
-
-						| UNARY (ADDROF, next) ->    applyStore next a
-
-						|_->  
-							let exp1e = applyStore exp1 a in  
-							(   match exp1e with 	 
-								UNARY (ADDROF, next) ->    applyStore next a
-								|_->  (* UNARY (op, exp1e  )*)
-									let (tab1,_, _) =getArrayNameOfexp  exp1e  in
-									if tab1 != "" then
+									if (existeAffectationVarIndexListe tab1 a (EXP(resindex))) then
 									begin
-										let (indexexp , isok) = consArrayFromPtrExp ( exp1  )  tab1 in
-										if isok then 
-										begin
-											let resindex = expressionEvalueeToExpression( calculer(EXP(applyStore indexexp a))!infoaffichNull [] 1) in
-											if existAssosArrayIDsize tab1  then 
-											begin
-												if existeAffectationVarIndexListe tab1 a (EXP(resindex)) then
-												begin
-													let rotab =roindex tab1 a (EXP(resindex)) in
-													(match rotab with 
-													ASSIGN_MEM (_,_,EXP(va))|ASSIGN_DOUBLE(_,_, EXP(va))|ASSIGN_SIMPLE(_,EXP(va))-> va |_->NOTHING)
-												end
-												else 
-												begin   INDEX(VARIABLE(tab1), resindex)
-												end(*UNARY (op, exp1e  )*)	 
-											end
-											else 
-											begin   
-												if existeAffectationVarIndexListe ("*"^tab1) a (EXP(VARIABLE(tab1))) then
-												begin  
-													(match (roindex ("*"^tab1) a (EXP(VARIABLE(tab1))) ) with 
-														ASSIGN_MEM (_,_, EXP(va))|ASSIGN_DOUBLE (_,_, EXP(va)) | ASSIGN_SIMPLE (_, EXP(va))-> 
-															UNARY (MEMOF,BINARY(ADD, va, resindex  ))
-														|_->NOTHING)
-												end
-												else  
-													if  existeAffectationVarListe ("*"^tab1) a  then 
-													begin
-														 
-														let na = (ro ("*"^tab1) a) in
-														 
-														(match na with ASSIGN_MEM(_,_,EXP(va))|ASSIGN_DOUBLE(_,_, EXP(va))|
-															ASSIGN_SIMPLE(_,EXP(va))->  UNARY (MEMOF,BINARY(ADD, va, resindex  ))
-															|_->NOTHING)
-													end
-								  					else begin ( UNARY (op, applyStore exp1 a) 	  )  end
-											end
-										end else begin   UNARY (op, applyStore exp1 a) end	
-									end 
-									else begin    UNARY (op, applyStore exp1 a)  end
-							)	
+										let rotab =roindex tab1 a (EXP(resindex)) in
+										(match rotab with 
+										ASSIGN_MEM (_,_,EXP(va))|ASSIGN_DOUBLE(_,_, EXP(va))|ASSIGN_SIMPLE(_,EXP(va))-> va |_->boolAS:= true;NOTHING)
+									end
+									else 
+									begin
+										(*print_expression  (INDEX(VARIABLE(tab1), resindex)) 0; space();  flush() ; new_line();flush(); new_line(); flush();Printf.printf"non exist affect\n";*)
+										(*let arrayas = arrayAssignFilter tab1 a in
+										if arrayas != [] then begin Printf.printf "les as rofilter array\n" ; afficherListeAS arrayas; Printf.printf "fin \n" end ;*)
+										INDEX(VARIABLE(tab1), resindex)
+									end(*UNARY (op, exp1e  )*)	 
+								end
+								else 
+								begin 
+										if (existeAffectationVarListe tab1 a ) then 
+											(match (ro tab1 a) with ASSIGN_SIMPLE(_,EXP(va))-> UNARY (MEMOF,BINARY(ADD, va, resindex  ))|ASSIGN_SIMPLE(_,MULTIPLE)->boolAS:= true;NOTHING|_->e)
+										else UNARY (op, exp1e  )  
+										(*print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
+
+										
+								end
+							end 
+							else 
+							begin 
+								(*afficherListeAS a; space(); flush();new_line();
+								Printf.printf "les as rofilter array %s tab\n" tab1 ;*)
+								match exp1 with VARIABLE(v) -> 
+									if (existeAffectationVarListe ("*"^v) a ) then 
+											match (ro ("*"^v) a ) with 
+											ASSIGN_MEM (_,_,EXP(va))-> va
+											|ASSIGN_MEM (_,_,MULTIPLE)-> boolAS:= true;NOTHING
+											|_-> e
+									else if (existeAffectationVarListe (v) a) then UNARY (op,  applyStore exp1e  [ro v a] ) else e
+									| UNARY (ADDROF, next) ->  (*Printf.printf "les as rofilter*&\n" ;*)  applyStore next a 
+									|_->   (match exp1e with 	 UNARY (ADDROF, next) ->    applyStore next a  
+											|_->
+												if (existeAffectationVarListe tab1 a ) then   UNARY (op,  applyStore exp1e  [ro tab1 a] ) 
+												else UNARY (op, exp1e  ))
+									
+							end
+						end 
+						else 
+						begin 
+(* Printf.printf "les as rofilter array 2\n" ;*)
+							(match exp1 with
+							 UNARY (ADDROF, next) ->  (*Printf.printf "les as rofilter*&\n" ;*)  applyStore next a 
+							 |_->	(match exp1e with 	 UNARY (ADDROF, next) ->    applyStore next a  |_->  UNARY (op, exp1e  ) ))
+						end
 					)
 
 			|ADDROF->    	(match exp1 with  UNARY (MEMOF, next) ->    applyStore next a   |_->  UNARY (op, (applyStore exp1 a)))
 			|_->  UNARY (op, (applyStore exp1 a) )
 		)
+
 	| BINARY (op, exp1, exp2) 		-> 	(BINARY (op, (applyStore exp1 a), (applyStore exp2 a)))
 	| QUESTION (exp1, exp2, exp3) ->  	(QUESTION ((applyStore exp1 a), (applyStore exp2 a) , (applyStore exp3 a) ))
 	| CAST (typ, exp1) 				->	let res = (applyStore exp1 a) in 
-										if res = NOTHING then NOTHING else res
+										if res = NOTHING then  NOTHING  else res
 	| CALL (exp1, args) 			->	(CALL (  exp1  , List.map (fun arg -> applyStore (arg) a) args))
 	| COMMA exps 					->	(COMMA ( List.map (fun arg -> applyStore (arg) a) exps))
 	| EXPR_SIZEOF exp 				->	(EXPR_SIZEOF (applyStore exp a))
@@ -3083,8 +3080,8 @@ match e with
 					let absl = roindex  name a (EXP(index))	 in
 					(
 						match absl with
-						ASSIGN_MEM(_,_,EXP(exp2))|ASSIGN_DOUBLE  (_, _, EXP(exp2))->  (*Printf.printf " trouve =\n";
-					print_expression exp2 0; new_line ();flush(); space();  new_line ();*)exp2 (*je ne suis pas sure d'avoir bien interpete l'algo *)
+						ASSIGN_SIMPLE(_,EXP(exp2))|ASSIGN_MEM(_,_,EXP(exp2))|ASSIGN_DOUBLE  (_, _, EXP(exp2))-> (* Printf.printf " trouve =\n";*)
+					(*print_expression exp2 0; new_line ();flush(); space();  new_line ();*)exp2 (*je ne suis pas sure d'avoir bien interpete l'algo *)
 						| 	_->  begin  boolAS:= true; (NOTHING) end
 					)
 				end	 
@@ -3137,7 +3134,7 @@ match e with
 								begin 
 									(*let tabvalue = *)
 										(match roindex tab1 a (EXP(expressionEvalueeToExpression index)) with 
-											ASSIGN_MEM(_,_,EXP(va))|ASSIGN_DOUBLE(_,_, EXP(va)) -> va | 	_->boolAS:= true;NOTHING) (*in*)
+											ASSIGN_SIMPLE(_,EXP(va))|ASSIGN_MEM(_,_,EXP(va))|ASSIGN_DOUBLE(_,_, EXP(va)) -> va | 	_->boolAS:= true;NOTHING) (*in*)
 									
 								end 
 								else	
@@ -3173,7 +3170,7 @@ match e with
 				else  
 				begin 
 					 
-					boolAS:= true;NOTHING  
+					INDEX (applyStore exp a, applyStore idx a)
 				end 
 		)				
 	 | MEMBEROF (ex, c) 			
@@ -3451,13 +3448,17 @@ let rondListe a1  ro2x =
 				else (INT_TYPE, false)
 in*)
 
-
-
 				let isStruct = if (List.mem_assoc x !listAssocIdType) then  begin let (isstruct, _) =   isStructAndGetIt (List.assoc x !listAssocIdType) in isstruct end 
-
 				else if List.mem_assoc x !listeAssosPtrNameType then let (isstruct, _) =   isStructAndGetIt (List.assoc x !listeAssosPtrNameType) in isstruct else false  in
+			(*	let isVarSet =  match exp with EXP(CALL(VARIABLE"SET",l)) ->  if l = [] then false else ( match List.hd l with VARIABLE (x) ->true |_-> false) |_-> false in*)
 
 
+(*if x = "nx" || x= "ny"|| x ="nz" then
+					if  (existeAffectationVarListe x a1 ) then
+begin
+					 (Printf.printf "not trouve %s\n" x; afficherListeAS a1;Printf.printf "not trouve apres a%s\n" x; afficherAS ro2x;Printf.printf "not trouve apres avant et avant apres%s\n" x; print_expVA  assign);
+if    isVarSet   then( Printf.printf "(existeAffectationVarListe set x a1 %s) \n" x  ;afficherAS ro2x)
+end;*)
 
 				let hasstructtorename =  !isRenameVar && isStruct in
 											
@@ -3952,13 +3953,18 @@ begin
 
 end
 
-let filterSingleGlobales ascour globales =
+(*let filterSingleGlobales ascour globales =
 List.filter(
 fun prem ->
 		match prem with  
 		ASSIGN_SIMPLE (x, _)  ->if (List.mem x globales ) then   true  else false
 		| ASSIGN_DOUBLE (_, _, _)  | ASSIGN_MEM	 (_, _, _)  ->  false
-) ascour
+) ascour*)
+
+			 
+
+				
+
 
 let consSETASSIGN var firstAssign secondAssign =
 (*let isBool = 
@@ -3968,34 +3974,102 @@ else if (String.length var > 4) && (String.sub var  0 4) = "TWH_" then true
 
 if isBool || !getOnlyBoolAssignment  = true then  ASSIGN_SIMPLE (var, MULTIPLE) 
 else
+begin
+(*Printf.printf "consSETASSIGN %s\n" var; afficherAS firstAssign;space();flush();new_line();
+(*								afficherAS secondAssign;space();flush();new_line(); *)
 	match firstAssign with  
-		ASSIGN_SIMPLE (var, first) ->
-				(
-				match secondAssign with  
-					ASSIGN_SIMPLE (var, second) ->
-						if first = MULTIPLE || second = MULTIPLE 
-								|| containtNothing (expVaToExp first )|| containtNothing (expVaToExp second) then ASSIGN_SIMPLE (var, MULTIPLE) 
-						else if second = first then ASSIGN_SIMPLE (var, first) 
-							else
-							begin
-							(*Printf.printf "consSETASSIGN %s\n" var;*)
-									(*afficherAS firstAssign;space();flush();new_line();
-								afficherAS secondAssign;space();flush();new_line(); *)
-								ASSIGN_SIMPLE (var,    
-									EXP(CALL (VARIABLE("SET") , List.append [expVaToExp first] [expVaToExp second])))  
-							end
-					|_-> ASSIGN_SIMPLE (var, MULTIPLE) 
+		ASSIGN_SIMPLE (var, EXP(valeur1))
+			->
+				(match secondAssign with 
+							ASSIGN_SIMPLE (var, EXP(valeur2)) ->
+ 								let (isTruecteArg1, v1) =isTrueConstant valeur1 in
+								let (isTruecteArg2, v2) =isTrueConstant valeur2 in
+								if isTruecteArg1 then
+								begin
+									if isTruecteArg2 then
+										if v1 = v2 then ASSIGN_SIMPLE (var, EXP(valeur1))
+										else ASSIGN_SIMPLE (var, EXP(CALL (VARIABLE "SET" , List.append [v1] [v2])))
+									else 
+										if isVarTrue  var valeur2  then ASSIGN_SIMPLE (var, EXP(valeur1))
+								end
+								
+							|_-> ASSIGN_SIMPLE (var,MULTIPLE)
 				)
-	  	|_->*) ASSIGN_SIMPLE (var, MULTIPLE) 
+		|_-> ASSIGN_SIMPLE (var,MULTIPLE)
+
+
+				(match valeur1 with
+
+					CONSTANT(CONST_INT v1)| CONSTANT(CONST_FLOAT v1)| CONSTANT(CONST_CHAR v1)|CONSTANT(CONST_STRING v1)->
+
+		
+						( 	match secondAssign with 
+							ASSIGN_SIMPLE (var, EXP(valeur2)) ->
+								(match valeur2 with
+
+									CONSTANT(CONST_INT _)| CONSTANT(CONST_FLOAT _)| CONSTANT(CONST_CHAR _)|CONSTANT(CONST_STRING _)->
+											ASSIGN_SIMPLE (var, EXP(CALL (VARIABLE "SET" , List.append [valeur1] [valeur2])))
+									| CALL(VARIABLE"SET", l)->
+										let (arg1,arg2) =(List.hd  l,List.hd(List.tl l)) in
+											(
+												match arg1 with
+												  CONSTANT(CONST_INT v2)|CONSTANT(CONST_FLOAT v2)|CONSTANT(CONST_CHAR v2)|CONSTANT(CONST_STRING v2)->
+											ASSIGN_SIMPLE (var, EXP(CALL (VARIABLE "SET" , List.append [valeur1] [valeur2])))
+												
+											)
+									|_-> ASSIGN_SIMPLE (var,MULTIPLE)
+								)
+							|_-> ASSIGN_SIMPLE (var,MULTIPLE)
+						)
+							ASSIGN_SIMPLE (var, EXP(CONSTANT(CONST_INT _)))|ASSIGN_SIMPLE (var, EXP(CONSTANT(CONST_FLOAT _)))|
+							ASSIGN_SIMPLE (var, EXP(CONSTANT(CONST_CHAR _)))|ASSIGN_SIMPLE (var, EXP(CONSTANT(CONST_STRING _))) ->
+
+*)
+								ASSIGN_SIMPLE (var, EXP(CALL(VARIABLE"SET", l))) ->
+								 	(match List.hd l with 
+										VARIABLE(var) -> 
+												ASSIGN_SIMPLE (var, EXP(CALL (VARIABLE("SET") , 
+															List.append [first] [List.hd(List.tl l)])))
+												|_-> ASSIGN_SIMPLE (var,MULTIPLE)
+								 	)
+								|_-> ASSIGN_SIMPLE (var,MULTIPLE)
+						)
+
+					(*match first with ASSIGN_SIMPLE (var, EXP(CALL(VARIABLE"SET", l))) ->
+						(
+
+								(match (List.hd l,List.hd (List.tl l) with 
+										(VARIABLE(var), CONSTANTE(_)) -> 
+												ASSIGN_SIMPLE (var, EXP(CALL (VARIABLE("SET") , 
+															List.append [List.hd l] 
+																	[CALL (VARIABLE("SET") , List.append (List.hd(List.tl l)) ])))
+												|_-> ASSIGN_SIMPLE (var,MULTIPLE)
+								 	)
+								|_-> ASSIGN_SIMPLE (var,MULTIPLE)
+						)
+					|_->	*)
+						(	match secondAssign with  
+								ASSIGN_SIMPLE (var, EXP(CALL(VARIABLE"SET", l))) ->
+								 	(match List.hd l with 
+										VARIABLE(var) -> 
+												ASSIGN_SIMPLE (var, EXP(CALL (VARIABLE("SET") , 
+															List.append [first] [List.hd(List.tl l)])))
+												|_-> ASSIGN_SIMPLE (var,MULTIPLE)
+								 	)
+								|_-> ASSIGN_SIMPLE (var,MULTIPLE)
+						)
+				)
+		|_-> *)ASSIGN_SIMPLE (var,MULTIPLE)
+(*end*)
+							(* *)
+								(*ASSIGN_SIMPLE (var,    
+									EXP(CALL (VARIABLE("SET") , List.append [expVaToExp first] [expVaToExp second])))  *)
+
 
 
 let structmultidef var firstAssign secondAssign =
  
-(*
-Printf.printf "structmultidef\n";
-afficherAS firstAssign;space();flush();new_line();
-afficherAS secondAssign;space();flush();new_line()
-*)
+
 	let (btype, isdeftype) = 
 			if List.mem_assoc var !listAssocIdType then (getBaseType (List.assoc var !listAssocIdType), true) 
 			else 
@@ -4029,7 +4103,9 @@ afficherAS secondAssign;space();flush();new_line()
 											(compareComma exp exp2 [] listType)
 									)))		
 								
-						|_->	 ASSIGN_SIMPLE (id, MULTIPLE) (* not single assign  type *)
+						|_->	
+								
+							 ASSIGN_SIMPLE (id, MULTIPLE) (* not single assign  type *)
 					)
 				|_->  ASSIGN_SIMPLE (var, MULTIPLE) (* not single assign  type *)
 			)
@@ -4087,24 +4163,28 @@ let  produit a1 a2  =
  paux a1 a2 (rechercheLesVar a2  (rechercheLesVar a1 []))
 
 let absMoinsTEm x a1 a2 listeT=
+let res =	
 	if ( existeAffectationVarListe x a1) then
 	begin
 		let ro1 = ro x a1 in 
 		
+		
 		if ( existeAffectationVarListe x a2)  then
 		begin
+			let ro2avant = ro x a2 in
+			let (r,_) = rondListe a1 ro2avant in
+			let ro2 = if r= [] then ro1 else  List.hd r in
 			
-			let ro2 = ro x a2 in
-			if ( List.mem x listeT) then ro2 (*changed into the two alternatives*)
+			if ( List.mem x listeT) then   ro2 (*changed into the two alternatives*)
 			else
 			begin
-				if ro1 = ro2 	then ro1 (*changed into the only one alternative*)
+				if ro1 =ro2 	then ro1 (*changed into the only one alternative*)
 				else 
 				begin
 					(*Printf.printf "MULTIPLE %s dans absMoinsTEm\n" x;*)
-					match ro1 with
+					match ro2 with
 							ASSIGN_SIMPLE (_, _)->(*Printf.printf "MULTIPLE %s dans absMoinsTEm\n" x;*)
-								structmultidef x ro1 ro2 
+								structmultidef x ro1  ro2 
 							(*ASSIGN_SIMPLE (x, MULTIPLE)*)(*var MULTIPLE def voir si on utilise le max*)
 						|	ASSIGN_DOUBLE (_, exp, _)-> ASSIGN_DOUBLE (x, exp, MULTIPLE) 
 						|	ASSIGN_MEM (_, exp, _)-> ASSIGN_MEM (x, exp, MULTIPLE) 
@@ -4115,7 +4195,9 @@ let absMoinsTEm x a1 a2 listeT=
 	end 
 	else 
 	begin
-		if ( List.mem x listeT) then ro x a2 (* existe car dans au moins un] des deux ensembles*)		
+		let (r,_) = rondListe a1 (ro x a2) in
+		let ro2 = List.hd r in
+		if ( List.mem x listeT) then ro2 (* existe car dans au moins un] des deux ensembles*)		
 		else
 		begin
 			let resb = 
@@ -4127,12 +4209,14 @@ let absMoinsTEm x a1 a2 listeT=
 				end
 				else if (String.length x > 3) then 
 						if (String.sub x  0 3) = "IF-" || (String.sub x  0 3) = "tN-" then true else false else false in
+			(*let n = rond a1 [ro x a2] in*)
+			 
 			
-			if resb then ro x a2
+			if resb then ro2
 			else
 			begin
 					(*Printf.printf "MULTIPLE %s dans absMoinsTEm 2\n" x;Printf.printf "que dans a1 %s \n" x;afficherAS (ro x a2 );*)
-					match ro x a2  with
+					match ro2  with
 							ASSIGN_SIMPLE (x, y)-> 
 							if (String.length x > 5) && (String.sub x  0 5) = "__tmp" then ASSIGN_SIMPLE (x, MULTIPLE)
 							else
@@ -4142,16 +4226,19 @@ let absMoinsTEm x a1 a2 listeT=
 									else if y = MULTIPLE || containtNothing (expVaToExp y )  then ASSIGN_SIMPLE (x,MULTIPLE)
 								  		 else 
 										 begin	
-
-											
-
-											(match y with EXP(CONSTANT(_)) ->(*Printf.printf "produit 1 %s\n" x;
-												afficherAS (ro x a2);space();flush();new_line();*)
-													ASSIGN_SIMPLE (x,    EXP(CALL (VARIABLE("SET") , List.append [VARIABLE(x)] [expVaToExp y])))
-
-											
-								 			(*ASSIGN_SIMPLE (x, MULTIPLE) *)
-											|_->(*Printf.printf "produit 2 %s\n" x; *)ASSIGN_SIMPLE (x,MULTIPLE))
+											match y with 
+												EXP(CONSTANT(_)) ->(*Printf.printf "produit 1 %s\n" x;
+														afficherAS (ro x a2);space();flush();new_line();*)
+														ASSIGN_SIMPLE (x,    EXP(CALL (VARIABLE("SET") , List.append [VARIABLE(x)] [expVaToExp y])))
+												| EXP(CALL(VARIABLE"SET", l))->
+														(match (List.hd l,List.hd (List.tl l)) with 
+																(CONSTANT(_),CONSTANT(_)) -> 
+																	ASSIGN_SIMPLE (x, EXP(CALL (VARIABLE("SET") , 
+																					List.append [VARIABLE(x)] [expVaToExp y])))
+																|_-> ASSIGN_SIMPLE (x,MULTIPLE)
+														)														 
+								 						(*ASSIGN_SIMPLE (x, MULTIPLE) *)
+												|_-> ASSIGN_SIMPLE (x,MULTIPLE)
 										 end
 								end
 						|	ASSIGN_DOUBLE (_, exp, _)-> ASSIGN_DOUBLE (x, exp, MULTIPLE) 
@@ -4159,11 +4246,50 @@ let absMoinsTEm x a1 a2 listeT=
 			end
 		end
 	end	
+in
+res
+
 
 let rec pauxEm a1 a2 l listeT=
-if l = [] then [] else  List.append  [absMoinsTEm (List.hd l) a1 a2 listeT] (pauxEm a1 a2 (List.tl l) listeT) 
+if l = [] then [] else  
+begin
+	let x = (List.hd l) in
+	let na =absMoinsTEm x a1 a2 listeT in
+	let isChanged = if ( existeAffectationVarListe x a2)  then
+						if na = ro x a2 then  false
+						else  true 
+				else  true
+			in
+
+	if isChanged = false then List.append  [na] (pauxEm a1 a2 (List.tl l) listeT) 
+	else 
+	begin
+		List.append  [na] ( pauxEm (rond a1 [na]) a2 (List.tl l) listeT)
+	end
+end
 
 let produitEm a1 a2 listeT =  pauxEm a1 a2 (rechercheLesVar a2  (rechercheLesVar a1 [])) listeT
+
+
+let isTrueConstant e=
+	match e with
+		CONSTANT(CONST_INT v1)| CONSTANT(CONST_FLOAT v1)| CONSTANT(CONST_CHAR v1)|CONSTANT(CONST_STRING v1)->(true,v1)
+		| _-> (false,"")
+
+let isSetTrueConstant e=
+	match e with
+		CALL(VARIABLE"SET", l)->
+			 let (arg1,arg2) =(List.hd  l,List.hd(List.tl l)) in
+			 let (isTruecteArg1, v1) =isTrueConstant arg1 in
+			 let (isTruecteArg2, v2) =isTrueConstant arg2 in
+			 (isTruecteArg1 && isTruecteArg2, v1, v2)
+		|_-> (false,"","")
+
+let isVarTrue  var e=
+	match e with
+		VARIABLE var-> true
+		|_-> false
+
 
 
 
@@ -4395,7 +4521,7 @@ Printf.printf "les as de if \n" ;
 Printf.printf "fin \n";*)
 					
 	| FORV (num,id, _, _, _, _, inst)	-> 
-		(*Printf.printf "\nevalStore boucle executed %d variable %s\n" num id;*)
+	(*Printf.printf "\nevalStore boucle executed %d variable %s\n" num id;*)
 		if !firstLoop = 0 then firstLoop := num;
 		let listePred = !listeDesVarDependITitcour in
 		listeDesVarDependITitcour := [];
@@ -4415,13 +4541,19 @@ afficherListeAS a;
 Printf.printf "fin \n";*)
 let rewrite = 
 if newOthers != [] then
-(
-(*Printf.printf "\nothers rewriteAllOthers\n";
+((*
+Printf.printf "\nothers rewriteAllOthers\n";
 	afficherListeAS newOthers;space();flush();new_line();
 	Printf.printf "\nend\n";
 	Printf.printf "others\n";
 	afficherListeAS oldOthers ;space();flush();new_line();
 	Printf.printf "\nend\n";*)
+(*Printf.printf "others\n";
+	afficherListeAS newas ;space();flush();new_line();
+	Printf.printf "\nend\n";*)
+
+
+
 let new_res = rewriteEndOthers newas oldOthers newOthers in
 (*Printf.printf "newasl \n";
 	afficherListeAS new_res ;space();flush();new_line();

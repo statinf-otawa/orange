@@ -1524,7 +1524,7 @@ and containBoolxAssignementBody x  body completList =
 						 | EXP (e) -> 
 							if e = NOTHING then  
 								(false, NOTHING,false, [],[],"")  
-							else (Printf.printf "%s isassigned into as  \n" x; (true, e ,false, [],[],"")) 
+							else ((*Printf.printf "%s isassigned into as  \n" x;*) (true, e ,false, [],[],"")) 
 					)
  				end
 				else (false,NOTHING ,false, [],[],"") 
