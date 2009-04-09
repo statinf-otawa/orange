@@ -37,7 +37,8 @@ let vEPSILONINT = ref (CONSTANT (CONST_INT "1"))
 (*let vEPSILON = ref (CONSTANT (CONST_FLOAT "0.001"))*)
 let isIntoSwithch = ref false
 
-let estDansBoucle = ref false
+let (estDansBoucle  : bool ref) = ref false
+let torename = ref ""
 
 let isLoopOrIFId x =
 let resb = 
@@ -45,10 +46,10 @@ let resb =
 				begin
 					let var4 = (String.sub x  0 4) in
 					let var3 = (String.sub x  0 3) in
-					if  var3 = "IF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" then true else false
+					if var3 = "ET-" || var3 = "EF-" ||  var3 = "IF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" then true else false
 				end
 				else if (String.length x > 3) then 
-						if (String.sub x  0 3) = "IF-" || (String.sub x  0 3) = "tN-" then true else false else false in
+						if (String.sub x  0 3) = "ET-" ||(String.sub x  0 3) = "EF-" ||(String.sub x  0 3) = "IF-" || (String.sub x  0 3) = "tN-" then true else false else false in
 resb
 
 
@@ -117,7 +118,7 @@ type corpsInfo =
 	| IFVF of expVA * inst * inst			  
 	| BEGIN of inst list 
 	| FORV of int*string * expVA * expVA * expVA * expVA *inst 	(*derniere expression nb it*)
-	| APPEL of int*inst*(* inst*) string * inst*corpsInfo *string
+	| APPEL of int*inst*(* inst*) string * inst*corpsInfo *string*string
 	
 
 (* il  faudra ajouter les struct *)
@@ -128,8 +129,8 @@ let new_instIFVF exp inst1 inst2  = IFVF(exp, inst1, inst2)
 let new_instIFV exp inst1   = IFV(exp, inst1)
 let new_instFOR num id exp1 exp2 exp3 nbIt inst  = FORV(num,id, exp1, exp2, exp3, nbIt, inst)
 let new_instBEGIN listeInst  = BEGIN(listeInst)
-let new_instAPPEL num instAffectIn nom instAffectSortie corps s = APPEL(num, instAffectIn, nom, instAffectSortie, (CORPS corps), s)
-let new_instAPPELCOMP num instAffectIn nom instAffectSortie absStore s = APPEL(num, instAffectIn, nom, instAffectSortie, (ABSSTORE absStore), s)
+let new_instAPPEL num instAffectIn nom instAffectSortie corps s = APPEL(num, instAffectIn, nom, instAffectSortie, (CORPS corps), s, "")
+let new_instAPPELCOMP num instAffectIn nom instAffectSortie absStore s = APPEL(num, instAffectIn, nom, instAffectSortie, (ABSSTORE absStore), s, "")
 type listeDesInst = inst list
 let listAssocIdType  = ref []
 let listeAssosPtrNameType = ref []
@@ -2568,7 +2569,7 @@ and afficherUneAffect affect =
 			print_expVA expVA3;  new_line () ; Printf.printf ")\n" ;
 			Printf.printf "{";		indent (); afficherUneAffect i; flush(); space(); unindent ();
 			Printf.printf "}"; new_line ()
-	| APPEL (num, avant, nom, apres,CORPS c,_) ->
+	| APPEL (num, avant, nom, apres,CORPS c,_,_) ->
 			Printf.printf  "\n\t\t\t\tFUNCTION CALL INPUT APPEL numbero %d %s \n" num nom; 
 			afficherUneAffect avant;new_line () ;
 			Printf.printf  "\n\t\t\t\tFUNCTION CORPS(VRAI CORPS) APPEL numbero %d\n" num; 
@@ -2577,7 +2578,7 @@ and afficherUneAffect affect =
 			Printf.printf  "\t\t\t\t FUNCTION CALL OUTPUT\n"; 
 			afficherUneAffect apres;new_line () ;flush(); space();
 Printf.printf  "\t\t\t\t FIN  OUTPUT %d %s\n" num nom;  
-	| APPEL (num, avant, nom, apres,ABSSTORE a,_) ->
+	| APPEL (num, avant, nom, apres,ABSSTORE a,_,_) ->
 			Printf.printf  "\n\t\t\t\tFUNCTION CALL INPUT APPEL numbero %d %s \n" num nom; 
 			afficherUneAffect avant;new_line () ;
 			Printf.printf  "\n\t\t\t\tFUNCTION CORPS(ABSTRACT STORE) APPEL numbero %d\n" num; 
@@ -2611,8 +2612,8 @@ and getCond ifid affect =
 	| IFV ( _, i1) 		->getCond ifid i1 
 	| BEGIN (liste)			-> getCondIntoList ifid liste 		
 	| FORV ( _, _,_, _, _, _, i) -> 	getCond ifid i
-	| APPEL (_, _, _, _,CORPS c,_) ->getCond ifid c
-	| APPEL (_, _, _, _,ABSSTORE a,_) ->(false, EXP(NOTHING))
+	| APPEL (_, _, _, _,CORPS c,_,_) ->getCond ifid c
+	| APPEL (_, _, _, _,ABSSTORE a,_,_) ->(false, EXP(NOTHING))
 			 
 
 let afficherListeDesFctAS liste=
@@ -2907,7 +2908,7 @@ in
 										|_-> begin (*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas 1 %s\n" id;     *)
 										remplacerValPar  id  ( UNARY (op, ex)) e end 
 									)
-								| MEMOF -> Printf.printf "traiterChampOfstruct *assign id : %s\n" id; 
+								| MEMOF -> (*Printf.printf "traiterChampOfstruct *assign id : %s\n" id; *)
 									let (value,trouve, direct) =   
 										if existeAffectationVarListe id a  then 
 											(expVaToExp (rechercheAffectVDsListeAS (id) a ), true, true) 
@@ -3920,7 +3921,7 @@ let rec replaceVarbyinitForEachInst var inst init =
 		let newe2 =	if List.mem var (listeDesVarsDeExpSeules (expVaToExp(expVA2))) then majexpauxauxInit var expVA2 init else expVA2 in
 		let newe3 =	if List.mem var (listeDesVarsDeExpSeules (expVaToExp(expVA3))) then majexpauxauxInit var expVA3 init else expVA1 in
 		FORV ( num, id, newe1, newe2, newe3, n, replaceVarbyinitForEachInst var i init )
-	| APPEL (num, avant, nom, apres,corps,varB) ->APPEL (num, avant, nom, apres,corps,varB) (* traiter avant ???*) 
+	| APPEL (num, avant, nom, apres,corps,varB,i) ->APPEL (num, avant, nom, apres,corps,varB,i) (* traiter avant ???*) 
 
 
 let listeSansAffectVar l var= List.filter (fun e ->  match e with ASSIGN_SIMPLE (id, _)->if id = var then false else true |_->true ) l	
@@ -3967,6 +3968,11 @@ fun prem ->
 
 
 let consSETASSIGN var firstAssign secondAssign =
+
+ (* if (String.length var > 3) && (String.sub var  0 3) = "IF-"  then    secondAssign
+else
+*)
+
 (*let isBool = 
 if (String.length var > 5) && (String.sub var  0 5) = "__tmp" then true 
 else if (String.length var > 4) && (String.sub var  0 4) = "TWH_" then true
@@ -4205,10 +4211,10 @@ let res =
 				begin
 					let var4 = (String.sub x  0 4) in
 					let var3 = (String.sub x  0 3) in
-					if  var3 = "IF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" ||  var4 = "TWH_"then true else false
+					if  var3 = "ET-" ||  var3 = "EF-" ||  var3 = "IF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" ||  var4 = "TWH-"then true else false
 				end
 				else if (String.length x > 3) then 
-						if (String.sub x  0 3) = "IF-" || (String.sub x  0 3) = "tN-" then true else false else false in
+						if (String.sub x  0 3) = "ET-" || (String.sub x  0 3) = "EF-" || (String.sub x  0 3) = "IF-" || (String.sub x  0 3) = "tN-" then true else false else false in
 			(*let n = rond a1 [ro x a2] in*)
 			 
 			
@@ -4315,7 +4321,7 @@ match corps with
 						(List.append (listeDesVarDuCorps  i1)  (listeDesVarDuCorps  i2))			
 	| IFV ( cond, i1) 	->
 			List.append (listeDesVarsDeExpSeules  (expVaToExp (cond)) ) (listeDesVarDuCorps  i1) 	
-	| APPEL (_,e,_,s,_,_)-> List.append (listeDesVarDuCorps e) (listeDesVarDuCorps s)
+	| APPEL (_,e,_,s,_,_,_)-> List.append (listeDesVarDuCorps e) (listeDesVarDuCorps s)
 	| FORV(_,_,_, exp2, exp3, _, i)->
 			List.append (listeDesVarsDeExpSeules  (expVaToExp (exp2)))  
 						(List.append  (listeDesVarsDeExpSeules  (expVaToExp (exp3))) (listeDesVarDuCorps  i))  
@@ -4342,34 +4348,34 @@ fun prem ->
 ) ascour
 
 	
-let rec splitTotalAndOthers ascour globales = 
+let rec splitTotalAndOthers ascour globales rename = 
 if ascour = [] then []
 else 
 begin
 	let (prem, next) = (List.hd ascour, List.tl ascour) in
-	let nextGlobal = splitTotalAndOthers next globales in
+	let nextGlobal = splitTotalAndOthers next globales rename in
 
 
 	(match prem with  
-		ASSIGN_SIMPLE (id, _) ->
+		ASSIGN_SIMPLE (id, exp) ->
 			
-			let rep =
-				if (List.mem id globales ) then true
+			let (rep,isIF) =
+				if (List.mem id globales ) then (true,false)
 				else
 				begin
 					if (String.length id > 4) then
 					begin
 						let var4 = (String.sub id  0 4) in
 						let var3 = (String.sub id  0 3) in
-						if  var3 = "IF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" || var4 = "TWH-" then true else false
+						if var3 = "ET-" ||  var3 = "EF-"  || var3 = "tN-" || var4 = "max-" || var4 = "tni-" || var4 = "TWH-" then    (true,false) else if  var3 = "IF-" then (true,true) else (false,false)
 					end
 					else if (String.length id > 3) then 
-								if (String.sub id  0 3) = "IF-" || (String.sub id  0 3) = "tN-" then true else false
-						 else false	
+								if (String.sub id  0 3) = "ET-" || (String.sub id  0 3) = "EF-"  || (String.sub id  0 3) = "tN-" then (true,false) else 
+									if  (String.sub id  0 3) = "IF-" then (true,true) else (false,false)
+						 else (false,false)	
 				end
 				in
-			if rep then 
-					List.append [prem] nextGlobal 
+			if rep then  List.append [prem] nextGlobal   
 			else  nextGlobal
 		| ASSIGN_DOUBLE (x, _, _)  
 		| ASSIGN_MEM	 (x, _, _)  ->    if (List.mem x globales ) then List.append [prem] nextGlobal else  nextGlobal)
@@ -4426,14 +4432,16 @@ Printf.printf"memassign as\n";	*)
 		Printf.printf "fin evalStore sequence\n";*)
 		
 	| IFVF (cond, i1, i2) ->(*Printf.printf "evalStore if then else\n";*)
+(*print_expVA cond; new_line();*)
+
 
 		let myCond =  applyStoreVA (applyStoreVA  cond a) g  in 
 		let myTest = calculer myCond  !infoaffichNull  [] 1 in
 (*Printf.printf "evalStore if TRUE false\n"; 
 
-print_expVA myCond; new_line();
+print_expVA myCond; new_line();*)
 
-		print_expTerm myTest;new_line();*)
+		(*print_expTerm myTest;new_line();*)
 		if !estDansBoucle = false then
 		begin
 			if estTrue myTest then  evalStore i1 a g
@@ -4452,6 +4460,11 @@ Printf.printf "fin \n";*)
 					 let listeIF = (rechercheLesVar resT []) in
 					 
 					 let resF = evalStore i2 [] [] in	
+
+(*Printf.printf "les as de if T \n" ;
+afficherListeAS resF;
+Printf.printf "fin \n";*)
+
 					 let listeELSE = (rechercheLesVar resF []) in
 					 let inter = intersection listeELSE  listeIF in
 					 	
@@ -4470,6 +4483,10 @@ Printf.printf "fin \n";*)
 					 let listeIF = (rechercheLesVar resT []) in
 					 
 					 let resF =  evalStore i2 []  [] in	
+
+(*Printf.printf "les as de if T \n" ;
+afficherListeAS resF;
+Printf.printf "fin \n";*)
 					 let listeELSE = (rechercheLesVar resF []) in
 					 let inter = intersection listeELSE  listeIF in
 					 	
@@ -4573,7 +4590,7 @@ else newas in
 afficherListeAS res;
 Printf.printf "fin \n";*)
 			res
-	| APPEL (n,e,nomFonc,s,corpsAbs,varB)->
+	| APPEL (n,e,nomFonc,s,corpsAbs,varB,rename)->
 		if !withoutTakingCallIntoAccount = true then a
 		else
 		begin
@@ -4644,7 +4661,7 @@ Printf.printf "fin \n";*)
 						let nc = rond others     !listeASCourant  in
 						(*Printf.printf "contxte \n" ;afficherListeAS nc;Printf.printf "fin liste\n" ;*)
 						nc*)
-						let nginterne = filterGlobales rc  !alreadyAffectedGlobales in
+						let nginterne = filterGlobales rc  !alreadyAffectedGlobales  in
 						(*let (aPart, _) = splitTotalAndOthers rc in*)
 
 						let returnf = Printf.sprintf "res%s"  nomFonc in
@@ -4666,8 +4683,10 @@ Printf.printf "fin \n";*)
 					else 
 					begin
 						(*	Printf.printf "dans boucle\n";*)
-						 
-						let corps =   (match corpsAbs with CORPS (BEGIN(ccc)) -> ccc |_->[]) in
+						 estDansBoucle:=true;
+						let corps =   (match corpsAbs with CORPS (BEGIN(ccc)) -> ccc | CORPS (ccc) -> [ccc] |_->[]) in
+
+(*if corps =[] then Printf.printf "evalStore fonction dans boucle %s appel %d corps vide...!!!!!!!\n" nomFonc n; *)
 						listeASCourant := [];
 						corpsNouvI := sorties ;
 						(*listeAvant := contexte;*)
@@ -4686,17 +4705,17 @@ Printf.printf "fin \n";*)
 								)entrees;
 
 						end;
-						(*Printf.printf "evalStore fonction dans boucle %s  \n" nomFonc ;*)
+						
 						(*Printf.printf "le sorties a apere reecrire %s depend de var de boucle %s\n" nomFonc varB;*)
 						(*afficherUneAffect (BEGIN(corps)); new_line(); Printf.printf "affect a apere reecrire fin\n";*)
 						let memoutput = !corpsNouvI in
-						let listeInput =   (evalInputFunction a entrees [] ) in
+						let listeInput =   (evalInputFunction [] entrees [] ) in
 
 						
 						(*afficherListeAS listeInput;	*)
 					(*	Printf.printf "le sorties a apere reecrire %s depend de var de boucle fin inputs%s\n" nomFonc varB;*)
 						let rc =if (isAbs)  then ( rond listeInput absStore) else evalStore (BEGIN(corps)) (*rond a*) listeInput [] in
-(*Printf.printf "contxte \n" ;afficherListeAS rc;Printf.printf "fin liste\n" ;*)
+						
 
 						listeASCourant := [];
 						if memoutput <> [] then
@@ -4719,7 +4738,7 @@ Printf.printf "fin \n";*)
 								)memoutput	
 						end;
 						(*let nginterne = filterGlobales rc  !alreadyAffectedGlobales in*)
-						let aPart = splitTotalAndOthers rc !alreadyAffectedGlobales in
+						let aPart = splitTotalAndOthers rc !alreadyAffectedGlobales rename in
 (*Printf.printf "evalStore fonction %s  \n SORTIE \n" nomFonc ;*)
 (*afficherListeAS aPart;		*)
 
@@ -4731,12 +4750,25 @@ Printf.printf "fin \n";*)
 						end
 						else listeASCourant :=   (List.append (*List.append aPart nginterne*)aPart !listeASCourant );
 
+
+
 (*Printf.printf "evalStore fonction %s  \n" nomFonc ;*)
 (*afficherListeAS rc;		*)	
 (*Printf.printf "evalStore fonction %s  \n" nomFonc ;*)(*afficherListeAS !listeASCourant; Printf.printf "fin res\n" ;*)		 
 
 					(*Printf.printf "\nsorties %s depend de var de boucle %s\n" nomFonc varB; afficherListeAS !listeASCourant; Printf.printf "fin sorties\n";*)
 						let nc = rond a   !listeASCourant  in
+
+(*if (isAbs)  then Printf.printf "ABSTRACT STORE\n";*)
+
+(*if nomFonc = "ExecuteChannelTest" then 
+						begin 
+
+
+							Printf.printf "affect a apere reecrire fin\n";afficherListeAS listeInput;	
+							Printf.printf "evalStore fonction dans boucle %s appel %d n\n" nomFonc n;Printf.printf "contxte \n" ; 
+							afficherListeAS nc;Printf.printf "fin res\n" ;
+						end;*)
 
 (*afficherListeAS nc;*)
 (*print_string ("Appel fonction definie: FIN "^nomFonc ^"\n");*)
@@ -4835,7 +4867,7 @@ and applynewothers before firstChange=
 							if (String.length id > 4) then
 							begin
 									let var3 = (String.sub id  0 3) in
-									if  var3 = "IF-" then  asc else na
+									if  var3 = "IF-"|| var3 = "ET-" ||  var3 = "EF-"  then  asc else na
 							end
 							else na
 						end else na								
@@ -4855,10 +4887,10 @@ match assign with
 		begin
 			let var4 = (String.sub id  0 4) in
 			let var3 = (String.sub id  0 3) in
-			if  var3 = "IF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" || var4 = "TWH-" then false else true
+			if  var3 = "IF-" || var3 = "ET-" ||  var3 = "EF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" || var4 = "TWH-" then false else true
 		end
 		else if (String.length id > 3) then 
-					if (String.sub id  0 3) = "IF-" || (String.sub id  0 3) = "tN-" then false else true
+					if (String.sub id  0 3) = "IF-" || (String.sub id  0 3) = "ET-" ||  (String.sub id  0 3) = "EF-" || (String.sub id  0 3) = "tN-" then false else true
 					else true	
 	|  _-> true
 ) others
@@ -4874,10 +4906,10 @@ match assign with
 		begin
 			let var4 = (String.sub id  0 4) in
 			let var3 = (String.sub id  0 3) in
-			if  var3 = "IF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" || var4 = "TWH-" then [] else [na]
+			if  var3 = "IF-" || var3 = "ET-" ||  var3 = "EF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" || var4 = "TWH-" then [] else [na]
 		end
 		else if (String.length id > 3) then 
-					if (String.sub id  0 3) = "IF-" || (String.sub id  0 3) = "tN-"  then [] else [na]
+					if (String.sub id  0 3) = "IF-"  || (String.sub id  0 3) = "ET-" ||  (String.sub id  0 3) = "EF-" || (String.sub id  0 3) = "tN-"  then [] else [na]
 					else [na]
 		
 			
@@ -5135,13 +5167,13 @@ begin
 			if newi1 = []  then (newSuite, listeaux)
 			else (List.append [  FORV ( num, id, expVA1, expVA2, expVA3, n, (List.hd newi1))] newSuite, union listeaux1 listeaux)				
 
-	| APPEL (num, e, nom, s, CORPS c,v) ->
+	| APPEL (num, e, nom, s, CORPS c,v,r) ->
 			(* var may be a global *)
 			let (newi1, listeaux1) = extractVarCONDAffectaux [c] listeCondVar in
 			if newi1 = []  then (newSuite, listeaux)
-			else (List.append [ APPEL( num, e,nom ,s, CORPS (List.hd newi1),v)] newSuite, union  listeaux1 listeaux)				
+			else (List.append [ APPEL( num, e,nom ,s, CORPS (List.hd newi1),v,r)] newSuite, union  listeaux1 listeaux)				
 
-	| APPEL (num, e, nom, s, ABSSTORE a,v) ->
+	| APPEL (num, e, nom, s, ABSSTORE a,v,r) ->
 	                let c = BEGIN (listeAsToListeAffect a) in
 			(* var may be a global *)
 			let (newi1, listeaux1) = extractVarCONDAffectaux [c] listeCondVar in
@@ -5150,7 +5182,7 @@ begin
 			else
 			begin
 				 let na = evalStore (List.hd newi1) [] [] in
-				 (List.append [ APPEL( num, e,nom ,s, ABSSTORE na,v)] newSuite, union  listeaux1 listeaux)	
+				 (List.append [ APPEL( num, e,nom ,s, ABSSTORE na,v,r)] newSuite, union  listeaux1 listeaux)	
 			end			
 end
 

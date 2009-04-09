@@ -1811,7 +1811,7 @@ and containBoolxAssignementIntoConditionnal x  iList completList  =
 				if existAffectVDsListeAS x las1  then  (true, false, NOTHING,[],[],"")   
 				else containBoolxAssignementIntoConditionnal x  nextInst completList   (* to be extended *) 
 
-			| APPEL (_,_,_,_,_,_)-> (true, false, NOTHING,[],[],"")  
+			| APPEL (_,_,_,_,_,_,_)-> (true, false, NOTHING,[],[],"")  
 				(* to be extended REVOIR la variable peut être modifiée dans le corps ou pas dans un premier temps pessimiste est modifiée*)
 	end
 
@@ -3100,7 +3100,7 @@ let eval listeInst saufId idEng=
 			match e with
 			VAR ( _, _)|TAB ( _, _, _)|MEMASSIGN(_,_,_)|IFVF ( _, _, _)| IFV ( _, _) | BEGIN (_)-> true			
 			| FORV ( num, _, _, _, _, _, _) -> 	num != saufId						
-			| APPEL (_,_, _, _,_,_) ->true
+			| APPEL (_,_, _, _,_,_,_) ->true
 		) listeInst in	 
 	evalStore   (new_instBEGIN (listeInter)) [] []
 	

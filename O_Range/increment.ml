@@ -522,7 +522,7 @@ afficherLesAffectations iList;*)
 					else (true, inc1, var1, before1) 
 
 
-			| APPEL (_,_,_,_,_,_)->
+			| APPEL (_,_,_,_,_,_,_)->
 				let (indirect1, inc1, var1, before1) = (getIncOfCall x firstInst completList) in
 				if inc1 = NODEFINC then (indirect1,inc1, var1, before1)
 				else
