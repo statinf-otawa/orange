@@ -13,7 +13,6 @@ SOURCES = \
 	increment.ml\
 	cextraireboucle.ml\
 	rename.ml\
-#    renamestatic.ml\
 	orange.ml 
 	
 OCAMLC_CFLAGS += -g
