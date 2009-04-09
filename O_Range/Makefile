@@ -8,12 +8,12 @@ SOURCES = \
 	cexptostr.ml \
 	cvariables.ml \
 	constante.ml\
-	cvarabs.ml \
 	coutput.ml \
+	cvarabs.ml \
 	increment.ml\
 	cextraireboucle.ml\
 	rename.ml\
-    renamestatic.ml\
+#    renamestatic.ml\
 	orange.ml 
 	
 OCAMLC_CFLAGS += -g
