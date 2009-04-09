@@ -4178,23 +4178,37 @@ let res =
 		if ( existeAffectationVarListe x a2)  then
 		begin
 			let ro2avant = ro x a2 in
-			let (r,_) = rondListe a1 ro2avant in
-			let ro2 = if r= [] then ro1 else  List.hd r in
-			
-			if ( List.mem x listeT) then   ro2 (*changed into the two alternatives*)
+			let resb = 
+				if (String.length x > 4) then
+				begin
+					let var4 = (String.sub x  0 4) in
+					let var3 = (String.sub x  0 3) in
+					if  var3 = "ET-" ||  var3 = "EF-" ||  var3 = "IF-"   ||  var4 = "TWH-"then true else false
+				end
+				else if (String.length x > 3) then 
+						if (String.sub x  0 3) = "ET-" || (String.sub x  0 3) = "EF-" || (String.sub x  0 3) = "IF-"  then true else false else false in
+
+			if resb   then ro1
 			else
 			begin
-				if ro1 =ro2 	then ro1 (*changed into the only one alternative*)
-				else 
+				let (r,_) = rondListe a1 ro2avant in
+				let ro2 = if r= [] then ro1 else  List.hd r in
+			
+				if ( List.mem x listeT) then   ro2 (*changed into the two alternatives*)
+				else
 				begin
-					(*Printf.printf "MULTIPLE %s dans absMoinsTEm\n" x;*)
-					match ro2 with
-							ASSIGN_SIMPLE (_, _)->(*Printf.printf "MULTIPLE %s dans absMoinsTEm\n" x;*)
-								structmultidef x ro1  ro2 
-							(*ASSIGN_SIMPLE (x, MULTIPLE)*)(*var MULTIPLE def voir si on utilise le max*)
-						|	ASSIGN_DOUBLE (_, exp, _)-> ASSIGN_DOUBLE (x, exp, MULTIPLE) 
-						|	ASSIGN_MEM (_, exp, _)-> ASSIGN_MEM (x, exp, MULTIPLE) 
-				end 
+					if ro1 =ro2 	then ro1 (*changed into the only one alternative*)
+					else 
+					begin
+						(*Printf.printf "MULTIPLE %s dans absMoinsTEm\n" x;*)
+						match ro2 with
+								ASSIGN_SIMPLE (_, _)->(*Printf.printf "MULTIPLE %s dans absMoinsTEm\n" x;*)
+									structmultidef x ro1  ro2 
+								(*ASSIGN_SIMPLE (x, MULTIPLE)*)(*var MULTIPLE def voir si on utilise le max*)
+							|	ASSIGN_DOUBLE (_, exp, _)-> ASSIGN_DOUBLE (x, exp, MULTIPLE) 
+							|	ASSIGN_MEM (_, exp, _)-> ASSIGN_MEM (x, exp, MULTIPLE) 
+					end 
+				end
 			end
 		end
 		else (* rien pour x dans a2 on garde ce qu'il y a dans a1 *) ro1

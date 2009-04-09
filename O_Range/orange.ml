@@ -1642,20 +1642,21 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 
 
 								let (newlt, newlf,exeassign) =creerLesAffectEXECUTED lFt lFf  nomf numF id !cptFunctiontestIntoLoop in
-								let aSC =  evalSIDA calllist numF  (List.append exeloop  ainserer) listeInputInst listeEng nb  exeassign  in
+								let aSC =  evalSIDA calllist numF (List.append exeassign (List.append exeloop  ainserer)) listeInputInst listeEng nb  exeassign  in
 
 								
 
 								let isExecutedF = if exeassign = [] then true  
-                                                   else  if (existeAffectationVarListe (List.hd newlt) aSC ) || (existeAffectationVarListe (List.hd newlf) aSC ) 
+                                                   else  (*if (existeAffectationVarListe (List.hd newlt) aSC ) || (existeAffectationVarListe (List.hd newlf) aSC ) 
 														 then 
 															
 															isExecutedFunction (List.hd newlt) (List.hd newlf) aSC  exeassign
-														else(* false*) true  in
+														else(* false*)*) true  in
 											 
 
 								(*let (before, _) =    roavant aSC assignBefore  [] in*)
-								
+								if nomFonc = "DelayAwhile" then
+										(Printf.printf " Into loop function %s appel %d fonction non executed \n" nomf numF;afficherListeAS( aSC);new_line () );
 								
 								(*afficherListeAS( aSC);new_line () ;*)
 								(*Printf.printf"Fin traiterboucleinterne Dans evaluation de la fonction...%s %d %s \n "nomf id nEC.varDeBoucleNid ;*)
@@ -2052,11 +2053,11 @@ let rec traiterBouclesInternesComposant 	 	nT (*tete nid contenant bi*)  nEC (*n
 									let nb = numberOfCall listBefore nomf numF in
 									let (nlt,nlf,exeloop) = if id = idPred then  creerLesAffectEXECUTED lt lf "Loop" id idEng !cptFunctiontestIntoLoop else (lt,lf, []) in
 									let (newlt, newlf,exeassign) =creerLesAffectEXECUTED lFt lFf  nomf numF id 0 in
- 									let aSC =  evalSIDA calllist numF  (List.append exeloop  ainserer) listeInputInst listeEng nb  exeassign  in 
+ 									let aSC =  evalSIDA calllist numF  (List.append exeassign (List.append exeloop  ainserer)) listeInputInst listeEng nb  exeassign  in 
 								
 									let isExecutedF = if exeassign = [] then true  
-                                                   else  if (existeAffectationVarListe (List.hd newlt) aSC ) || (existeAffectationVarListe (List.hd newlf) aSC ) 
-														 then isExecutedFunction (List.hd newlt) (List.hd newlf) aSC  exeassign  else (* false*) true   in			
+                                                   else  (*if (existeAffectationVarListe (List.hd newlt) aSC ) || (existeAffectationVarListe (List.hd newlf) aSC ) 
+														 then isExecutedFunction (List.hd newlt) (List.hd newlf) aSC  exeassign  else (* false*)*) true   in			
 									 
 									if isExecutedF = false then listeInstNonexe := List.append [!dernierAppelFct] !listeInstNonexe;
 									isExeBoucle := isExeE && isExecutedF;
@@ -2681,7 +2682,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 		  else 
 		  begin 
 				  numAppel := numf;     
-				   let nextcont=
+				   let (nextcont, neg)=
 					  if dansBoucle = false then 
 					  begin
 						  if isExecutedCall then
@@ -2691,7 +2692,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 								begin
 									let (e, corpsOuAppel) = match List.hd myCall with APPEL(_, e, _, _, corpsOuAppel, _ ,_) -> (e, corpsOuAppel)  |_ -> failwith "erreur filtrage" in
 									 match corpsOuAppel with
-										  CORPS c -> 	(*Printf.printf "FIN Eval appel FONCTION externe%s:\n" nomFonction ; *)contexte
+										  CORPS c -> 	(*Printf.printf "FIN Eval appel FONCTION externe%s:\n" nomFonction ; *)(contexte, globale) 
 											  
 										 |ABSSTORE a -> (*Printf.printf "FIN Eval appel FONCTION composant%s:\n" nomFonction ;*)
 											(*  let contexteAvecEntrees = (evalStore (BEGIN(entrees)) contexteAvantAppel globale) in *)
@@ -2710,8 +2711,14 @@ afficherListeAS( globalesBefore);new_line () ;*)
 											  docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append !docEvalue.maListeEval new_fct);			
 											   			     
 											  let res =evalStore (List.hd myCall) nc	globalesBefore in
+
+ 											  let nginterne = filterGlobales res !globalesVar in
+											  
+						 					  
+
+
 											 (* appelcourant := myCall;*)
-											  res
+											  (res,rond globalesBefore nginterne)
 								end
 								else
 								begin
@@ -2722,17 +2729,17 @@ afficherListeAS( globalesBefore);new_line () ;*)
 									  let new_fct = [ new_elementEvala typeE (EXP(appel)) []] in						
 									  corpsEvalTMP := List.append !corpsEvalTMP	 new_fct;	
 									  docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append !docEvalue.maListeEval new_fct);
-										  contexteAvantAppel
+										  (contexteAvantAppel, globale) 
 								end
 						  end
-						  else contexteAvantAppel
+						  else (contexteAvantAppel, globale) 
 					 end
 					 else
 							if isCompo then (* composant *)
 							begin
 								 let (e, nom, corpsOuAppel) = match List.hd lappel with APPEL(_, e, nom, _, corpsOuAppel, _ ,_) -> (e,nom, corpsOuAppel)  |_ -> failwith "erreur filtrage" in
 								 match corpsOuAppel with
-								  CORPS c -> 	Printf.printf "IMPOSSIBLE%s %s:\n" nomFonction nom; contexte
+								  CORPS c -> 	Printf.printf "IMPOSSIBLE%s %s:\n" nomFonction nom; (contexte, globale) 
 								  |ABSSTORE a -> (*Printf.printf "LOOP FIN Eval appel FONCTION composant %s:\n" nomFonction ;*)
 									 
 									 let typeE =  
@@ -2747,13 +2754,13 @@ afficherListeAS( globalesBefore);new_line () ;*)
 									(* Printf.printf "On ajoute au compEvalue un nouvel element, qui a maintenant %d elements\n" (List.length !compEvalue);*)
 									  								     
 									  
-								contexte		
+								(contexte, globale) 		
 							end
 							else
-								contexte in
+								(contexte, globale)  in
 				  numAppel := numAppelPred ;	 
 				 (* Printf.printf "FIN Eval appel FONCTION 6%s:\n" nomFonction ; *)
-				  (nextcont, globale) (*asLAppel REVOIR !!!*)
+				  (nextcont, neg) (*asLAppel REVOIR !!!*)
 		  end )
 
 
