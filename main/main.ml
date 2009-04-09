@@ -60,6 +60,10 @@ let myArgs: myArgs_t list ref = ref []
 
 
 let myComps: compInfo list ref = ref []
+let run_calipso = ref false
+let list_file_calipso:string list ref = ref []
+let calipso_result = ref ""
+let calipso_concat = ref false
 
 let partial = ref false
 
@@ -89,7 +93,7 @@ let opts = [
 		"Include retrieval directory");
 	("-D", Arg.String (fun def -> args := (DEF def) :: !args),
 		"Pass this definition to the preprocessor.");
-	("-c", Arg.String (fun def -> (myArgs := (COMP def) :: !myArgs ; partial := true)),
+	("-k", Arg.String (fun def -> (myArgs := (COMP def) :: !myArgs ; partial := true)),
 		"Declare a function as a component to do partial analysis.");
 	("-U", Arg.String (fun undef -> args := (UNDEF undef) :: !args),
 		"Pass this undefinition to the preprocessor.");
@@ -97,8 +101,19 @@ let opts = [
 		"Generate #line directive.");
 	("--", Arg.Set from_stdin,
 		"Takes input from standard input.");
+	("-c", Arg.String(fun file ->list_file_calipso := file :: !list_file_calipso),
+		"execute calipso");
+	("-f", Arg.String (fun file -> calipso_concat := true ; calipso_result := file ; add_file_and_name file),
+		"concat file parsing by calipso" );		
 ]
 
+let calip filename = 
+	let fileC=String.concat "" [filename;"c"] in 
+	let s= String.concat " " ["./../frontc/calipso/calipso -P   -rs -rr -rg   -rc -rb   -l";filename;">";fileC] in
+	match (Sys.command  s) with
+	  0 -> ()
+	 |_ -> failwith ("echec appel calipso pour fichier:" ^ filename)
+	
 let isComponent comp = 
   let rec aux = function
      [] -> false
@@ -160,6 +175,14 @@ let analysePartielle file =
  printf "analyse_defs OK, maintenant lance evaluation des composants.\n";
  getComps !doc.laListeDesFonctions;
  print_string "OK, fini.\n"
+
+
+let rec do_concat output file =
+  match (Sys.command ("cat "^file^"c >> "^output)) with
+  	0 -> ()
+	|_ -> failwith "echec concatenation calipso"
+
+let from_file_list = List.map (function f -> (INCLUDE f))
   
 (* Main Program *)
 let _ =
@@ -195,6 +218,14 @@ let _ =
 			exit 1
 		end;
 	(*printlist !list_file_and_name ;*)
+	List.iter calip !list_file_calipso;
+	if (!calipso_concat) then (
+	  try 
+	    Sys.remove (!calipso_result)
+	    with _ -> () ;	     
+	  List.iter (do_concat !calipso_result) !list_file_calipso;
+	 
+	);
 	
 	Cextraireboucle.sort_list_file_and_name !list_file_and_name;
 	prerr_string "names&files\n";
@@ -213,6 +244,9 @@ let _ =
 				
 	let a2 = List.filter (fun e ->  match e with LINE_RECORD _-> false |_-> true) a1 in			
 				 
+				
+				Printf.printf "Il y a %u files et %u names et %u args \n" (List.length !Cextraireboucle.files) (List.length !Cextraireboucle.names) (List.length(!args));
+				
 				let firstParse =
 						(match (Frontc.parse  ((FROM_FILE (List.hd !Cextraireboucle.files)) :: a1)) with 
 							PARSING_ERROR ->  []

@@ -16,8 +16,8 @@ SOURCES = \
     renamestatic.ml\
 	orange.ml 
 	
-
-
+OCAMLC_CFLAGS += -g
+OCAMLC_LDFLAGS += -g
 OCAML_INC += ../../Frontc-3.2-3/frontc/frontc
 OCAML_LIB += unix ../../Frontc-3.2-3/frontc/frontc/frontc
 
