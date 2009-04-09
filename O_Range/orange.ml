@@ -2710,15 +2710,15 @@ afficherListeAS( globalesBefore);new_line () ;*)
 											  corpsEvalTMP := List.append !corpsEvalTMP	 new_fct;
 											  docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append !docEvalue.maListeEval new_fct);			
 											   			     
-											  let res =evalStore (List.hd myCall) nc	globalesBefore in
+											  let res =rond contexte (evalStore (List.hd myCall) nc	globalesBefore) in
 
- 											  let nginterne = filterGlobales res !globalesVar in
-											  
-						 					  
+ 											  
+											 
+						 					    
 
 
 											 (* appelcourant := myCall;*)
-											  (res,rond globalesBefore nginterne)
+											  ( res ,globalesBefore)
 								end
 								else
 								begin
