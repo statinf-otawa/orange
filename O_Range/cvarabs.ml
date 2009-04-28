@@ -4177,44 +4177,44 @@ let res =
 		
 		if ( existeAffectationVarListe x a2)  then
 		begin
-			let ro2avant = ro x a2 in
-			let resb = 
-				if (String.length x > 4) then
-				begin
-					let var4 = (String.sub x  0 4) in
-					let var3 = (String.sub x  0 3) in
-					if  var3 = "ET-" ||  var3 = "EF-" ||  var3 = "IF-"   ||  var4 = "TWH-"then true else false
-				end
-				else if (String.length x > 3) then 
-						if (String.sub x  0 3) = "ET-" || (String.sub x  0 3) = "EF-" || (String.sub x  0 3) = "IF-"  then true else false else false in
+			
+		(*let ro2avant = ro x a2 in
+			 
+			let (before, _) =    roavant ro2avant a2  [] in
+			let (r1,_) = rondListe before ro2avant in*)
+			
 
-			if resb   then ro1
+			let (r,_) = rondListe a1 ( ro x a2 ) in
+			let ro2 = if r= [] then ro1 else  List.hd r in
+			
+			if ( List.mem x listeT) then   ro2 (*changed into the two alternatives*)
 			else
 			begin
-				let (r,_) = rondListe a1 ro2avant in
-				let ro2 = if r= [] then ro1 else  List.hd r in
-			
-				if ( List.mem x listeT) then   ro2 (*changed into the two alternatives*)
-				else
+				if ro1 =ro2 	then ro1 (*changed into the only one alternative*)
+				else 
 				begin
-					if ro1 =ro2 	then ro1 (*changed into the only one alternative*)
-					else 
-					begin
-						(*Printf.printf "MULTIPLE %s dans absMoinsTEm\n" x;*)
-						match ro2 with
-								ASSIGN_SIMPLE (_, _)->(*Printf.printf "MULTIPLE %s dans absMoinsTEm\n" x;*)
-									structmultidef x ro1  ro2 
-								(*ASSIGN_SIMPLE (x, MULTIPLE)*)(*var MULTIPLE def voir si on utilise le max*)
-							|	ASSIGN_DOUBLE (_, exp, _)-> ASSIGN_DOUBLE (x, exp, MULTIPLE) 
-							|	ASSIGN_MEM (_, exp, _)-> ASSIGN_MEM (x, exp, MULTIPLE) 
-					end 
-				end
+					(*Printf.printf "MULTIPLE %s dans absMoinsTEm\n" x;*)
+					match ro2 with
+							ASSIGN_SIMPLE (_, _)->(*Printf.printf "MULTIPLE %s dans absMoinsTEm\n" x;*)
+								structmultidef x ro1  ro2 
+							(*ASSIGN_SIMPLE (x, MULTIPLE)*)(*var MULTIPLE def voir si on utilise le max*)
+						|	ASSIGN_DOUBLE (_, exp, _)-> ASSIGN_DOUBLE (x, exp, MULTIPLE) 
+						|	ASSIGN_MEM (_, exp, _)-> ASSIGN_MEM (x, exp, MULTIPLE) 
+				end 
 			end
 		end
 		else (* rien pour x dans a2 on garde ce qu'il y a dans a1 *) ro1
 	end 
 	else 
 	begin
+	(*	let ro2avant = ro x a2 in
+			 
+			let (before, _) =    roavant  a2 ro2avant [] in
+			let (r1,_) = rondListe before ro2avant in
+			
+
+			let (r,_) = rondListe a1 (List.hd r1) in*)
+
 		let (r,_) = rondListe a1 (ro x a2) in
 		let ro2 = List.hd r in
 		if ( List.mem x listeT) then ro2 (* existe car dans au moins un] des deux ensembles*)		
@@ -4363,38 +4363,42 @@ fun prem ->
 
 	
 let rec splitTotalAndOthers ascour globales rename = 
-if ascour = [] then []
-else 
-begin
-	let (prem, next) = (List.hd ascour, List.tl ascour) in
-	let nextGlobal = splitTotalAndOthers next globales rename in
+List.filter(
+fun prem ->
+		match prem with  
+		ASSIGN_SIMPLE (id, _) ->
+			if (List.mem id globales ) then true
+			else
+			begin
+				let rep=
+					 
+						if (String.length id > 4) then
+						begin
+							let var4 = (String.sub id  0 4) in
+							let var3 = (String.sub id  0 3) in
+							if var3 = "ET-" ||  var3 = "EF-"  || var3 = "tN-" || var4 = "max-" || var4 = "tni-" || var4 = "TWH-" ||
+								 var3 = "IF-" then    (true) 							else  (false)
+						end
+						else if (String.length id > 3) then 
+								if (String.sub id  0 3) = "ET-" || (String.sub id  0 3) = "EF-"  || (String.sub id  0 3) = "tN-" ||
+									(String.sub id  0 3) = "IF-"
+								 then (true) 	 else (false)
+							 else false
+					 
+					in
+				rep
+			end
+		| ASSIGN_DOUBLE (x, _, _)  -> if (List.mem x globales ) then begin  true end else false
+		| ASSIGN_MEM	 (x, _, _)  -> if (List.mem x globales ) then begin  true end 
+			else 
+			begin
+				false
+			end
 
 
-	(match prem with  
-		ASSIGN_SIMPLE (id, exp) ->
-			
-			let (rep,isIF) =
-				if (List.mem id globales ) then (true,false)
-				else
-				begin
-					if (String.length id > 4) then
-					begin
-						let var4 = (String.sub id  0 4) in
-						let var3 = (String.sub id  0 3) in
-						if var3 = "ET-" ||  var3 = "EF-"  || var3 = "tN-" || var4 = "max-" || var4 = "tni-" || var4 = "TWH-" then    (true,false) else if  var3 = "IF-" then (true,true) else (false,false)
-					end
-					else if (String.length id > 3) then 
-								if (String.sub id  0 3) = "ET-" || (String.sub id  0 3) = "EF-"  || (String.sub id  0 3) = "tN-" then (true,false) else 
-									if  (String.sub id  0 3) = "IF-" then (true,true) else (false,false)
-						 else (false,false)	
-				end
-				in
-			if rep then  List.append [prem] nextGlobal   
-			else  nextGlobal
-		| ASSIGN_DOUBLE (x, _, _)  
-		| ASSIGN_MEM	 (x, _, _)  ->    if (List.mem x globales ) then List.append [prem] nextGlobal else  nextGlobal)
+)ascour
 
-end
+
 
 let rec rewriteEndOthers asl oldOthers newOthers =
 if oldOthers = [] || asl = [] || newOthers = [] then asl 
@@ -4410,6 +4414,18 @@ begin
 			else List.append [curAssign] (rewriteEndOthers nextAssign onext nextchanges) 
 end
 
+let filterIF l =
+List.filter (fun e ->  match e with ASSIGN_SIMPLE (id, _)->
+  if (String.length id > 3) then
+	  begin 
+		  if  (String.sub id  0 3) = "ET-" ||  (String.sub id  0 3) = "EF-"  then    true 	else false
+	  end 
+  else(* if existAssosPtrNameType  id then true else*) false 
+  |_->false ) l
+
+
+let consInitTest varExpVa res =
+match varExpVa with EXP(VARIABLE (v)) -> [VAR (v, res)]  |_-> [] 
 
 let rec evalStore i a g=
 match i with 
@@ -4492,13 +4508,21 @@ Printf.printf "fin \n";*)
 		else
 		begin
 (*Printf.printf "dans boucle\n" ;*)
-					
-					 let resT = evalStore i1 [] [] in
+					(*let ifassign = filterIF a in*)
+					 let cTest = consInitTest cond myCond in 
+					 let resT = evalStore (BEGIN(List.append cTest [i1])) (*ifassign*)[] [] in
 					 let listeIF = (rechercheLesVar resT []) in
 					 
-					 let resF =  evalStore i2 []  [] in	
+					 let resF =  evalStore (BEGIN(List.append cTest [i2] (*ifassign*)))[]  [] in	
+(*Printf.printf "evalStore if TRUE false\n"; 
 
-(*Printf.printf "les as de if T \n" ;
+print_expVA myCond; new_line();
+
+print_expTerm myTest;new_line();
+Printf.printf "les as de if T \n" ;
+afficherListeAS resT;
+Printf.printf "fin \n";
+Printf.printf "les as de if F \n" ;
 afficherListeAS resF;
 Printf.printf "fin \n";*)
 					 let listeELSE = (rechercheLesVar resF []) in
@@ -4526,14 +4550,15 @@ Printf.printf "fin \n";*)
 		(*print_expVA myCond; new_line();
 
 		print_expTerm myTest;new_line();*)
-	
+		
 		(*if !estDansBoucle = true then Printf.printf "IF DANS BOUCLE\n";*)
 		if (!estDansBoucle = false && estTrue myTest)  then evalStore i1 a g
 		else if (!estDansBoucle = true) then
 			begin
 				(*Printf.printf "evalStore if TRUE dans boucle\n"; *)
-				
-				let resT = evalStore i1 [] [] in
+				(*let ifassign = filterIF a in*)
+				let cTest = consInitTest cond myCond in 
+				let resT = evalStore (BEGIN(List.append cTest [i1] ))(*ifassign*)[] [] in
 				produitEm a resT []
 				(*listeASCourant := [];*)
 
@@ -4723,7 +4748,7 @@ Printf.printf "fin \n";*)
 						(*Printf.printf "le sorties a apere reecrire %s depend de var de boucle %s\n" nomFonc varB;*)
 						(*afficherUneAffect (BEGIN(corps)); new_line(); Printf.printf "affect a apere reecrire fin\n";*)
 						let memoutput = !corpsNouvI in
-						let listeInput =   (evalInputFunction [] entrees [] ) in
+						let listeInput =   (evalInputFunction a entrees [] ) in
 
 						
 						(*afficherListeAS listeInput;	*)
@@ -4752,7 +4777,8 @@ Printf.printf "fin \n";*)
 								)memoutput	
 						end;
 						(*let nginterne = filterGlobales rc  !alreadyAffectedGlobales in*)
-						let aPart = splitTotalAndOthers rc !alreadyAffectedGlobales rename in
+					 
+						let aPart = (splitTotalAndOthers rc !alreadyAffectedGlobales rename)  in
 (*Printf.printf "evalStore fonction %s  \n SORTIE \n" nomFonc ;*)
 (*afficherListeAS aPart;		*)
 
@@ -4775,13 +4801,13 @@ Printf.printf "fin \n";*)
 
 (*if (isAbs)  then Printf.printf "ABSTRACT STORE\n";*)
 
-(*if nomFonc = "ExecuteChannelTest" then 
-						begin 
+(*if nomFonc = (*"SelfTestChannel" *)"ExecuteChannelTest"   then 
+						begin Printf.printf "affect a apere reecrire fin\n";afficherListeAS listeInput;
+afficherUneAffect (BEGIN(corps)); new_line(); 
 
-
-							Printf.printf "affect a apere reecrire fin\n";afficherListeAS listeInput;	
+							(*	*)
 							Printf.printf "evalStore fonction dans boucle %s appel %d n\n" nomFonc n;Printf.printf "contxte \n" ; 
-							afficherListeAS nc;Printf.printf "fin res\n" ;
+							(*afficherListeAS !listeASCourant;Printf.printf "fin res\n" ;*)
 						end;*)
 
 (*afficherListeAS nc;*)
