@@ -151,7 +151,8 @@ let rec getComps  = function
                mainFonc := ref fn.nom;
                let (result, _) = TO.afficherInfoFonctionDuDocUML !TO.docEvalue.TO.maListeEval in
 	       let fName = (fn.nom)^".rpo" in
-	       printf "Stockage dans %s\n" fName;	       
+	       printf "Stockage dans %s\n" fName;
+		  (* TO.afficherCompo	   result; *)   
 	       let chan = Unix.out_channel_of_descr (Unix.openfile fName [Unix.O_WRONLY;Unix.O_TRUNC;Unix.O_CREAT] 0o644) in
 	       let partialResult = {name=fn.nom; absStore=compAS; compES=(fn.listeES); expBornes=result} in
 	       Marshal.to_channel chan partialResult [];

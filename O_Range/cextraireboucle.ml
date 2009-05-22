@@ -1310,6 +1310,17 @@ let changeCompOp op =
 
 let arrayShown = ref true
 
+let isDivInc exp =
+	let val1 = calculer (EXP exp) !infoaffichNull [] 1 in 
+	if val1 = NOCOMP  then false
+	else
+	begin
+		let varMoinsUn = calculer (EXP (BINARY(SUB,exp, CONSTANT  (CONST_INT "1")))) !infoaffichNull [] 1 in 
+		 
+		if estStricPositif varMoinsUn then false
+		else true
+	end
+
 
 let rec rechercheListeDesVarDeBoucle listeVCond aS =
 if listeVCond = [] then begin (*Printf.printf "fin liste variable \n"	;*) [] end
@@ -2101,8 +2112,18 @@ and traiterUn croissant  borneInf borneSup operateur multiple var  cond avant da
 		else 	( ADD, NONMONOTONE, true, var)   in
 
 
+
+
 	let ((*isindirect,inc,var, before*)isindirect,inc,vari,before,isMultiInc) =  getLoopVarInc v inst in
 	(*BOOL*)
+
+
+	let (sup, inf, incr) = 
+	 if !opEstPlus = false && (isDivInc !expressionIncFor)  && typevar = DECROISSANT then (!initialisation,!borne, BINARY (DIV, CONSTANT  (CONST_INT "1"), !expressionIncFor)) 
+		 	else
+				if !opEstPlus && typevar = DECROISSANT then  (!initialisation,!borne, !expressionIncFor)  
+		 		else  (!borne,!initialisation,!expressionIncFor) in
+
 	
 	if isMultiInc then isExactForm := false;
 
@@ -2147,12 +2168,17 @@ and traiterUn croissant  borneInf borneSup operateur multiple var  cond avant da
 				NODEFINC ->   (* 1+*)
 				(NOTHING,NOTHING, false)
 			|_->	(*print_expression borneInf 0; space() ;flush() ;new_line(); flush();new_line(); *)
-(*Printf.printf"traiterUn \n";
-print_expression borneSup 0; space() ;flush() ;new_line(); flush();new_line(); 
-	print_expression borneInf 0; space() ;flush() ;new_line(); flush();new_line(); 
-print_expression !expressionIncFor 0; space() ;flush() ;new_line(); flush();new_line(); *)
-			(expVaToExp (getNombreIt !borne (typevar=CONSTANTE||cte) t cond multiple [] !opEstPlus   
-					( new_variation !expressionDinitFor !borne !expressionIncFor typevar  operateur false) v []) ), !expressionIncFor, false)
+(*Printf.printf"traiterUn v = %s vari = %s\n" v vari;
+print_expression inf 0; space() ;flush() ;new_line(); flush();new_line(); 
+	print_expression sup 0; space() ;flush() ;new_line(); flush();new_line(); 
+print_expression incr 0; space() ;flush() ;new_line(); flush();new_line();*)
+			(*expVaToExp (getNombreIt !borne (typevar=CONSTANTE||cte) t cond multiple [] !opEstPlus   
+					( new_variation !initialisation !borne !expressionIncFor typevar  operateur false) v []) ), !expressionIncFor, false*)
+
+	let infoVar =   new_variation borneInf borneSup  !expressionIncFor typevar  operateur false in
+	 
+	let nb = expVaToExp (getNombreIt sup (typevar=CONSTANTE||cte) t cond multiple [] !opEstPlus  infoVar v []) in
+	(nb, incr, false))
 
 
 
@@ -2180,9 +2206,20 @@ and construireCondition crois1 bInf1  bSup1  oper1 mult1 v1 cd1 crois2  bInf2  b
 											else CALL (VARIABLE("MAXIMUM") , (List.append [bInf1] [bInf2])) 
 										end
 										else if bInf1 = NOTHING then bInf2 else bInf1 in
+(*Printf.printf"construireCondition binfs\n"  ;
+							print_expression bInf1 0; space() ;flush() ;new_line(); flush();new_line(); 
+	print_expression bInf2 0; space() ;flush() ;new_line(); flush();new_line(); 
+
+print_expression bInf 0; space() ;flush() ;new_line(); flush();new_line(); *)
 							let bSup =  if bSup2 != NOTHING  && bSup1 != NOTHING then
 										begin if bSup2 = bSup1 then bSup1 else (CALL (VARIABLE("MINIMUM") , (List.append [bSup1] [bSup2] ))) end
 										else if bSup1 = NOTHING then begin isExactForm := false; bSup2 end else begin isExactForm := false; bSup1 end in
+
+(*Printf.printf"construireCondition bsups\n"  ;
+							print_expression bSup1 0; space() ;flush() ;new_line(); flush();new_line(); 
+	print_expression bSup2 0; space() ;flush() ;new_line(); flush();new_line(); 
+
+print_expression bSup 0; space() ;flush() ;new_line(); flush();new_line(); *)
 
 							if bSup != NOTHING && bInf!= NOTHING then (crois1, bInf, bSup, oper1,false,v1, BINARY(AND, cd1,cd2))
 							else	begin isExactForm := false; (NONMONOTONE , NOTHING, NOTHING, XOR,true,v1,BINARY (AND, cd1,cd2)) end
@@ -2207,9 +2244,9 @@ and construireCondition crois1 bInf1  bSup1  oper1 mult1 v1 cd1 crois2  bInf2  b
 				else
 				begin
 					if  nb2 = NOTHING then begin expressionIncFor := inc1;  isExactForm := false;(crois1, bInf1, bSup1, oper1,mult1, v1, BINARY(AND, cd1,cd2 )) end
-					else (	CROISSANT, CONSTANT (CONST_INT "0"), (*CONSTANT (CONST_INT "1")*)
+					else(Printf.printf"construireCondition diff\n"; (	CROISSANT, CONSTANT (CONST_INT "0"), (*CONSTANT (CONST_INT "1")*)
 							BINARY (SUB, CALL (VARIABLE("MINIMUM") , List.append [ nb1] [nb2] ), CONSTANT (CONST_INT "1")),
-							  LT,mult2, lv, BINARY(AND, cd1,cd2))
+							  LT,mult2, lv, BINARY(AND, cd1,cd2)))
 				end
 			end
 
@@ -2228,16 +2265,23 @@ and traiterARRAYANDCOND init var testA op exp1 exp2  liste avant dans cte t c lv
 
 
 and traiterANDCOND init var exp1 exp2 liste avant dans cte t c lv l inst =
-
-(*Printf.printf" traiterANDCOND %s\n" var;
+(*
+Printf.printf" traiterANDCOND %s\n" var;
 print_expression exp1 0; space() ;flush() ;new_line(); flush();new_line(); 
 print_expression exp2 0; space() ;flush() ;new_line(); flush();new_line(); *)
 	if liste = [] then 
-	begin (*Printf.printf"cas 1 traiterANDCOND exp1  \n";	*)
+	begin (*Printf.printf"cas 1 traiterANDCOND exp1  \n";*)	
 		 let (crois1,bInf1, bSup1, oper1,mult1,v1,cd1)=
 			match exp1 with
 				BINARY (op1, exp11, exp12) -> rechercheConditionBinary init var op1 exp11 exp12 [] avant dans cte t exp1 lv l inst
-				|_-> (*Printf.printf"cas 1 traiterANDCOND exp1 is not Binary boolean ???\n";*)	(NONMONOTONE , NOTHING, NOTHING, XOR, true, var, c) in
+				| VARIABLE name -> 
+					rechercheConditionBinary (VARIABLE name)  name NE (VARIABLE name) (CONSTANT (CONST_INT "0")) [] avant dans cte t exp1 lv l inst
+				| UNARY (op, exp) -> 
+							(match op with 
+								NOT ->  
+									rechercheConditionBinary init var EQ exp (CONSTANT (CONST_INT "0")) [] avant dans cte t c lv l inst
+							 	|_-> 	(  NONMONOTONE , NOTHING, NOTHING, XOR, true, var , c) (*pas multiple voir pour les booleens*))
+				|_-> Printf.printf"cas 1 traiterANDCOND exp1 is not Binary boolean ???\n";	(NONMONOTONE , NOTHING, NOTHING, XOR, true, var, c) in
 
 
 
@@ -2245,7 +2289,14 @@ print_expression exp2 0; space() ;flush() ;new_line(); flush();new_line(); *)
 		let (crois2, bInf2, bSup2, oper2,mult2,v2, cd2) =
 			match exp2 with 
 				BINARY (op2, exp21, exp22) ->  rechercheConditionBinary init var op2 exp21 exp22 [] avant dans  cte t exp2  lv l inst
-				|_-> (*Printf.printf"cas 1 traiterANDCOND exp2 is not Binary boolean ???\n";*)	(NONMONOTONE , NOTHING, NOTHING, XOR, true, var, c) in
+				| VARIABLE name ->   
+					rechercheConditionBinary (VARIABLE(name))  name NE (VARIABLE (name)) (CONSTANT (CONST_INT "0")) [] avant dans cte t exp2 lv l inst
+				| UNARY (op, exp) -> 
+							(match op with 
+								NOT ->  
+									rechercheConditionBinary init var EQ exp (CONSTANT (CONST_INT "0")) [] avant dans cte t c lv l inst
+							 	|_-> 	(  NONMONOTONE , NOTHING, NOTHING, XOR, true, var , c) (*pas multiple voir pour les booleens*))
+				|_-> Printf.printf"cas 1 traiterANDCOND exp2 is not Binary boolean ???\n";	(NONMONOTONE , NOTHING, NOTHING, XOR, true, var, c) in
 
 		if crois2 = NONMONOTONE ||crois1 = NONMONOTONE then isExactForm := false;
 
@@ -2253,17 +2304,36 @@ print_expression exp2 0; space() ;flush() ;new_line(); flush();new_line(); *)
 		construireCondition crois1 bInf1  bSup1  oper1 mult1 v1 cd1 crois2  bInf2  bSup2  oper2 mult2 v2 cd2 lv avant dans cte t inst
 	end
 	else 
-	begin 
+	begin (* Printf.printf"cas 2 traiterANDCOND exp1 is not Binary boolean ???\n";*)
 		let (v, suite) = (List.hd liste, List.tl liste) in
+(*Printf.printf"cas 2 traiterANDCOND exp1 is not Binary boolean ??? %s\n" v;*)
 		let (crois1,bInf1, bSup1, oper1,mult1,v1, c1)=
 					match exp1 with
 						BINARY (op, e1, e2) ->  rechercheConditionBinary (VARIABLE(v))  v op e1 e2 (List.tl liste) avant dans cte t c lv l inst
-						|_-> 	(* Printf.printf"cas 2 traiterANDCOND exp1 is not Binary boolean ???\n";	*) (  NONMONOTONE , NOTHING, NOTHING, XOR, true, var , c) in
+						| VARIABLE name -> 
+						rechercheConditionBinary (VARIABLE name) name NE (VARIABLE name) (CONSTANT (CONST_INT "0")) liste avant dans cte t c lv l inst
+						| UNARY (op, exp) -> 
+							(match op with 
+								NOT ->  
+									rechercheConditionBinary init var EQ exp (CONSTANT (CONST_INT "0"))  liste avant dans cte t c lv l inst
+							 	|_-> 	(  NONMONOTONE , NOTHING, NOTHING, XOR, true, var , c) (*pas multiple voir pour les booleens*))
+						|_-> 	 Printf.printf"cas 2 traiterANDCOND exp1 is not Binary boolean ???\n";	 
+								(  NONMONOTONE , NOTHING, NOTHING, XOR, true, var , c) in
+(*Printf.printf"cas 2 traiterANDCOND exp1 is not Binary boolean ??? v1 %s\n" v1;*)
 
 		let (crois2, bInf2, bSup2, oper2,mult2,v2, c2) =
 					match exp2 with
 						BINARY (op, e1, e2) ->  rechercheConditionBinary (VARIABLE(v))  v op e1 e2 (List.tl liste) avant dans cte t c lv l inst
-						|_->  (* Printf.printf"cas 2 traiterANDCOND exp2 is not Binary boolean ???\n";	*)	(  NONMONOTONE , NOTHING, NOTHING, XOR, true, var, c) in
+						| VARIABLE name ->   
+						rechercheConditionBinary (VARIABLE name) name NE (VARIABLE name) (CONSTANT (CONST_INT "0")) liste avant dans cte t c lv l inst
+						| UNARY (op, exp) -> 
+							(match op with 
+								NOT ->  
+									rechercheConditionBinary init var EQ exp (CONSTANT (CONST_INT "0")) liste avant dans cte t c lv l inst
+							 	|_-> 	(  NONMONOTONE , NOTHING, NOTHING, XOR, true, var , c) (*pas multiple voir pour les booleens*))
+						|_->   Printf.printf"cas 2 traiterANDCOND exp2 is not Binary boolean ???\n";		
+							(  NONMONOTONE , NOTHING, NOTHING, XOR, true, var, c) in
+(*Printf.printf"cas 2 traiterANDCOND exp1 is not Binary boolean ??? v2 %s\n" v2;*)
 
 
 		if crois2 = NONMONOTONE ||crois1 = NONMONOTONE then isExactForm := false;
@@ -2812,16 +2882,7 @@ and ajouteFonctionDansDocument proto body =
 let isEQoperator op=
 match op with EQ|NE->true|_->false
 
-let isDivInc exp =
-	let val1 = calculer (EXP exp) !infoaffichNull [] 1 in 
-	if val1 = NOCOMP  then false
-	else
-	begin
-		let varMoinsUn = calculer (EXP (BINARY(SUB,exp, CONSTANT  (CONST_INT "1")))) !infoaffichNull [] 1 in 
-		 
-		if estStricPositif varMoinsUn then false
-		else true
-	end
+
 
  let traiterConditionBoucleFor t nom nbIt cond eng (*exp*) (*init*) inc var cte var2 listLoopVar avant dans lvb vcond inst =
 (*afficherLesAffectations inst;*)
@@ -3344,7 +3405,8 @@ let rec analyse_statement   stat =
 
 		listeNextExp := [];
 		aUneFctNotDEf := false;
-		analyse_expressionaux exp ;
+		(*analyse_expressionaux exp ;*)
+		analyse_expressionaux   exp ;
 		let ne = !nouvExp in   
 		idBoucle := !idBoucle +1;
 		let numBoucle = !idBoucle in	
@@ -3372,7 +3434,8 @@ let rec analyse_statement   stat =
 					
 		analyse_statement  stat;
 		listeNextExp := [];
-		analyse_expressionaux exp ;
+		(*analyse_expressionaux exp ;*)
+		analyse_expressionaux   exp ;
 
 		idBoucleEng := idBoucleEngPred;
 		let lesInstDeLaBoucle = !listeDesInstCourantes in
@@ -3481,7 +3544,8 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 
 
 		listeNextExp := [];
-		analyse_expressionaux exp ;
+		(*analyse_expressionaux exp ;*)
+		analyse_expressionaux   exp ;
 		let ne = !nouvExp in   
 		let varIfN =  Printf.sprintf "%s-%d" "TWH" numBoucle  in	 
 		let newaffect =new_instVar  varIfN  (EXP(ne)) in 
@@ -3579,7 +3643,8 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 		aUneFctNotDEf := false;	
 		idBoucleEng := num;
 	
-		analyse_expressionaux  exp2;
+		(*analyse_expressionaux  exp2;*)
+		analyse_expressionaux   exp2 ;
 		let ne = !nouvExp in   
 		let varIfN =  Printf.sprintf "%s-%d" "TWH" num  in	 
 		let newaffect =new_instVar  varIfN  (EXP(ne)) in 
@@ -3605,7 +3670,8 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 		(* recherche des variables de la condition qui sont dans le aS cad modifiées par la boucle*)
 		analyse_expression  exp3;
 		listeNextExp := [];
-		analyse_expressionaux  exp2;
+		(*analyse_expressionaux  exp2;*)
+		analyse_expressionaux   exp2 ;
 		let lesInstDeLaBoucle = !listeDesInstCourantes in
 		listeASCourant := [];
 		let li = if !aUneFctNotDEf = true then  
@@ -4249,6 +4315,7 @@ and getPartialResult nom =
     let nom = (nom^".rpo") in
     let chan = Unix.in_channel_of_descr (Unix.openfile nom [Unix.O_RDONLY] 0) in
     let (partialResult : compInfo) = Marshal.from_channel chan in  
+	close_in chan;
     partialResult
      
 and getExpBornesFromComp nom =
@@ -4312,6 +4379,7 @@ and traiterAppelFonction exp args init ida =
 (*Printf.printf "La fonction: %s existe=%b NEW APPEL NON 2\n" nom (existeFonction nom);*)
           	listeDesInstCourantes :=  [ new_instAPPEL ida  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  (new_instBEGIN []) ""];false
         	| Unix.Unix_error (x,y,z) -> aUneFctNotDEf := true; 
+				listeDesInstCourantes :=  [ new_instAPPEL ida  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  (new_instBEGIN []) ""];
            		 Printf.eprintf "%s: %s %s\n%!" y (Unix.error_message x) z;
            		 false
 

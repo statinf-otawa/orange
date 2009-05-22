@@ -3430,51 +3430,17 @@ let rondListe a1  ro2x =
 		
 		match ro2x with 
 			ASSIGN_SIMPLE (x, exp) ->
-				(*let resb2 = 
-				if (String.length x > 13) then
-				begin
-					
-					let var3 = (String.sub x  0 14) in
-					if  var3 = "ADC_parameters"  then true else false
-				end else false in
-*)
+			
 				isRenameVar := false;
 				let assign =   applyStoreVA exp a1   in	
 
 
-(*let (btype, isdeftype) = 
-			if List.mem_assoc idsaufetoile !listAssocIdType then (getBaseType (List.assoc idsaufetoile !listAssocIdType), true) 
-			else 
-				if List.mem_assoc idsaufetoile !listeAssosPtrNameType then (getBaseType (List.assoc idsaufetoile !listeAssosPtrNameType), true) 
-				else (INT_TYPE, false)
-in*)
+
 
 				let isStruct = if (List.mem_assoc x !listAssocIdType) then  begin let (isstruct, _) =   isStructAndGetIt (List.assoc x !listAssocIdType) in isstruct end 
 				else if List.mem_assoc x !listeAssosPtrNameType then let (isstruct, _) =   isStructAndGetIt (List.assoc x !listeAssosPtrNameType) in isstruct else false  in
-			(*	let isVarSet =  match exp with EXP(CALL(VARIABLE"SET",l)) ->  if l = [] then false else ( match List.hd l with VARIABLE (x) ->true |_-> false) |_-> false in*)
 
-
-(*if x = "nx" || x= "ny"|| x ="nz" then
-					if  (existeAffectationVarListe x a1 ) then
-begin
-					 (Printf.printf "not trouve %s\n" x; afficherListeAS a1;Printf.printf "not trouve apres a%s\n" x; afficherAS ro2x;Printf.printf "not trouve apres avant et avant apres%s\n" x; print_expVA  assign);
-if    isVarSet   then( Printf.printf "(existeAffectationVarListe set x a1 %s) \n" x  ;afficherAS ro2x)
-end;*)
-
-				let hasstructtorename =  !isRenameVar && isStruct in
-											
-				(*let aff = 
-					if isLoopOrIFId x || resb2 then
-					(match assign with
-					  MULTIPLE -> true
-					  | EXP (e) -> if estNothing assign then true else false
-					) 
-					else false in *)
-
-
-		
-
-				 
+				let hasstructtorename =  !isRenameVar && isStruct in				 
 				let na = if isStruct && (existeAffectationVarListe x a1 )  then 
 						 begin
 
@@ -3498,13 +3464,6 @@ end;*)
 									new_assign_simple x 
 														(EXP (remplacerValPar  x assignBefore (expVaToExp assign)))
 
-
-									(* match assignBefore with VARIABLE(v)->
-											if v != x then
-												
-											else new_assign_simple x assign 
-											|_->new_assign_simple x assign 
-									*)
 						 end 
 						 else  	new_assign_simple x assign in
 			([ na], listWithoutVarAssignSingle x a1 hasstructtorename )
@@ -3954,17 +3913,24 @@ begin
 
 end
 
-(*let filterSingleGlobales ascour globales =
-List.filter(
-fun prem ->
-		match prem with  
-		ASSIGN_SIMPLE (x, _)  ->if (List.mem x globales ) then   true  else false
-		| ASSIGN_DOUBLE (_, _, _)  | ASSIGN_MEM	 (_, _, _)  ->  false
-) ascour*)
+let isTrueConstant e=
+	match e with
+		CONSTANT(CONST_INT v1)| CONSTANT(CONST_FLOAT v1)| CONSTANT(CONST_CHAR v1)|CONSTANT(CONST_STRING v1)->(true,v1)
+		| _-> (false,"")
 
-			 
+let isSetTrueConstant e=
+	match e with
+		CALL(VARIABLE"SET", l)->
+			 let (arg1,arg2) =(List.hd  l,List.hd(List.tl l)) in
+			 let (isTruecteArg1, v1) =isTrueConstant arg1 in
+			 let (isTruecteArg2, v2) =isTrueConstant arg2 in
+			 (isTruecteArg1 && isTruecteArg2, v1, v2)
+		|_-> (false,"","")
 
-				
+let isVarTrue  var e=
+	match e with
+		VARIABLE v-> if var =v then true else false
+		|_-> false
 
 
 let consSETASSIGN var firstAssign secondAssign =
@@ -3982,28 +3948,10 @@ if isBool || !getOnlyBoolAssignment  = true then  ASSIGN_SIMPLE (var, MULTIPLE)
 else
 begin
 (*Printf.printf "consSETASSIGN %s\n" var; afficherAS firstAssign;space();flush();new_line();
-(*								afficherAS secondAssign;space();flush();new_line(); *)
-	match firstAssign with  
-		ASSIGN_SIMPLE (var, EXP(valeur1))
-			->
-				(match secondAssign with 
-							ASSIGN_SIMPLE (var, EXP(valeur2)) ->
- 								let (isTruecteArg1, v1) =isTrueConstant valeur1 in
-								let (isTruecteArg2, v2) =isTrueConstant valeur2 in
-								if isTruecteArg1 then
-								begin
-									if isTruecteArg2 then
-										if v1 = v2 then ASSIGN_SIMPLE (var, EXP(valeur1))
-										else ASSIGN_SIMPLE (var, EXP(CALL (VARIABLE "SET" , List.append [v1] [v2])))
-									else 
-										if isVarTrue  var valeur2  then ASSIGN_SIMPLE (var, EXP(valeur1))
-								end
-								
-							|_-> ASSIGN_SIMPLE (var,MULTIPLE)
-				)
-		|_-> ASSIGN_SIMPLE (var,MULTIPLE)
+							afficherAS secondAssign;space();flush();new_line(); *)
+	
 
-
+(*
 				(match valeur1 with
 
 					CONSTANT(CONST_INT v1)| CONSTANT(CONST_FLOAT v1)| CONSTANT(CONST_CHAR v1)|CONSTANT(CONST_STRING v1)->
@@ -4065,11 +4013,37 @@ begin
 								|_-> ASSIGN_SIMPLE (var,MULTIPLE)
 						)
 				)
-		|_-> *)ASSIGN_SIMPLE (var,MULTIPLE)
+		|_-> ASSIGN_SIMPLE (var,MULTIPLE)*)
 (*end*)
 							(* *)
 								(*ASSIGN_SIMPLE (var,    
 									EXP(CALL (VARIABLE("SET") , List.append [expVaToExp first] [expVaToExp second])))  *)
+
+	match firstAssign with  
+		ASSIGN_SIMPLE (var, EXP(valeur1)) ->
+				(match secondAssign with 
+							ASSIGN_SIMPLE (var, EXP(valeur2)) ->
+ 								let (isTruecteArg1, v1) =isTrueConstant valeur1 in
+								let (isTruecteArg2, v2) =isTrueConstant valeur2 in
+								if isTruecteArg1 then
+								begin
+									if isTruecteArg2 then
+										if v1 = v2 then ASSIGN_SIMPLE (var, EXP(valeur1))
+										else ASSIGN_SIMPLE (var, EXP(CALL (VARIABLE "SET" , List.append [valeur1] [valeur2])))
+									else 
+										if isVarTrue  var valeur2  then ASSIGN_SIMPLE (var, EXP(valeur1))
+										else ASSIGN_SIMPLE (var,MULTIPLE)
+								end
+								else 
+								begin
+									(*if isVarTrue  var valeur1  && isTruecteArg2 then ASSIGN_SIMPLE (var, EXP(CALL (VARIABLE "SET" , List.append [VARIABLE(var)] [valeur2])))
+									else*) ASSIGN_SIMPLE (var,MULTIPLE)
+								end
+							|_-> ASSIGN_SIMPLE (var,MULTIPLE)
+				)
+		|_-> ASSIGN_SIMPLE (var,MULTIPLE) 
+
+
 
 
 
@@ -4291,24 +4265,7 @@ end
 let produitEm a1 a2 listeT =  pauxEm a1 a2 (rechercheLesVar a2  (rechercheLesVar a1 [])) listeT
 
 
-let isTrueConstant e=
-	match e with
-		CONSTANT(CONST_INT v1)| CONSTANT(CONST_FLOAT v1)| CONSTANT(CONST_CHAR v1)|CONSTANT(CONST_STRING v1)->(true,v1)
-		| _-> (false,"")
 
-let isSetTrueConstant e=
-	match e with
-		CALL(VARIABLE"SET", l)->
-			 let (arg1,arg2) =(List.hd  l,List.hd(List.tl l)) in
-			 let (isTruecteArg1, v1) =isTrueConstant arg1 in
-			 let (isTruecteArg2, v2) =isTrueConstant arg2 in
-			 (isTruecteArg1 && isTruecteArg2, v1, v2)
-		|_-> (false,"","")
-
-let isVarTrue  var e=
-	match e with
-		VARIABLE var-> true
-		|_-> false
 
 
 
@@ -4429,25 +4386,7 @@ match varExpVa with EXP(VARIABLE (v)) -> [VAR (v, res)]  |_-> []
 
 let rec evalStore i a g=
 match i with 
-	VAR (id, exp) -> let res = rond a [new_assign_simple id exp] in
-
-				(*let resb2 = 
-				if (String.length id > 13) then
-				begin
-					
-					let var3 = (String.sub id  0 14) in
-					if  var3 = "AD_voltage_par"  then true else false
-				end else false in
-
-			if resb2 then
-			begin
-				Printf.printf "evalStore var %s valeur du contexte  \n" id;
-				afficherListeAS a;Printf.printf "evalStore var %s valeur de exp  \n" id;
-				print_expVA exp ; flush();space() ;new_line(); flush();space(); new_line();
-				Printf.printf "evalStore var apres contexte\n";
-				afficherListeAS res;
-			end;*)
-		
+	VAR (id, exp) -> let res = rond a [new_assign_simple id exp] in		
 		res
 	| TAB (id, exp1, exp2) -> (*Printf.printf "evalStore tab\n";*)
 		rond a [new_assign_double id exp1 exp2]
@@ -4509,7 +4448,7 @@ Printf.printf "fin \n";*)
 		begin
 (*Printf.printf "dans boucle\n" ;*)
 					(*let ifassign = filterIF a in*)
-					 let cTest = consInitTest cond myCond in 
+					 let cTest = (*consInitTest cond myCond*) [] in 
 					 let resT = evalStore (BEGIN(List.append cTest [i1])) (*ifassign*)[] [] in
 					 let listeIF = (rechercheLesVar resT []) in
 					 
@@ -4557,7 +4496,7 @@ Printf.printf "fin \n";*)
 			begin
 				(*Printf.printf "evalStore if TRUE dans boucle\n"; *)
 				(*let ifassign = filterIF a in*)
-				let cTest = consInitTest cond myCond in 
+				let cTest = (*consInitTest cond myCond*) [] in 
 				let resT = evalStore (BEGIN(List.append cTest [i1] ))(*ifassign*)[] [] in
 				produitEm a resT []
 				(*listeASCourant := [];*)
