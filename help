@@ -25,3 +25,30 @@ time  ./../orange/main/main -pp -l  pretraites/clement13.c main main > analyses/
 
 
 
+
+#./../frontc/calipso/calipso   -P   -rs -rr -rg   -rc -rb   -l  debieC/testTB/class.c>debieC/testTB/classTB.c
+#./../frontc/calipso/calipso   -P   -rs -rr -rg   -rc -rb   -l  debieC/testTB/classtabp.c>debieC/testTB/classtabTB.c
+#./../frontc/calipso/calipso   -P   -rs -rr -rg   -rc -rb   -l  debieC/testTB/hw_if.c>debieC/testTB/hw_ifTB.c
+#./../frontc/calipso/calipso   -P   -rs -rr -rg   -rc -rb   -l  debieC/testTB/measure.c>debieC/testTB/measureTB.c
+#./../frontc/calipso/calipso   -P   -rs -rr -rg   -rc -rb   -l  debieC/testTB/tc_hand.c>debieC/testTB/tc_handTB.c
+#./../frontc/calipso/calipso   -P   -rs -rr -rg   -rc -rb   -l  debieC/testTB/telem.c>debieC/testTB/telemTB.c
+#./../frontc/calipso/calipso   -P   -rs -rr -rg   -rc -rb   -l  debieC/testTB/health.c>debieC/testTB/healthTB.c
+#./../frontc/calipso/calipso   -P   -rs -rr -rg   -rc -rb   -l  debieC/testTB/harness.c>debieC/testTB/harnessTB.c
+#./../frontc/calipso/calipso   -P   -rs -rr -rg   -rc -rb   -l  debieC/testTB/debie.c>debieC/testTB/debieTB.c
+
+#./../frontc/calipso/calipso   -P   -rs -rr -rg   -rc -rb   -l  debieC/testTB/target.c>debieC/testTB/targetTB.c
+echo target
+time  ./../orange/main/main  -k Data_Pointer -pp -l  debieC/testTB/targetTB.c Data_Pointer Data_Pointer> debieC/testTB/analyse/Data_Pointer.pret
+time  ./../orange/main/main  -k Set_Data_Byte -pp -l  debieC/testTB/targetTB.c Set_Data_Byte Set_Data_Byte> debieC/testTB/analyse/Set_Data_Byte.pret
+time  ./../orange/main/main  -k Get_Data_Byte -pp -l  debieC/testTB/targetTB.c Get_Data_Byte Get_Data_Byte> debieC/testTB/analyse/Get_Data_Byte.pret
+time  ./../orange/main/main  -k Get_Code_Byte -pp -l  debieC/testTB/targetTB.c Get_Code_Byte Get_Code_Byte> debieC/testTB/analyse/Get_Code_Byte.pret
+
+
+time  ./../orange/main/main  -k Short_Value -pp -l  debieC/testTB/harnessTB.c  Short_Value Short_Value >debieC/testTB/analyse/Short_Value.pret
+time  ./../orange/main/main  -k CalculateQualityNumber -pp -l  debieC/testTB/classTB.c CalculateQualityNumber CalculateQualityNumber> debieC/testTB/analyse/CalculateQualityNumber.pret
+
+
+time  ./../orange/main/main  -pp -l  debieC/testTB/classTB.c CalculateQualityNumber CalculateQualityNumber > debieC/testTB/analyse/CalculateQualityNumber.ana
+
+
+

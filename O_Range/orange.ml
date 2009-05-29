@@ -111,12 +111,9 @@ module MonList = struct
   
   let onEnd res = 
   	let text = "</flowfacts>\n" in
-	nbLigne := !nbLigne +1;
-	let resaux =
-		if !nbLigne>=50 then (nbLigne := 0; predListener := concat !predListener res;"") else res in
 	left ();
-  	let newRes =(indent resaux)^text in	
-	newRes
+  	let newRes =(indent res)^text in	
+	concat !predListener newRes
 	
   let onFunction res name inloop executed extern = 
   	let text = sprintf "<function name=\"%s\" executed=\"%b\" extern=\"%b\">\n" name executed extern in 
@@ -130,7 +127,8 @@ module MonList = struct
   let onFunctionEnd res = 
   	let text = "</function>\n" in
 	nbLigne := !nbLigne +1;
-	let resaux =  concat !predListener res  in
+	let resaux =
+		if !nbLigne>=50 then (nbLigne := 0; predListener := concat !predListener res;"") else res in
 	left ();
   	let newRes =(indent resaux)^text in	
 	newRes

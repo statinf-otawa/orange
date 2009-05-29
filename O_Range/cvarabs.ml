@@ -1515,43 +1515,50 @@ and  calculer expressionVA ia l sign =
 				 	let varexp = ( List.hd args )in
 				 	let suite = List.tl args in
 					match varexp with
-					VARIABLE (var) ->												
-						let max = (calculer (EXP(List.hd suite )) ia l 1)in
-						if  estNoComp max   then NOCOMP
-						else
-						begin
-							if !vDEBUG then 
-							begin
-								Printf.printf"MAX simplifier\n";
-								Printf.printf"MAX pour %s = O..\n" var;
-								
-								print_expTerm max; new_line ();Printf.printf" ( " ;
-								print_expression (List.hd (List.tl suite) ) 0;new_line ();
-								Printf.printf" ) " ;
-							end;
-							if estDefExp max && estNul max then 
-							begin
-								(*Printf.printf "remplacer max\n"	;*)
-								calculer  (EXP
-											(remplacerValPar0 var (List.hd (List.tl suite)) ))
-								ia l sign
-							end
+					VARIABLE (var) ->		
+
+						let listvar = listeDesVarsDeExpSeules (List.hd (List.tl suite)) in
+						if List.mem var listvar then
+						begin									
+							let max = (calculer (EXP(List.hd suite )) ia l 1)in
+							if  estNoComp max   then NOCOMP
 							else
 							begin
-								let expE = (calculer  (EXP(List.hd (List.tl suite) ))ia l 1) in
-								if estNoComp expE  then  NOCOMP
+								if !vDEBUG then 
+								begin
+									Printf.printf"MAX simplifier\n";
+									Printf.printf"MAX pour %s = O..\n" var;
+								
+									print_expTerm max; new_line ();Printf.printf" ( " ;
+									print_expression (List.hd (List.tl suite) ) 0;new_line ();
+									Printf.printf" ) " ;
+								end;
+								if estDefExp max && estNul max then 
+								begin
+									(*Printf.printf "remplacer max\n"	;*)
+									calculer  (EXP
+												(remplacerValPar0 var (List.hd (List.tl suite)) ))
+									ia l sign
+								end
 								else
-								begin		
-									let val1 = simplifierMax var max expE ia in
-									(*Printf.printf"calcul MAX pour %s =\n" var; 
-									print_expTerm val1; new_line ();
-									Printf.printf"MAX apres calcul =\n";*)
-									if  estNoComp val1 then  NOCOMP
-										(*Max (var ,ConstInt("0")(* ou 1 voir*), max,expE)*)
-									else	val1
-								end	
+								begin
+									let expE = (calculer  (EXP(List.hd (List.tl suite) ))ia l 1) in
+									if estNoComp expE  then  NOCOMP
+									else
+									begin		
+										let val1 = simplifierMax var max expE ia in
+										(*Printf.printf"calcul MAX pour %s =\n" var; 
+										print_expTerm val1; new_line ();
+										Printf.printf"MAX apres calcul =\n";*)
+										if  estNoComp val1 then  NOCOMP
+											(*Max (var ,ConstInt("0")(* ou 1 voir*), max,expE)*)
+										else	val1
+									end	
+								end
 							end
-						end																															
+						end	
+						else calculer  (EXP (List.hd (List.tl suite)) ) ia l sign 
+																																			
 					|_-> NOCOMP
 				end
 				|_-> (*|VARIABLE("MAX") -> *)	NOCOMP
