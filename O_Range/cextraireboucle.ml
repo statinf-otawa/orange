@@ -4177,12 +4177,14 @@ and  analyse_expressionaux exp =
 				begin 
 					listeDesInstCourantes := [];
 					let nom = (nomFonctionDeExp e) in
-					(*if existeNomFonctionDansListe nom  then
+					if existeNomFonctionDansListe nom  then
 					begin 
 						let (_, _,base) = tupleNumNomFonctionDansListe nom in
 						externFct base exp
 					end
-					else  List.iter (fun ep -> analyse_expression (BINARY(ASSIGN, VARIABLE( Printf.sprintf "%s%d" nom !numArg), ep));numArg := !numArg +1 ) args; *)
+					else (* List.iter 
+						(fun ep -> analyse_expression (BINARY(ASSIGN, VARIABLE( Printf.sprintf "%s%d" nom !numArg), ep));numArg := !numArg +1 ) args; 
+					numArg:=0;*)
 					 List.iter (fun ep -> analyse_expression  ep  ) args;
 					idAppel := !idAppel + 1;
 				    let ida = !idAppel in	
@@ -5035,7 +5037,7 @@ let r = !idAppel in
 		construireListesES f.listeES args;
 		ajouterReturn nom aff;
 Printf.printf "La fonction: %s existe=%b NEW APPEL ONLY\n" nom (existeFonction nom);
-		listeDesInstCourantes :=  [ new_instAPPEL r  (new_instBEGIN !entrees)  f.nom (new_instBEGIN !sorties) (new_instBEGIN aff) ""];
+		listeDesInstCourantes :=   List.append init [ new_instAPPEL r  (new_instBEGIN !entrees)  f.nom (new_instBEGIN !sorties) (new_instBEGIN aff) ""];
 	    false
 	end
 
@@ -5050,7 +5052,7 @@ Printf.printf "La fonction: %s existe=%b NEW APPEL ONLY\n" nom (existeFonction n
       		sorties := [];
 	  		construireListesES f.listeES args;
 	  		ajouterReturn nom f.lesAffectations;
-	  		listeDesInstCourantes :=  [ new_instAPPEL !idAppel  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  (new_instBEGIN f.lesAffectations) ""];
+	  		listeDesInstCourantes :=   List.append init [ new_instAPPEL !idAppel  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  (new_instBEGIN f.lesAffectations) ""];
 			false
 	) *)else (
 	
@@ -5076,12 +5078,12 @@ Printf.printf "La fonction: %s existe=%b NEW APPEL ONLY\n" nom (existeFonction n
 
 				Printf.printf "Ici on construit le noeud d'appel du composant: %s ONLY\n" nom;
 Printf.printf "La fonction: %s existe=%b NEW APPEL COMPO \n" nom (existeFonction nom);
-				listeDesInstCourantes :=  [ new_instAPPELCOMP r  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  absStore ""]; true
+				listeDesInstCourantes :=  List.append init [ new_instAPPELCOMP r  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  absStore ""]; true
 		) 
 		with  Unix.Unix_error(Unix.ENOENT, _, _)-> 
 			(*aUneFctNotDEf := true; *)
 Printf.printf "La fonction: %s existe=%b NEW APPEL NON ONLY \n" nom (existeFonction nom);
-          	listeDesInstCourantes :=  [ new_instAPPEL r  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  (new_instBEGIN []) ""];false
+          	listeDesInstCourantes :=  List.append init [ new_instAPPEL r  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  (new_instBEGIN []) ""];false
         	| Unix.Unix_error (x,y,z) -> 
            		 Printf.eprintf "%s: %s %s\n%!" y (Unix.error_message x) z;
            		 false

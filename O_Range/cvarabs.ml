@@ -2776,7 +2776,7 @@ let couldExistAssignVarIndexList var l i=
 
 
 let isCallVarStruct lid =
-if lid = [] then true
+if lid = [] then false
 else			let x =  (List.hd lid) in
 				if (String.length x> 4) then
 				begin
@@ -2869,7 +2869,7 @@ let traiterChampOfstruct id a e idsaufetoile lid=
 
 (*		| MEMOF -> ("*", 13)
 		| ADDROF -> ("&", 13)*)
-
+(*Printf.printf "traiterChampOfstruct MEMBEROFPTR   id %s sauf* %s\n" id idsaufetoile;print_expression e 0; new_line(); new_line() ;flush();space();*)
 let (btype, isdeftype) = 
 			if List.mem_assoc idsaufetoile !listAssocIdType then (getBaseType (List.assoc idsaufetoile !listAssocIdType), true) 
 			else 
@@ -2905,7 +2905,7 @@ in
 										CONSTANT cst ->
 											(match cst with
 												CONST_COMPOUND expsc ->  
-													(*Printf.printf "traiterChampOfstruct MEMBEROFPTR lid non vide  &assigncomma%s\n" id;*) 
+													(*Printf.printf "traiterChampOfstruct MEMBEROFPTR lid non vide  &assigncomma%s\n" id;*)
 													(*List.iter (fun x-> Printf.printf "%s." x)lid;	Printf.printf "\n"; *)
 													let na = getconsCommaExp  btype (List.tl lid) expsc in
 													(*printfBaseType btype;*) (*Printf.printf "new\n";print_expression na 0; new_line() ;  *)
@@ -2968,9 +2968,9 @@ in
 				| _ -> begin (*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas 4 %s non traité\n" id; *) boolAS:= true; (NOTHING)end
 			)
 		end
-		else begin(* Printf.printf "AS non exist \n" ; *)(e)end
+		else begin (*Printf.printf "AS non exist existeAffectationVarListe\n" ;*) (e)end
 	end
-	else e
+	else begin (*Printf.printf "AS non exist \n" ;*) (e)end
 
 
 let rec applyStore e a =
@@ -3186,7 +3186,7 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 		
 		
 				let lid =	getInitVarFromStruct e  in
-				(*Printf.printf "variable source %s\n"(List.hd lid);*)
+				(* *)
 				if lid != [] && (isCallVarStruct lid = false )then 
 				begin
 					let fid =  (List.hd lid) in
@@ -3196,11 +3196,12 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 											else (fid ,fid )
 									else (fid ,fid ) in 
 					if id != fid then Printf.printf "id %s, fid %s\n" id pid;
+				(*	Printf.printf "AS variable source %s\n"(List.hd lid);*)
 					traiterChampOfstruct pid a e id lid
 			
 					
 				end
-				else  e 
+				else ( (*Printf.printf "variable source cas else %s\n"(List.hd lid);*) e )
 
 	| _	-> if !vDEBUG then Printf.printf "struct et gnu body non traités pour le moment \n"; 
 			boolAS:= true; 
@@ -3554,7 +3555,7 @@ else
 	if a2 = [] then   a1
 	else
 	begin
-	(*	Printf.printf "les as 1 \n" ;
+		(*Printf.printf "les as 1 \n" ;
 		afficherListeAS a1;
 		Printf.printf "fin \n";
 		Printf.printf "les as 2 \n" ;
@@ -4387,6 +4388,16 @@ List.filter (fun e ->  match e with ASSIGN_SIMPLE (id, _)->
   else(* if existAssosPtrNameType  id then true else*) false 
   |_->false ) l
 
+let filterwithoutIF l =
+List.filter (fun e ->  match e with ASSIGN_SIMPLE (id, _)->
+  if (String.length id > 3) then
+	  begin 
+		  if  (String.sub id  0 3) = "IF-"   then    false 	else true
+	  end 
+  else(* if existAssosPtrNameType  id then true else*) true 
+  |_->true ) l
+
+
 
 let consInitTest varExpVa res =
 match varExpVa with EXP(VARIABLE (v)) -> [VAR (v, res)]  |_-> [] 
@@ -4691,21 +4702,27 @@ Printf.printf "fin \n";*)
 
 						end;
 						
-						(*Printf.printf "le sorties a apere reecrire %s depend de var de boucle %s\n" nomFonc varB;*)
+						
 						(*afficherUneAffect (BEGIN(corps)); new_line(); Printf.printf "affect a apere reecrire fin\n";*)
 						let memoutput = !corpsNouvI in
 						let listeInput =   (evalInputFunction a entrees [] ) in
 
-						
+						(*Printf.printf "INPUT %s depend de var de boucle %s\n" nomFonc varB;
+						afficherListeAS listeInput;		*)		
 						(*afficherListeAS listeInput;	*)
-					(*	Printf.printf "le sorties a apere reecrire %s depend de var de boucle fin inputs%s\n" nomFonc varB;*)
-						let rc =if (isAbs)  then ( rond listeInput absStore) else evalStore (BEGIN(corps)) (*rond a*) listeInput [] in
 						
+						
+						let rc =if (isAbs)  then ( rond listeInput absStore) else evalStore (BEGIN(corps)) (*rond a*) listeInput [] in
+
+
+						(*Printf.printf "le sortiesRC %s depend de var de boucle fin inputs%s\n" nomFonc varB;
+						afficherListeAS rc;
+						Printf.printf "fin RC %s depend de var de boucle fin inputs%s\n" nomFonc varB;*)
 
 						listeASCourant := [];
 						if memoutput <> [] then
 						begin
-							(*afficherListeAS rc; *)
+							(*afficherListeAS rc;*) 
 							List.iter (
 										fun sortie -> 
 										(match sortie with 
@@ -4725,8 +4742,8 @@ Printf.printf "fin \n";*)
 						(*let nginterne = filterGlobales rc  !alreadyAffectedGlobales in*)
 					 
 						let aPart = (splitTotalAndOthers rc !alreadyAffectedGlobales rename)  in
-(*Printf.printf "evalStore fonction %s  \n SORTIE \n" nomFonc ;*)
-(*afficherListeAS aPart;		*)
+(*Printf.printf "evalStore fonction %s  \n SORTIE \n" nomFonc ;
+afficherListeAS aPart;		*)
 
 						let returnf = Printf.sprintf "res%s"  nomFonc in
 						if existeAffectationVarListe returnf rc then
@@ -4772,7 +4789,44 @@ and evalInputFunction a entrees  globales =
 		let(entree, others) = (List.hd entrees, List.tl entrees) in
 				match entree with 
 				VAR (id, exp) ->
-					 
+						if   List.mem_assoc id !listAssocIdType || List.mem_assoc id !listeAssosPtrNameType then  ()
+						else
+						(match exp with
+							EXP (assign) ->
+								let assignedValue = (simplifierValeur assign) in
+								
+
+								(match  assignedValue with  
+									UNARY (ADDROF, VARIABLE(v)) -> 
+										let (typ, hastype) = if List.mem_assoc v !listAssocIdType then 
+																(getBaseType (List.assoc v !listAssocIdType), true)
+		 										 			 else 
+																if List.mem_assoc v !listeAssosPtrNameType then 
+																	(getBaseType (List.assoc v !listeAssosPtrNameType),true)
+																else  (INT_TYPE, false)
+													 in
+										if hastype then listeAssosPtrNameType := List.append !listeAssosPtrNameType [(id, typ)]   
+										
+								
+									| VARIABLE(v)->	
+										let (typ, hastype,isptr) = if List.mem_assoc v !listAssocIdType then 
+																(getBaseType (List.assoc v !listAssocIdType), true,false)
+		 										 			 else 
+																if List.mem_assoc v !listeAssosPtrNameType then 
+																	(getBaseType (List.assoc v !listeAssosPtrNameType),true, true)
+																else  (INT_TYPE, false,false)
+													 in
+										if hastype then 
+										begin
+												if isptr then
+															listeAssosPtrNameType := List.append !listeAssosPtrNameType [(id, typ)]   
+												else listAssocIdType := List.append !listAssocIdType [(id, typ)]   
+										end
+									|_->())
+
+
+							|_->());
+
 
 					let new_exp =  applyStoreVA (applyStoreVA exp a) globales in
 					 

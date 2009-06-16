@@ -143,7 +143,7 @@ let rec getComps  = function
                TO.dernierAppelFct := typeE;
                TO.predDernierAppelFct := typeE;
                let (_,_,_) = TO.evaluerFonction (fn.nom) fn []  (EXP(NOTHING))   [typeE]  typeE true !listeASCourant in () ;
-               let compAS: abstractStore list = evalStore (new_instBEGIN fn.lesAffectations) [] [] in
+               let compAS: abstractStore list = filterwithoutIF (evalStore (new_instBEGIN fn.lesAffectations) [] []) in
                printf "..l'abstractStore fait %u entrees, affichage: \n"(List.length(compAS));
                afficherListeAS compAS;
                printf "\n";
