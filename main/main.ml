@@ -28,7 +28,15 @@ let rec printlistref li= match li with
 	|e::l -> begin output_string stdout !e; output_string stdout "\n" ; printlistref l end
 	
 
-	
+let rec listeOutputs listES =
+if listES = [] then []
+else
+begin
+	let (first, next) = (List.hd listES, List.tl listES) in
+	(match first with
+			ENTREE (_) ->	 listeOutputs next
+			| SORTIE (nom) | ENTREESORTIE (nom) -> nom::listeOutputs next)
+end	
 
 
 (* module XMLOrange = Orange.Maker(MonList) *)
@@ -137,13 +145,14 @@ let rec getComps  = function
            then
              begin
                printf "Evalue le resultat partiel pour: %s\n" fn.nom;
-       
+       		   let globales = 	!alreadyAffectedGlobales in
                globalesVar := !alreadyAffectedGlobales;
                let typeE = TO.TFONCTION(fn.nom,!TO.numAppel, fn.lesAffectations, [], [], [], [],  [], true, false) in
                TO.dernierAppelFct := typeE;
                TO.predDernierAppelFct := typeE;
                let (_,_,_) = TO.evaluerFonction (fn.nom) fn []  (EXP(NOTHING))   [typeE]  typeE true !listeASCourant in () ;
-               let compAS: abstractStore list = filterwithoutIF (evalStore (new_instBEGIN fn.lesAffectations) [] []) in
+               let compAS: abstractStore list = 
+					filterwithoutInternal (evalStore (new_instBEGIN fn.lesAffectations) [] []) (listeOutputs fn.listeES) globales in
                printf "..l'abstractStore fait %u entrees, affichage: \n"(List.length(compAS));
                afficherListeAS compAS;
                printf "\n";

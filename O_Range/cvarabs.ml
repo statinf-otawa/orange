@@ -4398,6 +4398,35 @@ List.filter (fun e ->  match e with ASSIGN_SIMPLE (id, _)->
   |_->true ) l
 
 
+let filterwithoutInternal l globales output =
+List.filter (fun e ->  match e with ASSIGN_SIMPLE (id, _)->
+
+	if (List.mem id globales ) || List.mem id output then true
+	else
+	begin		
+				let rep=
+					 
+						if (String.length id > 4) then
+						begin
+							let var4 = (String.sub id  0 4) in
+							let var3 = (String.sub id  0 3) in
+							if var3 = "ET-" ||  var3 = "EF-"  || var3 = "tN-" || var4 = "max-" || var4 = "tni-" || var4 = "TWH-" || var4 = "res-"  then    (true) else  (false)
+						end
+						else if (String.length id > 3) then 
+								if (String.sub id  0 3) = "ET-" || (String.sub id  0 3) = "EF-"  || (String.sub id  0 3) = "tN-"   then (true) 	 else (false)
+							 else false
+					in
+				rep
+			
+	  end 
+  
+	| ASSIGN_DOUBLE (id, _, _) 	|ASSIGN_MEM (id, _, _)-> if List.mem id globales || List.mem id output then true else false
+	 ) l
+
+(*
+let filterSortiesGlobalesLoops  listES listGlobales asList    =
+	let listeOutput = listeOutputs listES in
+asList*)
 
 let consInitTest varExpVa res =
 match varExpVa with EXP(VARIABLE (v)) -> [VAR (v, res)]  |_-> [] 
@@ -4564,6 +4593,7 @@ Printf.printf "\nothers rewriteAllOthers\n";
 (*Printf.printf "others\n";
 	afficherListeAS newas ;space();flush();new_line();
 	Printf.printf "\nend\n";*)
+
 
 
 
