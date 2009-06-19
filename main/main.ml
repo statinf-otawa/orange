@@ -145,21 +145,17 @@ let rec getComps  = function
            then
              begin
                printf "Evalue le resultat partiel pour: %s\n" fn.nom;
+			   TO.isPartialisation:=false;
        		   let globales = 	!alreadyAffectedGlobales in
                globalesVar := !alreadyAffectedGlobales;
-               let typeE = TO.TFONCTION(fn.nom,!TO.numAppel, fn.lesAffectations, [], [], [], [],  [], true, true) in
-
-
-				(*afficherLesAffectations fn.lesAffectations;*)
+               let typeE = TO.TFONCTION(fn.nom,!TO.numAppel, fn.lesAffectations, [], [], [], [],  [], true, false) in
                TO.dernierAppelFct := typeE;
                TO.predDernierAppelFct := typeE;
-			   isIntoLoop:=true;
                let (_,_,_) = TO.evaluerFonction (fn.nom) fn []  (EXP(NOTHING))   [typeE]  typeE true !listeASCourant in () ;
-
-			   isIntoLoop:=true;
                let compAS: abstractStore list = 
 					filterwithoutInternal (evalStore (new_instBEGIN fn.lesAffectations) [] []) (listeOutputs fn.listeES) globales in
                printf "..l'abstractStore fait %u entrees, affichage: \n"(List.length(compAS));
+			   TO.isPartialisation:=false;
                afficherListeAS compAS;
                printf "\n";
                printf "..affichage des info. de boucles parametriques: \n";
@@ -186,7 +182,7 @@ let analysePartielle file =
  nbImbrications := 0;
  TO.enTETE :=  false;
  TO.estNulEng :=  false;
- TO.estDansBoucle :=  true;	 
+ TO.estDansBoucle :=  false;	 
  analyse_defs file;
  printf "analyse_defs OK, maintenant lance evaluation des composants.\n";
  getComps !doc.laListeDesFonctions;
