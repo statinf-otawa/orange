@@ -628,6 +628,7 @@ begin
 end	
 
 and   endOfcontexte  affec  last new_contexte globales=
+isIntoLoop:=!estDansBoucle;
   if last = [] then begin (*Printf.printf"lastvide \n";*)  evalStore (BEGIN(affec)) new_contexte globales end
   else
   begin
@@ -637,6 +638,7 @@ and   endOfcontexte  affec  last new_contexte globales=
 	  | IDAPPEL (numf,_,_,_, _,_) -> (* Printf.printf"last function  %d\n" numf;*)  nextInstructionsF numf affec
 	  | IDIF (var,_, _,_, _,_,_)  -> (*Printf.printf"last if  %s\n" var;*)  nextInstructionsI var affec)
  	  in
+isIntoLoop:=!estDansBoucle;
 	  if fin = [] then new_contexte else evalStore (BEGIN(fin)) new_contexte globales
   end
 
@@ -694,6 +696,7 @@ and traiterUneIntructionPourBoucle premiere sId  l=
 let  evalSIDB listeInst saufId contexte  l =
 let res = listeSAUFIDB listeInst saufId  l in
 (*afficherLesAffectations ( res) ;new_line () ;*)
+isIntoLoop:=!estDansBoucle;
    evalStore (new_instBEGIN(res)) contexte []
 
 
@@ -977,6 +980,7 @@ let lesVardeiSansj nEC id l=
   let saufId = id in
  (* Printf.printf"lesVardeiSansj de i = %d et j = %d \n" (getBoucleInfoB (nEC.infoNid.laBoucle)).identifiant saufId;*)
   let listeInter =  listeSAUFIDB (reecrireCallsInLoop nEC.varDeBoucleNid 	nEC.lesAffectationsBNid)   saufId  l in
+isIntoLoop:=!estDansBoucle;
   evalStore  (new_instBEGIN(listeInter)) [] []
 
 
@@ -1198,6 +1202,7 @@ and traiterUneIntructionPourAppel premiere sId ainserer  input le la =
 			  begin  
 				  appelcourant := [premiere]; 
 				  estTROUVEID := true;
+				  isIntoLoop:=!estDansBoucle;
 				  let nas = evalStore 	( BEGIN (   ainserer)) [] [] in
 				  
 				  let new_appel = APPEL (num, avant, nom, apres,   ABSSTORE nas, varB,r)	in
@@ -1237,7 +1242,7 @@ let  evalSIDA listeInst saufId   ainserer  input le la listBefore=
   estTROUVEID := false;
  
   let nc = new_instBEGIN(listeSAUFIDA listeInst saufId ainserer  input le la ) in
-  
+  isIntoLoop:=!estDansBoucle;
  (*Printf.printf "evalSIDA nc %d\n" saufId; afficherUneAffect nc;Printf.printf "evalSIDA fin\n"; *)
   let res= evalStore  nc [] []	in
  (* print_string "Affichage du resultat du evalStore:\n";
@@ -1863,8 +1868,8 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 		(*Printf.printf "av traiterBouclesInternes num %d nom eng %d \n"  id nomE ;*)
 		let(varTN,varmax,varTni,l, output) =   creerLesAffect tN max tni id conte in
 		isExeBoucle := isExeE;
-		if !isExeBoucle then  Printf.printf "la boucle englobante est exécutée\n"  
-		else  Printf.printf "la boucle englobante n'est pas exécutée\n";
+		(*if !isExeBoucle then  Printf.printf "la boucle englobante est exécutée\n"  
+		else  Printf.printf "la boucle englobante n'est pas exécutée\n";*)
 		(*let varIfN =  Printf.sprintf "%s-%d" "TWH" id  in	*)
 		estDansBoucle := true;
 
@@ -2794,7 +2799,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 				  			let nthen = reecrireCorpsNonExe  instthen nonexethen !numAppel in
 					  		let nelse = reecrireCorpsNonExe  instelse nonexelse !numAppel in
 				
-							
+							isIntoLoop:=!estDansBoucle;
 							if nelse = [] then  
 									(evalStore (		IFV (	EXP(VARIABLE(var)), BEGIN(nthen)	)		) asL globale, globale)
 							else 	(evalStore (		IFVF(   EXP(VARIABLE(var)), BEGIN(nthen), BEGIN(nelse))	) asL globale, globale)
@@ -2806,7 +2811,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 				let nthen = reecrireCorpsNonExe  instthen nonexethen !numAppel in
 			  	let nelse = reecrireCorpsNonExe  instelse nonexelse !numAppel in
 				
-				
+				isIntoLoop:=!estDansBoucle;
 				if nelse = [] then  
 									(evalStore (		IFV (	EXP(VARIABLE(var)), BEGIN(nthen)	)		) asL globale, globale)
 				else 	(evalStore (		IFVF(   EXP(VARIABLE(var)), BEGIN(nthen), BEGIN(nelse))	) asL globale, globale)
@@ -3013,7 +3018,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 											  corpsEvalTMP := List.append !corpsEvalTMP	 new_fct;
 											  docEvalue := new_documentEvalue !docEvalue.maListeNidEval 
 														(List.append !docEvalue.maListeEval new_fct);			
-											   			     
+											  isIntoLoop:=!estDansBoucle; 			     
 											  let res =rond contexte (evalStore (List.hd myCall) nc	globalesBefore) in
 											  ( res ,globalesBefore)
 								end
@@ -3381,7 +3386,7 @@ Printf.printf "evalNid contexte  boucle: tete\n";
 		  listeInstNonexe := listeInstNonexePred  ;
 		  firstLoop := 0 ;
 		   listeDesVarDependITitcour:=[] ;
-		
+		isIntoLoop:=!estDansBoucle;
 (*Printf.printf "CONTEXTE RES ajout dans liste corpsEval %d %s\n"  (getBoucleIdB nid.infoNid.laBoucle) id;*)
 (*afficherUneAffect (new_instBEGIN ni); Printf.printf "evalSIDA fin\n";*)
 		let res=	evalStore (((*FORV ((getBoucleIdB nid.infoNid.laBoucle),id, EXP(NOTHING), EXP(NOTHING), EXP(NOTHING), EXP(NOTHING), *)new_instBEGIN ni) ) aSC globales in
@@ -3676,7 +3681,7 @@ Printf.printf"FIN GLOBALE\n";*)
 	  let typeE = TFONCTION(!(!mainFonc),!numAppel, f.lesAffectations, !listeDesInstGlobales, [], [], [],  [], true, false) in  
 	  dernierAppelFct := typeE;
 	  predDernierAppelFct := typeE;
-	  
+	  isIntoLoop:=!estDansBoucle;
 	 let (_,_,_) = evaluerFonction !(!mainFonc) f  []
 								
 								  (EXP(NOTHING))   [typeE]  typeE true (evalStore 	(new_instBEGIN !listeDesInstGlobales) [] []) in()				

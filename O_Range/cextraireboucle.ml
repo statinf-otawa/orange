@@ -3376,6 +3376,8 @@ let rec analyse_statement   stat =
 		analyse_statement  s1;
 
 		let listeThen = !listeDesInstCourantes in
+(*Printf.printf"analyse statement if\n";
+afficherLesAffectations !listeDesInstCourantes;*)
 		let bouavrai = !listeBoucleOuAppelCourante in
 		trueList := trueListPred ;
   		let (instthen,treethen, instelse,treeelse) =
@@ -3391,6 +3393,10 @@ let rec analyse_statement   stat =
 					falseList := List.append !falseList [varIfN];
 					analyse_statement  s2;			
 					let listeElse = !listeDesInstCourantes in
+
+(*Printf.printf"analyse statement else\n";
+afficherLesAffectations !listeDesInstCourantes;
+print_statement  s2 ;*)
 										
 					listeDesInstCourantes := 
 						List.append  listePred  [new_instIFVF (EXP(VARIABLE(varIfN))) (new_instBEGIN (listeThen))  (new_instBEGIN (listeElse)) ];
@@ -3991,14 +3997,17 @@ and  analyse_expressionaux exp =
 				| ADDROF	->(** "&" . nouvExp :=VARIABLE("&"^v)*)
 					(match e with
 						INDEX (t,i) ->
-(*Printf.printf "adresse de...\n";print_expression e 0; new_line(); *)
+(*Printf.printf "adresse de...\n";print_expression e 0; new_line(); 			print_expression t 16;
+			
+			print_expression i 0;*)
+			
 							let (tab,lidx) = analyseArray e []  in
 							if tab = "" then nouvExp := exp
 							else 
 							begin
 (*								let sygmaIndex = getSygma lidx in*)
 								let sygmaIndex = (*(CONSTANT(CONST_INT("0"))) in*)
-										if lidx = [] then NOTHING else if (List.tl lidx) = [] then (CONSTANT(CONST_INT("0"))) else  i in
+										if lidx = [] then (*NOTHING else if (List.tl lidx) = [] then *)(CONSTANT(CONST_INT("0"))) else if (List.tl lidx) = [] then i else NOTHING in
 								nouvExp := BINARY (ADD, (VARIABLE(tab)), sygmaIndex) ;
 (*print_expression !nouvExp 0; new_line(); Printf.printf "adresse de...\n";*)
 							end
@@ -4733,8 +4742,10 @@ and  onlyAexpressionaux exp =
 							begin
 (*								let sygmaIndex = getSygma lidx in*)
 											
-								let sygmaIndex = (*(CONSTANT(CONST_INT("0"))) in*)
-										if lidx = [] then NOTHING else if (List.tl lidx) = [] then (CONSTANT(CONST_INT("0"))) else  i in
+								(*let sygmaIndex = (*(CONSTANT(CONST_INT("0"))) in*)
+										if lidx = [] then NOTHING else if (List.tl lidx) = [] then (CONSTANT(CONST_INT("0"))) else  i in*)
+							    let sygmaIndex = (*(CONSTANT(CONST_INT("0"))) in*)
+										if lidx = [] then (*NOTHING else if (List.tl lidx) = [] then *)(CONSTANT(CONST_INT("0"))) else if (List.tl lidx) = [] then i else NOTHING in
 								nouvExp := UNARY(ADDROF,BINARY (ADD, (VARIABLE(tab)), sygmaIndex)) ;
 (*print_expression !nouvExp 0; new_line(); Printf.printf "adresse de...\n";*)
 							end

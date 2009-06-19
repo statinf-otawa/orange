@@ -37,7 +37,7 @@ let vEPSILONINT = ref (CONSTANT (CONST_INT "1"))
 (*let vEPSILON = ref (CONSTANT (CONST_FLOAT "0.001"))*)
 let isIntoSwithch = ref false
 
-let (estDansBoucle  : bool ref) = ref false
+let (isIntoLoop  : bool ref) = ref false
 let torename = ref ""
 
 let isLoopOrIFId x =
@@ -4458,7 +4458,7 @@ Printf.printf"memassign as\n";	*)
 print_expVA myCond; new_line();*)
 
 		(*print_expTerm myTest;new_line();*)
-		if !estDansBoucle = false then
+		if !isIntoLoop = false then
 		begin
 			if estTrue myTest then  evalStore i1 a g
 			else 
@@ -4495,17 +4495,17 @@ Printf.printf "fin \n";*)
 		begin
 (*Printf.printf "dans boucle\n" ;*)
 					(*let ifassign = filterIF a in*)
-					 let cTest = (*consInitTest cond myCond*) [] in 
-					 let resT = evalStore (BEGIN(List.append cTest [i1])) (*ifassign*)[] [] in
+					 
+					 let resT = evalStore (BEGIN( [i1])) (*ifassign*)[] [] in
 					 let listeIF = (rechercheLesVar resT []) in
 					 
-					 let resF =  evalStore (BEGIN(List.append cTest [i2] (*ifassign*)))[]  [] in	
+					 let resF =  evalStore (BEGIN( [i2] (*ifassign*)))[]  [] in	
 (*Printf.printf "evalStore if TRUE false\n"; 
 
 print_expVA myCond; new_line();
 
-print_expTerm myTest;new_line();
-Printf.printf "les as de if T \n" ;
+print_expTerm myTest;new_line();*)
+(*Printf.printf "les as de if T \n" ;
 afficherListeAS resT;
 Printf.printf "fin \n";
 Printf.printf "les as de if F \n" ;
@@ -4516,10 +4516,11 @@ Printf.printf "fin \n";*)
 					 	
 					 let resA = produit resT resF  in	
 					 
-					 produitEm a resA inter
+					 let res =  produitEm a resA inter in
 					(* let resA = !listeASCourant in	
 						listeASCourant := []; 
-					 produitEm a resA inter	;*)
+					 produitEm a resA inter	;*)(*afficherListeAS res;*)
+					 res
 		end;
 (*Printf.printf "fin evalStore IF THEN ELSE\n";
 print_expVA myCond; new_line();
@@ -4537,9 +4538,9 @@ Printf.printf "fin \n";*)
 
 		print_expTerm myTest;new_line();*)
 		
-		(*if !estDansBoucle = true then Printf.printf "IF DANS BOUCLE\n";*)
-		if (!estDansBoucle = false && estTrue myTest)  then evalStore i1 a g
-		else if (!estDansBoucle = true) then
+		(*if !isIntoLoop = true then Printf.printf "IF DANS BOUCLE\n";*)
+		if (!isIntoLoop = false && estTrue myTest)  then evalStore i1 a g
+		else if (!isIntoLoop = true) then
 			begin
 				(*Printf.printf "evalStore if TRUE dans boucle\n"; *)
 				(*let ifassign = filterIF a in*)
@@ -4709,7 +4710,7 @@ Printf.printf "fin \n";*)
 					else 
 					begin
 						(*	Printf.printf "dans boucle\n";*)
-						 estDansBoucle:=true;
+						 isIntoLoop:=true;
 						let corps =   (match corpsAbs with CORPS (BEGIN(ccc)) -> ccc | CORPS (ccc) -> [ccc] |_->[]) in
 
 (*if corps =[] then Printf.printf "evalStore fonction dans boucle %s appel %d corps vide...!!!!!!!\n" nomFonc n; *)

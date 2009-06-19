@@ -147,10 +147,16 @@ let rec getComps  = function
                printf "Evalue le resultat partiel pour: %s\n" fn.nom;
        		   let globales = 	!alreadyAffectedGlobales in
                globalesVar := !alreadyAffectedGlobales;
-               let typeE = TO.TFONCTION(fn.nom,!TO.numAppel, fn.lesAffectations, [], [], [], [],  [], true, false) in
+               let typeE = TO.TFONCTION(fn.nom,!TO.numAppel, fn.lesAffectations, [], [], [], [],  [], true, true) in
+
+
+				(*afficherLesAffectations fn.lesAffectations;*)
                TO.dernierAppelFct := typeE;
                TO.predDernierAppelFct := typeE;
+			   isIntoLoop:=true;
                let (_,_,_) = TO.evaluerFonction (fn.nom) fn []  (EXP(NOTHING))   [typeE]  typeE true !listeASCourant in () ;
+
+			   isIntoLoop:=true;
                let compAS: abstractStore list = 
 					filterwithoutInternal (evalStore (new_instBEGIN fn.lesAffectations) [] []) (listeOutputs fn.listeES) globales in
                printf "..l'abstractStore fait %u entrees, affichage: \n"(List.length(compAS));
@@ -180,7 +186,7 @@ let analysePartielle file =
  nbImbrications := 0;
  TO.enTETE :=  false;
  TO.estNulEng :=  false;
- TO.estDansBoucle :=  false;	 
+ TO.estDansBoucle :=  true;	 
  analyse_defs file;
  printf "analyse_defs OK, maintenant lance evaluation des composants.\n";
  getComps !doc.laListeDesFonctions;
