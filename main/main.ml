@@ -77,6 +77,7 @@ let partial = ref false
 
 let existsPartialResult _ = false
 
+let rpo_dir = ref "."
 
 
 module TO = Orange.Maker(Orange.PartialAdapter(Cextraireboucle.TreeList))
@@ -112,7 +113,9 @@ let opts = [
 	("-c", Arg.String(fun file ->list_file_calipso := file :: !list_file_calipso),
 		"execute calipso");
 	("-f", Arg.String (fun file -> calipso_concat := true ; calipso_result := file ; add_file_and_name file),
-		"concat file parsing by calipso" );		
+		"concat file parsing by calipso" );
+	("-rpo", Arg.String (fun dir -> rpo_dir := dir),
+		"Directory where partial results (rpo files) will be saved.");
 ]
 
 let calip filename = 
@@ -161,7 +164,7 @@ let rec getComps  = function
                printf "..affichage des info. de boucles parametriques: \n";
                mainFonc := ref fn.nom;
                let (result, _) = TO.afficherInfoFonctionDuDocUML !TO.docEvalue.TO.maListeEval in
-	       let fName = (fn.nom)^".rpo" in
+	       let fName = (Filename.concat !rpo_dir ((fn.nom)^".rpo")) in
 	       printf "Stockage dans %s\n" fName;
 		  (* TO.afficherCompo	   result; *)   
 	       let chan = Unix.out_channel_of_descr (Unix.openfile fName [Unix.O_WRONLY;Unix.O_TRUNC;Unix.O_CREAT] 0o644) in
@@ -199,8 +202,7 @@ let from_file_list = List.map (function f -> (INCLUDE f))
 (* Main Program *)
 let _ =
 	(*Calipso.process*)
-
-
+	
 	(* Get the output *)
 	let (output, close) =
 		if !out_file = "" then (stdout,false)
@@ -239,6 +241,7 @@ let _ =
 	 
 	);
 	
+	Cextraireboucle.set_rpo_dir (!rpo_dir);
 	Cextraireboucle.sort_list_file_and_name !list_file_and_name;
 	prerr_string "names&files\n";
 	List.iter (fun r -> prerr_string (r ^ "\n")) !list_file_and_name;

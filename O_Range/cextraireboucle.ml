@@ -21,6 +21,8 @@ open Coutput
 open Increment
 open Printf
 
+let rpo_dir = ref "."
+
 let files: string list ref = ref []
 let names : (string ref) list ref =  ref[]
 
@@ -41,6 +43,9 @@ let rec  sort_list_file_and_name li=
 	[e] ->  if (fich e) then add_file (e) else add_name (e)
 	|e::l -> if (fich e) then begin add_file (e) ; sort_list_file_and_name l end else begin add_name (e) ; sort_list_file_and_name l end
 	|[]-> failwith ("parsing out")
+
+let set_rpo_dir rdir =
+	rpo_dir := rdir
 
 let (mainFonc :string ref ref) =ref( ref "")
 let (evalFunction:( string ref) list ref)= (ref [])
@@ -4344,7 +4349,7 @@ and ajouterReturn nomF lesAffectations =
 	
 	
 and getPartialResult nom = 
-    let nom = (nom^".rpo") in
+    let nom = (Filename.concat !rpo_dir (nom^".rpo")) in
     let chan = Unix.in_channel_of_descr (Unix.openfile nom [Unix.O_RDONLY] 0) in
     let (partialResult : compInfo) = Marshal.from_channel chan in  
 	close_in chan;
