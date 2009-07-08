@@ -78,7 +78,7 @@ let partial = ref false
 let existsPartialResult _ = false
 
 let rpo_dir = ref "."
-
+let fun_list_file = ref ""
 
 module TO = Orange.Maker(Orange.PartialAdapter(Cextraireboucle.TreeList))
 module XO = Orange.Maker(Orange.PartialAdapter(Orange.MonList))
@@ -116,6 +116,8 @@ let opts = [
 		"concat file parsing by calipso" );
 	("-rpo", Arg.String (fun dir -> rpo_dir := dir),
 		"Directory where partial results (rpo files) will be saved.");
+	("-fun-list", Arg.String (fun file -> fun_list_file := file),
+		"File with the list of function name to count the number of calls.");
 ]
 
 let calip filename = 
@@ -198,6 +200,20 @@ let rec do_concat output file =
 	|_ -> failwith "echec concatenation calipso"
 
 let from_file_list = List.map (function f -> (INCLUDE f))
+
+(* Return a list of function names from filename *)
+let get_fun_list filename =
+	match filename with
+		| "" -> []
+		| _ ->
+			let content = ref "" in
+			let chan = open_in filename in
+			try
+				while true; do
+					content := (!content) ^ "\n" ^ (input_line chan)
+				done; []
+			with End_of_file ->
+				close_in chan; Str.split (Str.regexp "[ \t\n]+") !content
   
 (* Main Program *)
 let _ =
@@ -225,6 +241,7 @@ let _ =
 
 	(*let filesmem = !files in*)
 	Arg.parse opts add_file_and_name banner;
+	list_file_and_name := !list_file_and_name @ (get_fun_list !fun_list_file);
 	if (List.length !list_file_and_name < 2) then
 		begin
 			Arg.usage opts banner;
