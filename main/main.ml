@@ -7,6 +7,7 @@
 
 open Printf
 open Frontc
+open Mergec
 
 open Cextraireboucle
 open Cvarabs
@@ -66,8 +67,6 @@ type compInfo = {name:string; absStore: typeListeAS; compES:listeDesES; expBorne
 
 
 let myArgs: myArgs_t list ref = ref []
-type myArgs_g = GRAPHE of string
-let myArgsg: myArgs_g list ref = ref []
 
 let myComps: compInfo list ref = ref []
 let run_calipso = ref false
@@ -77,6 +76,7 @@ let calipso_concat = ref false
 
 let partial = ref false
 let onlyGraphe = ref false
+let completeGraphe = ref false
 let existsPartialResult _ = false
 
 let rpo_dir = ref "."
@@ -106,7 +106,8 @@ let opts = [
 		"Pass this definition to the preprocessor.");
 	("-k", Arg.String (fun def -> (myArgs := (COMP def) :: !myArgs ; partial := true)),
 		"Declare a function as a component to do partial analysis.");
-	("-g", Arg.String (fun def -> (myArgsg := (GRAPHE def) :: !myArgsg ;onlyGraphe := true)), "generate informations to draw call graph");
+	("-g", Arg.Unit (fun _ -> onlyGraphe := true),
+		"Generate informations to draw call graph for given functions");
 	("-U", Arg.String (fun undef -> args := (UNDEF undef) :: !args),
 		"Pass this undefinition to the preprocessor.");
 	("-l", Arg.Unit (fun _ -> args := (Frontc.LINE_RECORD true)::!args),
@@ -245,12 +246,24 @@ let _ =
 	(*let filesmem = !files in*)
 	Arg.parse opts add_file_and_name banner;
 	list_file_and_name := !list_file_and_name @ (get_fun_list !fun_list_file);
-	if (List.length !list_file_and_name < 2) then
+	if ((List.length !list_file_and_name < 2) && (not !onlyGraphe)) then
 		begin
 			Arg.usage opts banner;
 			prerr_string "ERROR: select at least one sourcefile and one task entry function\n";
 			exit 1
-		end;
+		end
+	else if (!onlyGraphe)
+		then if (List.length !list_file_and_name = 1)
+			then begin
+				list_file_and_name := !list_file_and_name @ ["main"];
+				completeGraphe := true
+			end
+		else if (List.length !list_file_and_name = 0)
+			then begin
+				Arg.usage opts banner;
+				prerr_string "ERROR: select at least one sourcefile\n";
+				exit 1
+			end;
 	(*printlist !list_file_and_name ;*)
 	List.iter calip !list_file_calipso;
 	if (!calipso_concat) then (
@@ -276,19 +289,29 @@ let _ =
 	);
 	let a1 = !args in
 			let a2 = List.filter (fun e ->  match e with LINE_RECORD _-> false |_-> true) a1 in			
-				 
+				
+				(* Merge given files into one with MergeC *)
+				let getMergedFile args =
+					 let cfiles = (List.map
+							(fun filename ->
+								match (Frontc.parse (FROM_FILE(filename) :: args)) with
+									| PARSING_ERROR -> []
+									| PARSING_OK(defs) -> defs
+							)
+							!Cextraireboucle.files
+						) in
+						let chk_cfiles = (Mergec.check "mergec_rename__" cfiles)
+						in let merge_file = Mergec.merge chk_cfiles
+						(*in let _ = Cprint.print stdout merge_file*)
+						in merge_file in
 				
 				(*Printf.printf "Il y a %u files et %u names et %u args \n" (List.length !Cextraireboucle.files) (List.length !Cextraireboucle.names) (List.length(!args));*)
 				
 				let firstParse =
-						(match (Frontc.parse  ((FROM_FILE (List.hd !Cextraireboucle.files)) :: a1)) with 
-							PARSING_ERROR ->  []
-							| PARSING_OK f2 -> 
-							Rename.go (Frontc.trans_old_fun_defs  f2 )
-
-								
-							 ) in
-
+						let merge_file = (getMergedFile a1)
+						in Rename.go (Frontc.trans_old_fun_defs merge_file)
+						in
+												
 				if (!partial) then (
 		 		  TO.initref stdout firstParse
 				) else (
@@ -297,16 +320,14 @@ let _ =
 		
 				(*Cprint.print stdout firstParse ; (*plante avec l'option -l*)*)
 				let secondParse =
-						(match Frontc.parse  ((FROM_FILE (List.hd !Cextraireboucle.files)) :: a2) with 
-							PARSING_ERROR ->  []
-							| PARSING_OK f2 -> 
-
-							Rename.go(Frontc.trans_old_fun_defs  f2 )  ) in
-				
+						let merge_file = (getMergedFile a2)
+						in Rename.go(Frontc.trans_old_fun_defs  merge_file ) in
+										
 				
 	if !onlyGraphe then
-			
-		Resumeforgraph.resume secondParse false
+		if (!completeGraphe)
+			then Resumeforgraph.resume secondParse true
+			else Resumeforgraph.resume secondParse false
 	else
 	begin	
 
