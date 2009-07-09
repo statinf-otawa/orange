@@ -13,6 +13,7 @@ open Cvarabs
 open Cabs
 open Coutput
 open Orange
+open Resumeforgraph
 
 
 
@@ -65,7 +66,8 @@ type compInfo = {name:string; absStore: typeListeAS; compES:listeDesES; expBorne
 
 
 let myArgs: myArgs_t list ref = ref []
-
+type myArgs_g = GRAPHE of string
+let myArgsg: myArgs_g list ref = ref []
 
 let myComps: compInfo list ref = ref []
 let run_calipso = ref false
@@ -74,7 +76,7 @@ let calipso_result = ref ""
 let calipso_concat = ref false
 
 let partial = ref false
-
+let onlyGraphe = ref false
 let existsPartialResult _ = false
 
 let rpo_dir = ref "."
@@ -104,6 +106,7 @@ let opts = [
 		"Pass this definition to the preprocessor.");
 	("-k", Arg.String (fun def -> (myArgs := (COMP def) :: !myArgs ; partial := true)),
 		"Declare a function as a component to do partial analysis.");
+	("-g", Arg.String (fun def -> (myArgsg := (GRAPHE def) :: !myArgsg ;onlyGraphe := true)), "generate informations to draw call graph");
 	("-U", Arg.String (fun undef -> args := (UNDEF undef) :: !args),
 		"Pass this undefinition to the preprocessor.");
 	("-l", Arg.Unit (fun _ -> args := (Frontc.LINE_RECORD true)::!args),
@@ -272,12 +275,10 @@ let _ =
 	  Cextraireboucle.maj hd tl
 	);
 	let a1 = !args in
-				
-				
-	let a2 = List.filter (fun e ->  match e with LINE_RECORD _-> false |_-> true) a1 in			
+			let a2 = List.filter (fun e ->  match e with LINE_RECORD _-> false |_-> true) a1 in			
 				 
 				
-				Printf.printf "Il y a %u files et %u names et %u args \n" (List.length !Cextraireboucle.files) (List.length !Cextraireboucle.names) (List.length(!args));
+				(*Printf.printf "Il y a %u files et %u names et %u args \n" (List.length !Cextraireboucle.files) (List.length !Cextraireboucle.names) (List.length(!args));*)
 				
 				let firstParse =
 						(match (Frontc.parse  ((FROM_FILE (List.hd !Cextraireboucle.files)) :: a1)) with 
@@ -287,7 +288,6 @@ let _ =
 
 								
 							 ) in
-				
 
 				if (!partial) then (
 		 		  TO.initref stdout firstParse
@@ -302,6 +302,15 @@ let _ =
 							| PARSING_OK f2 -> 
 
 							Rename.go(Frontc.trans_old_fun_defs  f2 )  ) in
+				
+				
+	if !onlyGraphe then
+			
+		Resumeforgraph.resume secondParse false
+	else
+	begin	
+
+
 				(*Cprint.print stdout secondParse ; *)
 				
 				(*Analyser.initref stdout secondParse;*)
@@ -319,8 +328,8 @@ let _ =
 						let out = open_out !out_file in
 						output_string out result;
 						close_out out
-				end;
-				
+				end
+		end;		
 
 
 

@@ -93,12 +93,12 @@ and convert_expression (exp : expression) =
 					QUESTION ((convert_expression exp1), (convert_expression exp2), (convert_expression exp3))
 			| CAST (typ, exp) ->		CAST (typ, (convert_expression exp))
 			| CALL (exp, args) ->		
-						if exp = VARIABLE("printf") || exp= VARIABLE("sprintf") || exp = VARIABLE("fprintf") then
+						(*if exp = VARIABLE("printf") || exp= VARIABLE("sprintf") || exp = VARIABLE("fprintf") then
 						begin
 							(* to be completed || exp ="scanf" *)
 							(*lineariser_comma_exp(exps)*) NOTHING
 						end
-						else	CALL(exp,convert_comma_exps args)
+						else*)	CALL(exp,convert_comma_exps args)
 			| COMMA exps ->				COMMA(convert_comma_exps exps)
 			| CONSTANT cst -> 			CONSTANT cst	
 			| VARIABLE name ->			
