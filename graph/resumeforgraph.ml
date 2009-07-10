@@ -10,12 +10,14 @@
 open Cextraireboucle 
 open Cvarabs
 open Printf
+open Tod
 (*open Cevalexpression*)
  
 
  
 let callsList = ref []
 
+let graph = ref (Digraph("", false, []))
 
 (* body ifnumber loopnumber callnumber assignmentnumber calllist *)
 let rec getFunctionNumbers  body ifn ln cl an clist onlyonecall=
@@ -80,7 +82,8 @@ List.iter(fun (_,info) ->
 
 let rec printcallslist namecalling l =
 List.iter(fun (name, number)->
-Printf.printf "%s->%s [label=\"%d\"]\n" namecalling name number
+graph := Tod.add_edge_l !graph namecalling name (string_of_int number)
+(*Printf.printf "%s->%s [label=\"%d\"]\n" namecalling name number*)
 (*Printf.printf "\t->\t%d calls of %s\n" number name ;*)
 )l
 
@@ -96,12 +99,12 @@ let listAlreadyNodeFunction = ref []
 
 
 
-let rec getPartialgraph name l=
+let rec getPartialgraph name l =
    if existFunction name l then
    begin
 		let (name, n1ifn, n1ln, n1cl,n1an, n1assignFuncNameNbCalls ) = getFunction name l in
 		 listAlreadyNodeFunction := List.append [name] !listAlreadyNodeFunction;
-	 	 Printf.printf "%s [shape=box, label=\"%s (if=%d loops=%d functionCalls=%d assign=%d)\"]\n" name name n1ifn n1ln n1cl n1an;
+		 graph := (Tod.add_node_a (!graph) name [NShape("box"); NLabel(Printf.sprintf "%s (if=%d loops=%d functionCalls=%d assign=%d)" name n1ifn n1ln n1cl n1an)]);
 		 (*Printf.printf "Function : %s ( %d if, %d loops, %d function calls, %d assignments)\n" name n1ifn n1ln n1cl n1an;*)
 		 if n1assignFuncNameNbCalls != [] then
 		 begin
@@ -117,7 +120,8 @@ and  completeSubGraph subgraph l =
 	if List.mem name !listAlreadyNodeFunction = false && existFunction name l then
 	begin
 			let (name, n1ifn, n1ln, n1cl,n1an, n1assignFuncNameNbCalls ) = getFunction name l in
-			Printf.printf "%s [shape=box, label=\"%s (if=%d loops=%d functionCalls=%d assign=%d)\"]\n" name name n1ifn n1ln n1cl n1an;
+			graph := Tod.add_node_a !graph name [NShape("box"); NLabel(Printf.sprintf "%s (if=%d loops=%d functionCalls=%d assign=%d)" name n1ifn n1ln n1cl n1an)];
+			(*Printf.printf "%s [shape=box, label=\"%s (if=%d loops=%d functionCalls=%d assign=%d)\"]\n" name name n1ifn n1ln n1cl n1an;*)
 			listAlreadyNodeFunction := List.append [name] !listAlreadyNodeFunction;
 			completeSubGraph n1assignFuncNameNbCalls  l ;
 			(*[subgraph name] { statement‐list }*)
@@ -128,8 +132,8 @@ and  completeSubGraph subgraph l =
 
 let getAllgraph l=
   List.iter (fun (name, n1ifn, n1ln, n1cl,n1an, n1assignFuncNameNbCalls ) -> 
-		 
-	 	Printf.printf "%s [shape=box, label=\"%s (if=%d loops=%d functionCalls=%d assign=%d)\"]\n" name name n1ifn n1ln n1cl n1an;
+		graph := Tod.add_node_a (!graph) (name) [NShape("box"); NLabel(Printf.sprintf "%s (if=%d loops=%d functionCalls=%d assign=%d)" name n1ifn n1ln n1cl n1an)];
+		(*Printf.printf "%s [shape=box, label=\"%s (if=%d loops=%d functionCalls=%d assign=%d)\"]\n" name name n1ifn n1ln n1cl n1an;*)
 		(*Printf.printf "Function : %s ( %d if, %d loops, %d function calls, %d assignments)\n" name n1ifn n1ln n1cl n1an;*)
 		if n1assignFuncNameNbCalls != [] then
 		begin
@@ -144,8 +148,29 @@ let resume secondParse complet=
 analyse_defs secondParse;
   getInfoFunctions doc;
  
-Printf.printf "digraph \"\" {\ncenter=1;\n{\n\t node [shape=plaintext, fontsize=12];\n}\n";
-if complet then getAllgraph !callsList else (listAlreadyNodeFunction := []; getPartialgraph !(!mainFonc) !callsList);
+(*Printf.printf "digraph \"\" {\ncenter=1;\n{\n\t node [shape=plaintext, fontsize=12];\n}\n";*)
+if complet then 
+begin
+	graph := Digraph("main", false, [
+		Attribute(GCenter(true));
+		NodeAttr([NShape("plaintext"); NFontSize(12)]);
+	]);
+	getAllgraph !callsList ;
+	Tod.write !graph (Filename.concat (!Cextraireboucle.out_dir) "main.dot");
+end
+else
+begin
+	List.iter (fun name ->
+		graph := Digraph(!name, false, [
+			Attribute(GCenter(true));
+			NodeAttr([NShape("plaintext"); NFontSize(12)]);
+		]);
+		listAlreadyNodeFunction := [];
+		(*getPartialgraph !(!mainFonc) !callsList;*)
+		getPartialgraph !name !callsList;
+		Tod.write !graph (Filename.concat (!Cextraireboucle.out_dir) (!name ^ ".dot"));
+	) (!Cextraireboucle.names)
+end	;
 (*  List.iter (fun (name, n1ifn, n1ln, n1cl,n1an, n1assignFuncNameNbCalls ) -> 
 		 
 	 	Printf.printf "%s [shape=box, label=\"%s (if=%d loops=%d functionCalls=%d assign=%d)\"]\n" name name n1ifn n1ln n1cl n1an;
@@ -162,5 +187,5 @@ if complet then getAllgraph !callsList else (listAlreadyNodeFunction := []; getP
 	)!callsList;*)
 
 	
-Printf.printf "\n}";
+(*Printf.printf "\n}";*)
    ;;

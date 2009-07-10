@@ -4,7 +4,7 @@ include Makefile.head
 # $Id: Makefile,v 1.2 2008/07/18 11:36:28 michiel Exp $
 
 
-SOURCES = resumeforgraph.ml 
+SOURCES = tod.ml resumeforgraph.ml
 	
 OCAMLC_CFLAGS += -g
 OCAMLC_LDFLAGS += -g

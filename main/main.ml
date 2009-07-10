@@ -45,10 +45,10 @@ end
 
 (* Options *)
 let banner =
-	"ctoxml V1.0 (02/14/04)\n" ^
+	"orange V1.0 (02/14/04)\n" ^
 	"Copyright (c) 2004, Hugues Cass� <hugues.casse@laposte.net>\n\n" ^
-	"SYNTAX:\tctoxml [options] files...\n" ^
-	"\tctoxml [options] --\n"
+	"SYNTAX:\torange [options] files...\n" ^
+	"\torange [options] --\n"
 
 let list_file_and_name: string list ref = ref []
 
@@ -79,7 +79,7 @@ let onlyGraphe = ref false
 let completeGraphe = ref false
 let existsPartialResult _ = false
 
-let rpo_dir = ref "."
+let out_dir = ref "."
 let fun_list_file = ref ""
 
 module TO = Orange.Maker(Orange.PartialAdapter(Cextraireboucle.TreeList))
@@ -118,8 +118,8 @@ let opts = [
 		"execute calipso");
 	("-f", Arg.String (fun file -> calipso_concat := true ; calipso_result := file ; add_file_and_name file),
 		"concat file parsing by calipso" );
-	("-rpo", Arg.String (fun dir -> rpo_dir := dir),
-		"Directory where partial results (rpo files) will be saved.");
+	("-outdir", Arg.String (fun dir -> out_dir := dir),
+		"Output directory for partial results (rpo files) or graphs (dot files).");
 	("-fun-list", Arg.String (fun file -> fun_list_file := file),
 		"File with the list of function name to count the number of calls.");
 ]
@@ -170,7 +170,7 @@ let rec getComps  = function
                printf "..affichage des info. de boucles parametriques: \n";
                mainFonc := ref fn.nom;
                let (result, _) = TO.afficherInfoFonctionDuDocUML !TO.docEvalue.TO.maListeEval in
-	       let fName = (Filename.concat !rpo_dir ((fn.nom)^".rpo")) in
+	       let fName = (Filename.concat !out_dir ((fn.nom)^".rpo")) in
 	       printf "Stockage dans %s\n" fName;
 		  (* TO.afficherCompo	   result; *)   
 	       let chan = Unix.out_channel_of_descr (Unix.openfile fName [Unix.O_WRONLY;Unix.O_TRUNC;Unix.O_CREAT] 0o644) in
@@ -274,7 +274,7 @@ let _ =
 	 
 	);
 	
-	Cextraireboucle.set_rpo_dir (!rpo_dir);
+	Cextraireboucle.set_out_dir (!out_dir);
 	Cextraireboucle.sort_list_file_and_name !list_file_and_name;
 	prerr_string "names&files\n";
 	List.iter (fun r -> prerr_string (r ^ "\n")) !list_file_and_name;
