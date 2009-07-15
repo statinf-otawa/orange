@@ -8,6 +8,7 @@
 open Printf
 open Frontc
 open Mergec
+open Calipso
 
 open Cextraireboucle
 open Cvarabs
@@ -70,9 +71,6 @@ let myArgs: myArgs_t list ref = ref []
 
 let myComps: compInfo list ref = ref []
 let run_calipso = ref false
-let list_file_calipso:string list ref = ref []
-let calipso_result = ref ""
-let calipso_concat = ref false
 
 let partial = ref false
 let onlyGraphe = ref false
@@ -114,23 +112,14 @@ let opts = [
 		"Generate #line directive.");
 	("--", Arg.Set from_stdin,
 		"Takes input from standard input.");
-	("-c", Arg.String(fun file ->list_file_calipso := file :: !list_file_calipso),
-		"execute calipso");
-	("-f", Arg.String (fun file -> calipso_concat := true ; calipso_result := file ; add_file_and_name file),
-		"concat file parsing by calipso" );
+	("-c", Arg.Set run_calipso,
+		"Process input files using Calipso.");
 	("-outdir", Arg.String (fun dir -> out_dir := dir),
 		"Output directory for partial results (rpo files) or graphs (dot files).");
 	("-fun-list", Arg.String (fun file -> fun_list_file := file),
 		"File with the list of function name to count the number of calls.");
 ]
 
-let calip filename = 
-	let fileC=String.concat "" [filename;"c"] in 
-	let s= String.concat " " ["./../frontc/calipso/calipso -P   -rs -rr -rg   -rc -rb   -l";filename;">";fileC] in
-	match (Sys.command  s) with
-	  0 -> ()
-	 |_ -> failwith ("echec appel calipso pour fichier:" ^ filename)
-	
 let isComponent comp = 
   let rec aux = function
      [] -> false
@@ -197,12 +186,6 @@ let analysePartielle file =
  getComps !doc.laListeDesFonctions;
  print_string "OK, fini.\n"
 
-
-let rec do_concat output file =
-  match (Sys.command ("cat "^file^"c >> "^output)) with
-  	0 -> ()
-	|_ -> failwith "echec concatenation calipso"
-
 let from_file_list = List.map (function f -> (INCLUDE f))
 
 (* Return a list of function names from filename *)
@@ -221,8 +204,6 @@ let get_fun_list filename =
   
 (* Main Program *)
 let _ =
-	(*Calipso.process*)
-	
 	(* Get the output *)
 	let (output, close) =
 		if !out_file = "" then (stdout,false)
@@ -265,14 +246,6 @@ let _ =
 				exit 1
 			end;
 	(*printlist !list_file_and_name ;*)
-	List.iter calip !list_file_calipso;
-	if (!calipso_concat) then (
-	  try 
-	    Sys.remove (!calipso_result)
-	    with _ -> () ;	     
-	  List.iter (do_concat !calipso_result) !list_file_calipso;
-	 
-	);
 	
 	Cextraireboucle.set_out_dir (!out_dir);
 	Cextraireboucle.sort_list_file_and_name !list_file_and_name;
@@ -300,10 +273,27 @@ let _ =
 							)
 							!Cextraireboucle.files
 						) in
-						let chk_cfiles = (Mergec.check "mergec_rename__" cfiles)
-						in let merge_file = Mergec.merge chk_cfiles
-						(*in let _ = Cprint.print stdout merge_file*)
-						in merge_file in
+					(* Calipso processing *)
+					let cfiles = if (!run_calipso)
+						then (List.map
+								(fun defs -> (Calipso.process_remove
+									defs
+									false	(* verbose *)
+									false	(* use bitfield mask *)
+									true	(* remove goto *)
+									true	(* remove break *)
+									true	(* remove continue *)
+									true	(* remove return *)
+									Reduce.RAW	(* Remove switchs *)
+									Algo.LEFT
+								))
+								cfiles
+							)
+						else cfiles in
+					let chk_cfiles = (Mergec.check "mergec_rename__" cfiles)
+					in let merge_file = Mergec.merge chk_cfiles
+					(*in let _ = Cprint.print stdout merge_file*)
+					in merge_file in
 				
 				(*Printf.printf "Il y a %u files et %u names et %u args \n" (List.length !Cextraireboucle.files) (List.length !Cextraireboucle.names) (List.length(!args));*)
 				
