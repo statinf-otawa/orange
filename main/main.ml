@@ -276,17 +276,13 @@ let _ =
 					(* Calipso processing *)
 					let cfiles = if (!run_calipso)
 						then (List.map
-								(fun defs -> (Calipso.process_remove
-									defs
-									false	(* verbose *)
-									false	(* use bitfield mask *)
-									true	(* remove goto *)
-									true	(* remove break *)
-									true	(* remove continue *)
-									true	(* remove return *)
-									Reduce.RAW	(* Remove switchs *)
-									Algo.LEFT
-								))
+								(fun defs -> (Calipso.process_remove defs [
+									Calipso.RemoveGoto;
+									Calipso.RemoveBreak;
+									Calipso.RemoveContinue;
+									Calipso.RemoveReturn;
+									Calipso.RemoveSwitch(Reduce.RAW);
+								]))
 								cfiles
 							)
 						else cfiles in
