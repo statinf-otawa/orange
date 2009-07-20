@@ -114,17 +114,25 @@ let opts = [
 		"Takes input from standard input.");
 	("-c", Arg.Set run_calipso,
 		"Process input files using Calipso.");
-	("-outdir", Arg.String (fun dir -> out_dir := dir),
+	("-outdir", Arg.String (fun dir -> out_dir := dir; Cextraireboucle.set_out_dir dir;),
 		"Output directory for partial results (rpo files) or graphs (dot files).");
 	("-fun-list", Arg.String (fun file -> fun_list_file := file),
 		"File with the list of function name to count the number of calls.");
 ]
 
+let calip filename = 
+	let fileC=String.concat "" [filename;"c"] in 
+	let s= String.concat " " ["./../frontc/calipso/calipso -P   -rs -rr -rg   -rc -rb   -l";filename;">";fileC] in
+	match (Sys.command  s) with
+	  0 -> ()
+	 |_ -> failwith ("echec appel calipso pour fichier:" ^ filename)
+	
 let isComponent comp = 
   let rec aux = function
      [] -> false
     | (COMP comp2)::r -> if (comp = comp2) then (true) else (aux r)
   in aux !myArgs
+
   
 
 (**
@@ -156,6 +164,28 @@ let rec getComps  = function
 			   TO.isPartialisation:=false;
                afficherListeAS compAS;
                printf "\n";
+               (* find if there is a loop inside abstract stores *)
+               let nb_loop = (List.fold_left
+                    (fun nb_loop absstore ->
+                    	match absstore with
+                    		| ASSIGN_SIMPLE (s, e) -> 
+                    			(match e with
+                    				| EXP(ex) ->
+                    					let startname = (
+                    						try (String.sub s 0 3)
+											with Invalid_argument(_) -> "")
+										in if (startname = "TWH")
+											then nb_loop + 1
+											else nb_loop
+									|_-> nb_loop
+								)
+							| _ -> nb_loop
+                    )
+                    0
+                    compAS
+               ) in let has_loop = (nb_loop > 0)
+               in Resumeforgraph.append_to_dot_size fn.nom (List.length(compAS)) has_loop;
+               (*printf "Nb loop : %d\n" nb_loop;               *)
                printf "..affichage des info. de boucles parametriques: \n";
                mainFonc := ref fn.nom;
                let (result, _) = TO.afficherInfoFonctionDuDocUML !TO.docEvalue.TO.maListeEval in
