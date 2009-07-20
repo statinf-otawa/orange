@@ -557,7 +557,7 @@ let print graph = (Printf.printf "%s" (string_of_graph graph))
 	@param graph the ToD graph to be saved.
 	@param filename the file name of the .dot file.
 *)
-let write comment graph filename =
+let write graph filename =
 	let file = open_out filename
-	in let _ = Printf.fprintf file "%s %s" comment (string_of_graph graph)
+	in let _ = Printf.fprintf file "%s" (string_of_graph graph)
 	in close_out file
