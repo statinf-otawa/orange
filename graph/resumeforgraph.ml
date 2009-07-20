@@ -14,10 +14,6 @@ open Tod
 (*open Cevalexpression*)
  
 
- 
-
-
-
 
 (* node box are 
 	  GREEN when function containt only assign but no loop no call and no if type ONLYASSIGN
@@ -38,11 +34,11 @@ let undifinedFunctioncost = 1
 
 
 let listAlreadyNodeFunction = ref []
-
-
+let listOfFunctionWithLoop = ref []
 
 
 let graph = ref (Digraph("", false, []))
+
 type typeFunction =
 	  ONLYASSIGN
 	| ONLYASSIGNANDIF
@@ -175,14 +171,14 @@ List.iter(fun (_,info) ->
 		let (n1ifn, n1ln, n1cl,n1an, n1clist, n1onlyonecall,_,_, cinl,cini ) = getFunctionNumbers  assign 0 0 0 0 [] [] false false [] [] in
   		if assign = [] then Printf.printf "%s corps vide \n" name;
  		let (typeF, color ) = getTypeAndBoxColor n1ifn n1ln n1cl n1an (cinl=[]) in
-		let fontColor =  if typeF = OTHERCALLORLOOP && n1ln != 0 then  getColorValue RED else getColorValue BLACK in (*NFontColor*)
+		let fontColor =  if typeF = OTHERCALLORLOOP && n1ln != 0 then  ( if List.mem name !listOfFunctionWithLoop = false then listOfFunctionWithLoop := List.append [name] !listOfFunctionWithLoop; getColorValue RED )
+						 else getColorValue BLACK in (*NFontColor*)
 		 
   		callsList := List.append [ name, n1ifn, n1ln, n1cl,n1an, consnbCallList n1clist n1onlyonecall cinl cini, color, fontColor, typeF, n1onlyonecall]  !callsList
 (*callsList := List.append [ name, n1ifn, n1ln, n1cl,n1an, consnbCallList n1clist n1onlyonecall cinl cini, color]  !callsList*)
-		
+
 
 )!docu.laListeDesFonctions
-
 
 let existFunction name l  =  List.exists(fun (n, _, _, _, _, _ ,_,_,_,_) -> n = name)l
 
@@ -207,12 +203,13 @@ let rec alldef fl =
 if fl = [] then true else if existFunction (List.hd fl) !callsList = false  then  alldef (List.tl fl) else existFunctionEval (List.hd fl)  !callsListEval && alldef (List.tl fl)
 
 
-let existFunctionEvalNumbers name l  =  List.exists(fun (n, _, _) -> n = name)l
+let existFunctionEvalNumbers name l  =  List.exists(fun (n, _, _,_,_) -> n = name)l
 
-let getFunctionAssosNumbers name l = List.find (fun (n, _, _) -> n = name)l
+let getFunctionAssosNumbers name l = List.find (fun (n, _, _,_,_) -> n = name)l
 
 
-let getFunctionNumbersaux name l = if existFunctionEvalNumbers name  l then getFunctionAssosNumbers name l else (name, 0,0)
+let getFunctionNumbersaux name l = if existFunctionEvalNumbers name  l then getFunctionAssosNumbers name l else (name, 0,0,0, false)
+
 let getFunctionCallFromTo calling call  = 
 let (_, _, _, _,_, clist, _, _,_,_ ) = getFunction calling !callsList in
 List.assoc call clist 
@@ -248,7 +245,13 @@ begin
 					match typeF with 
 							ONLYASSIGN -> callsListEval := List.append [(name,an)] !callsListEval ; 
 						| 	ONLYASSIGNANDIF -> callsListEval := List.append [(name,an + ifn)] !callsListEval ; 
-						| 	LOOPWITHCALL | 	OTHERCALLORLOOP ->
+						| 	LOOPWITHCALL ->
+							    if List.mem name !listOfFunctionWithLoop = false then listOfFunctionWithLoop := List.append [name] !listOfFunctionWithLoop; 			
+								if alldef fl then 
+									callsListEval := List.append [(name,an + ifn + (getSizeEachcall  funcNameNbCalls) )] !callsListEval 
+								else (newcurrentcallslist := List.append [first] !newcurrentcallslist;)
+
+						| 	OTHERCALLORLOOP ->
 								if alldef fl then 
 									callsListEval := List.append [(name,an + ifn + (getSizeEachcall  funcNameNbCalls) )] !callsListEval 
 								else (newcurrentcallslist := List.append [first] !newcurrentcallslist;)
@@ -270,6 +273,7 @@ end
 let listAssosFonctioNameNBCalls = ref []
 
 
+
 let rec evalCallListNumbers  partial listAssosFonctioNameNBCalls=
 (* listAlreadyNodeFunction *)
 if listAssosFonctioNameNBCalls != [] then
@@ -277,14 +281,14 @@ begin
 	 let (first, next) =(List.hd listAssosFonctioNameNBCalls , List.tl listAssosFonctioNameNBCalls ) in
 		(match first with
 			
-		   (name, (_,_,fl)) -> 
+		   (name, (_,_,fl,endofred)) -> 
 		    let tofind =	 partial && List.mem name !listAlreadyNodeFunction || partial = false in
 			if tofind && existFunctionEvalNumbers name !callsListNumbers = false  then
 			begin
 				(
 								if alldefNumbers  fl partial then 
-								(   let (numberTotal, nbinloop) = getTotalCallsNumbers fl name  in
-									callsListNumbers := List.append [name,numberTotal, nbinloop] !callsListNumbers 
+								(   let (numberTotal, nbinloop,add,e) = getTotalCallsNumbers fl name  in
+									callsListNumbers := List.append [name,numberTotal, nbinloop,add,endofred||e] !callsListNumbers 
 								)
 								else (newcurrentNumberlist := List.append [first] !newcurrentNumberlist;)
 								
@@ -301,14 +305,14 @@ end
 
 
 and getTotalCallsNumbers fl name  =
-if fl = [] then (0,0)
+if fl = [] then (0,0,0,false)
 else
 begin
 	let (id, next) = (List.hd fl, List.tl fl) in
 	let (numberTotal, nbinloop,_) = getFunctionCallFromTo id name   in
-	let (_,idCallNumber, idloopCallNumber) = getFunctionNumbersaux id !callsListNumbers in
-	let (nexttotal, nextloop) = getTotalCallsNumbers next name  in
-	(idCallNumber*numberTotal+nexttotal, (idCallNumber - idloopCallNumber)*nbinloop + idloopCallNumber *numberTotal +nextloop)
+	let (_,idCallNumber, idloopCallNumber, add,endofred) = getFunctionNumbersaux id !callsListNumbers in
+	let (nexttotal, nextloop,nextall,redpred) = getTotalCallsNumbers next name  in
+	(idCallNumber*numberTotal+nexttotal, (idCallNumber - idloopCallNumber)*nbinloop + idloopCallNumber *numberTotal +nextloop,idloopCallNumber*nbinloop + add *(idCallNumber - idloopCallNumber)+add*2* nbinloop+nextall,endofred||redpred)
 end
 and alldefNumbers fl partial =
 
@@ -327,21 +331,20 @@ else
 
 
 
-
 let rec printcallslist namecalling l =
 List.iter(fun (name,(numberTotal, nbinloop,nbinif))->
-let edgeColor = if nbinif != 0 then getColorValue RED else getColorValue BLACK in (*EColor*)
+let (edgeColor,isendofrededge) = if nbinif != 0 then (getColorValue RED,true) else (getColorValue BLACK, false) in (*EColor*)
 if List.mem_assoc name !listAssosFonctioNameNBCalls then
 begin
-	let (nbcall,nbloopcall,listcalls)=List.assoc name !listAssosFonctioNameNBCalls in
+	let (nbcall,nbloopcall,listcalls,er)=List.assoc name !listAssosFonctioNameNBCalls in
 	if List.mem namecalling listcalls = false then
 		listAssosFonctioNameNBCalls := List.map(fun x->
-												 let (n,(nbcall,nbloopcall, listcalls))  = x in
-												 if n = name then (name,(numberTotal+nbcall,nbinloop+nbloopcall, List.append [namecalling] listcalls)) else x) !listAssosFonctioNameNBCalls
+												 let (n,(nbcall,nbloopcall, listcalls,endofrededge))  = x in
+												 if n = name then (name,(numberTotal+nbcall,nbinloop+nbloopcall, List.append [namecalling] listcalls, isendofrededge ||endofrededge||er )) else x) !listAssosFonctioNameNBCalls
 end
-else listAssosFonctioNameNBCalls := List.append [(name,(numberTotal,nbinloop,[namecalling]))] !listAssosFonctioNameNBCalls;
+else listAssosFonctioNameNBCalls := List.append [(name,(numberTotal,nbinloop,[namecalling],isendofrededge))] !listAssosFonctioNameNBCalls;
 
-graph := Tod.add_edge_l !graph namecalling name ((string_of_int numberTotal)^","^(string_of_int nbinloop)^","^(string_of_int nbinif)) edgeColor
+graph := Tod.add_edge_lc !graph namecalling name ((string_of_int numberTotal)^","^(string_of_int nbinloop)^","^(string_of_int nbinif)) edgeColor
 )l
 
 
@@ -355,13 +358,9 @@ let rec getPartialgraph name l =
 		let (name, n1ifn, n1ln, n1cl,n1an, n1assignFuncNameNbCalls, color, fontColor,_,_ ) = getFunction name l in
 		 
 		 listAlreadyNodeFunction := List.append [name] !listAlreadyNodeFunction;
-		 callsListNumbers :=  [ name,  1, 0 ] ;
+		 callsListNumbers :=  [ name,  1, 0 ,0,false] ;
 		 let comment = Printf.sprintf "(if=%d loop=%d call=%d assign=%d size=%d)"  n1ifn n1ln n1cl n1an (getFunctionSize name !callsListEval) in
-		 let (p_size, p_has_loop) = get_dot_size !dot_sizes name in
-		 let comment = (if (p_size = -1)
-		 	then comment
-		 	else comment ^ Printf.sprintf " (partialization: size=%d has loops=%B)" p_size p_has_loop) in
-		 graph := (Tod.add_node_a (!graph) name [NShape("box"); NLabel( name^"\n"^comment);NColor color ; NFontColor fontColor]);
+		 graph := (Tod.add_node_a (!graph) name [NShape("box"); NLabel( name^" "^comment);NColor color ; NFontColor fontColor]);
 		 if n1assignFuncNameNbCalls != [] then
 		 begin
             completeSubGraph n1assignFuncNameNbCalls  l ;
@@ -372,16 +371,19 @@ and  completeSubGraph subgraph l =
 	List.iter (fun (name, _)->
 	if List.mem name !listAlreadyNodeFunction = false && existFunction name l then
 	begin
+
 			let (name, n1ifn, n1ln, n1cl,n1an, n1assignFuncNameNbCalls, color , fontColor,_,_ ) = getFunction name l in
 			let comment = Printf.sprintf "(if=%d loop=%d call=%d assign=%d size=%d)"  n1ifn n1ln n1cl n1an (getFunctionSize name !callsListEval) in
 			let (p_size, p_has_loop) = get_dot_size !dot_sizes name in
 			let comment = (if (p_size = -1)
 		 		then comment
 		 		else comment ^ Printf.sprintf " (partialization: size=%d has loops=%B)" p_size p_has_loop) in
-			graph := Tod.add_node_a !graph name [NShape("box"); NLabel(name^"\n"^comment);NColor color; NFontColor fontColor];
+
+			graph := Tod.add_node_a !graph name [NShape("box"); NLabel(name^" "^comment);NColor color; NFontColor fontColor];
 
 (*			(*graph := Tod.add_node_a !graph name [NShape("box"); NLabel(Printf.sprintf "%s (if=%d loops=%d functionCalls=%d assign=%d)" name n1ifn n1ln n1cl n1an);NColor color; NFontColor fontColor];*)
 			graph := Tod.add_node_a !graph name [NShape("box"); NLabel(Printf.sprintf "%s" name); NComment(Printf.sprintf "if=%d loops=%d functionCalls=%d assign=%d)"  n1ifn n1ln n1cl n1an);NColor color; NFontColor fontColor];*)
+
 			listAlreadyNodeFunction := List.append [name] !listAlreadyNodeFunction;
 			completeSubGraph n1assignFuncNameNbCalls  l ;
 			printcallslist name n1assignFuncNameNbCalls;
@@ -389,15 +391,18 @@ and  completeSubGraph subgraph l =
 ) subgraph
 
 let getAllgraph l=
-callsListNumbers :=  [ !(!mainFonc),  1, 0 ] ;
+
+callsListNumbers :=  [ !(!mainFonc),  1, 0 ,0 ,false] ;
   List.iter (fun (name, n1ifn, n1ln, n1cl,n1an, n1assignFuncNameNbCalls, color, fontColor,_,_ ) -> 
 		let comment = Printf.sprintf "(if=%d loop=%d call=%d assign=%d size=%d)"  n1ifn n1ln n1cl n1an (getFunctionSize name !callsListEval) in
 		graph := Tod.add_node_a (!graph) name [NShape("box"); NLabel(name^"\n"^comment);NColor color; NFontColor fontColor];
+
 		if n1assignFuncNameNbCalls != [] then
 		begin
 			printcallslist name n1assignFuncNameNbCalls;
 		end
 	)l
+
 let resumeString =ref ""
 
 let biggesteString =ref ""
@@ -483,6 +488,7 @@ else !callsListEval
 
 
 let currentLevelChoosenNode = ref []
+let maybepessimisticloopcall = ref []
 
 let rec chooseClassified n (classifiedList:(int * string list) list) cl l currentLevelChoosen=
 
@@ -493,9 +499,13 @@ begin
 	biggesteString:=!biggesteString^Printf.sprintf "select level %d\n" (n+1); 
 	List.iter (fun name ->
 		let initsize = List.assoc name newCost in
-		let (_,nbc,nbcil) = getFunctionAssosNumbers name l  in  
-		let totalSize = ( nbcil*fixedPointCoef*initsize + (nbc - nbcil)*initsize) in
-		if totalSize > 2500 then (biggesteString:=!biggesteString^Printf.sprintf "\t%s   totalsize %d\n" name  totalSize ; currentLevelChoosenNode := List.append [name] !currentLevelChoosenNode)
+		let (_,nbc,nbcil,fixed,endofred) = getFunctionAssosNumbers name l  in  
+		let totalSize = ( nbcil*fixedPointCoef*initsize + (nbc - nbcil)*initsize + initsize *2 *fixed) in
+		let mayBePessimistic = if List.mem name !listOfFunctionWithLoop && endofred then 
+									(if List.mem name !maybepessimisticloopcall =false then  maybepessimisticloopcall:= List.append [name] !maybepessimisticloopcall; true) 
+							   else false in
+		if totalSize > 2500 || (mayBePessimistic && totalSize >1000) 
+			then (biggesteString:=!biggesteString^Printf.sprintf "\t%s   totalsize %d\n" name  totalSize ; currentLevelChoosenNode := List.append [name] !currentLevelChoosenNode)
 		)(List.assoc (n+1) classifiedList);
 
 	chooseClassified (n+1) classifiedList cl l !currentLevelChoosenNode	
@@ -510,13 +520,17 @@ let resumeForPartial l cl=
 	resumeString := Printf.sprintf "/*---------------------------------\n";
 	biggesteString := Printf.sprintf "\n\nmay be to partialise\n";
 	currentChoosenNode := [];
-		List.iter (fun(name,nbc,nbcil)->
+		List.iter (fun(name,nbc,nbcil,fixed,endofred)->
 			let initsize = (getFunctionSize name !callsListEval) in
 			if List.mem name !listAlreadyNodeFunction then
 			(
 		
-				let totalSize = ( nbcil*fixedPointCoef*initsize + (nbc - nbcil)*initsize) in
-				if totalSize > 2500 then (biggesteString:=!biggesteString^Printf.sprintf "%s   totalsize %d\n" name  totalSize ; currentChoosenNode := List.append [name,totalSize] !currentChoosenNode);
+				let totalSize = ( nbcil*fixedPointCoef*initsize + (nbc - nbcil)*initsize + initsize *2 *fixed) in
+				let mayBePessimistic = if List.mem name !listOfFunctionWithLoop && endofred then 
+									(if List.mem name !maybepessimisticloopcall =false then  maybepessimisticloopcall:= List.append [name] !maybepessimisticloopcall; true) 
+							   else false in
+				if totalSize > 2500 || (mayBePessimistic && totalSize >1000)  then 
+					(biggesteString:=!biggesteString^Printf.sprintf "%s   totalsize %d\n" name  totalSize ; currentChoosenNode := List.append [name,totalSize] !currentChoosenNode);
 				resumeString := !resumeString^Printf.sprintf "%s = nbcall %d, nbcallinloop %d, size %d, totalsize %d\n" name nbc nbcil initsize totalSize
 			)
 						
@@ -524,6 +538,11 @@ let resumeForPartial l cl=
 		let (classifiedList,_,_) = classified !currentChoosenNode !currentChoosenNode [] cl [] l in
 		if classifiedList != [] then  biggesteString:=!biggesteString^Printf.sprintf "\nFuntions are classified : 0 are the first to partialise ...\n" 
 		else biggesteString:=!biggesteString^Printf.sprintf "\nNothing to classifie...\n" ; 
+
+		if !maybepessimisticloopcall != [] then 
+			( biggesteString:=!biggesteString^Printf.sprintf "\nPessimism sources...predecessors of\n" ; List.iter (fun n-> biggesteString:=!biggesteString^Printf.sprintf "%s\n" n ;)!maybepessimisticloopcall)
+		else  biggesteString:=!biggesteString^Printf.sprintf "\nNo pessimism sources...\n" ; 
+		
 		List.iter (fun(number,l)->
 			  biggesteString:=!biggesteString^Printf.sprintf "Class %d \n" number; 
 			  List.iter (fun id ->biggesteString:=!biggesteString^Printf.sprintf "\t%s\n" id;) l
@@ -539,9 +558,11 @@ let resumeForPartial l cl=
 		resumeString := !resumeString^(!biggesteString)^Printf.sprintf "\n---------------------------------*/\n"
 
 
+
 let resume secondParse complet=
 analyse_defs secondParse;
   getInfoFunctions doc;
+
 (*Printf.printf "number of function %d \n" !numberofFunction;*)
   evalCallList !callsList;
   let write_commented_dot comment graph filename =
@@ -549,6 +570,7 @@ analyse_defs secondParse;
   	in let _ = Printf.fprintf file "%s %s" comment (Tod.string_of_graph graph)
   	in close_out file
 in
+
 if complet then 
 begin
 	graph := Digraph("main", false, [
@@ -573,10 +595,12 @@ begin
 			NodeAttr([NShape("plaintext"); NFontSize(12)]);
 		]);
 		listAlreadyNodeFunction := [];
- 
+ 		
         listAssosFonctioNameNBCalls := [];
+		maybepessimisticloopcall := [];
 		newcurrentcallslist := [];
 		partialised := [];
+
 		getPartialgraph !name !callsList;
 		evalCallListNumbers  true !listAssosFonctioNameNBCalls;
 		resumeForPartial !callsListNumbers !callsList;

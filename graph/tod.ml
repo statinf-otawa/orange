@@ -309,7 +309,7 @@ let add_edge graph source target =
 	@param label the label of the edge.
 	@return the modified graph.
 *)
-let add_edge_l graph source target label color=
+let add_edge_l graph source target label =
 	add_stmt graph (Edge([NodeID(source); NodeID(target)], [ELabel(label)]))
 
 (** Add an edge with a label and a color to the graph.
@@ -557,7 +557,7 @@ let print graph = (Printf.printf "%s" (string_of_graph graph))
 	@param graph the ToD graph to be saved.
 	@param filename the file name of the .dot file.
 *)
-let write graph filename =
+let write comment graph filename =
 	let file = open_out filename
-	in let _ = Printf.fprintf file "%s" (string_of_graph graph)
+	in let _ = Printf.fprintf file "%s %s" comment (string_of_graph graph)
 	in close_out file
