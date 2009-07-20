@@ -3,7 +3,7 @@
 	ToD stands for "something To Dot".
 	
 	@author Florian Birée <florian\@biree.name>
-	@version 0.1
+	@version 0.2
 	@see <http://www.graphviz.org/> the official .dot website for more
 		informations on .dot graphs.
 *)
@@ -274,6 +274,16 @@ let add_node graph id =
 let add_node_l graph id label =
 	add_stmt graph (Node(id, [NLabel(label)]))
 
+(** Add a node with a label and a color to the graph.
+	@param graph the graph to modify.
+	@param id the identifier of the node.
+	@param label the label of the node.
+	@param color the color of the node.
+	@return the modified graph.
+*)
+let add_node_lc graph id label color =
+	add_stmt graph (Node(id, [NLabel(label); NColor(color)]))
+
 (** Add a node with attributes to the graph.
 	@param graph the graph to modify.
 	@param id the identifier of the node.
@@ -300,7 +310,22 @@ let add_edge graph source target =
 	@return the modified graph.
 *)
 let add_edge_l graph source target label color=
-	add_stmt graph (Edge([NodeID(source); NodeID(target)], [ELabel(label) ; EColor(color)]))
+	add_stmt graph (Edge([NodeID(source); NodeID(target)], [ELabel(label)]))
+
+(** Add an edge with a label and a color to the graph.
+	@param graph the graph to modify.
+	@param source the identifier of the source node.
+	@param target the identifier of the target node.
+	@param label the label of the edge.
+	@param color the color of the edge.
+	@return the modified graph.
+*)
+let add_edge_lc graph source target label color=
+	add_stmt graph (Edge(
+		[NodeID(source); NodeID(target)],
+		[ELabel(label); EColor(color)]
+	))
+
 
 (** Add an edge with attributes to the graph.
 	@param graph the graph to modify.
@@ -335,7 +360,7 @@ let string_of_graph graph =
 	in
 	
 	(* Protect a string by adding "" around it *)
-	let protect str = "\"" ^ str ^ "\"" in
+	let protect str = "\"" ^ (String.escaped str) ^ "\"" in
 	
 	let rec string_of_stmt_list stmt_list indent =
 		
@@ -531,7 +556,7 @@ let print graph = (Printf.printf "%s" (string_of_graph graph))
 	@param graph the ToD graph to be saved.
 	@param filename the file name of the .dot file.
 *)
-let write comment graph filename =
+let write graph filename =
 	let file = open_out filename
-	in let _ = Printf.fprintf file "%s %s" comment (string_of_graph graph)
+	in let _ = Printf.fprintf file "%s" (string_of_graph graph)
 	in close_out file

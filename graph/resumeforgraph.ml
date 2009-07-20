@@ -544,6 +544,11 @@ analyse_defs secondParse;
   getInfoFunctions doc;
 (*Printf.printf "number of function %d \n" !numberofFunction;*)
   evalCallList !callsList;
+  let write_commented_dot comment graph filename =
+  	let file = open_out filename
+  	in let _ = Printf.fprintf file "%s %s" comment (Tod.string_of_graph graph)
+  	in close_out file
+in
 if complet then 
 begin
 	graph := Digraph("main", false, [
@@ -557,7 +562,8 @@ begin
 	evalCallListNumbers  false !listAssosFonctioNameNBCalls;
 	resumeForPartial !callsListNumbers !callsList;
 		 
-	Tod.write !resumeString !graph (Filename.concat (!Cextraireboucle.out_dir) "main.dot");
+	(* Write the .dot file with the comment *)
+	write_commented_dot !resumeString !graph (Filename.concat (!Cextraireboucle.out_dir) "main.dot");
 end
 else
 begin
@@ -575,9 +581,10 @@ begin
 		evalCallListNumbers  true !listAssosFonctioNameNBCalls;
 		resumeForPartial !callsListNumbers !callsList;
 		
-		 
-
-		Tod.write !resumeString !graph (Filename.concat (!Cextraireboucle.out_dir) (!name ^ ".dot"));
+				
+		(* Write the .dot file with the comment *)
+		write_commented_dot !resumeString !graph (Filename.concat (!Cextraireboucle.out_dir) (!name ^ ".dot"));
+		
 	) (!Cextraireboucle.names)
 end	;
 
