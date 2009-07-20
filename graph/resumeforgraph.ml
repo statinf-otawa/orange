@@ -18,6 +18,42 @@ open Tod
 let callsList = ref []
 
 let graph = ref (Digraph("", false, []))
+let dot_sizes = ref []
+
+(* Write the .size file *)
+let append_to_dot_size fun_name size has_loop =
+	let filename = Filename.concat (!Cextraireboucle.out_dir) ".size" in
+	let chan = (if  not (Sys.file_exists filename)
+		then open_out filename
+		else open_out_gen [Open_append] 0 filename) in
+	let _ = Printf.fprintf chan "%s\t\t%d\t\t%B\n" fun_name size has_loop in
+	close_out chan
+	
+
+(* Read the .size file *)
+let read_dot_size = fun _ ->
+	let filename = Filename.concat (!Cextraireboucle.out_dir) ".size" in
+	let sizes = ref [] in
+	let chan = open_in filename in
+	try
+		while true; do
+			sizes := (Scanf.sscanf (input_line chan) "%s %d %B"
+						(fun name size loop -> (name, size, loop))
+					) :: !sizes
+		done; []
+	with End_of_file ->
+		close_in chan; !sizes
+
+(* get (size, has_loop) from the .size file
+	Return size = -1 if not found in the file
+*)
+let rec get_dot_size sizes fun_name =
+	match sizes with
+		| (name, size, loop) :: t ->
+			if (name = fun_name)
+				then (size, loop)
+				else get_dot_size t fun_name
+		| [] -> (-1, false)
 
 (* body ifnumber loopnumber callnumber assignmentnumber calllist *)
 let rec getFunctionNumbers  body ifn ln cl an clist onlyonecall=
@@ -104,7 +140,11 @@ let rec getPartialgraph name l =
    begin
 		let (name, n1ifn, n1ln, n1cl,n1an, n1assignFuncNameNbCalls ) = getFunction name l in
 		 listAlreadyNodeFunction := List.append [name] !listAlreadyNodeFunction;
-		 graph := (Tod.add_node_a (!graph) name [NShape("box"); NLabel(Printf.sprintf "%s (if=%d loops=%d functionCalls=%d assign=%d)" name n1ifn n1ln n1cl n1an)]);
+		 let (p_size, p_has_loop) = get_dot_size !dot_sizes name
+		 in let label = (if (p_size = -1)
+		 	then Printf.sprintf "%s\n(if=%d loops=%d functionCalls=%d assign=%d)" name n1ifn n1ln n1cl n1an
+		 	else Printf.sprintf "%s (size=%d has loops=%B)" name p_size p_has_loop)
+		 in graph := (Tod.add_node_a (!graph) name [NShape("box"); NLabel(label)]);
 		 (*Printf.printf "Function : %s ( %d if, %d loops, %d function calls, %d assignments)\n" name n1ifn n1ln n1cl n1an;*)
 		 if n1assignFuncNameNbCalls != [] then
 		 begin
@@ -120,7 +160,11 @@ and  completeSubGraph subgraph l =
 	if List.mem name !listAlreadyNodeFunction = false && existFunction name l then
 	begin
 			let (name, n1ifn, n1ln, n1cl,n1an, n1assignFuncNameNbCalls ) = getFunction name l in
-			graph := Tod.add_node_a !graph name [NShape("box"); NLabel(Printf.sprintf "%s (if=%d loops=%d functionCalls=%d assign=%d)" name n1ifn n1ln n1cl n1an)];
+			let (p_size, p_has_loop) = get_dot_size !dot_sizes name
+			in let label = (if (p_size = -1)
+		 		then Printf.sprintf "%s\n(if=%d loops=%d functionCalls=%d assign=%d)" name n1ifn n1ln n1cl n1an
+		 		else Printf.sprintf "%s (size=%d has loops=%B)" name p_size p_has_loop)
+			in graph := Tod.add_node_a !graph name [NShape("box"); NLabel(label)];
 			(*Printf.printf "%s [shape=box, label=\"%s (if=%d loops=%d functionCalls=%d assign=%d)\"]\n" name name n1ifn n1ln n1cl n1an;*)
 			listAlreadyNodeFunction := List.append [name] !listAlreadyNodeFunction;
 			completeSubGraph n1assignFuncNameNbCalls  l ;
@@ -147,6 +191,8 @@ let getAllgraph l=
 let resume secondParse complet=
 analyse_defs secondParse;
   getInfoFunctions doc;
+ 
+  dot_sizes := read_dot_size();
  
 (*Printf.printf "digraph \"\" {\ncenter=1;\n{\n\t node [shape=plaintext, fontsize=12];\n}\n";*)
 if complet then 

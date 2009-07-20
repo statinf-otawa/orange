@@ -114,7 +114,7 @@ let opts = [
 		"Takes input from standard input.");
 	("-c", Arg.Set run_calipso,
 		"Process input files using Calipso.");
-	("-outdir", Arg.String (fun dir -> out_dir := dir),
+	("-outdir", Arg.String (fun dir -> out_dir := dir; Cextraireboucle.set_out_dir dir;),
 		"Output directory for partial results (rpo files) or graphs (dot files).");
 	("-fun-list", Arg.String (fun file -> fun_list_file := file),
 		"File with the list of function name to count the number of calls.");
@@ -125,6 +125,7 @@ let isComponent comp =
      [] -> false
     | (COMP comp2)::r -> if (comp = comp2) then (true) else (aux r)
   in aux !myArgs
+
   
 
 (**
@@ -156,12 +157,34 @@ let rec getComps  = function
 			   TO.isPartialisation:=false;
                afficherListeAS compAS;
                printf "\n";
+               (* find if there is a loop inside abstract stores *)
+               let nb_loop = (List.fold_left
+                    (fun nb_loop absstore ->
+                    	match absstore with
+                    		| ASSIGN_SIMPLE (s, e) -> 
+                    			(match e with
+                    				| EXP(ex) ->
+                    					let startname = (
+                    						try (String.sub s 0 3)
+											with Invalid_argument(_) -> "")
+										in if (startname = "TWH")
+											then nb_loop + 1
+											else nb_loop
+									|_-> nb_loop
+								)
+							| _ -> nb_loop
+                    )
+                    0
+                    compAS
+               ) in let has_loop = (nb_loop > 0)
+               in Resumeforgraph.append_to_dot_size fn.nom (List.length(compAS)) has_loop;
+               (*printf "Nb loop : %d\n" nb_loop;               *)
                printf "..affichage des info. de boucles parametriques: \n";
                mainFonc := ref fn.nom;
                let (result, _) = TO.afficherInfoFonctionDuDocUML !TO.docEvalue.TO.maListeEval in
 	       let fName = (Filename.concat !out_dir ((fn.nom)^".rpo")) in
 	       printf "Stockage dans %s\n" fName;
-		  (* TO.afficherCompo	   result; *)   
+		   (*TO.afficherCompo	   result;  *)
 	       let chan = Unix.out_channel_of_descr (Unix.openfile fName [Unix.O_WRONLY;Unix.O_TRUNC;Unix.O_CREAT] 0o644) in
 	       let partialResult = {name=fn.nom; absStore=compAS; compES=(fn.listeES); expBornes=result} in
 	       Marshal.to_channel chan partialResult [];
@@ -247,7 +270,6 @@ let _ =
 			end;
 	(*printlist !list_file_and_name ;*)
 	
-	Cextraireboucle.set_out_dir (!out_dir);
 	Cextraireboucle.sort_list_file_and_name !list_file_and_name;
 	prerr_string "names&files\n";
 	List.iter (fun r -> prerr_string (r ^ "\n")) !list_file_and_name;

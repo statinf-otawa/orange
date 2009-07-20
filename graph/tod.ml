@@ -335,7 +335,7 @@ let string_of_graph graph =
 	in
 	
 	(* Protect a string by adding "" around it *)
-	let protect str = "\"" ^ str ^ "\"" in
+	let protect str = "\"" ^ (String.escaped str) ^ "\"" in
 	
 	let rec string_of_stmt_list stmt_list indent =
 		
@@ -496,14 +496,14 @@ let string_of_graph graph =
 				| Attribute(attr) :: t ->
 					(string_of_graph_attr attr) ^ (aux_string_of_stmt_list t)
 				| GraphAttr(attrs) :: t ->
-					indent ^ "graph " ^ (string_of_graph_attr_list attrs) ^
-					(aux_string_of_stmt_list t)
+					indent ^ "graph " ^ (string_of_graph_attr_list attrs) ^ 
+					";\n" ^ (aux_string_of_stmt_list t)
 				| NodeAttr(attrs) :: t ->
 					indent ^ "node " ^ (string_of_node_attr_list attrs) ^
-					(aux_string_of_stmt_list t)
+					";\n" ^ (aux_string_of_stmt_list t)
 				| EdgeAttr(attrs) :: t ->
 					indent ^ "edge " ^ (string_of_edge_attr_list attrs) ^
-					(aux_string_of_stmt_list t)
+					";\n" ^ (aux_string_of_stmt_list t)
 				| [] -> ""
 		in aux_string_of_stmt_list stmt_list
 	in
