@@ -1,0 +1,7 @@
+
+ 
+	time  ./../orange/main/main  -c -l  pretraites/$i komp2.c main > analyses/$i.pret
+ 	time  ./../orange2/main/main  -l  pretraites/$i main main > analyses/$i.pret2
+	
+
+
