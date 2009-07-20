@@ -276,14 +276,6 @@ let _ =
 				exit 1
 			end;
 	(*printlist !list_file_and_name ;*)
-	List.iter calip !list_file_calipso;
-	if (!calipso_concat) then (
-	  try 
-	    Sys.remove (!calipso_result)
-	    with _ -> () ;	     
-	  List.iter (do_concat !calipso_result) !list_file_calipso;
-	 
-	);
 	
 	Cextraireboucle.set_out_dir (!out_dir);
 	Cextraireboucle.sort_list_file_and_name !list_file_and_name;
