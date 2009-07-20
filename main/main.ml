@@ -120,6 +120,13 @@ let opts = [
 		"File with the list of function name to count the number of calls.");
 ]
 
+let calip filename = 
+	let fileC=String.concat "" [filename;"c"] in 
+	let s= String.concat " " ["./../frontc/calipso/calipso -P   -rs -rr -rg   -rc -rb   -l";filename;">";fileC] in
+	match (Sys.command  s) with
+	  0 -> ()
+	 |_ -> failwith ("echec appel calipso pour fichier:" ^ filename)
+	
 let isComponent comp = 
   let rec aux = function
      [] -> false
@@ -184,7 +191,7 @@ let rec getComps  = function
                let (result, _) = TO.afficherInfoFonctionDuDocUML !TO.docEvalue.TO.maListeEval in
 	       let fName = (Filename.concat !out_dir ((fn.nom)^".rpo")) in
 	       printf "Stockage dans %s\n" fName;
-		   (*TO.afficherCompo	   result;  *)
+		  (* TO.afficherCompo	   result; *)   
 	       let chan = Unix.out_channel_of_descr (Unix.openfile fName [Unix.O_WRONLY;Unix.O_TRUNC;Unix.O_CREAT] 0o644) in
 	       let partialResult = {name=fn.nom; absStore=compAS; compES=(fn.listeES); expBornes=result} in
 	       Marshal.to_channel chan partialResult [];
@@ -269,7 +276,16 @@ let _ =
 				exit 1
 			end;
 	(*printlist !list_file_and_name ;*)
+	List.iter calip !list_file_calipso;
+	if (!calipso_concat) then (
+	  try 
+	    Sys.remove (!calipso_result)
+	    with _ -> () ;	     
+	  List.iter (do_concat !calipso_result) !list_file_calipso;
+	 
+	);
 	
+	Cextraireboucle.set_out_dir (!out_dir);
 	Cextraireboucle.sort_list_file_and_name !list_file_and_name;
 	prerr_string "names&files\n";
 	List.iter (fun r -> prerr_string (r ^ "\n")) !list_file_and_name;
