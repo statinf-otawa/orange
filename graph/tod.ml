@@ -309,7 +309,7 @@ let add_edge graph source target =
 	@param label the label of the edge.
 	@return the modified graph.
 *)
-let add_edge_l graph source target label color=
+let add_edge_l graph source target label =
 	add_stmt graph (Edge([NodeID(source); NodeID(target)], [ELabel(label)]))
 
 (** Add an edge with a label and a color to the graph.
