@@ -463,6 +463,7 @@ let string_of_graph graph =
 	
 		(* Transform a graph attribute into a string *)
 		let string_of_graph_attr attr =
+			indent ^
 			(match attr with
 				| GBgColor(bgcolor) -> "bgcolor=" ^ protect(bgcolor)
 				| GCenter(center) -> "center=" ^ string_of_bool(center)

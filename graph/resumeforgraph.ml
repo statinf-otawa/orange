@@ -361,7 +361,7 @@ let rec getPartialgraph name l =
 		 let comment = (if (p_size = -1)
 		 	then comment
 		 	else comment ^ Printf.sprintf " (partialization: size=%d has loops=%B)" p_size p_has_loop) in
-		 graph := (Tod.add_node_a (!graph) name [NShape("box"); NLabel( name^" "^comment);NColor color ; NFontColor fontColor]);
+		 graph := (Tod.add_node_a (!graph) name [NShape("box"); NLabel( name^"\n"^comment);NColor color ; NFontColor fontColor]);
 		 if n1assignFuncNameNbCalls != [] then
 		 begin
             completeSubGraph n1assignFuncNameNbCalls  l ;
@@ -378,7 +378,7 @@ and  completeSubGraph subgraph l =
 			let comment = (if (p_size = -1)
 		 		then comment
 		 		else comment ^ Printf.sprintf " (partialization: size=%d has loops=%B)" p_size p_has_loop) in
-			graph := Tod.add_node_a !graph name [NShape("box"); NLabel(name^" "^comment);NColor color; NFontColor fontColor];
+			graph := Tod.add_node_a !graph name [NShape("box"); NLabel(name^"\n"^comment);NColor color; NFontColor fontColor];
 
 (*			(*graph := Tod.add_node_a !graph name [NShape("box"); NLabel(Printf.sprintf "%s (if=%d loops=%d functionCalls=%d assign=%d)" name n1ifn n1ln n1cl n1an);NColor color; NFontColor fontColor];*)
 			graph := Tod.add_node_a !graph name [NShape("box"); NLabel(Printf.sprintf "%s" name); NComment(Printf.sprintf "if=%d loops=%d functionCalls=%d assign=%d)"  n1ifn n1ln n1cl n1an);NColor color; NFontColor fontColor];*)
