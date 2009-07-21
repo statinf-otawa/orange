@@ -571,6 +571,8 @@ analyse_defs secondParse;
   	in close_out file
 in
 
+let _ = dot_sizes := read_dot_size() in
+
 if complet then 
 begin
 	graph := Digraph("main", false, [
@@ -578,9 +580,10 @@ begin
 		NodeAttr([NShape("plaintext"); NFontSize(12)]);
 	]);
 	
-	dot_sizes := read_dot_size();
 	
 	getAllgraph !callsList ;
+	
+	
 	evalCallListNumbers  false !listAssosFonctioNameNBCalls;
 	resumeForPartial !callsListNumbers !callsList;
 		 
