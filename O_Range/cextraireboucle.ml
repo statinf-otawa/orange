@@ -2,7 +2,7 @@
 **
 ** Project:	O_Range
 ** File:	cextraireboucle.ml
-** Version:	1.1
+i** Version:	1.1
 ** Date:	11.7.2008
 ** Author:	Marianne de Michiel
 *)
@@ -46,6 +46,17 @@ let rec  sort_list_file_and_name li=
 
 let set_out_dir rdir =
 	out_dir := rdir
+
+let use_partial = ref []
+let add_use_partial name =
+       use_partial := name :: (!use_partial)
+let is_in_use_partial name =
+	let rec is_in up_list =
+	        match up_list with
+        		| up_name :: t ->
+	        		(up_name = name) || (is_in t)
+                        | [] -> false
+        in (is_in !use_partial)
 
 let (mainFonc :string ref ref) =ref( ref "")
 let (evalFunction:( string ref) list ref)= (ref [])
@@ -778,7 +789,7 @@ and get_baseinittype typ =
 
 							
 	let existeNomFonctionDansListe nom  =
-	List.exists (fun (_,nomF,_) -> (nomF = nom) ) !listeDesNomsDeFonction    
+	        (List.exists (fun (_,nomF,_) -> (nomF = nom) ) !listeDesNomsDeFonction    )
 	
 	(* la fonction est dans la liste par précondition *)
 	let tupleNumNomFonctionDansListe nom  = List.find (fun (_,nomF,_) ->  (nomF = nom)  ) !listeDesNomsDeFonction  
@@ -802,7 +813,8 @@ and get_baseinittype typ =
 		a terme on pourrait imaginer : d'ajouter des infos sur les boucles, valeurs de retour (bornes min et max...)*)
 	(* la fonction existe code correct ! elle pourrait être dans une bibliothèque donc appel sans def possible*) 
 	
-	let existeFonction nom  = List.exists (fun (_, f) -> (nom = f.nom) ) !doc.laListeDesFonctions  
+	let existeFonction nom  =
+	        (List.exists (fun (_, f) -> (nom = f.nom) ) !doc.laListeDesFonctions  )
 	let rechercheFonction nom = List.find (fun (_, f) -> (nom = f.nom) ) !doc.laListeDesFonctions   
 		
 	let 	rec majAuxFct listeTraitee  listeATraiter nom =
@@ -4369,7 +4381,7 @@ and traiterAppelFonction exp args init ida =
       let nom = nomFonctionDeExp exp in (* il faut construire la liste d es entrées et la liste des sorties*)
       (*Printf.printf "La fonction: %s existe=%b \n" nom (existeFonction nom);*)
 
-      if (existeFonction nom) then 
+      if ((existeFonction nom) && (not (is_in_use_partial nom))) then 
 	  (	
 		let (_, f) = rechercheFonction nom in
 		if f.lesAffectations = [] then   aUneFctNotDEf := true;
@@ -5005,7 +5017,7 @@ and  construireAsAppelAux dec	appel =
 and onlytraiterAF exp args init =
 let nom = nomFonctionDeExp exp in
 let r = !idAppel in
-	if existeFonction nom then
+	if ((existeFonction nom) && (not (is_in_use_partial nom))) then
 	begin
 		let fonction = rechercheFonction nom in
 		let (_, f) = fonction in

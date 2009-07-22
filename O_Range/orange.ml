@@ -275,8 +275,7 @@ module PartialAdapter =
     (*	Printf.printf "On essaye de traiter l appel: %s\n" name;  *)
     
 	let (res:t) = Listener.onCall res name numCall line source inloop executed extern in
-	
-	if ((extern) && (existeCompParCall numCall name)) then
+	if (extern && (existeCompParCall numCall name)) then
 	begin
 	    let result = onComponent res (rechercheCompParCall numCall name) name numCall line source inloop executed in
 		compofilter numCall name;
@@ -731,16 +730,18 @@ let (_, _, name) = (dec) in
 let (s,_,_,_) = name in s
 
 let existeFonctionParNom nom  doc=
-List.exists (fun (_, f) ->  let (_, _, name) = (f.declaration) in 
-						  let (s,_,_,_) = name in s = nom  )!doc.laListeDesFonctions
+  (not (Cextraireboucle.is_in_use_partial nom)) &&
+ ( List.exists (fun (_, f) ->  let (_, _, name) = (f.declaration) in 
+						  let (s,_,_,_) = name in s = nom  )!doc.laListeDesFonctions)
 
 let rechercherFonctionParNom nom docu =
-  List.find (fun (_, f) ->  	let (_, _, name) = (f.declaration) in 
-							  let (s,_,_,_) = name in s = nom  )!docu.laListeDesFonctions
+  (List.find (fun (_, f) ->  	let (_, _, name) = (f.declaration) in 
+							  let (s,_,_,_) = name in s = nom  )!docu.laListeDesFonctions)
 
 let existeFonctionParNom nom docu =
-  List.exists (fun (_, f) ->  let (_, _, name) = (f.declaration) in 
-							  let (s,_,_,_) = name in s = nom  )!docu.laListeDesFonctions
+  (not (Cextraireboucle.is_in_use_partial nom)) &&
+  (List.exists (fun (_, f) ->  let (_, _, name) = (f.declaration) in 
+							  let (s,_,_,_) = name in s = nom  )!docu.laListeDesFonctions)
 
 let existeEvalParNom t  listeF= List.exists (fun e -> match e with 		
 											  BOUCLEEVAL  (n,ty,l) ->t = ty
@@ -786,7 +787,7 @@ begin
 				let corps =
 					if liste1 = [] then
 					begin
-						  if existeFonctionParNom	nomFonc doc then
+						  if ((existeFonctionParNom	nomFonc doc) && (not (Cextraireboucle.is_in_use_partial nomFonc))) then
 					  	  begin				
 							  let (_, func) = (rechercherFonctionParNom nomFonc doc) in
 							  func.lesAffectations   
@@ -2844,7 +2845,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 				   begin
 					  match List.hd myCall with  															
 						  APPEL (n,e,nomFonc, s,CORPS c,v,r) ->
-							  if existeFonctionParNom	nomFonction doc then
+							  if ((existeFonctionParNom	nomFonction doc) && (not (Cextraireboucle.is_in_use_partial nomFonction))) then
 							  begin				
 								  let (_, func) = (rechercherFonctionParNom nomFonction doc) in
 								  let ne = (match e with BEGIN(eee)-> (List.append listeInputInstruction eee) |_->listeInputInstruction) in
@@ -2904,7 +2905,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 		  let appelC = List.hd lappel in
 		  match appelC with  															
 		  APPEL (_,e,nomFonc,s,c,v,_) ->
-			  if existeFonctionParNom	nomFonction doc then
+			  if ((existeFonctionParNom	nomFonction doc) && (not (Cextraireboucle.is_in_use_partial nomFonction))) then
 			  begin				
 				  numAppel := numf;      
 				  let (_, func) = (rechercherFonctionParNom nomFonction doc) in
@@ -3186,7 +3187,7 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEn
 			  let max = if (exact) then max else NOCOMP in
 			  
 			  (*Printf.printf "ON A COMPOSE la boucle ID %u , ca a donne total=%s max=%s\n" id (string_from_expr instanciedMax) (string_from_expr instanciedTotal);*)
-			   Loop ((id + (!idBoucle), line, source, exact, max, total, instanciedMax, instanciedTotal, expinit, sens), List.map evalAuxPasBoucle subtree) 
+                          Loop ((id + (!idBoucle), line, source, exact, max, total, instanciedMax, instanciedTotal, expinit, sens), List.map evalAuxPasBoucle subtree) 
 		  end  in
       (*dernierAppelFct := appelP;*)
 	  res
@@ -3194,7 +3195,6 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEn
    Printf.printf "ON A COMPOSE le compo ID %s\n" nomComp; 
   (*print_string "ICI ON KONPOZE LE KONPOZAN \n";*)
   let mytree = getExpBornesFromComp nomComp in
-  
   if dansBoucle then evalAuxBoucle mytree 
   else
 		(	let isexeEnglobantPred = !isexeEnglobant in 

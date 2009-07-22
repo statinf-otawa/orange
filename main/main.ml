@@ -117,6 +117,8 @@ let opts = [
 		"Takes input from standard input.");
 	("-funlist", Arg.String (fun file -> fun_list_file := file),
 		"File with the list of function names to be processed.");
+	("-up", Arg.String (fun name -> Cextraireboucle.add_use_partial name),
+		"Use partial result (rpo file) for this function.");
 	(* Mode options *)
 	("-k", Arg.Set partial,
 		"Perform partial analysis on the given functions");
