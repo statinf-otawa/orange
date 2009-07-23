@@ -73,10 +73,33 @@ let rec listeDesVarsDeExpSeules exp =
 
 
 
+
 	 
 	
 and traiterCommaExp liste =
 if liste = [] then [] else union (listeDesVarsDeExpSeules (List.hd liste)) (traiterCommaExp (List.tl liste)) 
+
+
+
+let rec getNbIt v exp =
+	match exp with
+		UNARY (_, e) -> 				getNbIt v e 
+	| BINARY (_, exp1, exp2) -> 		 ( getNbIt v  exp1)	+ (getNbIt v exp2)
+	| QUESTION (exp1, exp2, exp3) ->	 (getNbIt v exp1) + (getNbIt v exp2)	+ (getNbIt v  exp3)
+	| CAST (_, e) ->					getNbIt v  e
+	| CALL (e, args) ->					(getNbIt v e)+  ( traiterCommaExpNb v args)
+	| COMMA e -> 						traiterCommaExpNb v  e
+	| CONSTANT _ -> 					0
+	| VARIABLE name -> 					if name = v then 1 else 0
+	| EXPR_SIZEOF e ->					getNbIt v  e
+	| TYPE_SIZEOF _ ->					0
+	| INDEX (e, idx) ->					(getNbIt v  e) + (getNbIt v  idx)
+	| MEMBEROF (e, _) ->				getNbIt v  e
+	| MEMBEROFPTR (e, _) ->				getNbIt v  e
+	| GNU_BODY (_,_)(*decs, stat*) ->	0
+	| _ -> 						 		0
+and traiterCommaExpNb v liste =
+if liste = [] then 0 else   (getNbIt v  (List.hd liste)) + (traiterCommaExpNb v (List.tl liste)) 
 
 (*
 

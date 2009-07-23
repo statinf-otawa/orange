@@ -45,6 +45,11 @@ type typeFunction =
 	| LOOPWITHCALL 
 	| OTHERCALLORLOOP 
 
+type politic =
+	ALLFUNCTION
+	| ONLYNOTPESSIMISTIC
+	| WITHVALUE of int
+
 
 type colors =
 	  GREEN
@@ -490,8 +495,77 @@ else !callsListEval
 let currentLevelChoosenNode = ref []
 let maybepessimisticloopcall = ref []
 
-let rec chooseClassified n (classifiedList:(int * string list) list) cl l currentLevelChoosen=
+(* may are the node of n level source of pessimism and for with functions *)
+let rec  getPessimisList  listLeval listpessimistic cl =
+	if listLeval = [] || listpessimistic = [] then []
+	else
+	begin
+		let (name, next) = (List.hd listLeval, List.tl listLeval) in
+		if existFunction name cl then
+		begin
+			 let (_, _, _, _,_, funcNameNbCalls,_, _ ,_,_) = getFunction name cl in
+		 	 if funcNameNbCalls != [] then
+			 begin
+				let nextList = getNextCalls cl funcNameNbCalls [] false in
+			 	let inter = getInter nextList listpessimistic in
+	             (* biggesteString:=!biggesteString^Printf.sprintf "\nnext of %s\n" name; (* sauf si pas d'arcs rouge entre les deux *)
+								 
+									  List.iter(fun (n,b)->  biggesteString:=!biggesteString^Printf.sprintf "\t\t%s\n" n)nextList  ;  *)    
+								 
+			 	if inter = [] then getPessimisList next listpessimistic cl 
+			 	else List.append [name, inter] (getPessimisList next listpessimistic cl)
+			 end 
+			else	getPessimisList next listpessimistic cl 
+		end
+		else getPessimisList next listpessimistic cl 
+	end
 
+
+and getNextCalls cl fc res intoif=
+if fc = [] then res
+else
+begin
+	let (first, next) = (List.hd fc, List.tl fc) in
+	let (nameSucc,(_, _,ifn)) = first in
+	let isintoIf = ifn>0 || intoif in
+	if existFunction nameSucc cl then
+	begin
+		let (_, _, _, _,_, nfc,_, _ ,_,_) = getFunction nameSucc cl in
+
+		
+		let getfirstbranchres = (getNextCalls cl nfc [nameSucc, intoif] isintoIf)  in
+		getUnion( getUnion getfirstbranchres (getNextCalls  cl next [] intoif)) res
+	end
+	else getUnion( getUnion [nameSucc, isintoIf] (getNextCalls  cl next [] intoif)) res
+end
+and getInter l1 l2  =
+	if l1 = [] || l2 = [] then []
+	else
+	begin
+		let (first, next) = (List.hd l1, List.tl l1) in
+		let (name, ini) = first in
+		if List.mem name l2 then List.append [first] (getInter next l2) else (getInter next l2)
+	end 
+and getUnion l1 l2  =
+	if l1 = [] then l2
+	else if l2 = [] then l1
+	else
+	begin
+		let (first, next) = (List.hd l1, List.tl l1) in
+		let (name,isinoifinl) = first in
+		if List.mem_assoc name l2 then 
+			if isinoifinl = false then (getUnion next l2) else getUnion next (List.map(fun (n,b)-> if n =name then (n, true) else (n,b)) l2) 
+		else List.append [first]  (getUnion next l2)
+	end 
+
+
+let  mayHaveListLevelNPessimisticnext  listpessimistic cl  currentLevelChoosen =
+if listpessimistic = [] then []
+else
+	if currentLevelChoosen != [] then getPessimisList currentLevelChoosen listpessimistic cl
+	else []
+
+let rec chooseClassified n (classifiedList:(int * string list) list) cl l currentLevelChoosen pessimistic typeOfPartialisation=
 let newCost = getNewEval (n+1) classifiedList cl currentLevelChoosen in
 currentLevelChoosenNode:=[];
 if List.mem_assoc (n+1) classifiedList then
@@ -504,14 +578,88 @@ begin
 		let mayBePessimistic = if List.mem name !listOfFunctionWithLoop && endofred then 
 									(if List.mem name !maybepessimisticloopcall =false then  maybepessimisticloopcall:= List.append [name] !maybepessimisticloopcall; true) 
 							   else false in
-		if totalSize > 2500 || (mayBePessimistic && totalSize >1000) 
-			then (biggesteString:=!biggesteString^Printf.sprintf "\t%s   totalsize %d\n" name  totalSize ; currentLevelChoosenNode := List.append [name] !currentLevelChoosenNode)
+		(match typeOfPartialisation with
+			ALLFUNCTION ->
+				 
+					
+				if  (totalSize > 2500 || (mayBePessimistic && totalSize >1000)) 
+				then (biggesteString:=!biggesteString^Printf.sprintf "\t%s   totalsize %d\n" name  totalSize ; currentLevelChoosenNode := List.append [name] !currentLevelChoosenNode)
+						
+
+		| ONLYNOTPESSIMISTIC ->
+						
+						let respess =    mayHaveListLevelNPessimisticnext  pessimistic cl   [name]    in
+						let hasGoodSize =  totalSize > 2500 || (mayBePessimistic && totalSize >1000) in
+						let nopessimistic = allarenotPessimistic name respess in
+						if (respess = [] (*|| nopessimistic*)) && hasGoodSize  then  
+						(
+								biggesteString:=!biggesteString^Printf.sprintf "\nLevel %d No pessimism for %s function size %d\n" (n+1) name totalSize;
+								biggesteString:=!biggesteString^Printf.sprintf "\t%s   totalsize %d\n" name  totalSize ; currentLevelChoosenNode := List.append [name] !currentLevelChoosenNode
+						)
+						else 
+							if respess != [] && hasGoodSize then
+							(
+
+						
+									biggesteString:=!biggesteString^Printf.sprintf "\nLevel %d not selected possible pessimism size %d for:\n"  (n+1) totalSize;  
+									List.iter(fun (name, suiv)->      
+										biggesteString:=!biggesteString^Printf.sprintf "\t%s\n" name  ; 
+										List.iter(fun (n,_)-> (*if b = true then *)biggesteString:=!biggesteString^Printf.sprintf "\t\t%s\n" n 
+											(*else biggesteString:=!biggesteString^Printf.sprintf "\t\tno pessimistic for%s\n" n*))suiv        
+									)respess;
+			
+							) ;
+						 
+						 
+		| WITHVALUE value ->
+
+						let respess =    mayHaveListLevelNPessimisticnext  pessimistic cl   [name]    in
+						let hasGoodSize =  totalSize > 2500 || (mayBePessimistic && totalSize >1000) in
+						let nopessimistic = allarenotPessimistic name respess in
+						if (respess = []  (*|| nopessimistic*))  && hasGoodSize  then  
+						(  
+		  					  	biggesteString:=!biggesteString^Printf.sprintf "\nLevel %d No pessimism for %s function or law size size : %d \n" (n+1) name totalSize;
+								biggesteString:=!biggesteString^Printf.sprintf "\t%s   totalsize %d\n" name  totalSize ; currentLevelChoosenNode := List.append [name] !currentLevelChoosenNode
+						)
+						else 
+							if respess != [] && hasGoodSize then
+							(
+									biggesteString:=!biggesteString^Printf.sprintf "\nLevel %d possible pessimism size %d for:\n"  (n+1) totalSize;  
+									List.iter(fun (name, suiv)->    
+										biggesteString:=!biggesteString^Printf.sprintf "\t%s\n" name  ; 
+										List.iter(fun (n,_)-> (*if b = true then *)biggesteString:=!biggesteString^Printf.sprintf "\t\t%s\n" n 
+											(*else biggesteString:=!biggesteString^Printf.sprintf "\t\tno pessimistic for%s\n" n*))suiv    
+									)respess;
+									if totalSize <= value	then  biggesteString:=!biggesteString^Printf.sprintf "it is not selected\n"
+									else
+										(biggesteString:=!biggesteString^Printf.sprintf "\t%s   totalsize %d\n" name  totalSize ; currentLevelChoosenNode := List.append [name] !currentLevelChoosenNode)
+
+			
+							) ;
+						 
+		)
+		
 		)(List.assoc (n+1) classifiedList);
 
-	chooseClassified (n+1) classifiedList cl l !currentLevelChoosenNode	
+	chooseClassified (n+1) classifiedList cl l !currentLevelChoosenNode	 pessimistic typeOfPartialisation
+end
+and allarenotPessimistic  name respess = 
+if respess = [] || List.mem_assoc name respess = false then true
+else
+allarenotPessimisticaux (List.assoc name respess)
+and allarenotPessimisticaux l =
+if l  = [] then true
+else
+begin
+	let (first, next) = (List.hd l,List.tl l) in
+	let (n,b) = first in
+	if b then false else allarenotPessimisticaux next
 end
 
 
+
+
+let listCurrent = ref []
 
 
 
@@ -529,7 +677,7 @@ let resumeForPartial l cl=
 				let mayBePessimistic = if List.mem name !listOfFunctionWithLoop && endofred then 
 									(if List.mem name !maybepessimisticloopcall =false then  maybepessimisticloopcall:= List.append [name] !maybepessimisticloopcall; true) 
 							   else false in
-				if totalSize > 2500 || (mayBePessimistic && totalSize >1000)  then 
+				if initsize> 5 && totalSize > 2500 || (mayBePessimistic && totalSize >1000)  then 
 					(biggesteString:=!biggesteString^Printf.sprintf "%s   totalsize %d\n" name  totalSize ; currentChoosenNode := List.append [name,totalSize] !currentChoosenNode);
 				resumeString := !resumeString^Printf.sprintf "%s = nbcall %d, nbcallinloop %d, size %d, totalsize %d\n" name nbc nbcil initsize totalSize
 			)
@@ -542,18 +690,60 @@ let resumeForPartial l cl=
 		if !maybepessimisticloopcall != [] then 
 			( biggesteString:=!biggesteString^Printf.sprintf "\nPessimism sources...predecessors of\n" ; List.iter (fun n-> biggesteString:=!biggesteString^Printf.sprintf "%s\n" n ;)!maybepessimisticloopcall)
 		else  biggesteString:=!biggesteString^Printf.sprintf "\nNo pessimism sources...\n" ; 
+
+		
 		
 		List.iter (fun(number,l)->
 			  biggesteString:=!biggesteString^Printf.sprintf "Class %d \n" number; 
 			  List.iter (fun id ->biggesteString:=!biggesteString^Printf.sprintf "\t%s\n" id;) l
 						
 		)classifiedList;
-		biggesteString:=!biggesteString^Printf.sprintf "\nLevel 0 all are selected \n"; 
 		let currentLevelChoosen= if List.mem_assoc 0 classifiedList then  List.assoc 0 classifiedList else [] in
-		chooseClassified 0 classifiedList cl l currentLevelChoosen;
-		 
-		
 
+
+(*	ALLFUNCTION
+	| ONLYNOTPESSIMISTIC
+	| WITHVALUE value*)
+		biggesteString:=!biggesteString^Printf.sprintf "\nClassified with all big function will be partialised\n" ; 
+		(biggesteString:=!biggesteString^Printf.sprintf "\nlevel 0 selected function all\n"; List.iter(fun n->biggesteString:=!biggesteString^Printf.sprintf "\t%s\n" n)	currentLevelChoosen); 
+		chooseClassified 0 classifiedList cl l currentLevelChoosen !maybepessimisticloopcall ALLFUNCTION;
+		
+		let respess =  mayHaveListLevelNPessimisticnext  !maybepessimisticloopcall cl   currentLevelChoosen   in
+		let value = 30000 in
+
+		 listCurrent := [];
+		biggesteString:=!biggesteString^Printf.sprintf "\nClassified with only not pessimistic big function will be partialised\n" ;  
+		 let listCurrentNoPessimistic =List.filter(fun name  -> if List.mem_assoc name respess  then false else true)currentLevelChoosen in
+			if respess = [] then
+			(
+				 biggesteString:=!biggesteString^Printf.sprintf "\nLevel 0 No pessimism \n";
+				 biggesteString:=!biggesteString^Printf.sprintf "\nLevel 0 all are selected \n";
+				(*	(biggesteString:=!biggesteString^Printf.sprintf "\nlevel 0 selected function no perssimistic\n"; List.iter(fun n->biggesteString:=!biggesteString^Printf.sprintf "\t%s\n" n)	currentLevelChoosen);*)
+				listCurrent :=  currentLevelChoosen;
+			)
+			else 
+			(
+				biggesteString:=!biggesteString^Printf.sprintf "\nLevel 0 possible pessimism for \n" ; (* sauf si pas d'arcs rouge entre les deux *)
+				List.iter(fun n-> if List.mem_assoc n respess = false then listCurrent := List.append [n] !listCurrent ;)currentLevelChoosen;
+				List.iter(fun (name, suiv)->    
+					if List.assoc name !currentChoosenNode >value then listCurrent := List.append [name] !listCurrent ;
+					biggesteString:=!biggesteString^Printf.sprintf "\t%s for :\n" name  ; List.iter(fun (n,b)->  biggesteString:=!biggesteString^Printf.sprintf "\t\t%s\n" n)suiv        
+				)respess;
+				
+			);
+
+
+
+		let currentl = !listCurrent in
+		let maybe = !maybepessimisticloopcall in
+		(biggesteString:=!biggesteString^Printf.sprintf "\nlevel 0 selected function\n"; List.iter(fun n->biggesteString:=!biggesteString^Printf.sprintf "\t%s\n" n)listCurrentNoPessimistic);
+		chooseClassified 0 classifiedList cl l listCurrentNoPessimistic maybe ONLYNOTPESSIMISTIC;
+
+		
+		biggesteString:=!biggesteString^Printf.sprintf "\nClassified with only not pessimistic little function size <= %d will be partialised\n" value;  
+		(biggesteString:=!biggesteString^Printf.sprintf "\nlevel 0 selected function\n"; List.iter(fun n->biggesteString:=!biggesteString^Printf.sprintf "\t%s\n" n)!listCurrent);
+		chooseClassified 0 classifiedList cl l currentl maybe (WITHVALUE value);
+	
 
 		resumeString := !resumeString^(!biggesteString)^Printf.sprintf "\n---------------------------------*/\n"
 
