@@ -1410,6 +1410,14 @@ let listeVBDEP = ref []
 (*let listeVBPredNonNidNonNul = ref [] *)
 let isProd = ref false
 let isExactEng = ref true
+let curassocnamesetList = ref []
+
+let rec isSetExpression exp  =
+match exp with
+		 
+		|CALL(VARIABLE "SET", args)->  (true,List.hd args,List.hd (List.tl args))
+		| _-> (false,NOTHING, NOTHING)
+
 
 let rec compNotInnerDependentLoop nnE iscompo=
 match nnE.idBoucleN with
@@ -1420,9 +1428,41 @@ TBOUCLE(num, appel, _,_,_,_,_) ->
 		  let nia =   nnE.sensVariation   in
   		let nm =  nnE.maxUneIt  in
 		  isProd := false;
+		
 
-		  let new_expmax = if iscompo then  nm else  applyif nm !listeVBDEP in
-		  let c1 = calculer  nm   nia [] 1 in
+
+		let c1 = calculer  nm   nia [] 1 in 
+		curassocnamesetList := [];
+		if estDefExp c1 = false then
+		begin
+			let varOfExp = listeDesVarsDeExpSeules (expVaToExp nm) in 
+			 List.iter(fun n ->
+						if getNbIt n (expVaToExp nm) > 1 then
+						begin
+							if existeAffectationVarListe n !listeVBDEP then 
+							begin
+								let assign =  ro n  !listeVBDEP in
+								match assign with ASSIGN_SIMPLE (_, exp) -> let (boolean , e1, e2) = isSetExpression (expVaToExp exp) in 
+									if boolean then curassocnamesetList := List.append [n, ASSIGN_SIMPLE (n, EXP(e1)),ASSIGN_SIMPLE (n, EXP(e2))] !curassocnamesetList;  
+								|_-> ()
+							end
+						 
+						end
+					 
+					)varOfExp  
+	      end;
+
+  			let new_expmax =  if !curassocnamesetList = []  then	
+						applyif nm !listeVBDEP 
+					else 
+					begin
+						let (_, a1, a2) =List.hd !curassocnamesetList in
+						let (eva1, eva2) =(applyif ( applyif nm [a1])  !listeVBDEP , applyif ( applyif nm [a2])  !listeVBDEP ) in
+						EXP(CALL (VARIABLE("MAXIMUM") , (List.append [expVaToExp eva1] [expVaToExp eva2] ))	)
+						 
+					end
+					in
+		  
 		  let (expmax1, reseval) =(
 			  
 		  if estDefExp c1 = false then begin 	(calculer new_expmax  nia [] 1, false) end 
@@ -1477,13 +1517,9 @@ TBOUCLE(num, appel, _,_,_,_,_) ->
 	end;
 	 ()
   | _->()
-let curassocnamesetList = ref []
+
  
-let rec isSetExpression exp  =
-match exp with
-		 
-		|CALL(VARIABLE "SET", args)->  (true,List.hd args,List.hd (List.tl args))
-		| _-> (false,NOTHING, NOTHING)
+
 
 let rec afficherNidUML nnE  liste tab (result:Listener.t) : Listener.t =
 match nnE.idBoucleN with
@@ -2125,7 +2161,7 @@ let new_cond = filterIF lesAs in
 					end
 					else  
 					begin
-						(*Printf.printf "la borne max  contient  la variable fct de ii :%s\n" ii;*)
+						
 						(match nbEngl with 
 						MULTIPLE ->   MULTIPLE
 						| EXP(exp) ->  
@@ -2134,7 +2170,7 @@ let new_cond = filterIF lesAs in
 								EXP(CALL(VARIABLE("MAX") , (List.append (List.append
 			 						[VARIABLE (ii)]	
 									[BINARY(SUB,	exp, (CONSTANT (CONST_INT "1")))])  [e])))
-								(*print_expVA !maxAuxTN; new_line ();Printf.printf"\n";	*)	)
+									)
 					end
 				end
 				else recExptMax
@@ -2209,8 +2245,10 @@ afficherListeAS ncc;	*)
 				 		listeInstNonexe := List.append [typeE] !listeInstNonexe
 					end;
 					
-					let nTN =  applyStoreVA(applyStoreVA (!resAuxTN) appel) globales in
-					let inter = applyStoreVA(applyStoreVA (!maxAuxTN) appel) globales in
+					let nTN =  applyif(applyif (!resAuxTN) appel) globales in
+					let inter = applyif(applyif (!maxAuxTN) appel) globales in
+
+(*Printf.printf"traiter calcul MAX pour %s =\n" ii; print_expVA !maxAuxTN; new_line ();Printf.printf"\n";*)
 
 
 					let listeIntersection = (intersection (listeDesVarsDeExpSeules maxinit ) (union [ii] vij)) in
@@ -2226,11 +2264,11 @@ afficherListeAS ncc;	*)
 					(*List.iter (fun elem -> Printf.printf "%s " elem)listeIntersection;*)
 (*Printf.printf "av traiterBouclesInternes num %d nom eng %d AVANT AR\n"  id nomE ;*)
 					let expmaxinit = if estIndependantM then 
-											((*Printf.printf"borne   max inter vide \n";*)applyStoreVA( applyStoreVA (EXP( maxinit)) appel) globales)
+											((*Printf.printf"borne   max inter vide \n";*)applyif( applyif (EXP( maxinit)) appel) globales)
 								     else  ((*Printf.printf"borne   max inter non vide \n";*)EXP(NOTHING) ) in
 
 
-
+(*Printf.printf"traiter calcul MAX pour %s =\n" ii; print_expVA (EXP(maxinit)); new_line ();Printf.printf"\n";*)
 					 
 					let resauxmax2 = calculer expmaxinit   !infoaffichNull [] 1 in
 					let nMax =
@@ -2244,11 +2282,11 @@ afficherListeAS ncc;	*)
 							 	 
 							 ) in
 			
-
+(*
 Printf.printf "1 traiterBouclesInternes  %d nom eng %d ou stopper %d sa eng %d tete nid %d\n" id	nomE idEng saBENG (getBoucleIdB nT.infoNid.laBoucle);
 			Printf.printf"traiter calcul MAX pour %s =\n" ii; print_expVA nMax; new_line ();Printf.printf"\n";
 			Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA nTN; new_line ();Printf.printf"\n";
-			if !vDEBUG then Printf.printf "evalNid contexte  boucle: %d\n" id	 ; 
+			if !vDEBUG then Printf.printf "evalNid contexte  boucle: %d\n" id	 ; *)
 					(*afficherListeAS (appel);flush(); space(); new_line();*)
 
 	(*Printf.printf "av traiterBouclesInternes num %d nom eng %d AVANT AR\n"  id nomE ;	*)			 
@@ -2311,7 +2349,7 @@ afficheUnNidEval nouNidEval;*)
 				end
 				else
 				begin
-					(*Printf.printf "fin...\n";*)
+					(*Printf.printf "fin...pas compo\n";*)
 				(*let reverseliste = List.rev listeEng in			    	
 					let (nbou, nab, _,_,_,_,_) =
 					rechercheDerniereBoucleApresId (getBoucleIdB nEC.infoNid.laBoucle) reverseliste in
@@ -2535,8 +2573,8 @@ let rec traiterBouclesInternesComposant 	 	nT (*tete nid contenant bi*)  nEC (*n
 					end;
 					
 					
-					let nTN =  applyStoreVA(applyStoreVA (!resAuxTN) appel) globales in
-					let inter = applyStoreVA(applyStoreVA (!maxAuxTN) appel) globales in
+					let nTN =  applyif(applyif (!resAuxTN) appel) globales in
+					let inter = applyif(applyif (!maxAuxTN) appel) globales in
 					let listeIntersection = (intersection (listeDesVarsDeExpSeules maxinit ) (union [ii] vij)) in
 					 
 					 
@@ -2551,7 +2589,7 @@ let rec traiterBouclesInternesComposant 	 	nT (*tete nid contenant bi*)  nEC (*n
 
 				
 					let expmaxinit = if estIndependantM then 
-											applyStoreVA( applyStoreVA (EXP( maxinit)) appel) globales
+											applyif( applyif (EXP( maxinit)) appel) globales
 								     else  EXP(NOTHING)  in
 					(*Printf.printf "dans le else 2\n";		*)	  
 					let resauxmax2 = calculer expmaxinit   !infoaffichNull [] 1 in
@@ -2627,7 +2665,7 @@ afficheUnNidEval nouNidEval;*)
 					(match !dernierAppelFct with
 							TFONCTION (nomf, numF,corps,listeInputInst, contexteAvantAppel,appelF,lFt,lFf,_,_) ->		
 								let fin = nbou = nomE in
-								Printf.printf "REMONTER JUSQU4A SUIVANT DE %d suivant %d dans %s\n"	(getBoucleIdB nEC.infoNid.laBoucle) nbou nomf; 
+								(*Printf.printf "REMONTER JUSQU4A SUIVANT DE %d suivant %d dans %s\n"	(getBoucleIdB nEC.infoNid.laBoucle) nbou nomf; *)
 								if fin then Printf.printf "on continu\n" else Printf.printf "derniere passe\n";
 									traiterBouclesInternes nT  nidCourantCC nomE id   
 								!resAuxTN appel listeEng typeE  numF  
@@ -2641,7 +2679,7 @@ afficheUnNidEval nouNidEval;*)
 				end
 				else
 				begin
-					Printf.printf "fin...\n";
+				(*	Printf.printf "fin...\n";*)
 				(*let reverseliste = List.rev listeEng in			    	
 					let (nbou, nab, _,_,_,_,_) =
 					rechercheDerniereBoucleApresId (getBoucleIdB nEC.infoNid.laBoucle) reverseliste in
@@ -3170,12 +3208,12 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEn
     let varLoop = sprintf "bIt-%d" id in
 	let direction = sens in
 	let corpsCompo =  (mapListAffect absolutizeTotalMax (getInstListFromPartial (getPartialResult nomComp))) in
-	Printf.printf "ON ESSAYE D APPLIQUER LE CONTEXTE SUR: " ; print_expression expMax 0;
+	(*Printf.printf "ON ESSAYE D APPLIQUER LE CONTEXTE SUR: " ; print_expression expMax 0;*)
 	(*let appelP = !dernierAppelFct in*)
     dernierAppelFct:= typeE;
     let (instanciedTotal,instanciedMax) =	evalNidComposant id contexte listeEng [] [] true globales expMax expTotal varLoop direction corpsCompo in
 
-    Printf.printf "TOTAL: %s MAX: %s\n" (string_from_expr instanciedTotal) (string_from_expr instanciedMax);	
+    (*Printf.printf "TOTAL: %s MAX: %s\n" (string_from_expr instanciedTotal) (string_from_expr instanciedMax);	*)
     let res = Loop ((id, line, source, exact, NOCOMP, NOCOMP, instanciedMax, instanciedTotal, expinit, sens), List.map evalAuxBoucle subtree) in
         (*  dernierAppelFct := appelP;*)
 	  res
@@ -3206,7 +3244,7 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEn
     begin      
         idBoucle := (!idBoucle + 1);
 
-     Printf.printf "ON ESSAYE D APPLIQUER LE CONTEXTE SUR: " ; print_expression expMax 0;
+     (*Printf.printf "ON ESSAYE D APPLIQUER LE CONTEXTE SUR: " ; print_expression expMax 0;*)
 	  (*let appelP = !dernierAppelFct in*)
 					
 	  dernierAppelFct:= typeE;(*VOIR*)			
@@ -3214,7 +3252,7 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEn
 
 		  if !isexeEnglobant = false then
 		  begin
-			  Printf.printf "ON A COMPOSE la boucle ID %u , non executed\n" id ;
+			 (* Printf.printf "ON A COMPOSE la boucle ID %u , non executed\n" id ;*)
 			  Loop ((id + (!idBoucle), line, source, exact, ConstInt("0"), ConstInt("0"), (CONSTANT (CONST_INT "0")), (CONSTANT (CONST_INT "0")), expinit, sens), List.map evalAuxPasBoucle subtree)
 		  end
 		  else

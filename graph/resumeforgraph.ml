@@ -590,7 +590,7 @@ begin
 						
 						let respess =    mayHaveListLevelNPessimisticnext  pessimistic cl   [name]    in
 						let hasGoodSize =  totalSize > 2500 || (mayBePessimistic && totalSize >1000) in
-						let nopessimistic = allarenotPessimistic name respess in
+						(*let nopessimistic = allarenotPessimistic name respess in*)
 						if (respess = [] (*|| nopessimistic*)) && hasGoodSize  then  
 						(
 								biggesteString:=!biggesteString^Printf.sprintf "\nLevel %d No pessimism for %s function size %d\n" (n+1) name totalSize;
@@ -615,7 +615,7 @@ begin
 
 						let respess =    mayHaveListLevelNPessimisticnext  pessimistic cl   [name]    in
 						let hasGoodSize =  totalSize > 2500 || (mayBePessimistic && totalSize >1000) in
-						let nopessimistic = allarenotPessimistic name respess in
+						(*let nopessimistic = allarenotPessimistic name respess in*)
 						if (respess = []  (*|| nopessimistic*))  && hasGoodSize  then  
 						(  
 		  					  	biggesteString:=!biggesteString^Printf.sprintf "\nLevel %d No pessimism for %s function or law size size : %d \n" (n+1) name totalSize;

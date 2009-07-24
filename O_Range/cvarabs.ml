@@ -1037,13 +1037,14 @@ end
 
 	
 let rec remplacerValPar0  var expr =
+
 	match expr with
 	NOTHING 					-> NOTHING
 	| UNARY (op, exp) 			-> UNARY (op, remplacerValPar0   var exp)
 	| BINARY (op, exp1, exp2) 	-> BINARY (op, remplacerValPar0   var  exp1, remplacerValPar0   var exp2)
 	| CALL (exp, args) 			->	CALL (exp, List.map(fun a-> remplacerValPar0  var a)args)
 	| VARIABLE (s) 				->	if s = var then CONSTANT (CONST_INT "0") else expr
-	| INDEX (n,exp) 			->	INDEX (n, remplacerValPar0   var exp)
+	| INDEX (n,exp) 			->	INDEX (n, remplacerValPar0   var exp); 
 	| CONSTANT ( CONST_COMPOUND expsc)  -> CONSTANT ( CONST_COMPOUND ( List.map(fun a-> remplacerValPar0  var  a)expsc))
 	| COMMA exps 					->	(COMMA ( List.map (fun a -> remplacerValPar0  var  a) exps))
 	| _ 						-> 	expr
@@ -1058,7 +1059,7 @@ let rec remplacerValPar  var nouexp expr =
 	| BINARY (op, exp1, exp2) 	-> BINARY (op, remplacerValPar   var nouexp exp1, remplacerValPar   var nouexp exp2)
 	| CALL (exp, args) 			->	CALL (exp, List.map(fun a-> remplacerValPar  var nouexp a)args)
 	| VARIABLE (s) 				->	if s = var then nouexp else expr
-	| INDEX (n,exp) 			->	INDEX (n, remplacerValPar  var nouexp exp)
+	| INDEX (n,exp) 			->	INDEX (n, remplacerValPar  var nouexp exp);
 	| CONSTANT ( CONST_COMPOUND expsc)  -> CONSTANT ( CONST_COMPOUND ( List.map(fun a-> remplacerValPar  var nouexp a)expsc))
 	| COMMA exps 					->	(COMMA ( List.map (fun a -> remplacerValPar  var nouexp a) exps))
 	| MEMBEROF (ex, c) 			->  (match nouexp with 
@@ -3032,7 +3033,7 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 								else 
 								begin 
 										if (existeAffectationVarListe tab1 a ) then 
-											(match (ro tab1 a) with ASSIGN_SIMPLE(_,EXP(va))-> UNARY (MEMOF,BINARY(ADD, va, resindex  ))|ASSIGN_SIMPLE(_,MULTIPLE)->boolAS:= true;NOTHING|_->e)
+											(match (ro tab1 a) with ASSIGN_SIMPLE(_,EXP(va))-> UNARY (MEMOF,BINARY(ADD, va, resindex  ))|ASSIGN_SIMPLE(_,MULTIPLE)->boolAS:= true;NOTHING|_->UNARY (op, exp1e  ))
 										else UNARY (op, exp1e  )  
 										(*print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 
@@ -3044,17 +3045,19 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 								(*afficherListeAS a; space(); flush();new_line();
 								Printf.printf "les as rofilter array %s tab\n" tab1 ;*)
 								match exp1 with VARIABLE(v) -> 
-									if (existeAffectationVarListe ("*"^v) a ) then 
+									let assignBefore =  (ro v a)  in
+									let (before, _) =    roavant a assignBefore  [] in
+									if (existeAffectationVarListe ("*"^v) before ) then 
 											match (ro ("*"^v) a ) with 
 											ASSIGN_MEM (_,_,EXP(va))-> va
 											|ASSIGN_MEM (_,_,MULTIPLE)-> boolAS:= true;NOTHING
-											|_-> e
-									else if (existeAffectationVarListe (v) a) then UNARY (op,  applyStore exp1e  [ro v a] ) else e
+											|_-> UNARY (op, exp1e  )
+									else (*if (existeAffectationVarListe (v) a) then UNARY (op,  applyStore exp1e   [ro v a] ) else*) UNARY (op, exp1e  )
 									| UNARY (ADDROF, next) ->  (*Printf.printf "les as rofilter*&\n" ;*)  applyStore next a 
 									|_->   (match exp1e with 	 UNARY (ADDROF, next) ->    applyStore next a  
 											|_->
-												if (existeAffectationVarListe tab1 a ) then   UNARY (op,  applyStore exp1e  [ro tab1 a] ) 
-												else UNARY (op, exp1e  ))
+												(*if (existeAffectationVarListe tab1 a ) then   UNARY (op,  applyStore exp1e  [ro tab1 a] ) 
+												else*) UNARY (op, exp1e  ))
 									
 							end
 						end 
@@ -3075,7 +3078,17 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 	| QUESTION (exp1, exp2, exp3) ->  	(QUESTION ((applyStore exp1 a), (applyStore exp2 a) , (applyStore exp3 a) ))
 	| CAST (typ, exp1) 				->	let res = (applyStore exp1 a) in 
 										if res = NOTHING then  NOTHING  else res
-	| CALL (exp1, args) 			->	(CALL (  exp1  , List.map (fun arg -> applyStore (arg) a) args))
+	| CALL (exp1, args) 			->	
+			(*(match exp1 with		
+					VARIABLE("SYGMA")|VARIABLE("MAX") -> 
+						(match List.hd args with
+							 VARIABLE(varexp)->
+									let na = List.filter (fun ass -> match ass with ASSIGN_SIMPLE (id, _)  	->   if varexp = id  then false else true |_->true ) a in
+									CALL (  exp1  , List.map (fun arg -> applyStore arg na) args)
+							|_-> CALL (  exp1  , List.map (fun arg -> applyStore arg a) args))
+
+					|_->*) CALL (  exp1  , List.map (fun arg -> applyStore arg a) args)
+			(* ) *)
 	| COMMA exps 					->	(COMMA ( List.map (fun arg -> applyStore (arg) a) exps))
 	| EXPR_SIZEOF exp 				->	(EXPR_SIZEOF (applyStore exp a))
 	| TYPE_SIZEOF _ 				->	(e)
@@ -3439,7 +3452,7 @@ let rondListe a1  ro2x =
 		match ro2x with 
 			ASSIGN_SIMPLE (x, exp) ->
 			
-				isRenameVar := false;
+				isRenameVar := false; 
 				let assign =   applyStoreVA exp a1   in	
 
 
@@ -4573,37 +4586,37 @@ afficherListeAS resT;
 Printf.printf "les as de la boucle avant transfo \n";*)
 		
 		let (newas, oldOthers, newOthers) =(closeFormPourToutXdelisteES resT id (*aS*) ) in
-(*let listeDesnewAffect = List.map (fun a -> remplacer id a) newas in
-Printf.printf "les as de FOR aprescloseform\n" ;
-afficherListeAS newas;
-Printf.printf "fin \n";*)
-(*let listeDesnewAffect = List.map (fun a -> remplacer id a) newas in*)
-(*Printf.printf "contexte\n" ;
-afficherListeAS a;
-Printf.printf "fin \n";*)
-let rewrite = 
-if newOthers != [] then
-((*
-Printf.printf "\nothers rewriteAllOthers\n";
-	afficherListeAS newOthers;space();flush();new_line();
-	Printf.printf "\nend\n";
-	Printf.printf "others\n";
-	afficherListeAS oldOthers ;space();flush();new_line();
-	Printf.printf "\nend\n";*)
-(*Printf.printf "others\n";
-	afficherListeAS newas ;space();flush();new_line();
-	Printf.printf "\nend\n";*)
+		(*let listeDesnewAffect = List.map (fun a -> remplacer id a) newas in
+		Printf.printf "les as de FOR aprescloseform\n" ;
+		afficherListeAS newas;
+		Printf.printf "fin \n";*)
+		(*let listeDesnewAffect = List.map (fun a -> remplacer id a) newas in*)
+		(*Printf.printf "contexte\n" ;
+		afficherListeAS a;
+		Printf.printf "fin \n";*)
+		let rewrite = 
+		if newOthers != [] then
+		(			(*
+					Printf.printf "\nothers rewriteAllOthers\n";
+						afficherListeAS newOthers;space();flush();new_line();
+						Printf.printf "\nend\n";
+						Printf.printf "others\n";
+						afficherListeAS oldOthers ;space();flush();new_line();
+						Printf.printf "\nend\n";*)
+					(*Printf.printf "others\n";
+						afficherListeAS newas ;space();flush();new_line();
+						Printf.printf "\nend\n";*)
 
 
 
 
-let new_res = rewriteEndOthers newas oldOthers newOthers in
-(*Printf.printf "newasl \n";
-	afficherListeAS new_res ;space();flush();new_line();
-	Printf.printf "\nend\n";*)
-new_res 
-)
-else newas in
+				let new_res = rewriteEndOthers newas oldOthers newOthers in
+				(*Printf.printf "newasl \n";
+					afficherListeAS new_res ;space();flush();new_line();
+					Printf.printf "\nend\n";*)
+				new_res 
+		)
+		else newas in
 
 
 
@@ -4612,9 +4625,9 @@ else newas in
 		(*Printf.printf "\nFIN evalStore boucle executed %d variable %s\n" num id;*)
 		if num = !firstLoop then begin listeDesVarDependITitcour :=[]; firstLoop :=0 end;
 		let res = (rond a   rewrite ) in
-(*Printf.printf "les as de FOR \n" ;
-afficherListeAS res;
-Printf.printf "fin \n";*)
+		(*Printf.printf "les as de FOR \n" ;
+		afficherListeAS res;
+		Printf.printf "fin \n";*)
 			res
 	| APPEL (n,e,nomFonc,s,corpsAbs,varB,rename)->
 		if !withoutTakingCallIntoAccount = true then a
@@ -4868,6 +4881,11 @@ and evalInputFunction a entrees  globales =
 	end	
 	else []
 
+and endoffixedpoint realNext ii = 					
+let (newas, oldOthers, newOthers) =closeFormPourToutXdelisteES realNext ii  in
+if newOthers != [] then  rewriteEndOthers newas oldOthers newOthers  else newas 
+
+
 
 and  traiterSequence liste a g =
 if liste = [] then a
@@ -4880,15 +4898,35 @@ and closeFormPourToutXdelisteES l id  =
 	let (filteredOthers, rewritedOthers) = (othersFilter others,rewriteAllOthers others ) in
 
 	let nl = (traiterOthers listeres filteredOthers rewritedOthers) in
+(*Printf.printf "\nl\n";
+	afficherListeAS nl ;space();flush();new_line();
+	Printf.printf "\nend\n";*)
+
+
 	(*Printf.printf "\nlisteres\n";
 	afficherListeAS listeres ;space();flush();new_line();
-	Printf.printf "\nend\n";*)
+	Printf.printf "\nend\n";
 	(*Printf.printf "\nothers rewriteAllOthers\n";
 	afficherListeAS (rewriteAllOthers others);space();flush();new_line();
-	Printf.printf "\nend\n";
+	Printf.printf "\nend\n";*)
 	Printf.printf "others\n";
 	afficherListeAS others ;space();flush();new_line();
 	Printf.printf "\nend\n";*)
+	
+			(*let newsuite = 	if listeDesVarModifiees != [] then 
+						(	
+							List.map (fun assign ->
+							let (nax,_)= rondListe listeDesVarModifiees  assign   in
+							if (List.hd nax) != assign then 
+							begin
+									Printf.printf "add into list\n";afficherListeAS nax;new_line(); 
+								(*	listeDesVarDependITitcour := List.append !listeDesVarDependITitcour nax*)
+							end;
+							(List.hd nax)) suite
+							
+						) 
+						else suite in*)
+
 
 	(*Printf.printf "\nothers traites\n";
 	afficherListeAS nl;space();flush();new_line();*)
@@ -4930,7 +4968,7 @@ and applynewothers before firstChange=
 	List.map(fun asc ->  
 				
 				match asc with
-					ASSIGN_SIMPLE (id, e)->    
+					ASSIGN_SIMPLE (id, e)->     
 						let na = ASSIGN_SIMPLE (id,    applyStoreVA  e firstChange) in
 						if na != asc then
 						begin
@@ -5002,10 +5040,27 @@ if (listeaS = []) then begin (*Printf.printf "FIN closeFormrec %s \n" id; *) ([]
 else 
 	begin
 		let aSCourant = List.hd listeaS in
+
 		let suite = List.tl listeaS in
 
 		let (predna, new_affect, otherAffect) =  closeForm aSCourant  id listeDesVarModifiees 	in
-		let (nextAffect, othersNext) = closeFormrec id l suite listeDesVarModifiees in
+
+		(*let deppred = !listeDesVarDependITitcour in
+		listeDesVarDependITitcour := [];*)
+		(*let newsuite = 	if listeDesVarModifiees != [] then 
+						(	
+							List.map (fun assign ->
+							let (nax,_)= rondListe listeDesVarModifiees  assign   in
+							if (List.hd nax) != assign then 
+							begin
+									Printf.printf "add into list\n";afficherListeAS nax;new_line(); 
+								(*	listeDesVarDependITitcour := List.append !listeDesVarDependITitcour nax*)
+							end;
+							(List.hd nax)) suite
+							
+						) 
+						else suite in*)
+		let (nextAffect, othersNext) = closeFormrec id l suite listeDesVarModifiees  in
 (*Printf.printf "otherAffect\n";
 
 afficherListeAS otherAffect;new_line();
@@ -5084,7 +5139,7 @@ match assign with
 	ASSIGN_SIMPLE (id, e)->	 	
 		(match e with 
 			MULTIPLE -> assign
-			| EXP (exp) -> 
+			| EXP (exp) ->  
 			if ( intersection (listeDesVarsDeExpSeules exp)  listeDesVarModifiees  ) != [] then  
 				new_assign_simple id  (applyStoreVA e aSC) 
 			else assign)
@@ -5141,7 +5196,7 @@ Printf.printf "\nremplacerToutesAffect suite\n" ;
 afficherListeAS suiteaux;
 Printf.printf "\nremplacerToutesAffect fin liste\n" ;*)
 
-	if teteaux = [] then (List.append [derniereAffectCour] (remplacerToutes (List.tl reverseliste)  suite (List.tl listeaffectEtape)))
+	if teteaux = [] then (rond [derniereAffectCour] (remplacerToutes (List.tl reverseliste)  suite (List.tl listeaffectEtape)))
 	else
 	begin
 		let new_tete =  List.map
@@ -5175,7 +5230,7 @@ afficherAS derniereAffectCour;
 Printf.printf "suite\n";
 afficherListeAS ( ressuite);
 Printf.printf "remplacerToutesAffect res\n" ;*)
-	List.append ( new_tete)  (List.append [derniereAffectCour] ressuite)
+	List.append ( new_tete)  (rond [derniereAffectCour] ressuite)
  	end 
 end
 
