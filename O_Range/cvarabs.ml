@@ -36,7 +36,7 @@ let vEPSILONFLOAT = ref (CONSTANT (CONST_FLOAT "0.001"))
 let vEPSILONINT = ref (CONSTANT (CONST_INT "1"))
 (*let vEPSILON = ref (CONSTANT (CONST_FLOAT "0.001"))*)
 let isIntoSwithch = ref false
-
+let (estDansBoucleLast  : bool ref) = ref true (* to keep only essential rond into fixed point and no with that are do after*)
 let (estDansBoucle  : bool ref) = ref false
 let torename = ref ""
 
@@ -5196,7 +5196,9 @@ Printf.printf "\nremplacerToutesAffect suite\n" ;
 afficherListeAS suiteaux;
 Printf.printf "\nremplacerToutesAffect fin liste\n" ;*)
 
-	if teteaux = [] then (rond [derniereAffectCour] (remplacerToutes (List.tl reverseliste)  suite (List.tl listeaffectEtape)))
+	if teteaux = [] then if !estDansBoucleLast then (rond [derniereAffectCour] (remplacerToutes (List.tl reverseliste)  suite (List.tl listeaffectEtape)))
+						 else (List.append [derniereAffectCour] (remplacerToutes (List.tl reverseliste)  suite (List.tl listeaffectEtape)))
+	(* rond is absolutly necessary at the last step*)
 	else
 	begin
 		let new_tete =  List.map
@@ -5220,8 +5222,8 @@ let ressuite = remplacerToutes (List.tl reverseliste)  suite (List.tl listeaffec
 
 (*Printf.printf "remplacerToutesAffect l :\n" ;
 afficherListeAS l;
-Printf.printf "remplacerToutesAffect fin liste l\n" ;
-
+Printf.printf "remplacerToutesAffect fin liste l\n" ;*)
+(*
 Printf.printf "remplacerToutesAffect res\n";
 Printf.printf "tete\n";
 afficherListeAS ( new_tete);
@@ -5230,7 +5232,9 @@ afficherAS derniereAffectCour;
 Printf.printf "suite\n";
 afficherListeAS ( ressuite);
 Printf.printf "remplacerToutesAffect res\n" ;*)
-	List.append ( new_tete)  (rond [derniereAffectCour] ressuite)
+
+(* faire les rond que si pas de boucle au dessus pour écraser l'erreur sinon faire un list append*)
+	List.append ( new_tete)  (List.append  [derniereAffectCour] ressuite)
  	end 
 end
 

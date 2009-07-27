@@ -1906,6 +1906,9 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
   (*if (nomE = (getBoucleIdB nT.infoNid.laBoucle) && nomE != 0) then if nomE != idEng then Printf.printf "CASPB\n";*)
   if nomE = idEng (*|| (nomE = (getBoucleIdB nT.infoNid.laBoucle) && nomE != 0)*) then 
   begin	
+	  let fini = ((nomE = idEng) && (nomE =  (getBoucleIdB nT.infoNid.laBoucle)))  in
+	  if fini then estDansBoucleLast := true else 	estDansBoucleLast:= false;
+
 	  if nomE = 0 then Printf.printf "fin de la remontée\n";
 	  let info = (getBoucleInfoB nEC.infoNid.laBoucle) in
 	  let nbEngl =getNombreIt (nEC.infoNid.expressionBorne) 
@@ -2199,7 +2202,7 @@ Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA !resAuxTN; new_l
 
  		dernierAppelFct := !predDernierAppelFct; 
 (*Printf.printf "av traiterBouclesInternes num %d nom eng %d AVANT AR\n"  id nomE ;*)
-		let fini = ((nomE = idEng) && (nomE =  (getBoucleIdB nT.infoNid.laBoucle)))  in
+		
 		if   !isIntoIfLoop = false && !isEnd  = false && !isEndNONZERO = false && fini = false then 
 			traiterBouclesInternes nT  nT saBENG
 			id    ( !resAuxTN)  appel listeEng typeE numAp  ( !maxAuxTN) isExeE newlt newlf borne   sansP globales maxinit varLoop direction nomE (listeAsToListeAffect new_cond) iscompo
@@ -2383,7 +2386,8 @@ let rec traiterBouclesInternesComposant 	 	nT (*tete nid contenant bi*)  nEC (*n
  
   if nomE = idEng (*|| (nomE = (getBoucleIdB nT.infoNid.laBoucle) && nomE != 0*) then 
   begin	
-	
+	let fini = ((nomE = idEng) && (nomE =  (getBoucleIdB nT.infoNid.laBoucle)))  in
+	if fini then estDansBoucleLast := true else 	estDansBoucleLast:= false;
 	let saBENG = (if aBoucleEnglobante info then info.nomEnglobante else 0) in
 
 	
@@ -2548,7 +2552,7 @@ let rec traiterBouclesInternesComposant 	 	nT (*tete nid contenant bi*)  nEC (*n
 			);
 
  		dernierAppelFct := !predDernierAppelFct; 
-		let fini = ((nomE = idEng) && (nomE =  (getBoucleIdB nT.infoNid.laBoucle)))  in
+		 
 		if   !isIntoIfLoop = false && !isEnd  = false && !isEndNONZERO = false && fini = false then 
 			traiterBouclesInternesComposant  	  nT  nT saBENG id    ( !resAuxTN)  appel listeEng typeE numAp  ( !maxAuxTN) isExeE newlt newlf borne   sansP
 			globales corpsCompo maxinit varLoop direction nomE (listeAsToListeAffect new_cond)
@@ -2816,6 +2820,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 		  let nid = (rechercheNid num) in
 		  let asL = if !estDansBoucle = false then  (jusquaBaux affectations num  contexte lastLoopOrCall globale) 
 				    else (* (evalSIDB affectations num contexte )  *) contexte in
+		  estDansBoucleLast := true;
 		  (evalNid nid asL  listeEng  lt lf estexeEng globale, globale)
 	  end
 	  else  
@@ -3462,9 +3467,11 @@ Printf.printf "evalNid contexte  boucle: tete\n";
 		  firstLoop := 0 ;
 		   listeDesVarDependITitcour:=[] ;
 		
-(*Printf.printf "CONTEXTE RES ajout dans liste corpsEval %d %s\n"  (getBoucleIdB nid.infoNid.laBoucle) id;*)
+(*Printf.printf "CONTEXTE RES ajout dans liste corpsEval %d %s\n"  (getBoucleIdB nid.infoNid.laBoucle) id; ICI*)
 (*afficherUneAffect (new_instBEGIN ni); Printf.printf "evalSIDA fin\n";*)
+		estDansBoucleLast:= false;(* to omit some rond of abstact store *)
 		let res=	evalStore (((*FORV ((getBoucleIdB nid.infoNid.laBoucle),id, EXP(NOTHING), EXP(NOTHING), EXP(NOTHING), EXP(NOTHING), *)new_instBEGIN ni) ) aSC globales in
+  		estDansBoucleLast := true ; 	
 (*afficherListeAS res;flush(); space(); new_line();*)
 		res
 		 
