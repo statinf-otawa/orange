@@ -1879,7 +1879,7 @@ end
 															
 
 
-
+let aslAux = ref []
 
 let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englobantcourant *) 
 							  idEng (*id noeud englobant  où stopper *)
@@ -1919,7 +1919,7 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 (*print_expVA (EXP(info.conditionI)); flush(); space(); new_line ();*)
 
 	  let totalNbEndborneP = rechercheNbTotalIti nomE numAp !docEvalue.maListeNidEval in*)
-
+	  aslAux := [];	
 	  if !vDEBUG then
 	  begin
 		  Printf.printf "2 traiterBouclesInternes num %d nom eng %d \n"  id nomE ;
@@ -1953,7 +1953,7 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 		let (nlt,nlf,exeloop) = if id = idpred then   creerLesAffectEXECUTED lt lf "Loop" id idEng !cptFunctiontestIntoLoop else (lt,lf, lcond) in
 
 
-		let (lesAs, intofunction,newlt, newlf) = 
+		let (lesAsf, intofunction,newlt, newlf) = 
 		(	if (!dernierAppelFct <> !predDernierAppelFct)  
 			then 
 			begin
@@ -2020,6 +2020,9 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 		  end
 		  else begin (*Printf.printf "cas3\n"; *) (lesVardeiSansj nEC idpred   (List.append   l exeloop) , false,lt,lf)end
 	  )in
+
+
+	  let lesAs =  (*if  !estDansBoucleLast then rond appel lesAsf else *)lesAsf in
 	  let ii = (nEC.varDeBoucleNid) in
 	  let vij =  rechercheLesVar  lesAs [] in
 let new_cond = filterIF lesAs in 
@@ -2048,7 +2051,12 @@ let new_cond = filterIF lesAs in
 	let resauxmax = calculer max  !infoaffichNull [] 1 in
 	isEnd := if estDefExp resauxmax then if  estNul resauxmax then true else false else false ;
 	
-
+	(*if    !estDansBoucleLast   then 
+	begin
+		let first = ro  varmax  lesAs in
+		let (before, _) = roavant  lesAs first [] in
+		aslAux := if  before = [] then before else rond [List.hd before] (List.tl before);
+	end;*)
 
 (*Printf.printf "av traiterBouclesInternes num %d nom eng %d AVANT\n"  id nomE ;*)
 	resAuxTN :=  
@@ -2121,6 +2129,9 @@ let new_cond = filterIF lesAs in
 						begin
 						 	(* si tN contient lui meme un SYGMA de i il faut composer *)
 							(*Printf.printf"borne  SYGMA 2\n";*)
+
+
+						
 							if estNothing nbEngl || estNothing (EXP(exptN)) then  
 							begin (*Printf.printf"borne  NOTHING 2\n";*) EXP(NOTHING) end
 							else
@@ -2219,9 +2230,9 @@ Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA !resAuxTN; new_l
 			(*  afficherListeAS( endcontexte);new_line () ;*)
 
 afficherListeAS new_cond;	*)
+let appelaux = (*rond appel  !aslAux*)[] in
 
-
-let ncc = List.map(fun assign -> match assign with ASSIGN_SIMPLE (id, e)->    ASSIGN_SIMPLE (id,applyStoreVA(applyStoreVA e appel) globales) |_-> assign) new_cond  in
+let ncc = List.map(fun assign -> match assign with ASSIGN_SIMPLE (id, e)->    ASSIGN_SIMPLE (id,applyStoreVA(applyStoreVA (applyStoreVA e !aslAux) appel) globales) |_-> assign) new_cond  in
 
 (*Printf.printf "av traiterBouclesInternes num %d nom eng %d AVANT AR\n"  id nomE ;*)
 
@@ -2248,8 +2259,8 @@ afficherListeAS ncc;	*)
 				 		listeInstNonexe := List.append [typeE] !listeInstNonexe
 					end;
 					
-					let nTN =  applyif(applyif (!resAuxTN) appel) globales in
-					let inter = applyif(applyif (!maxAuxTN) appel) globales in
+					let nTN =  applyif(applyif (applyif (!resAuxTN) !aslAux) appel) globales in
+					let inter = applyif(applyif (applyif (!maxAuxTN) !aslAux) appel) globales in
 
 (*Printf.printf"traiter calcul MAX pour %s =\n" ii; print_expVA !maxAuxTN; new_line ();Printf.printf"\n";*)
 
@@ -2267,7 +2278,7 @@ afficherListeAS ncc;	*)
 					(*List.iter (fun elem -> Printf.printf "%s " elem)listeIntersection;*)
 (*Printf.printf "av traiterBouclesInternes num %d nom eng %d AVANT AR\n"  id nomE ;*)
 					let expmaxinit = if estIndependantM then 
-											((*Printf.printf"borne   max inter vide \n";*)applyif( applyif (EXP( maxinit)) appel) globales)
+											((*Printf.printf"borne   max inter vide \n";*)applyif( applyif ( applyif (EXP( maxinit)) !aslAux) appel) globales)
 								     else  ((*Printf.printf"borne   max inter non vide \n";*)EXP(NOTHING) ) in
 
 

@@ -36,7 +36,7 @@ let vEPSILONFLOAT = ref (CONSTANT (CONST_FLOAT "0.001"))
 let vEPSILONINT = ref (CONSTANT (CONST_INT "1"))
 (*let vEPSILON = ref (CONSTANT (CONST_FLOAT "0.001"))*)
 let isIntoSwithch = ref false
-let (estDansBoucleLast  : bool ref) = ref true (* to keep only essential rond into fixed point and no with that are do after*)
+let (estDansBoucleLast  : bool ref) = ref true (* to keep only essential rond into fixed point *)
 let (estDansBoucle  : bool ref) = ref false
 let torename = ref ""
 
@@ -3682,6 +3682,7 @@ let sygmaArray e endcontexte lesAs =
 		| _->e*)
 
 let estModifie = ref false
+let listeDesCloseChanged = ref []
 
 let closeForm assign varB listeDesVarModifiees = 
 estModifie := true;
@@ -3734,13 +3735,17 @@ let (predna,na) =
 		(	match exp with
 			UNARY (op, exp1) ->(*Printf.printf "closeForm varB ASSIGN_SIMPLE = %s id %s = UNARY" varB id;  *)
 			(	match op with
-				POSINCR|PREINCR ->   (assign,ASSIGN_SIMPLE ( id, EXP(BINARY(ADD, exp1,varBPUN)) ) ) (*il faut * it(i+1?)*)
-				| POSDECR |PREDECR-> (assign,ASSIGN_SIMPLE ( id, EXP(BINARY(SUB, exp1,varBPUN)) )) 
+				POSINCR|PREINCR ->  listeDesCloseChanged := List.append [id] !listeDesCloseChanged;(assign,ASSIGN_SIMPLE ( id, EXP(BINARY(ADD, exp1,varBPUN)) ) ) (*il faut * it(i+1?)*)
+				| POSDECR |PREDECR-> listeDesCloseChanged := List.append [id] !listeDesCloseChanged;(assign,ASSIGN_SIMPLE ( id, EXP(BINARY(SUB, exp1,varBPUN)) )) 
 				| MINUS ->  
 					if List.mem id (listeDesVarsDeExpSeules exp1) then  
+					begin
+								listeDesCloseChanged := List.append [id] !listeDesCloseChanged;
 								(assign,ASSIGN_SIMPLE ( id, EXP(BINARY (MUL, exp1, 
 									CALL (VARIABLE("pow"),List.append [CONSTANT(CONST_INT("-1"))] [varBPUN])))) )	
-									else (assign, assign)
+					end
+					else (assign, assign)
+					
 				| _ -> 		if List.mem id (listeDesVarsDeExpSeules exp1) then 
 							((*Printf.printf "closeForm varB ASSIGN_SIMPLE = %s id %s = UNARY" varB id;*)	(assign,ASSIGN_SIMPLE (id,MULTIPLE)) )
 							else (assign, assign) 
@@ -3760,6 +3765,7 @@ let (predna,na) =
 						if estVarDsExpEval id valexp = false then (* type x = cte*) (assign, assign) 
 						else if estAffine id valexp then
 							 begin
+								listeDesCloseChanged := List.append [id] !listeDesCloseChanged;
 								let (a,b) = calculaetbAffineForne id valexp in	 					
 								let var1 = expressionEvalueeToExpression (evalexpression a) in
 								let var2 = expressionEvalueeToExpression(evalexpression b) in	
@@ -3781,10 +3787,14 @@ let (predna,na) =
 						let opaux = (if (op = ADD_ASSIGN) then ADD else SUB) in
 						let valexp =calculer (EXP(exp2)) n [] 1 in
 						if estVarDsExpEval id valexp = false then (* type x = x+b*) 
+						begin
+							listeDesCloseChanged := List.append [id] !listeDesCloseChanged;
 							(assign,ASSIGN_SIMPLE (id,EXP(BINARY(opaux, VARIABLE(id),  BINARY(MUL,  exp2, VARIABLE(varB))))))
+						end
 						else (* type x = ax+b*) 
 							if estAffine id valexp then
 							begin
+								listeDesCloseChanged := List.append [id] !listeDesCloseChanged;
 								let (a,b) = calculaetbAffineForne id valexp in	 					
 								let var1 =  expressionEvalueeToExpression (evalexpression a)in
 								let var2 = expressionEvalueeToExpression (evalexpression b) in	
@@ -3800,7 +3810,10 @@ let (predna,na) =
 					| MUL_ASSIGN	| DIV_ASSIGN | MOD_ASSIGN | SHL_ASSIGN | SHR_ASSIGN-> 
 						let valexp =calculer  (EXP(exp2)) n [] 1 in
 						if estVarDsExpEval id valexp = false then (* type x = x*cte*) 
+						begin
+							listeDesCloseChanged := List.append [id] !listeDesCloseChanged;
 							(assign,ASSIGN_SIMPLE  (id, EXP(BINARY( op, VARIABLE(id), CALL (VARIABLE("pow"), List.append [exp2] [ varBPUN ] )))))
+						end
 						else (assign,ASSIGN_SIMPLE (id,MULTIPLE)	)		
 					| _-> if List.mem id (listeDesVarsDeExpSeules exp) then (assign, ASSIGN_SIMPLE ( id, MULTIPLE))
 						  else (assign, assign)
@@ -3818,6 +3831,7 @@ let (predna,na) =
 Printf.printf "closeForm = \n" ; afficherListeAS [assign] ;new_line();*)
 if na != assign then 
 begin
+	
 	listeDesVarDependITitcour :=List.append !listeDesVarDependITitcour [na];
 	(predna,na, [])
 end
@@ -4440,7 +4454,7 @@ List.filter (fun e ->  match e with ASSIGN_SIMPLE (id, _)->
 let filterSortiesGlobalesLoops  listES listGlobales asList    =
 	let listeOutput = listeOutputs listES in
 asList*)
-
+let estboucle = ref false
 let consInitTest varExpVa res =
 match varExpVa with EXP(VARIABLE (v)) -> [VAR (v, res)]  |_-> [] 
 
@@ -4576,11 +4590,13 @@ Printf.printf "les as de if \n" ;
 Printf.printf "fin \n";*)
 					
 	| FORV (num,id, _, _, _, _, inst)	-> 
+		estboucle := true;
 	(*Printf.printf "\nevalStore boucle executed %d variable %s\n" num id;*)
 		if !firstLoop = 0 then firstLoop := num;
 		let listePred = !listeDesVarDependITitcour in
 		listeDesVarDependITitcour := [];
    		let resT = evalStore inst [] [] in
+		estboucle := false;
 (*Printf.printf "les as de la boucle avant transfo %d\n" num;
 afficherListeAS resT;
 Printf.printf "les as de la boucle avant transfo \n";*)
@@ -4881,9 +4897,7 @@ and evalInputFunction a entrees  globales =
 	end	
 	else []
 
-and endoffixedpoint realNext ii = 					
-let (newas, oldOthers, newOthers) =closeFormPourToutXdelisteES realNext ii  in
-if newOthers != [] then  rewriteEndOthers newas oldOthers newOthers  else newas 
+
 
 
 
@@ -4894,10 +4908,11 @@ else traiterSequence (List.tl liste) (evalStore (List.hd liste) a g) g
 and closeFormPourToutXdelisteES l id  =
 	(*Printf.printf "closeFormPourToutXdelisteES %s fin\n" id; *)
 	let listeDesVarModifiees = (rechercheLesVar l [] ) in
+	listeDesCloseChanged := [];
 	let (listeres, others) =  (closeFormrec id  listeDesVarModifiees l listeDesVarModifiees) in
 	let (filteredOthers, rewritedOthers) = (othersFilter others,rewriteAllOthers others ) in
-
-	let nl = (traiterOthers listeres filteredOthers rewritedOthers) in
+	let (after,before) = filterGlobalesAndOthers listeres   !listeDesCloseChanged in
+	let nl = (traiterOthers (List.append before after) filteredOthers rewritedOthers) in
 (*Printf.printf "\nl\n";
 	afficherListeAS nl ;space();flush();new_line();
 	Printf.printf "\nend\n";*)
@@ -5118,6 +5133,9 @@ Printf.printf "traiterAntidep : fin liste des variables modifiées :\n";*)
 		end
 end
 
+
+
+
 and  listeAffectBegin liste affect = (* liste affect pred *)
 if liste = [] then ([], [])
 else
@@ -5196,8 +5214,8 @@ Printf.printf "\nremplacerToutesAffect suite\n" ;
 afficherListeAS suiteaux;
 Printf.printf "\nremplacerToutesAffect fin liste\n" ;*)
 
-	if teteaux = [] then if !estDansBoucleLast then (rond [derniereAffectCour] (remplacerToutes (List.tl reverseliste)  suite (List.tl listeaffectEtape)))
-						 else (List.append [derniereAffectCour] (remplacerToutes (List.tl reverseliste)  suite (List.tl listeaffectEtape)))
+	if teteaux = [] then (*if !estDansBoucleLast then (rond [derniereAffectCour] (remplacerToutes (List.tl reverseliste)  suite (List.tl listeaffectEtape)))
+						 else*) (List.append [derniereAffectCour] (remplacerToutes (List.tl reverseliste)  suite (List.tl listeaffectEtape)))
 	(* rond is absolutly necessary at the last step*)
 	else
 	begin
