@@ -4053,7 +4053,7 @@ let initref (result : out_channel) (defs : file) =
   print_AssosIdLoopRef  !listLoopIdRef;	
   print_listIdCallFunctionRef !listIdCallFunctionRef*)
 
-let printFile (result : out_channel)  (defs2 : file)=
+let printFile (result : out_channel)  (defs2 : file) need_analyse_defs=
   idBoucle := 0;
   idAppel:=0;
   nbImbrications := 0;
@@ -4063,8 +4063,10 @@ let printFile (result : out_channel)  (defs2 : file)=
   estNulEng :=  false;
   estDansBoucle :=  false;
 	getOnlyBoolAssignment := true;
+  
+  if need_analyse_defs
+  	then analyse_defs defs2; (*step 1*)
 
-  analyse_defs defs2; (*step 1*)
   (*afficherNidDeBoucle doc;	*)
   (*Printf.printf "les globales\n";
   List.iter(fun x->Printf.printf "%s\t" x)!alreadyAffectedGlobales;

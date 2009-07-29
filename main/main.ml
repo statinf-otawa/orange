@@ -41,6 +41,9 @@ let banner =
 	"orange V1.0 (02/14/04)\n" ^
 	"Copyright (c) 2004, Hugues Cass� <hugues.casse@laposte.net>\n\n" ^
 	"SYNTAX:\n" ^
+	"Automated full analysis:\n" ^
+	"\torange [options] -auto [-allow-pessimism] files... entry-point [functions...|-funlist listfile] [-o flowfacts-file]\n" ^
+	"\torange [options] -auto [-allow-pessimism] -- entry-point [functions...|-funlist listfile] [-o flowfacts-file]\n" ^
 	"Full analysis:\n" ^
 	"\torange [options] files... entry-point [functions...|-funlist listfile] [-o flowfacts-file]\n" ^
 	"\torange [options] -- entry-point [functions...|-funlist listfile] [-o flowfacts-file]\n" ^
@@ -81,6 +84,10 @@ let calipso_rrec = ref false
 let out_file = ref ""
 let out_dir = ref "."
 
+(* auto stuff *)
+let auto = ref false
+let allow_pessimism = ref false
+
 (* partial stuff *)
 let partial = ref false
 
@@ -120,6 +127,10 @@ let opts = [
 	("-up", Arg.String (fun name -> Cextraireboucle.add_use_partial name),
 		"Use partial result (rpo file) for this function.");
 	(* Mode options *)
+	("-auto", Arg.Set auto,
+		"Automated full analysis");
+	("-allow-pessimism", Arg.Set allow_pessimism,
+		"Allow to automatically partialize even function that imply pessimism (faster)");
 	("-k", Arg.Set partial,
 		"Perform partial analysis on the given functions");
 	("-g", Arg.Unit (fun _ -> onlyGraphe := true),
@@ -141,11 +152,11 @@ let opts = [
 let isComponent comp = 
 	let rec aux = function
 		| [] -> false
-    	| (comp_name) :: r ->
-    		if (comp = !comp_name)
-    			then (true)
-    			else (aux r)
-  	in aux !Cextraireboucle.names
+		| (comp_name) :: r ->
+			if (comp = !comp_name)
+				then (true)
+				else (aux r)
+		in aux !Cextraireboucle.names
 
 (**
  * Build the partial results for functions which are marked as component.
@@ -217,7 +228,7 @@ let analysePartielle file =
 	nbImbrications := 0;
 	TO.enTETE :=  false;
 	TO.estNulEng :=  false;
-	TO.estDansBoucle :=  false;	 
+	TO.estDansBoucle :=  false;
 	analyse_defs file;
 	printf "analyse_defs OK, maintenant lance evaluation des composants.\n";
 	getComps !doc.laListeDesFonctions;
@@ -339,13 +350,86 @@ let _ =
 			else Resumeforgraph.resume secondParse false
 	
 	else begin	(* Analysis mode *)
-		if (!partial) (* partial analysis *)
+		if (!auto) (* automated full analysis *)
+		then begin
+				(* apply a partialization strategy *)
+				let rec auto_part strategy =
+					match strategy with
+					| [(level, _)] ->
+						begin
+							(* never partialize the last (main) level... *)
+							printf "Last level (%d) reach. Stop partializing.\n"
+								level;
+						end
+					| (level, []) :: t ->
+						begin
+							printf "Nothing to partialize at level %d.\n" level;
+							auto_part t;
+						end
+					| (level, fun_list) :: t ->
+						let names = (List.map (fun (n, size) -> n) fun_list) in
+						begin
+							printf "Partializing level %d:\n" level;
+							printf "\t%s\n" (List.fold_left (fun p n ->
+												p ^ " " ^ n) "" names);
+							(* init the environment *)
+							Cextraireboucle.names := [];
+							Cextraireboucle.sort_list_file_and_name names;
+							TO.numAppel := 0;
+							idBoucle := 0;
+							idAppel:=0;
+							nbImbrications := 0;
+							TO.enTETE :=  false;
+							TO.estNulEng :=  false;
+							TO.estDansBoucle :=  false;
+							(* start the partialization *)
+							(*analysePartielle secondParse;*)
+							getComps !doc.laListeDesFonctions;
+							(* update environment for the next level *)
+							List.iter (fun n ->
+								Cextraireboucle.add_use_partial n) names;
+							auto_part t;
+						end
+					| [] -> ()
+				in
+				(* get the strategy *)
+				let _ = Cextraireboucle.names := [] in
+				let _ = Cextraireboucle.sort_list_file_and_name
+					[!(!Cextraireboucle.mainFonc)] in
+				let strategy = List.hd (if !allow_pessimism
+					then (Resumeforgraph.get_all_big_strategy secondParse)
+					else (Resumeforgraph.get_only_without_pessimism_strategy secondParse)
+				) in
+				(* partialize each level *)
+				TO.initref stdout firstParse;
+				auto_part strategy;
+				
+				(* do a full analysis using all partialized functions *)
+				printf "Compute the final analysis\n";
+				Cextraireboucle.names := [];
+				list_file_and_name := !list_file_and_name @
+												(get_fun_list !fun_list_file);
+				Cextraireboucle.sort_list_file_and_name !list_file_and_name;
+				let hd=(! (List.hd (!Cextraireboucle.names)))
+				and tl =(List.tl (!Cextraireboucle.names))
+				in Cextraireboucle.maj hd tl;
+				XO.initref stdout firstParse;
+				let result = XO.printFile stdout secondParse false in
+				(if !out_file = ""
+					then print_string result
+				else
+					let out = open_out !out_file in
+					output_string out result;
+					close_out out;
+				);
+			end
+		else if (!partial) (* partial analysis *)
 			then begin
 				analysePartielle secondParse
-			end				
+			end
 		else	(* full analysis *)
 			begin
-				let result = XO.printFile stdout secondParse in
+				let result = XO.printFile stdout secondParse true in
 					if !out_file = ""
 						then print_string result
 					else
@@ -353,7 +437,7 @@ let _ =
 						output_string out result;
 						close_out out
 			end
-	end;		
+	end;
 	
 	(* Close the output if needed *)
 	if close then close_out output
