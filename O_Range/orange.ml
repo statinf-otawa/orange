@@ -242,7 +242,7 @@ module PartialAdapter =
       	Doc subtree -> List.fold_left aux res subtree
   	(*| Function (x, subtree) ->  List.fold_left aux res subtree*)
 	| Function ((name, inloop, executed, extern ), subtree) -> 
-(*Printf.printf "On essaye de traiter l appel: %s\n" name;*)  
+(*Printf.printf "On essaye de traiter l appel: %s\n" name;*)
 
 		(*let res = Listener.onFunction res name inloop executed extern  in*)
 		let res = List.fold_left aux res  (List.rev subtree) in
@@ -250,13 +250,13 @@ module PartialAdapter =
 		(*Listener.onReturn res*)
   	(*| Call (x, subtree) -> List.fold_left aux res subtree*)
   	| Call ((name, numCall, line, source, inloop, executed, extern) , subtree) ->
-(*Printf.printf "On essaye de traiter l appel: %s %u\n" name line;  *)
+(*Printf.printf "On essaye de traiter l appel: %s\n" name;*)
 		let res = Listener.onCall res name numCall line source inloop executed extern   in
 		
 		let res = List.fold_left aux res (List.rev subtree) in
 		Listener.onReturn res
   	| Loop ((id, line, source, exact, max, total, expMax, expTotal, expInit, sens), subtree) ->  
-(*Printf.printf "On essaye de traiter l loop: %u %s\n" line source;  *)
+(*Printf.printf "On essaye de traiter l appel: %s\n" name;*)
 	
 	  let max_final = if (estDefExp max) then max else (calculer_avec_sens (EXP expMax) sens) in
 	  let total_final =  if (estDefExp total) then total else  (calculer_avec_sens (EXP expTotal) sens) in 
@@ -2230,7 +2230,7 @@ Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA !resAuxTN; new_l
 			(*  afficherListeAS( endcontexte);new_line () ;*)
 
 afficherListeAS new_cond;	*)
-let appelaux = (*rond appel  !aslAux*)[] in
+ 
 
 let ncc = List.map(fun assign -> match assign with ASSIGN_SIMPLE (id, e)->    ASSIGN_SIMPLE (id,applyStoreVA(applyStoreVA (applyStoreVA e !aslAux) appel) globales) |_-> assign) new_cond  in
 
@@ -3105,13 +3105,20 @@ afficherListeAS( globalesBefore);new_line () ;*)
 										  	  compEvalue := (nextnum, nomFonction, 
 													(evaluerComposant nomFonction nc isExecutedCall dansBoucle globalesBefore 
 												(List.append [typeE]  listeEng) typeE comp_base ))::(!compEvalue);
+												 
 											  let new_fct = [ new_elementEvala typeE (EXP(appel)) []] in						
 											  corpsEvalTMP := List.append !corpsEvalTMP	 new_fct;
 											  docEvalue := new_documentEvalue !docEvalue.maListeNidEval 
 														(List.append !docEvalue.maListeEval new_fct);			
-											   			     
-											  let res =rond contexte (evalStore (List.hd myCall) nc	globalesBefore) in
-											  ( res ,globalesBefore)
+											   	 
+											  let inter = 	(evalStore (List.hd myCall) nc	globalesBefore) in    
+											   
+
+
+												(* afficherListeAS( inter);new_line () ;	*) 
+											    (*let res =rond globalesBefore inter  in*)
+												(*Printf.printf "FIN Eval appel FONCTION composant%s:\n" nomFonction ;*)
+											  ( inter ,globalesBefore)
 								end
 								else
 								begin
@@ -3129,7 +3136,8 @@ afficherListeAS( globalesBefore);new_line () ;*)
 						  begin 
 								if isCompo then
 								begin
-									let typeE =  TFONCTION(nomFonction,!numAppel,[] , entrees, [],myCall,lt,lf,  isExecutedCall, dansBoucle)  in  		 								dernierAppelFct := typeE;
+									let typeE =  TFONCTION(nomFonction,!numAppel,[] , entrees, [],myCall,lt,lf,  isExecutedCall, dansBoucle)  in 
+		 								dernierAppelFct := typeE;
 									let comp_base = (!idBoucle + 1) in
 									let nextnum= getfirtFreeCompParCall !numAppel nomFonction in
 									compEvalue := (nextnum, nomFonction, 
@@ -3286,7 +3294,7 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEn
       (*dernierAppelFct := appelP;*)
 	  res
     end in
-   Printf.printf "ON A COMPOSE le compo ID %s\n" nomComp; 
+  (* Printf.printf "ON A COMPOSE le compo ID %s\n" nomComp; *)
   (*print_string "ICI ON KONPOZE LE KONPOZAN \n";*)
   let mytree = getExpBornesFromComp nomComp in
   if dansBoucle then evalAuxBoucle mytree 
@@ -3777,7 +3785,7 @@ Printf.printf"FIN GLOBALE\n";*)
 	  
 	 let (_,_,_) = evaluerFonction !(!mainFonc) f  []
 								
-								  (EXP(NOTHING))   [typeE]  typeE true (evalStore 	(new_instBEGIN !listeDesInstGlobales) [] []) in()				
+								  (EXP(NOTHING))   [typeE]  typeE true (evalStore 	(new_instBEGIN !listeDesInstGlobales) [] []) in  ()				
 								  
   end
   else ()
