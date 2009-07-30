@@ -4414,12 +4414,13 @@ List.filter (fun e ->  match e with ASSIGN_SIMPLE (id, _)->
 	  end 
   else(* if existAssosPtrNameType  id then true else*) false 
   |_->false ) l
-
-let filterwithoutIF l =
+let firstWH = ref false
+let filterwithoutWH l =
+firstWH := true;
 List.filter (fun e ->  match e with ASSIGN_SIMPLE (id, _)->
-  if (String.length id > 3) then
+  if (String.length id > 4) then
 	  begin 
-		  if  (String.sub id  0 3) = "IF-"   then    false 	else true
+		  if  (String.sub id  0 4) = "TWH-"   then   if !firstWH then (firstWH := false; true) else false 	else true
 	  end 
   else(* if existAssosPtrNameType  id then true else*) true 
   |_->true ) l

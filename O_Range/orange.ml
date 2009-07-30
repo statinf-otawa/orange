@@ -3383,7 +3383,7 @@ Printf.printf"Dans evaluerFonctions FIN  \n";*)
   let new_fct = [ new_elementEvala typeA exp corpsEvalPourAppel] in
   corpsEvalTMP := List.append corpsEvalTMPPred	 new_fct;	
   docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append !docEvalue.maListeEval new_fct);
-  let endOfcontext = if intoLoop then new_contexte else (*filterwithoutIF*) new_contexte in
+  let endOfcontext = if intoLoop then new_contexte else filterwithoutWH new_contexte in
 	
   (endOfcontext, next, new_globales)
 
