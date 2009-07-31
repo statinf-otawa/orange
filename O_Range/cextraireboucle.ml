@@ -4155,7 +4155,7 @@ and  analyse_expressionaux exp =
 	| CAST (t, e) 						->  analyse_expressionaux e ; nouvExp:=CAST (t, !nouvExp) 
 	| CALL (e , args) 				->		
 				let listeInstPred = !listeDesInstCourantes in					
-				if existeFonction (nomFonctionDeExp e) then 
+				if existeFonction (nomFonctionDeExp e) && (not (is_in_use_partial (nomFonctionDeExp e))) then 
 				begin
 
 					let fonction = rechercheFonction (nomFonctionDeExp e) in
@@ -4830,7 +4830,7 @@ and  onlyAexpressionaux exp =
 	| CALL (e , args) 				->		
 				(* List.iter (fun ep -> onlyAexpression ep) args; *)
 				let listeInstPred = !listeDesInstCourantes in 								
-				if existeFonction (nomFonctionDeExp e) then 
+				if existeFonction (nomFonctionDeExp e) && (not (is_in_use_partial (nomFonctionDeExp e))) then 
 				begin
 					let fonction = rechercheFonction (nomFonctionDeExp e) in
 					let (_, f) = fonction in

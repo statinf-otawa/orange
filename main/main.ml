@@ -42,8 +42,8 @@ let banner =
 	"Copyright (c) 2004, Hugues Cass� <hugues.casse@laposte.net>\n\n" ^
 	"SYNTAX:\n" ^
 	"Automated full analysis:\n" ^
-	"\torange [options] -auto [-allow-pessimism] files... entry-point [functions...|-funlist listfile] [-o flowfacts-file]\n" ^
-	"\torange [options] -auto [-allow-pessimism] -- entry-point [functions...|-funlist listfile] [-o flowfacts-file]\n" ^
+	"\torange [options] -auto [-allow-pessimism] files... entry-point [functions...|-funlist listfile] [-o flowfacts-file] [-outdir /tmp]\n" ^
+	"\torange [options] -auto [-allow-pessimism] -- entry-point [functions...|-funlist listfile] [-o flowfacts-file] [-outdir /tmp]\n" ^
 	"Full analysis:\n" ^
 	"\torange [options] files... entry-point [functions...|-funlist listfile] [-o flowfacts-file]\n" ^
 	"\torange [options] -- entry-point [functions...|-funlist listfile] [-o flowfacts-file]\n" ^
@@ -206,7 +206,12 @@ let rec getComps = function
 			in Resumeforgraph.append_to_dot_size fn.nom (List.length(compAS)) has_loop;
 			(*printf "Nb loop : %d\n" nb_loop;               *)
 			printf "..affichage des info. de boucles parametriques: \n";
-			mainFonc := ref fn.nom;
+			(*mainFonc := ref fn.nom;
+			(match !TO.docEvalue.TO.maListeEval with
+				| [] -> Printf.printf "Arbre vide\n"
+				| _ -> ()
+			);
+			Printf.printf "Longueur de l'arbre: %d.\n" (List.length !TO.docEvalue.TO.maListeEval);*)
 			let (result, _) = TO.afficherInfoFonctionDuDocUML !TO.docEvalue.TO.maListeEval in
 				let fName = (Filename.concat !out_dir ((fn.nom)^".rpo")) in
 				printf "Stockage dans %s\n" fName;
@@ -333,7 +338,7 @@ let _ =
 		let merge_file = (getMergedFile a1) in
 		Rename.go (Frontc.trans_old_fun_defs merge_file) in
 		
-		if (!partial) then (
+		if ((!partial) || (!auto)) then (
 			TO.initref stdout firstParse
 		) else (
 			XO.initref stdout firstParse
@@ -372,19 +377,24 @@ let _ =
 							printf "Partializing level %d:\n" level;
 							printf "\t%s\n" (List.fold_left (fun p n ->
 												p ^ " " ^ n) "" names);
-							(* init the environment *)
-							Cextraireboucle.names := [];
-							Cextraireboucle.sort_list_file_and_name names;
-							TO.numAppel := 0;
-							idBoucle := 0;
-							idAppel:=0;
-							nbImbrications := 0;
-							TO.enTETE :=  false;
-							TO.estNulEng :=  false;
-							TO.estDansBoucle :=  false;
-							(* start the partialization *)
-							(*analysePartielle secondParse;*)
-							getComps !doc.laListeDesFonctions;
+							List.iter (fun n ->
+								(* init the environment *)
+								Cextraireboucle.names := [];
+								Cextraireboucle.sort_list_file_and_name [n];
+								
+								TO.numAppel := 0;
+								idBoucle := 0;
+								idAppel:=0;
+								nbImbrications := 0;
+								TO.enTETE :=  false;
+								TO.estNulEng :=  false;
+								TO.estDansBoucle :=  false;
+								
+								(* start the partialization *)
+								getComps !doc.laListeDesFonctions;
+								
+							) names;
+							
 							(* update environment for the next level *)
 							List.iter (fun n ->
 								Cextraireboucle.add_use_partial n) names;
@@ -400,8 +410,10 @@ let _ =
 					then (Resumeforgraph.get_all_big_strategy secondParse)
 					else (Resumeforgraph.get_only_without_pessimism_strategy secondParse)
 				) in
+				(*let strategy = [(0, [("WriteMemory", 42); ("DelayAwhile", 42)]); (1, ["", 42])] in*)
 				(* partialize each level *)
-				TO.initref stdout firstParse;
+				(*TO.initref stdout firstParse;*)
+				(*analyse_defs secondParse;*)
 				auto_part strategy;
 				
 				(* do a full analysis using all partialized functions *)

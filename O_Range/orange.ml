@@ -334,7 +334,6 @@ let resetAssosIdMax = listeDesMaxParIdBoucle := []
 
 
 let setAssosBoucleIdMaxIfSupOldMax id newmax  =
- 
   if existeAssosBoucleIdMax id then
   begin
  
@@ -1715,6 +1714,7 @@ let em = if nnE.isIntoIf then if !borneAux = NOCOMP then NOTHING else (expVaToEx
 
 
 and afficherUnAppelUML  exp  l tab numCall isExe isInLoop (result:Listener.t) : Listener.t =
+	(*let _ = Printf.printf "Go in afficherUnAppelUML, len(l)=%d.\n" (List.length l) in*)
   match exp with
 	  EXP(appel)->
 		  let nomFonction = (match appel with CALL (exp,_)->  (match exp with  VARIABLE (nomFct) -> nomFct | _ -> "") | _ -> "") in
@@ -1728,11 +1728,13 @@ and afficherInfoFonctionUML nom corps  tab numCall isExe isInLoop (result:Listen
   let isExtern = (not (existeFonctionParNom	nom doc)) in
   let (fichier , ligne ) = getAssosIdCallFunctionRef numCall in
   let result = Listener.onCall result nom numCall ligne fichier isInLoop isExe isExtern in
+  (*let _ = Printf.printf "Go in afficherInfoFonctionUML, len(corps)=%d.\n" (List.length corps) in*)
   let result = if (not isExtern) then (afficherCorpsUML corps (tab+5) result) else result in
 (*Printf.printf "BLABLA line=\"%d\" source=\"%s\" extern=\"true\">\n" ligne fichier ;*)
 
   Listener.onReturn result 
 and afficherCorpsUML lboua  tab (result:Listener.t) : Listener.t =	 
+	(*let _ = Printf.printf "Go in afficherCorpsUML, len(lboua)=%d.\n" (List.length lboua) in*)
   List.fold_left(
 		  fun result unboua	->
 			  match unboua with
@@ -2949,16 +2951,21 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 							  else 
 								( 
 									 let corps = (match c with BEGIN(ccc)-> ccc |ccc-> [ccc] ) in
+									 let ne = (match e with BEGIN(eee)-> (List.append listeInputInstruction eee) |_->listeInputInstruction) in
 									 if corps != [] then
 									 begin
-										 let ne = (match e with BEGIN(eee)-> (List.append listeInputInstruction eee) |_->listeInputInstruction) in
  											(*Printf.printf "evalUneBoucleOuAppel Eval appel FONCTION %s: num appel EXISTE VOIR COMPO %d \n" nomFonction numf;*)
 											(*let ce = evalStore  (BEGIN(corps)) [] [] in*)
-								  			([APPEL (n,e,nomFonc,s,CORPS c,v,r)], ne,[], false)
+											if (Cextraireboucle.is_in_use_partial nomFonc)
+											then ([APPEL (n,e,nomFonc,s,ABSSTORE (Cextraireboucle.getAbsStoreFromComp nomFonc),v,r)], ne, [],true)
+											else ([APPEL (n,e,nomFonc,s,CORPS c,v,r)], ne,[], false)
 									 end
 
 									 else
-									( (*Printf.printf "evalUneBoucleOuAppel Eval appel FONCTION %s: num appel EXTERN %d \n" nomFonction numf;*) ([],listeInputInstruction,[], false))
+									( (*Printf.printf "evalUneBoucleOuAppel Eval appel FONCTION %s: num appel EXTERN %d \n" nomFonction numf;*)
+										if (Cextraireboucle.is_in_use_partial nomFonc)
+										then ([APPEL (n,e,nomFonc,s,ABSSTORE (Cextraireboucle.getAbsStoreFromComp nomFonc),v,r)], ne, [],true)
+										else ([],listeInputInstruction,[], false))
 								)
 						  |APPEL (n,e,nomFonc,s,ABSSTORE a,v,r)->
 						  	let ne = (match e with BEGIN(eee)-> (List.append listeInputInstruction eee) |_->listeInputInstruction) in
@@ -3085,7 +3092,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 						  (*	Printf.printf "FIN Eval appel FONCTION 6%s:\n" nomFonction ;*)
 								if isCompo then
 								begin
-									let (e, corpsOuAppel) = match List.hd myCall with APPEL(_, e, _, _, corpsOuAppel, _ ,_) -> 
+									let (e, corpsOuAppel) = match List.hd lappel with APPEL(_, e, _, _, corpsOuAppel, _ ,_) -> 
 																(e, corpsOuAppel)  |_ -> failwith "erreur filtrage" in
 									 match corpsOuAppel with
 										  CORPS c -> 	(*Printf.printf " FONCTION externe%s:\n" nomFonction ; *)(contexte, globale) 	  
@@ -3095,7 +3102,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 											  let nc = rond   others asLAppel in
 											  let nextnum= getfirtFreeCompParCall !numAppel nomFonction in
 											  let typeE =  
-											  TFONCTION(nomFonction,!numAppel,listeAsToListeAffect a , entrees, asLAppel,myCall,lt,lf,
+											  TFONCTION(nomFonction,!numAppel,listeAsToListeAffect a , entrees, asLAppel,lappel,lt,lf,
 													   isExecutedCall, dansBoucle)  in  		 
 											  
 											  dernierAppelFct := typeE;
@@ -3111,7 +3118,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 											  docEvalue := new_documentEvalue !docEvalue.maListeNidEval 
 														(List.append !docEvalue.maListeEval new_fct);			
 											   	 
-											  let inter = 	(evalStore (List.hd myCall) nc	globalesBefore) in    
+											  let inter = 	(evalStore (List.hd lappel) nc	globalesBefore) in    
 											   
 
 
@@ -3123,7 +3130,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 								else
 								begin
 									let typeE =  
-									  TFONCTION(nomFonction,!numAppel,[] , listeInputInstruction, contexteAvantAppel,myCall,lt,lf,
+									  TFONCTION(nomFonction,!numAppel,[] , listeInputInstruction, contexteAvantAppel,lappel,lt,lf,
 											   isExecutedCall, dansBoucle)
 									  in  
 									  let new_fct = [ new_elementEvala typeE (EXP(appel)) []] in						
@@ -3136,7 +3143,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 						  begin 
 								if isCompo then
 								begin
-									let typeE =  TFONCTION(nomFonction,!numAppel,[] , entrees, [],myCall,lt,lf,  isExecutedCall, dansBoucle)  in 
+									let typeE =  TFONCTION(nomFonction,!numAppel,[] , entrees, [],lappel,lt,lf,  isExecutedCall, dansBoucle)  in 
 		 								dernierAppelFct := typeE;
 									let comp_base = (!idBoucle + 1) in
 									let nextnum= getfirtFreeCompParCall !numAppel nomFonction in
@@ -3161,7 +3168,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 									 
 					  
 									 let typeE =  
-										 TFONCTION(nomFonction,!numAppel,listeAsToListeAffect a , entrees, asLAppel,myCall,lt,lf,    isExecutedCall, dansBoucle) in  	
+										 TFONCTION(nomFonction,!numAppel,listeAsToListeAffect a , entrees, asLAppel,lappel,lt,lf,    isExecutedCall, dansBoucle) in  	
 									 (*let appelP = !dernierAppelFct in*)
 									 (*dernierAppelFct := typeE;	*)
 									let comp_base = (!idBoucle + 1) in
@@ -3183,7 +3190,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 							else
 							begin
 									 let typeE =  
-										 TFONCTION(nomFonction,!numAppel,[] , entrees, contexte,myCall,lt,lf,    isExecutedCall, dansBoucle) in  	
+										 TFONCTION(nomFonction,!numAppel,[] , entrees, contexte,lappel,lt,lf,    isExecutedCall, dansBoucle) in  	
 									 (*let appelP = !dernierAppelFct in*)
 									 
 									 let new_fct = [ new_elementEvala typeE (EXP(appel)) []] in						
@@ -3754,7 +3761,8 @@ begin
 					  end;
 				  |EXPMAX(l) ->  Printf.printf "NOCOMP\" expmaxcountAnyCalls=\"maximum(";printendExp l; space() ;flush();  
 						  Printf.printf  ")\" >" 	;	new_line();)						 	
-					  )!listeDesMaxParIdBoucle;
+					  )!listeDesMaxParIdBoucle
+				(*else Printf.printf "listeDesMaxParIdBoucle = []\n"*);
 		  Printf.printf "</loopsfacts>\n"	;flush(); new_line(); result
 	  |_-> Listener.null;
 
