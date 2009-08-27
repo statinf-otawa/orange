@@ -50,6 +50,9 @@ let set_out_dir rdir =
 let use_partial = ref []
 let add_use_partial name =
        use_partial := name :: (!use_partial)
+
+							
+
 let is_in_use_partial name =
 	let rec is_in up_list =
 	        match up_list with
@@ -69,7 +72,7 @@ let maj hd tl =
 	
 
 let nonamedForTypeDef = ref ""
-let  fileCour = ref "" 
+let  fileCour = ref "nodef" 
 let  numLine = ref 0
 let isExactForm = ref false
 let nomFctCour = ref !(!mainFonc)
@@ -100,8 +103,8 @@ let aUneFctNotDEf = ref false
 	
 	type listeDesIdDeBoucle = int list
 	type elementCorpsFonction =
-		IDBOUCLE of int * string list * string list 
-	|	IDAPPEL of int * expression *inst list *string  * string list * string list
+		IDBOUCLE of int * string list * string list *string*int(*  fic*line *)
+	|	IDAPPEL of int * expression *inst list *string  * string list * string list *string*int(*  fic*line *)
 	|	IDIF of string * inst list * elementCorpsFonction list (*then*)* inst list* elementCorpsFonction list(*else*)* string list * string list
 	
 	type refAppel = string * int (* id fichier numline*)
@@ -126,8 +129,9 @@ let aUneFctNotDEf = ref false
 	
 	let listLoopIdRef = ref []
 	let listIdCallFunctionRef =ref  []
-	let setAssosIdLoopRef id refe = listLoopIdRef := List.append   [(id, refe)]   !listLoopIdRef
 	let exitsAssosIdLoopRef id = List.mem_assoc id !listLoopIdRef
+	let setAssosIdLoopRef id refe = if exitsAssosIdLoopRef id = false then listLoopIdRef := List.append   [(id, refe)]   !listLoopIdRef
+
 	let getAssosIdLoopRef id = if exitsAssosIdLoopRef id then List.assoc id !listLoopIdRef else ("",0)
 
 	let print_AssosIdLoopRef l=
@@ -137,7 +141,10 @@ let aUneFctNotDEf = ref false
 
 	let exitsAssosIdCallFunctionRef id = List.mem_assoc id !listIdCallFunctionRef
 	let getAssosIdCallFunctionRef id = if  exitsAssosIdCallFunctionRef id  then List.assoc id !listIdCallFunctionRef else ("",0)
-	let setAssosIdCallFunctionRef id refe = listIdCallFunctionRef := List.append   [(id, refe)]   !listIdCallFunctionRef
+	let setAssosIdCallFunctionRef id refe = if exitsAssosIdCallFunctionRef id = false then listIdCallFunctionRef := List.append   [(id, refe)]   !listIdCallFunctionRef
+
+	let getListOfLine = (!listIdCallFunctionRef, !listLoopIdRef)
+	let setListOfLine lc ll=listLoopIdRef:=ll;  listIdCallFunctionRef:=lc
 	
 	let rec getArraysize typ =
         match typ with
@@ -440,7 +447,7 @@ let new_variation i s inc d op b=
 		laListeDesNids = ln;
 	}
 	
-	let add_fonction  (n,f) liste=	List.append liste [(n,f)]	
+	let add_fonction  (n,f) liste= if (List.mem_assoc n liste)= false then 	List.append liste [(n,f)]	else liste
 	let doc = ref (new_document [] [] [] [])
 	let enumCour = ref NO_TYPE
 
@@ -599,8 +606,8 @@ and get_base_typeEPS  ntyp =
 let  rec reecrireCAll var liste =
 List.map (fun e -> 
 	match e with
-			IDBOUCLE (_,_,_) -> e
-		|	IDAPPEL (i , expression, l,_,lt,lf) -> IDAPPEL (i , expression, l,var,lt,lf) 
+			IDBOUCLE (_,_,_,_,_) -> e
+		|	IDAPPEL (i , expression, l,_,lt,lf,fic,lig) -> IDAPPEL (i , expression, l,var,lt,lf,fic,lig) 
 		|	IDIF (var,instthen, treethen,instelse, treeelse,lt,lf) ->IDIF (var,instthen, reecrireCAll var treethen,instelse, reecrireCAll var treeelse,lt,lf) 
 
 ) liste
@@ -2663,7 +2670,7 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 				
 					(*afficherListeAS appel; new_line();*)
  					let bs = applyStoreVA(applyStoreVA   (EXP ( infoVar.borneSup)) appel)globales in
-					let bi = applyStoreVA(applyStoreVA   (EXP ( infoVar.borneInf)) appel)globales in
+					(*let bi = applyStoreVA(applyStoreVA   (EXP ( infoVar.borneInf)) appel)globales in*)
 					let bu = applyStoreVA(applyStoreVA   (EXP ( une )) appel)globales in
 					(*print_expVA bs; new_line();*)
 (*
@@ -2676,46 +2683,9 @@ print_expression  une 0; space() ;flush() ;new_line(); flush();new_line();
 Printf.printf "getNombreIt recherche de affect : \n";
 print_expression  valEPSILON 0; space() ;flush() ;new_line(); flush();new_line(); *)
 
-					let (rep, var) = hasPtrArrayBoundCondition bs in
-					let (bsup, binf,expune)=
-								if rep = true then 
-								begin
-									(*Printf.printf "getNombreIt recherche de affect :%s \n"var;*)
-								(*afficherListeAS appel; Printf.printf "FIN CONTEXTE \n";
-							    afficherListeAS globales; Printf.printf "FIN GLOBALES \n";*)
-									let av = if (existeAffectationVarListe var appel) then 
-												applyStoreVA(rechercheAffectVDsListeAS  var appel)globales 
-											else rechercheAffectVDsListeAS  var globales in
-				
-									(*print_expVA av;flush(); space(); new_line();*)
-									let newe = expVaToExp( av )  in
-									let (tab1,lidx1, e1) =getArrayNameOfexp newe in
-									if tab1 != "" then
-									begin
-										let nsup = changeExpInto0 e1 (expVaToExp bs) in
-										(*print_expression e1 0; new_line();
-										Printf.printf "nom du tableau :%s\n"tab1;*)
-										let ninf = changeExpInto0 e1 (expVaToExp bi) in
-										let nune = changeExpInto0 e1 (expVaToExp bu) in
-										let size = getAssosArrayIDsize tab1 in
-										let varName =  Printf.sprintf "%s_%s" "getvarTailleTabMax" var in
-										(match size with 
-											NOSIZE -> (nsup, ninf, nune)
-											| SARRAY (v) ->
-												let arraySize = (CONSTANT (CONST_INT (Printf.sprintf "%d" v) )) in
-												(remplacerValPar  varName arraySize  nsup, ninf,remplacerValPar  varName arraySize  nune)
-											| MSARRAY (lsize) -> 
-												let tsize = expressionEvalueeToExpression (prodListSize lsize) in
-												(*flush(); space();
-												print_expression tsize 0; flush(); space();new_line();flush(); space();*)
-
-												(*let nb = remplacerValPar  varName tsize  nsup in*)
-												(*print_expression nb 0; flush(); space(); new_line();*)
-												(remplacerValPar  varName tsize  nsup, ninf,remplacerValPar  varName tsize  nune))
-									end
-									else  (infoVar.borneSup, infoVar.borneInf, une)
-								end
-								else (infoVar.borneSup, infoVar.borneInf, une) in
+					
+					let ((*bsup, binf,*)expune)= evalArrayTravel  bs  appel globales une bu in
+							 
 					(*if sensinc = NDEF || (op != NE) then  *)
 						(applyStoreVA(applyStoreVA   (EXP( remplacerValPar  "EPSILON" valEPSILON expune)) appel)globales)
 
@@ -2745,6 +2715,61 @@ print_expression  valEPSILON 0; space() ;flush() ;new_line(); flush();new_line()
 			|_-> 	 EXP(NOTHING)
 	end
 
+and evalArrayTravel bs appel globales une bu =
+let (rep, var, isvar,expression) = hasPtrArrayBoundCondition bs in
+if rep = true then 
+								begin
+								
+									if isvar then
+									begin	
+										let av = if (existeAffectationVarListe var appel) then 
+													applyStoreVA(rechercheAffectVDsListeAS  var appel)globales 
+												else rechercheAffectVDsListeAS  var globales in
+				
+										
+										let newe = expVaToExp( av )  in
+										let (tab1,lidx1, e1) =getArrayNameOfexp newe in
+										if tab1 != "" then
+										begin
+											let nune = changeExpInto0 e1 (expVaToExp bu) in
+											let size = getAssosArrayIDsize tab1 in
+											let varName =  Printf.sprintf "%s_%s" "getvarTailleTabMax" var in
+											(match size with 
+												NOSIZE -> ((*nsup, ninf,*) nune)
+												| SARRAY (v) ->
+													let arraySize = (CONSTANT (CONST_INT (Printf.sprintf "%d" v) )) in
+													remplacerValPar  varName arraySize  nune
+												| MSARRAY (lsize) -> 
+													let tsize = expressionEvalueeToExpression (prodListSize lsize) in
+													remplacerValPar  varName tsize  nune)
+										end
+										else  une
+									end
+									else
+									begin
+										let newe = expVaToExp( applyStoreVA(applyStoreVA  (EXP(expression)) appel)globales)  in
+										let (tab1,lidx1, e1) =getArrayNameOfexp newe in
+										if tab1 != "" then
+										begin
+											let nune = changeExpInto0 e1 (expVaToExp bu) in
+											let size = getAssosArrayIDsize tab1 in
+											 
+											(match size with 
+												NOSIZE -> ((*nsup, ninf,*) nune)
+												| SARRAY (v) ->
+													let arraySize = (CONSTANT (CONST_INT (Printf.sprintf "%d" v) )) in
+													((*remplacerValPar  varName arraySize  nsup, ninf,*)remplacergetvarTailleTabMaxFctPar  nune arraySize  )
+												| MSARRAY (lsize) -> 
+													let tsize = expressionEvalueeToExpression (prodListSize lsize) in
+													remplacergetvarTailleTabMaxFctPar  nune tsize  )
+										end
+										
+										else  ((*infoVar.borneSup, infoVar.borneInf,*) une)
+
+
+									end
+								end
+								else ((*infoVar.borneSup, infoVar.borneInf,*) une)
 
 
 
@@ -3450,8 +3475,9 @@ print_statement  s2 ;*)
 		let varBoucleIfN =  Printf.sprintf "%s-%d" "bIt" !idBoucle in	
 		listAssocIdType := List.append !listAssocIdType [(varBoucleIfN, INT_TYPE)] ;
 		let listePred = !listeDesInstCourantes in
-		listeDesInstCourantes := !listeNextExp;																	
-		listeBoucleOuAppelCourante	:= List.append  !listeBoucleOuAppelCourante   [IDBOUCLE(numBoucle, !trueList,!falseList)];	
+		listeDesInstCourantes := !listeNextExp;		
+		let (fic,lig)=getAssosIdLoopRef numBoucle in															
+		listeBoucleOuAppelCourante	:= List.append  !listeBoucleOuAppelCourante   [IDBOUCLE(numBoucle, !trueList,!falseList ,fic ,lig)];	
 		let maListeDesBoucleOuAppelPred = 	!listeBoucleOuAppelCourante		in
 
 		listeBoucleOuAppelCourante := [];
@@ -3554,8 +3580,9 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		let varBoucleIfN =  Printf.sprintf "%s-%d" "bIt" !idBoucle in	
 		let listePred = !listeDesInstCourantes in
 		listeDesInstCourantes := [];
-		listAssocIdType := List.append !listAssocIdType [(varBoucleIfN, INT_TYPE)] ;									
-		listeBoucleOuAppelCourante	:= List.append !listeBoucleOuAppelCourante  [IDBOUCLE(numBoucle, !trueList,!falseList)];
+		listAssocIdType := List.append !listAssocIdType [(varBoucleIfN, INT_TYPE)] ;
+		let (fic,lig)=getAssosIdLoopRef numBoucle in												
+		listeBoucleOuAppelCourante	:= List.append !listeBoucleOuAppelCourante  [IDBOUCLE(numBoucle, !trueList,!falseList, fic,lig)];
 		let listeBouclesInbriqueesPred  = !listeDesBouclesDuNidCourant in					
 		listeDesBouclesDuNidCourant := List.append  !listeDesBouclesDuNidCourant [numBoucle];			
 		listeBouclesImbriquees := [];
@@ -3683,8 +3710,8 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 		let listePred = !listeDesInstCourantes in
 		listAssocIdType := List.append !listAssocIdType [(varBoucleIfN, INT_TYPE)] ;
 		listeDesInstCourantes := !listeNextExp;	
-									
-		listeBoucleOuAppelCourante	:= List.append  !listeBoucleOuAppelCourante [IDBOUCLE(num, !trueList,!falseList )];	
+		let (fic,lig)=getAssosIdLoopRef num in										
+		listeBoucleOuAppelCourante	:= List.append  !listeBoucleOuAppelCourante [IDBOUCLE(num, !trueList,!falseList, fic, lig )];	
 		let listeBouclesInbriqueesPred  = !listeDesBouclesDuNidCourant in
 		let maListeDesBoucleOuAppelPred = 	!listeBoucleOuAppelCourante		in
 		listeBoucleOuAppelCourante := [];
@@ -4173,9 +4200,9 @@ and  analyse_expressionaux exp =
 (*Printf.printf "analyse_expressionaux %s num appel %d \n" (nomFonctionDeExp e) ida;	*)
 
 (*Printf.printf "analyse_expressionaux %s EXISTE \n" (nomFonctionDeExp e) ;*)
-
+					 let (fichier , ligne ) = getAssosIdCallFunctionRef ida in
 					listeBoucleOuAppelCourante	:= 
-						List.append  !listeBoucleOuAppelCourante  [IDAPPEL(ida, exp, !listeDesInstCourantes,"", !trueList,!falseList )];
+						List.append  !listeBoucleOuAppelCourante  [IDAPPEL(ida, exp, !listeDesInstCourantes,"", !trueList,!falseList ,fichier , ligne)];
 					let _ = traiterAppelFonction e args !listeDesInstCourantes ida in
 					let nouvar = Printf.sprintf "call-%s%d" (nomFonctionDeExp e) ida in
 					(*if isvoid = false then *)
@@ -4209,9 +4236,9 @@ and  analyse_expressionaux exp =
 				    let ida = !idAppel in	
 (*Printf.printf "analyse_expressionaux %s num appel %d \n" (nomFonctionDeExp e) ida;		
 Printf.printf "analyse_expressionaux %s NON EXISTE \n" (nomFonctionDeExp e) ;*)
-			
+					 let (fichier , ligne ) = getAssosIdCallFunctionRef ida in
 					listeBoucleOuAppelCourante	
-						:= List.append  !listeBoucleOuAppelCourante [IDAPPEL(ida, exp,!listeDesInstCourantes,"" , !trueList,!falseList )];
+						:= List.append  !listeBoucleOuAppelCourante [IDAPPEL(ida, exp,!listeDesInstCourantes,"" , !trueList,!falseList ,fichier , ligne)];
 					let isComponant = traiterAppelFonction e args !listeDesInstCourantes ida in
 
 (*if isComponant then Printf.printf "analyse_expressionaux %s NON EXISTE IS COMPOSANT %d\n" (nomFonctionDeExp e) ida
@@ -4422,7 +4449,8 @@ and traiterAppelFonction exp args init ida =
 
 
 (* for variables *)
-and analyse_defs defs = List.iter	(fun def ->		analyse_def def)		defs
+and analyse_defs defs =    
+ List.iter	(fun def ->		analyse_def def)		defs
 
 and analyse_def def =
 	match def with
@@ -4960,12 +4988,12 @@ and  onlyAexpressionaux exp =
 			|_->  nouvExp:=EXPR_SIZEOF !nouvExp
 		);
 			 					
-			print_expression !nouvExp 0;new_line () ;flush(); space();
+			(*print_expression !nouvExp 0;new_line () ;flush(); space();*)
 				
 	| TYPE_SIZEOF typ ->
 			nouvExp:=VARIABLE( "SIZEOF_"  ^ (get_baseinittype typ));
  					
-			print_expression !nouvExp 0;new_line () ;flush(); space();
+			(*print_expression !nouvExp 0;new_line () ;flush(); space();*)
 	| GNU_BODY (decs, stat) -> 	
 			let listePred = !listeDesInstCourantes in
 			listeDesInstCourantes := [];
@@ -5269,3 +5297,5 @@ and onlyanalysedef def =
 					) namelist;
 		()
 
+
+let majAssocCompAS = List.iter (fun n ->   add_list_comp   (!n,getAbsStoreFromComp !n)  )!names	

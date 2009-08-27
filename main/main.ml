@@ -124,7 +124,7 @@ let opts = [
 		"Takes input from standard input.");
 	("-funlist", Arg.String (fun file -> fun_list_file := file),
 		"File with the list of function names to be processed.");
-	("-up", Arg.String (fun name -> Cextraireboucle.add_use_partial name),
+	("-up", Arg.String (fun name -> Cextraireboucle.add_use_partial name; Cextraireboucle.majAssocCompAS),
 		"Use partial result (rpo file) for this function.");
 	(* Mode options *)
 	("-auto", Arg.Set auto,
@@ -170,18 +170,48 @@ let rec getComps = function
 		if (isComponent fn.nom) 
 		then begin
 			printf "Evalue le resultat partiel pour: %s\n" fn.nom;
-			TO.isPartialisation:=false;
+			
+
+TO.docEvalue :=  TO.new_documentEvalue  [] [];
+compEvalue := [];
+listeAppels :=  [];
+TO.varDeBoucleBoucle :="";
+TO.listeDesMaxParIdBoucle :=  [];
+TO.corpsEvalTMP :=  [] ;
+TO.nouBoucleEval:=  [];
+TO.appelcourant :=   [] ;
+TO.listBeforeFct :=  [];
+TO.listeVB  := [];
+TO.listeVBDEP := [];
+TO.curassocnamesetList := [];
+TO.listeInstNonexe := [];
+TO.aslAux := [];
+TO.listCaseFonction := [];
+(*TO.listeDesMaxParIdBoucle :=  [];
+TO.corpsEvalTMP :=  [] ;
+TO.nouBoucleEval:=  [];
+TO.docEvalue :=  TO.new_documentEvalue  [] [];
+TO.appelcourant :=   [] ;
+TO.listBeforeFct :=  [];
+TO.listeVB  := [];
+TO.listeVBDEP := [];
+TO.curassocnamesetList := [];
+TO.listeInstNonexe := [];
+TO.aslAux := [];
+TO.listCaseFonction := []*)TO.isPartialisation := true;
+
+			(*Printf.printf "Longueur de l'arbre: avant %d.\n" (List.length !TO.docEvalue.TO.maListeEval);*)
 			let globales = !alreadyAffectedGlobales in
 				globalesVar := !alreadyAffectedGlobales;
-			let typeE = TO.TFONCTION(fn.nom,!TO.numAppel, fn.lesAffectations, [], [], [], [],  [], true, false) in
+			let typeE = TO.TFONCTION(fn.nom,!TO.numAppel, fn.lesAffectations, [], [], [], [],  [], true, false,"",0) in
 				TO.dernierAppelFct := typeE;
 			TO.predDernierAppelFct := typeE;
-			let (_,_,_) = TO.evaluerFonction (fn.nom) fn []  (EXP(NOTHING))   [typeE]  typeE true !listeASCourant in () ;
+			let (aslist,_,_) = TO.evaluerFonction (fn.nom) fn []  (EXP(NOTHING))   [typeE]  typeE true !listeASCourant in () ;
 			let compAS: abstractStore list = 
-				filterwithoutInternal (evalStore (new_instBEGIN fn.lesAffectations) [] []) (listeOutputs fn.listeES) globales in
+				filterwithoutInternal (*(evalStore (new_instBEGIN fn.lesAffectations) [] []) (listeOutputs fn.listeES) globales *) aslist (listeOutputs fn.listeES) globales in
 				printf "..l'abstractStore fait %u entrees, affichage: \n"(List.length(compAS));
-			TO.isPartialisation:=false;
-			afficherListeAS compAS;
+			 
+			(*afficherListeAS compAS;*)
 			printf "\n";
 			(* find if there is a loop inside abstract stores *)
 			let nb_loop = (List.fold_left
@@ -205,13 +235,14 @@ let rec getComps = function
 			) in let has_loop = (nb_loop > 0)
 			in Resumeforgraph.append_to_dot_size fn.nom (List.length(compAS)) has_loop;
 			(*printf "Nb loop : %d\n" nb_loop;               *)
-			printf "..affichage des info. de boucles parametriques: \n";
-			(*mainFonc := ref fn.nom;
-			(match !TO.docEvalue.TO.maListeEval with
+			printf "..affichage des info. de boucles parametriques: %s de nom\n" fn.nom;
+			mainFonc := ref fn.nom;
+			
+			(*(match !TO.docEvalue.TO.maListeEval with
 				| [] -> Printf.printf "Arbre vide\n"
 				| _ -> ()
-			);
-			Printf.printf "Longueur de l'arbre: %d.\n" (List.length !TO.docEvalue.TO.maListeEval);*)
+			);*)
+			Printf.printf "Longueur de l'arbre: %d.\n" (List.length !TO.docEvalue.TO.maListeEval);
 			let (result, _) = TO.afficherInfoFonctionDuDocUML !TO.docEvalue.TO.maListeEval in
 				let fName = (Filename.concat !out_dir ((fn.nom)^".rpo")) in
 				printf "Stockage dans %s\n" fName;
@@ -232,9 +263,9 @@ let analysePartielle file =
 	idAppel:=0;
 	nbImbrications := 0;
 	TO.enTETE :=  false;
-	TO.estNulEng :=  false;
-	TO.estDansBoucle :=  false;
-	analyse_defs file;
+	TO.estNulEng :=  false;  TO.isPartialisation := true;
+	TO.estDansBoucle :=  false;getOnlyBoolAssignment := true;
+	analyse_defs file;getOnlyBoolAssignment := false;
 	printf "analyse_defs OK, maintenant lance evaluation des composants.\n";
 	getComps !doc.laListeDesFonctions;
 	print_string "OK, fini.\n"
@@ -372,16 +403,19 @@ let _ =
 							auto_part t;
 						end
 					| (level, fun_list) :: t ->
+						
 						let names = (List.map (fun (n, size) -> n) fun_list) in
 						begin
 							printf "Partializing level %d:\n" level;
 							printf "\t%s\n" (List.fold_left (fun p n ->
 												p ^ " " ^ n) "" names);
+
+							Cextraireboucle.names := [];
 							List.iter (fun n ->
 								(* init the environment *)
-								Cextraireboucle.names := [];
-								Cextraireboucle.sort_list_file_and_name [n];
 								
+								Cextraireboucle.sort_list_file_and_name [n];
+							) names;	
 								TO.numAppel := 0;
 								idBoucle := 0;
 								idAppel:=0;
@@ -389,18 +423,21 @@ let _ =
 								TO.enTETE :=  false;
 								TO.estNulEng :=  false;
 								TO.estDansBoucle :=  false;
-								
+								 
 								(* start the partialization *)
 								getComps !doc.laListeDesFonctions;
 								
-							) names;
+							
 							
 							(* update environment for the next level *)
 							List.iter (fun n ->
 								Cextraireboucle.add_use_partial n) names;
+
+							Cextraireboucle.majAssocCompAS;
+							 
 							auto_part t;
 						end
-					| [] -> ()
+					| [] -> printf "Partializing level  fin:\n" ;()
 				in
 				(* get the strategy *)
 				let _ = Cextraireboucle.names := [] in
@@ -425,7 +462,10 @@ let _ =
 				let hd=(! (List.hd (!Cextraireboucle.names)))
 				and tl =(List.tl (!Cextraireboucle.names))
 				in Cextraireboucle.maj hd tl;
-				XO.initref stdout firstParse;
+				(*XO.initref stdout firstParse;*)
+			 	XO.docEvalue :=  XO.new_documentEvalue  [] [];compEvalue := [];
+				listeAppels :=  [];
+ 
 				let result = XO.printFile stdout secondParse false in
 				(if !out_file = ""
 					then print_string result

@@ -104,7 +104,10 @@ type abstractStore =
 let new_assign_simple id exp  = ASSIGN_SIMPLE(id, exp)
 let new_assign_double id exp1 exp2  = ASSIGN_DOUBLE(id, exp1, exp2)
 let new_assign_mem id exp1 exp2  = ASSIGN_MEM (id, exp1, exp2)
+let (alreadyEvalFunctionAS: (string * abstractStore list)list ref) = ref []
 
+let add_list_comp   v =  
+  alreadyEvalFunctionAS := v :: (!alreadyEvalFunctionAS)
 
 type corpsInfo = 
       CORPS of inst
@@ -300,10 +303,10 @@ let rec hasPtrArrayBoundConditionExp e =
 match e with
 		  UNARY (_, exp) ->hasPtrArrayBoundConditionExp exp 
 		| BINARY (_, exp1, exp2) ->
-			let (b1,e1 )= hasPtrArrayBoundConditionExp exp1 in
-			let (b2,e2 )= hasPtrArrayBoundConditionExp exp2 in
-			if b1 && b2 = false then  (b1, e1) 
-			else  if b1 = false && b2 then (b2, e2)  else (false, "") 
+			let (b1,e1, iv1, exp1)= hasPtrArrayBoundConditionExp exp1 in
+			let (b2,e2, iv2, exp2 )= hasPtrArrayBoundConditionExp exp2 in
+			if b1 && b2 = false then  (b1,e1, iv1, exp1)
+			else  if b1 = false && b2 then (b2,e2, iv2, exp2 )  else (false, "", true ,NOTHING) 
 		| VARIABLE id -> 
 			if (String.length id > 19) then
 				if (String.sub id  0 19) = "getvarTailleTabMax_" then
@@ -311,13 +314,16 @@ match e with
 					let var = String.sub id 19 ((String.length id)-19) in
 				(*	Printf.printf "dans hasPtrArrayBoundConditionExp, trouve %s type : \n" var;
 					printfBaseType (getBaseType (List.assoc var !listAssocIdType) );*)
-				    (true , var)	
+				    (true , var,true ,NOTHING)	
 				end
-				else begin(* Printf.printf "dans hasPtrArrayBoundConditionExp, autre\n" ;*)(false, "") end
-			else   (false, "") 
-		| _ ->  (false, "") 
+				else begin(* Printf.printf "dans hasPtrArrayBoundConditionExp, autre\n" ;*)(false, "",true,NOTHING)  end
+			else   (false, "",true,NOTHING) 
+		| CALL(VARIABLE("getvarTailleTabMax_"), [e]) -> (*Printf.printf "dans hasPtrArrayBoundConditionExp, autre call\n" ; *)(true, "",false ,e)	 
+		| CALL(_, [e]) -> (*Printf.printf "dans hasPtrArrayBoundConditionExp, autre call 2\n" ; *)
+					hasPtrArrayBoundConditionExp e 
+		| _ ->  (false, "",true ,NOTHING)	
 
-let hasPtrArrayBoundCondition e = match e with MULTIPLE -> (false, "") | EXP (e) -> hasPtrArrayBoundConditionExp e 
+let hasPtrArrayBoundCondition e = match e with MULTIPLE -> (false, "",true,NOTHING) | EXP (e) -> hasPtrArrayBoundConditionExp e 
 
 let estNothing e = match e with MULTIPLE -> 	false | EXP (e) -> 	match e with NOTHING -> true |_-> false
 
@@ -1099,6 +1105,23 @@ let rec remplacerNOTHINGPar  expr =
 (*	| CONSTANT ( CONST_COMPOUND expsc)  -> CONSTANT ( CONST_COMPOUND ( List.map(fun a-> remplacerNOTHINGPar a)expsc))
 	| COMMA exps 					->	(COMMA ( List.map (fun a -> remplacerNOTHINGPar    a) exps))*)
 	| _ 						-> 	expr
+
+
+
+let rec remplacergetvarTailleTabMaxFctPar  expr ne =
+	match expr with
+	NOTHING 					-> NOTHING
+	| UNARY (op, exp) 			-> UNARY (op, remplacergetvarTailleTabMaxFctPar    exp ne)
+	| BINARY (op, exp1, exp2) 	-> BINARY (op, remplacergetvarTailleTabMaxFctPar exp1 ne, remplacergetvarTailleTabMaxFctPar exp2 ne)
+	| CALL(VARIABLE("getvarTailleTabMax_"), _)-> ne
+	| CALL (exp, args) 			->	CALL (exp, List.map(fun a-> remplacergetvarTailleTabMaxFctPar a ne )args)
+ 
+ 
+(*	| CONSTANT ( CONST_COMPOUND expsc)  -> CONSTANT ( CONST_COMPOUND ( List.map(fun a-> remplacerNOTHINGPar a)expsc))
+	| COMMA exps 					->	(COMMA ( List.map (fun a -> remplacerNOTHINGPar    a) exps))*)
+	| _ 						-> 	expr
+
+
 
 let rec isNoDef  expr =
 	match expr with
@@ -2620,7 +2643,7 @@ and getCond ifid affect =
 	| IFV ( _, i1) 		->getCond ifid i1 
 	| BEGIN (liste)			-> getCondIntoList ifid liste 		
 	| FORV ( _, _,_, _, _, _, i) -> 	getCond ifid i
-	| APPEL (_, _, _, _,CORPS c,_,_) ->getCond ifid c
+	| APPEL (_, _, nom, _,CORPS c,_,_) -> if List.mem_assoc  nom !alreadyEvalFunctionAS = false then getCond ifid c else (false, EXP(NOTHING))
 	| APPEL (_, _, _, _,ABSSTORE a,_,_) ->(false, EXP(NOTHING))
 			 
 
@@ -2990,7 +3013,28 @@ match e with
 
 			(*ASSIGN_SIMPLE (_, EXP(valeur)) ->(valeur) |ASSIGN_SIMPLE (_, MULTIPLE) ->isRenameVar := true;boolAS:= true; NOTHING| _ ->	e*)
 		end
-		else ( e  )
+		else
+		begin
+			
+			if  (String.length name > 19) then
+				if (String.sub name 0 19) = "getvarTailleTabMax_" then
+				begin	
+					let var = String.sub name 19 ((String.length name)-19) in
+					if (existeAffectationVarListe var a ) then 
+					begin
+						
+						let newassign = (ro var a) in	
+						match newassign with 
+							ASSIGN_SIMPLE  (_,EXP(VARIABLE(va))) -> if va != var then begin(* Printf.printf " expression applystore getvarTailleTabMax VAR\n"; *)isRenameVar := true;  VARIABLE("getvarTailleTabMax_"^va) end else (e)
+							|ASSIGN_SIMPLE  (_,EXP(e)) ->(*Printf.printf " expression applystore getvarTailleTabMax OTHER\n"; *) isRenameVar := true;  CALL(VARIABLE("getvarTailleTabMax_"), [e])
+							 |_->e
+					end
+					else (e)
+				end
+				else ( e  )
+
+			else ( e  )
+		end
 	| CONSTANT 	cst	->
 		(match cst with 
 			CONST_COMPOUND expsc ->(*Printf.printf "consta conpound 1\n"; print_expression e 0; new_line();*)
@@ -4658,8 +4702,12 @@ Printf.printf "les as de la boucle avant transfo \n";*)
 
 					let affectSortie = evalStore s [] [] in	
 					let entrees = (match e with BEGIN(eee) -> eee |_->[]) in
-					let isAbs = match corpsAbs with CORPS(_) -> false | ABSSTORE(_) -> true in
-					let absStore = match corpsAbs with ABSSTORE(a) -> a | _ -> [] in
+
+
+					 
+					let isAbs = match corpsAbs with CORPS(_) -> if List.mem_assoc  nomFonc !alreadyEvalFunctionAS then true else false | ABSSTORE(_) -> true in
+
+					let absStore = match corpsAbs with ABSSTORE(a) -> a | _ -> if List.mem_assoc  nomFonc !alreadyEvalFunctionAS then List.assoc nomFonc !alreadyEvalFunctionAS else [] in
 		
 					if varB = "" then
 					begin

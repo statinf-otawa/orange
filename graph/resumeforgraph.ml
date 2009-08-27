@@ -1054,7 +1054,17 @@ let partial_tips_message call_list_number call_list =
 
 (* Initialize resume for graph *)
 let init = fun secondParse ->
+
+getOnlyBoolAssignment := true;
+ 
+	idBoucle := 0;
+	idAppel:=0;
+	nbImbrications := 0;
+ 
+ 
 	analyse_defs secondParse;
+ 
+getOnlyBoolAssignment := false;
 	getInfoFunctions doc;
 	
 	evalCallList !callsList;
