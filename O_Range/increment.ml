@@ -522,8 +522,8 @@ afficherLesAffectations iList;*)
 					else (true, inc1, var1, before1) 
 
 
-			| APPEL (_,_,_,_,_,_,_)->
-				let (indirect1, inc1, var1, before1) = (getIncOfCall x firstInst completList) in
+			| APPEL (_,_,_,s,_,_,_)->
+				let (indirect1, inc1, var1, before1) = (getIncOfCall x firstInst completList s) in
 				if inc1 = NODEFINC then (indirect1,inc1, var1, before1)
 				else
 					if indirect1 = false then 
@@ -569,15 +569,21 @@ and extractIncOfLoop x inst varL nbItL completList=
 	end
 
 
-and getIncOfCall x call completList=
+and getIncOfCall x call completList s=
+if List.mem x !alreadyAffectedGlobales then withoutTakingCallIntoAccount:= false;
+let affectSortie = evalStore s [] [] in	
 
 let las = evalStore call [] [] in
+if existAffectVDsListeAS x affectSortie then withoutTakingCallIntoAccount:= false;
+let inc = 
 if existAffectVDsListeAS x las then
 begin
 			let extinc = expVaToExp(rechercheAffectVDsListeAS x las)   in
 			getInc x extinc [call] !listeASCourant true completList
 end
-else (false,NOINC,x, false)
+else (false,NOINC,x, false) in
+withoutTakingCallIntoAccount := true;
+inc
 
 
 

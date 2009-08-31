@@ -5365,9 +5365,26 @@ begin
 
 	| APPEL (num, e, nom, s, CORPS c,v,r) ->
 			(* var may be a global *)
+if List.mem_assoc  nom !alreadyEvalFunctionAS = false then
+begin
 			let (newi1, listeaux1) = extractVarCONDAffectaux [c] listeCondVar in
 			if newi1 = []  then (newSuite, listeaux)
-			else (List.append [ APPEL( num, e,nom ,s, CORPS (List.hd newi1),v,r)] newSuite, union  listeaux1 listeaux)				
+			else (List.append [ APPEL( num, e,nom ,s, CORPS (List.hd newi1),v,r)] newSuite, union  listeaux1 listeaux)			
+end 
+else
+begin
+			let a = List.assoc nom !alreadyEvalFunctionAS  in
+		                let c = BEGIN (listeAsToListeAffect a) in
+			(* var may be a global *)
+			let (newi1, listeaux1) = extractVarCONDAffectaux [c] listeCondVar in
+			if newi1 = []  then (newSuite, listeaux)
+			
+			else
+			begin
+				 let na = evalStore (List.hd newi1) [] [] in
+				 (List.append [ APPEL( num, e,nom ,s, ABSSTORE na,v,r)] newSuite, union  listeaux1 listeaux)	
+			end	
+end	
 
 	| APPEL (num, e, nom, s, ABSSTORE a,v,r) ->
 	                let c = BEGIN (listeAsToListeAffect a) in

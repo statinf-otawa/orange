@@ -124,7 +124,7 @@ let opts = [
 		"Takes input from standard input.");
 	("-funlist", Arg.String (fun file -> fun_list_file := file),
 		"File with the list of function names to be processed.");
-	("-up", Arg.String (fun name -> Cextraireboucle.add_use_partial name; Cextraireboucle.majAssocCompAS),
+	("-up", Arg.String (fun name -> Cextraireboucle.add_use_partial name; alreadyEvalFunctionAS := List.map (fun n ->  (n,Cextraireboucle.getAbsStoreFromComp n)  )!use_partial	;),
 		"Use partial result (rpo file) for this function.");
 	(* Mode options *)
 	("-auto", Arg.Set auto,
@@ -170,7 +170,9 @@ let rec getComps = function
 		if (isComponent fn.nom) 
 		then begin
 			printf "Evalue le resultat partiel pour: %s\n" fn.nom;
-			
+
+(*alreadyEvalFunctionAS := List.map (fun n ->  (n,Cextraireboucle.getAbsStoreFromComp n)  )!use_partial	;
+			List.iter(fun (n,_) ->Printf.printf "%s " n)!alreadyEvalFunctionAS;*)
 
 TO.docEvalue :=  TO.new_documentEvalue  [] [];
 compEvalue := [];
@@ -187,6 +189,10 @@ TO.curassocnamesetList := [];
 TO.listeInstNonexe := [];
 TO.aslAux := [];
 TO.listCaseFonction := [];
+let initListAssosPtrNameType = !listeAssosPtrNameType in
+let initistAssocIdType = !listAssocIdType in
+let initlistAssosIdTypeTypeDec = !listAssosIdTypeTypeDec in
+
 (*TO.listeDesMaxParIdBoucle :=  [];
 TO.corpsEvalTMP :=  [] ;
 TO.nouBoucleEval:=  [];
@@ -199,16 +205,17 @@ TO.curassocnamesetList := [];
 TO.listeInstNonexe := [];
 TO.aslAux := [];
 TO.listCaseFonction := []*)TO.isPartialisation := true;
-
+listeASCourant := [];
 			(*Printf.printf "Longueur de l'arbre: avant %d.\n" (List.length !TO.docEvalue.TO.maListeEval);*)
 			let globales = !alreadyAffectedGlobales in
 				globalesVar := !alreadyAffectedGlobales;
 			let typeE = TO.TFONCTION(fn.nom,!TO.numAppel, fn.lesAffectations, [], [], [], [],  [], true, false,"",0) in
 				TO.dernierAppelFct := typeE;
 			TO.predDernierAppelFct := typeE;
-			let (aslist,_,_) = TO.evaluerFonction (fn.nom) fn []  (EXP(NOTHING))   [typeE]  typeE true !listeASCourant in () ;
+			let (aslist,_,_) = TO.evaluerFonction (fn.nom) fn []  (EXP(NOTHING))   [typeE]  typeE true (*!listeASCourant*)[] in () ;
 			let compAS: abstractStore list = 
-				filterwithoutInternal (*(evalStore (new_instBEGIN fn.lesAffectations) [] []) (listeOutputs fn.listeES) globales *) aslist (listeOutputs fn.listeES) globales in
+				filterwithoutInternal (*(evalStore (new_instBEGIN fn.lesAffectations) [] []) (listeOutputs fn.listeES) globales *) 
+						aslist (listeOutputs fn.listeES) globales in
 				printf "..l'abstractStore fait %u entrees, affichage: \n"(List.length(compAS));
 			 
 			(*afficherListeAS compAS;*)
@@ -244,6 +251,11 @@ TO.listCaseFonction := []*)TO.isPartialisation := true;
 			);*)
 			Printf.printf "Longueur de l'arbre: %d.\n" (List.length !TO.docEvalue.TO.maListeEval);
 			let (result, _) = TO.afficherInfoFonctionDuDocUML !TO.docEvalue.TO.maListeEval in
+
+
+listeAssosPtrNameType := initListAssosPtrNameType ;
+listAssocIdType := initistAssocIdType;
+listAssosIdTypeTypeDec:= initlistAssosIdTypeTypeDec ;
 				let fName = (Filename.concat !out_dir ((fn.nom)^".rpo")) in
 				printf "Stockage dans %s\n" fName;
 			(* TO.afficherCompo	   result; *)   
@@ -433,7 +445,7 @@ let _ =
 							List.iter (fun n ->
 								Cextraireboucle.add_use_partial n) names;
 
-							Cextraireboucle.majAssocCompAS;
+							alreadyEvalFunctionAS := List.map (fun n ->  (n,Cextraireboucle.getAbsStoreFromComp n)  )!use_partial	;
 							 
 							auto_part t;
 						end

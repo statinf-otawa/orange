@@ -687,8 +687,9 @@ and traiterUneIntructionPourBoucle premiere sId  l=
   | IFVF ( c, i1, i2) ->  IFVF (c, traiterUneIntructionPourBoucle i1 sId l, traiterUneIntructionPourBoucle i2 sId l) 
   | IFV ( c, i1) 		->  IFV ( c, traiterUneIntructionPourBoucle i1 sId l)				
   | BEGIN (liste)		->  BEGIN (listeSAUFIDB liste sId l)
-  |  APPEL (num, avant, nom, apres, CORPS corps,x,r) -> 
-		if List.mem_assoc  nom !alreadyEvalFunctionAS then APPEL (num, avant, nom, apres, CORPS corps,x,r) else APPEL (num, avant, nom, apres, CORPS (traiterUneIntructionPourBoucle corps sId l),x,r)   
+  |  APPEL (num, avant, nom, apres, CORPS corps,x,r) -> (*let a = List.assoc nom !alreadyEvalFunctionAS  in*)
+		if List.mem_assoc  nom !alreadyEvalFunctionAS then APPEL (num, avant, nom, apres, ABSSTORE ( List.assoc nom !alreadyEvalFunctionAS),x,r) 
+		else APPEL (num, avant, nom, apres, CORPS (traiterUneIntructionPourBoucle corps sId l),x,r)   
   |_-> premiere
 
 let  evalSIDB listeInst saufId contexte  l =
@@ -779,26 +780,36 @@ begin
 			if res1 = pred then (getIntoAffect nom idappel  pred suite)
 			else res1
 
-		| APPEL (i,_,nomFonc,_,CORPS c,_,_)-> 
-			if i = idappel && nomFonc = nom then ini
-			else
-			begin
-				let liste1 = match c with BEGIN(e)-> e |e->[e] in
-				let corps =
-					if liste1 = [] then
-					begin
-						  if ((existeFonctionParNom	nomFonc doc) && (not (Cextraireboucle.is_in_use_partial nomFonc))) then
-					  	  begin				
-							  let (_, func) = (rechercherFonctionParNom nomFonc doc) in
-							  func.lesAffectations   
-						  end 
-						  else liste1
-					end 
-					else liste1 in
-				let res =  getIntoAffect nom idappel  pred  corps in
-				if res = pred then (getIntoAffect nom idappel  pred suite)
-				else res
-			end
+		| APPEL (i,a,nomFonc,apres,CORPS c,varB,r)-> 
+				if List.mem_assoc  nomFonc !alreadyEvalFunctionAS then 
+				begin
+					if i = idappel && nomFonc = nom then APPEL (i, a, nomFonc, apres,ABSSTORE (List.assoc nomFonc !alreadyEvalFunctionAS ),varB,r)
+					else (getIntoAffect nom idappel  pred suite)
+				 
+				end
+				else
+				begin
+						if i = idappel && nomFonc = nom then ini
+						else
+						begin
+							let liste1 = match c with BEGIN(e)-> e |e->[e] in
+							let corps =
+								if liste1 = [] then
+								begin
+									  if ((existeFonctionParNom	nomFonc doc) && (not (Cextraireboucle.is_in_use_partial nomFonc))) then
+								  	  begin				
+										  let (_, func) = (rechercherFonctionParNom nomFonc doc) in
+										  func.lesAffectations   
+									  end 
+									  else liste1
+								end 
+								else liste1 in
+							let res =  getIntoAffect nom idappel  pred  corps in
+							if res = pred then (getIntoAffect nom idappel  pred suite)
+							else res
+						end
+				end
+				
 		| APPEL (i,_,nomFonc,_, ABSSTORE c,_,_)-> 
 			if i = idappel && nomFonc = nom then ini
 			else (getIntoAffect nom idappel  pred suite)
@@ -954,20 +965,26 @@ begin
 			List.append [FORV (num,id, e1, e2, e3, nbIt,  BEGIN(res1))] (reecrireCallsInLoop var suite)
 		| APPEL (i,e,nomFonc,s,CORPS c,_,r)-> 
 			(*Printf.printf "reecriture appel %s depend de %s \n" nomFonc var;*)
-			let liste1 = match c with BEGIN(e)-> e |e->[e] in
-			let corps =
-				if liste1 = [] then
-				begin
-					  if existeFonctionParNom	nomFonc doc && (not (Cextraireboucle.is_in_use_partial nomFonc)) then
-				  	  begin				
-						  let (_, func) = (rechercherFonctionParNom nomFonc doc) in
-						  func.lesAffectations   
-					  end 
-					  else liste1
-				end 
-				else liste1 in
-			let res1 = reecrireCallsInLoop var corps in (* SORTIR DE COMMENTAIRE mais n'appeler que dans traiter boucle internes*)
-			List.append [APPEL (i, e ,nomFonc,s,CORPS (BEGIN(res1)),var,r)] (reecrireCallsInLoop var suite) 
+			 
+			if List.mem_assoc  nomFonc !alreadyEvalFunctionAS then 					 
+				List.append [APPEL (i, e ,nomFonc,s,ABSSTORE (List.assoc nomFonc !alreadyEvalFunctionAS ),var,r)] (reecrireCallsInLoop var suite) 
+			else
+			begin
+				let liste1 = match c with BEGIN(e)-> e |e->[e] in
+				let corps =
+					if liste1 = [] then
+					begin
+						  if existeFonctionParNom	nomFonc doc && (not (Cextraireboucle.is_in_use_partial nomFonc)) then
+					  	  begin				
+							  let (_, func) = (rechercherFonctionParNom nomFonc doc) in
+							  func.lesAffectations   
+						  end 
+						  else liste1
+					end 
+					else liste1 in
+				let res1 = reecrireCallsInLoop var corps in (* SORTIR DE COMMENTAIRE mais n'appeler que dans traiter boucle internes*)
+				List.append [APPEL (i, e ,nomFonc,s,CORPS (BEGIN(res1)),var,r)] (reecrireCallsInLoop var suite) 
+			end
 		| APPEL (i,e,nomFonc,s, ABSSTORE a,_,r)-> 
 			List.append [APPEL (i, e ,nomFonc,s,ABSSTORE a,var,r)] (reecrireCallsInLoop var suite) 
 end
@@ -1007,7 +1024,12 @@ begin
   | IFV (c,i1)-> List.append  [IFV(c,(BEGIN (majlappel [i1]  le)))](majlappel (List.tl liste) le)
   | BEGIN (l)	->  List.append  [BEGIN (majlappel l le)] (majlappel (List.tl liste) le)		
   | APPEL (num, avant, nom, apres,CORPS c,varB,r) -> 
-let liste1 = match c with BEGIN(e)-> e |e->[e] in
+	if List.mem_assoc  nom !alreadyEvalFunctionAS then 					 
+				List.append [APPEL (num, avant ,nom,apres,ABSSTORE (List.assoc nom !alreadyEvalFunctionAS ),varB,r)]  (majlappel (List.tl liste) le)	
+	else
+	begin
+
+			let liste1 = match c with BEGIN(e)-> e |e->[e] in
 			let corps =
 				if liste1 = [] then
 				begin
@@ -1020,7 +1042,8 @@ let liste1 = match c with BEGIN(e)-> e |e->[e] in
 				end 
 				else liste1 in
 
-	  List.append [APPEL (num, avant, nom, apres, CORPS (BEGIN (majlappel  corps  le))  , varB,r) ] (majlappel (List.tl liste) le)			
+	  	List.append [APPEL (num, avant, nom, apres, CORPS (BEGIN (majlappel  corps  le))  , varB,r) ] (majlappel (List.tl liste) le)	
+	end		
   |_-> List.append [premiere] (majlappel (List.tl liste) le)		
 end
 
@@ -1121,58 +1144,62 @@ and traiterUneIntructionPourAppel premiere sId ainserer  input le la =
   | IFV (c,i1)-> IFV(c,traiterUneIntructionPourAppel i1 sId ainserer  input le la )			
   | BEGIN (liste)		->  	BEGIN (listeSAUFIDA liste sId ainserer  input le la )		
   |	APPEL (num, avant, nom, apres,CORPS corps,varB,r) ->
-
-	  
-	  let liste1 = match corps with BEGIN(c)-> c |c->[c] in	 
-	  let corpsF = 
-				if liste1 = [] then
-				begin
-					  if existeFonctionParNom	nom doc && (not (Cextraireboucle.is_in_use_partial nom)) then
-				  	  begin				
-						  let (_, func) = (rechercherFonctionParNom nom doc) in
-						 BEGIN ( func.lesAffectations   )
-					  end 
-					  else BEGIN liste1
-				end 
-				else BEGIN liste1 
-		 in
-
-  	  if !listBeforeFct = [] then
-	  begin
-			  if	num != sId (* || ( num = sId && la != 0 )*) then  
-			  begin		 	
-				  let suite = traiterUneIntructionPourAppel ((*BEGIN*)(corpsF)) sId ainserer  input le (*listbd*)la  in
-				    APPEL (num, avant, nom, apres,CORPS suite,varB ,r) 
-			  end
-			  else 
-			  begin  
-				  	appelcourant := [premiere]; 
-				  	estTROUVEID := true;
-					let new_appel = APPEL (num, avant, nom, apres,   CORPS ( BEGIN (  ainserer)), varB,r)	in
-				  	BEGIN (List.append ( input)   [new_appel]);
-			  end
-		end
-		else
+		if List.mem_assoc  nom !alreadyEvalFunctionAS then 
+		traiterUneIntructionPourAppel (APPEL (num, avant, nom, apres,ABSSTORE (List.assoc nom !alreadyEvalFunctionAS ),varB,r)) sId ainserer  input le la
+	  	else
 		begin
-			let (firtC, nextC) =  (List.hd !listBeforeFct,List.tl !listBeforeFct)  in
-			
-			let (nameB,numB,ltB,lfB) = firtC in
-			listBeforeFct := if nameB = nom && numB = num then nextC else !listBeforeFct;
-			let nb = numberOfCall !listBeforeFct nameB numB in	
+			  let liste1 = match corps with BEGIN(c)-> c |c->[c] in	 
+			  let corpsF = 
+						if liste1 = [] then
+						begin
+							  if existeFonctionParNom	nom doc  then
+						  	  begin				
+								  let (_, func) = (rechercherFonctionParNom nom doc) in
+								 BEGIN ( func.lesAffectations   )
+							  end 
+							  else BEGIN liste1
+						end 
+						else BEGIN liste1 
+				 in
 
-			if List.mem_assoc  nom !alreadyEvalFunctionAS then BEGIN (List.append (  creerLesAffectEXECUTEDFct ([(nameB,numB,ltB,lfB)] ))  [premiere]) 
-			else 
-			begin
-				let suite = traiterUneIntructionPourAppel ((*BEGIN*)(corpsF)) sId ainserer  input le la  in
-		 		if nb != 0  then APPEL (num, avant, nom, apres,CORPS suite,varB ,r)
+		  	  if !listBeforeFct = [] then
+			  begin
+					  if	num != sId (* || ( num = sId && la != 0 )*) then  
+					  begin		 	
+						  let suite = traiterUneIntructionPourAppel ((*BEGIN*)(corpsF)) sId ainserer  input le (*listbd*)la  in
+							APPEL (num, avant, nom, apres,CORPS suite,varB ,r) 
+					  end
+					  else 
+					  begin  
+						  	appelcourant := [premiere]; 
+						  	estTROUVEID := true;
+							let new_appel = APPEL (num, avant, nom, apres,   CORPS ( BEGIN (  ainserer)), varB,r)	in
+						  	BEGIN (List.append ( input)   [new_appel]);
+					  end
+				end
 				else
 				begin
-					(*Printf.printf "before fct %s %d\n"nameB numB;*)
-					let listtestfct =   creerLesAffectEXECUTEDFct ([(nameB,numB,ltB,lfB)] ) in
-					let new_appel = APPEL (num, avant, nom, apres,CORPS suite,varB ,r) in
-			 		BEGIN (List.append (  listtestfct)   [new_appel]); 
+					let (firtC, nextC) =  (List.hd !listBeforeFct,List.tl !listBeforeFct)  in
+			
+					let (nameB,numB,ltB,lfB) = firtC in
+					listBeforeFct := if nameB = nom && numB = num then nextC else !listBeforeFct;
+					let nb = numberOfCall !listBeforeFct nameB numB in	
+
+					if List.mem_assoc  nom !alreadyEvalFunctionAS then 
+						BEGIN (List.append (  creerLesAffectEXECUTEDFct ([(nameB,numB,ltB,lfB)] ))  [premiere]) 
+					else 
+					begin
+						let suite = traiterUneIntructionPourAppel ((*BEGIN*)(corpsF)) sId ainserer  input le la  in
+				 		if nb != 0  then APPEL (num, avant, nom, apres,CORPS suite,varB ,r)
+						else
+						begin
+							(*Printf.printf "before fct %s %d\n"nameB numB;*)
+							let listtestfct =   creerLesAffectEXECUTEDFct ([(nameB,numB,ltB,lfB)] ) in
+							let new_appel = APPEL (num, avant, nom, apres,CORPS suite,varB ,r) in
+					 		BEGIN (List.append (  listtestfct)   [new_appel]); 
+						end
+					end
 				end
-			end
 		end
   |	APPEL (num, avant, nom, apres,ABSSTORE a,varB,r) ->
 
@@ -2780,12 +2807,26 @@ begin
 				  (reecrireCorpsNonExe  suite listeTypeNonExe numAppel)
 		  end
 	  | APPEL (i,e,nomFonc,s,CORPS c,var,r)-> 
-		  if existeTFonction listeTypeNonExe nomFonc i then List.append [APPEL (i,e,nomFonc,s,CORPS (BEGIN([])),var,r)](reecrireCorpsNonExe  suite listeTypeNonExe numAppel)
+		  if List.mem_assoc  nomFonc !alreadyEvalFunctionAS = false then
+		  begin	
+
+		  	
+			  if existeTFonction listeTypeNonExe nomFonc i then 
+					List.append [APPEL (i,e,nomFonc,s,CORPS (BEGIN([])),var,r)](reecrireCorpsNonExe  suite listeTypeNonExe numAppel)
+			  else
+			  begin
+				  let liste1 = match c with BEGIN(e)-> e |e->[e] in
+				  let res1 = reecrireCorpsNonExe  liste1 listeTypeNonExe i in
+				  List.append [APPEL (i, e ,nomFonc,s,CORPS(BEGIN(res1)),var,r)] (reecrireCorpsNonExe  suite listeTypeNonExe numAppel)
+			  end
+		  end
 		  else
 		  begin
-			  let liste1 = match c with BEGIN(e)-> e |e->[e] in
-			  let res1 = reecrireCorpsNonExe  liste1 listeTypeNonExe i in
-			  List.append [APPEL (i, e ,nomFonc,s,CORPS(BEGIN(res1)),var,r)] (reecrireCorpsNonExe  suite listeTypeNonExe numAppel)
+			    if existeTFonction listeTypeNonExe nomFonc i then (reecrireCorpsNonExe  suite listeTypeNonExe numAppel)
+			    else
+			    begin
+				  List.append [APPEL (i, e ,nomFonc,s, ABSSTORE  ( List.assoc nomFonc !alreadyEvalFunctionAS),var,r)] (reecrireCorpsNonExe  suite listeTypeNonExe numAppel)
+			    end
 		  end
 	  | APPEL (i,e,nomFonc,s,ABSSTORE c,var,r)-> 
 		  if existeTFonction listeTypeNonExe nomFonc i then (reecrireCorpsNonExe  suite listeTypeNonExe numAppel)

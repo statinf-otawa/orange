@@ -5298,4 +5298,4 @@ and onlyanalysedef def =
 		()
 
 
-let majAssocCompAS = List.iter (fun n ->   add_list_comp   (!n,getAbsStoreFromComp !n)  )!names	
+
