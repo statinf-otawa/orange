@@ -212,7 +212,7 @@ listeASCourant := [];
 			let typeE = TO.TFONCTION(fn.nom,!TO.numAppel, fn.lesAffectations, [], [], [], [],  [], true, false,"",0) in
 				TO.dernierAppelFct := typeE;
 			TO.predDernierAppelFct := typeE;
-			let (aslist,_,_) = TO.evaluerFonction (fn.nom) fn []  (EXP(NOTHING))   [typeE]  typeE true (*!listeASCourant*)[] in () ;
+			let (aslist,_,_) = TO.evaluerFonction (fn.nom) fn []  (EXP(NOTHING))   [typeE]  typeE true (*!listeASCourant*) [] (( CONSTANT(CONST_INT("1")))) (( CONSTANT(CONST_INT("0")))) in () ;
 			let compAS: abstractStore list = 
 				filterwithoutInternal (*(evalStore (new_instBEGIN fn.lesAffectations) [] []) (listeOutputs fn.listeES) globales *) 
 						aslist (listeOutputs fn.listeES) globales in

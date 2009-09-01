@@ -455,8 +455,8 @@ let new_variation i s inc d op b=
 module TreeList = struct
   type tree = Doc of tree list
          | Function of (string * bool * bool * bool) * tree list (* function name, inloop, executed, extern *)
-         | Call of (string * int * int * string * bool * bool * bool) * tree list (* function name, relative call ID, line num, source file, inlopo, executed, extern *)
-         | Loop of (int * int * string * bool * expressionEvaluee * expressionEvaluee * expression * expression * expression * sens) * tree list (* loop id, line, source file, exact, max, toatl, exp max, exp total *)
+         | Call of (string * int * int * string * bool * bool * bool *expression*expression) * tree list (* function name, relative call ID, line num, source file, inlopo, executed, extern *)
+         | Loop of (int * int * string * bool * expressionEvaluee * expressionEvaluee * expression * expression * expression * sens *expression *expression) * tree list (* loop id, line, source file, exact, max, toatl, exp max, exp total *)
 
  
   
@@ -479,12 +479,12 @@ module TreeList = struct
       (Doc _, []) as x -> x
       | _ -> raise TreeBuildException
   
-  let onFunction res name inloop executed extern = match res with
+  let onFunction res name inloop executed extern   = match res with
       (current, stack) -> 
-        let newCurrent = Function ((name,inloop,executed,extern), []) in
+        let newCurrent = Function ((name,inloop,executed,extern ), []) in
 	(newCurrent, current::stack)      
 
-  let onLoop res loopID line source exact maxcount totalcount maxexp totalexp expinit sens = match res with
+  let onLoop res loopID line source exact maxcount totalcount maxexp totalexp expinit sens et ef= match res with
       (current, stack) -> 
         let relativize valname = 
 	  try
@@ -494,13 +494,13 @@ module TreeList = struct
         let maxexp = mapVar relativize maxexp in
 	let totalexp = mapVar relativize totalexp in
         let newCurrent = 
-	   Loop ((loopID - 1, line, source, exact, maxcount,  totalcount, ( maxexp),( totalexp), expinit, sens), []) in
+	   Loop ((loopID - 1, line, source, exact, maxcount,  totalcount, ( maxexp),( totalexp), expinit, sens, et, ef), []) in
 	(newCurrent, current::stack)   
      
   
-  let onCall res name numCall line source inloop executed extern = match res  with
+  let onCall res name numCall line source inloop executed extern lt lf = match res  with
       (current, stack) -> 
-        let newCurrent = Call ((name, numCall, line, source, inloop, executed, extern), []) in
+        let newCurrent = Call ((name, numCall, line, source, inloop, executed, extern,lt , lf ), []) in
 	(newCurrent, current::stack)   
 
   let onFunctionEnd = function
@@ -4395,7 +4395,7 @@ and expBornesToListeAffect expBornes =
       	Doc subtree -> List.fold_left aux res subtree
   	| Function (x, subtree) ->  List.fold_left aux res subtree
   	| Call (x, subtree) -> List.fold_left aux res subtree
-  	| Loop ((id, line, source, exact, max, total, expMax, expTotal, expinit, sens), subtree) -> 
+  	| Loop ((id, line, source, exact, max, total, expMax, expTotal, expinit, sens,et, ef), subtree) -> 
 	  (new_instVar (sprintf "max-%d" id) (EXP expMax))::(new_instVar (sprintf "total-%d" id) (EXP expTotal))::(List.fold_left aux res subtree)
 	in
     aux [] expBornes 
