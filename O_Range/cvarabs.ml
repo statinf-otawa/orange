@@ -1,7 +1,7 @@
 
 (* cvarabs -- use Frontc CAML  abstract store evaluation and evaluation of expression
 *
-** Project:	O_Rangero
+** Project:	O_Range
 ** File:	cvarabs.ml
 ** Version:	1.1
 ** Date:	11.7.2008
