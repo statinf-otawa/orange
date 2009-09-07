@@ -3861,46 +3861,46 @@ and  construireListesES listeDesES arg   =
 					(* nom est de type pointeur soit fonction : f (void * k,...) et appel de f
 					on peut avoir : f(&exp, ...), f(ptr, ...) on doit dans le premier car construire 
 					l'affectation en fin d'appel de la fonction : exp = *k et dans l'autre *ptr=*k *)
-						sorties := List.append !sorties (instPourVarDeExpEnSortie valeurParam (VARIABLE(nom)));
+						sorties := List.append !sorties (instPourVarDeExpEnSortie valeurParam (VARIABLE(nom))("*"^(nom)));
 						construireListesES (List.tl listeDesES) (List.tl arg)  
 				| ENTREESORTIE (nom) -> 
 					entrees := List.append !entrees [new_instVar nom  (EXP(valeurParam))];
-					sorties := List.append !sorties (instPourVarDeExpEnSortie valeurParam (VARIABLE(nom)));
+					sorties := List.append !sorties (instPourVarDeExpEnSortie valeurParam (VARIABLE(nom)) ("*"^(nom)));
 					construireListesES (List.tl listeDesES) (List.tl arg)  
 		end
 
 	(* nom est de type pointeur soit fonction : f (void * k,...) et appel de f
 	on peut avoir : f(&exp, ...), f(ptr, ...), f(ptr+i, ...) on doit dans le premier car construire 
 	l'affectation en fin d'appel de la fonction : exp = *k et dans l'autre *ptr=*k *)
-	and instPourVarDeExpEnSortie valeurParam expressionAffectation =
+	and instPourVarDeExpEnSortie valeurParam expressionAffectation nom =
 		match valeurParam with
-		VARIABLE n -> 
+		VARIABLE n -> (*Printf.printf "construireListesES tableau ou pointeur \n";*)
 					  [new_instMem ("*"^n) (EXP(VARIABLE(n))) (EXP (UNARY(MEMOF, expressionAffectation)))]
-					(* on peut avoir p = ptr *)
+					(* on peut avoir p = ptr pointeur ou tableau*)
 			(*  cas ou on passe ptr car hypothèse code OK *)
 		| UNARY (op , e)->
 			(	match op with 
 				ADDROF	-> 
-				(	match e with 
+				(	match e with
 					(*on a &exp mais exp peut être une variable, un tableau ou un champ de struct*)
-					VARIABLE v -> [new_instVar v  (EXP (UNARY(MEMOF, expressionAffectation)))]
+					VARIABLE v ->(* Printf.printf "construireListesES &v \n";*) let nas = [new_instVar v  (EXP (VARIABLE(nom)))] in (*afficherLesAffectations  nas;*)nas
 							
 					| INDEX (t, i) -> 
 						( 	match t with 
 							VARIABLE v -> 
-								[new_instTab v (EXP(i)) (EXP (UNARY(MEMOF, expressionAffectation)))]
+								[new_instTab v (EXP(i)) (EXP (VARIABLE(nom)))]
 							| _-> if !vDEBUG then Printf.printf "exp pour tab avec nom tab pas variable non traité\n";
 							[])														
 					| MEMBEROF (_, _) ->
-						[new_instVar (expressionToString "" e 0)(EXP (UNARY(MEMOF, expressionAffectation)))]
+						[new_instVar (expressionToString "" e 0)(EXP (VARIABLE(nom)))]
 					| MEMBEROFPTR (_, _) ->	
-						[new_instVar (expressionToString "" e 0) (EXP (UNARY(MEMOF, expressionAffectation)))]
+						[new_instVar (expressionToString "" e 0) (EXP (VARIABLE(nom)))]
 					| _->if !vDEBUG then  Printf.printf "erreur lvalue attendue pour ce param (impossible car code OK)"; []
 				)
 				| _->if !vDEBUG then  Printf.printf "erreur lvalue attendue pour ce param (impossible car code OK)"; []
 			)
 		| BINARY (_,_,_)-> (* on peut avoir en paramètre ptr +i*)
-			[new_instVar 	(expressionToString  "" valeurParam 0) (EXP (UNARY(MEMOF, expressionAffectation)))]
+			[new_instVar 	(expressionToString  "" valeurParam 0) (EXP (VARIABLE(nom)))]
 		|_-> if !vDEBUG then 
 				Printf.printf "erreur lvalue attendue pour ce param (impossible car code OK)";[]
 		

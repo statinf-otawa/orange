@@ -4120,10 +4120,87 @@ begin
 								end
 							|_-> ASSIGN_SIMPLE (var,MULTIPLE)
 				)
+
+		
+
 		|_-> ASSIGN_SIMPLE (var,MULTIPLE) 
 
 
+let consMultiSET var firstAssign secondAssign =
+match firstAssign with  
+		 ASSIGN_DOUBLE (var, e1, EXP(valeur1))   ->
+			(match secondAssign with  ASSIGN_DOUBLE (var, e2, EXP(valeur2))->
+										if e1 = e2 then
+										begin
+											let (isTruecteArg1, v1) =isTrueConstant valeur1 in
+											let (isTruecteArg2, v2) =isTrueConstant valeur2 in
+											if isTruecteArg1 then
+											begin
+												if isTruecteArg2 then 
+													if v1 = v2 then ASSIGN_DOUBLE (var, e1,  EXP(valeur1))
+													else ASSIGN_DOUBLE (var, e1, EXP(CALL (VARIABLE "SET" , List.append [valeur1] [valeur2])))
+												else 
+													if isVarTrue  var valeur2  then  ASSIGN_DOUBLE (var, e1,  EXP(valeur1))
+													else ASSIGN_DOUBLE (var, e1,MULTIPLE)	
 
+											end
+											else  ASSIGN_DOUBLE (var, e1,MULTIPLE)
+										end
+
+										else  ASSIGN_DOUBLE (var, e1,MULTIPLE)
+									  |_->  ASSIGN_DOUBLE (var, e1,MULTIPLE))
+		| ASSIGN_MEM	 (var, e1, EXP(valeur1)) ->
+			(match secondAssign with  ASSIGN_MEM (var, e2, EXP(valeur2))->
+
+										if e1 = e2 then 
+										begin
+  
+											
+											let (isTruecteArg1, v1) =isTrueConstant valeur1 in
+											let (isTruecteArg2, v2) =isTrueConstant valeur2 in
+	
+											((*	match e1 with 
+													EXP(UNARY (ADDROF,VARIABLE( v)))-> 
+														isMemMultiSet := true; varMulti:=v;
+														if isTruecteArg1 then
+														begin Printf.printf "consMultiSET eq isTruecteArg %s %s=\n" var v; 
+
+														(*listMultiSet*)
+
+
+															if isTruecteArg2 then 
+																if v1 = v2 then 
+																	ASSIGN_SIMPLE (v,  EXP(valeur1))
+																else ASSIGN_SIMPLE (v,  EXP(CALL (VARIABLE "SET" , List.append [valeur1] [valeur2])))
+															else 
+																if isVarTrue  var valeur2  then  ASSIGN_SIMPLE (v,   EXP(valeur1))
+																else ASSIGN_SIMPLE (v, MULTIPLE)	
+														end
+														else ASSIGN_SIMPLE (v, MULTIPLE)
+ 
+													|_-> *)
+														if isTruecteArg1 then
+														begin 
+
+														(*listMultiSet*)
+
+
+															if isTruecteArg2 then 
+																if v1 = v2 then 
+																	ASSIGN_MEM (var, e1,  EXP(valeur1))
+																else ASSIGN_MEM (var, e1, EXP(CALL (VARIABLE "SET" , List.append [valeur1] [valeur2])))
+															else 
+																if isVarTrue  var valeur2  then  ASSIGN_MEM (var, e1,  EXP(valeur1))
+																else ASSIGN_MEM (var, e1,MULTIPLE)	
+														end
+														else ASSIGN_MEM (var, e1,MULTIPLE))
+										end
+										else ASSIGN_MEM (var, e1,MULTIPLE)
+									  |_-> ASSIGN_MEM (var, e1,MULTIPLE))
+		| ASSIGN_DOUBLE (var, e1, MULTIPLE)   ->ASSIGN_DOUBLE (var, e1, MULTIPLE) 
+		| ASSIGN_MEM	 (var, e1, MULTIPLE) ->ASSIGN_MEM(var, e1, MULTIPLE) 
+		|_-> ASSIGN_SIMPLE (var,MULTIPLE) 
+		
 
 
 let structmultidef var firstAssign secondAssign =
@@ -4193,8 +4270,8 @@ let absMoinsT x a1 a2 =
 
 (*ASSIGN_SIMPLE (x, MULTIPLE)*)(*var MULTIPLE def voir si on
 						utilise le max*)
-					|	ASSIGN_DOUBLE (_, exp, _)-> ASSIGN_DOUBLE (x, exp, MULTIPLE) 
-					|   ASSIGN_MEM (_, exp, _)-> ASSIGN_DOUBLE (x, exp, MULTIPLE) 
+					|	ASSIGN_DOUBLE (_, exp, _)-> consMultiSET  x ro1 ro2
+					|   ASSIGN_MEM (_, exp, _)->consMultiSET  x ro1 ro2
 				
 			end 
 		end
@@ -4251,8 +4328,8 @@ let res =
 							ASSIGN_SIMPLE (_, _)->(*Printf.printf "MULTIPLE %s dans absMoinsTEm\n" x;*)
 								structmultidef x ro1  ro2 
 							(*ASSIGN_SIMPLE (x, MULTIPLE)*)(*var MULTIPLE def voir si on utilise le max*)
-						|	ASSIGN_DOUBLE (_, exp, _)-> ASSIGN_DOUBLE (x, exp, MULTIPLE) 
-						|	ASSIGN_MEM (_, exp, _)-> ASSIGN_MEM (x, exp, MULTIPLE) 
+						|	ASSIGN_DOUBLE (_, exp, _)-> consMultiSET x ro1 ro2
+						|	ASSIGN_MEM (_, exp, _)-> consMultiSET x ro1 ro2
 				end 
 			end
 		end
@@ -4835,10 +4912,10 @@ Printf.printf "les as de la boucle avant transfo \n";*)
 										fun sortie -> 
 										(match sortie with 
 											VAR (id, e) ->   
-												listeASCourant :=  List.append  [new_assign_simple id  (applyStoreVA e rc)]  !listeASCourant; 
+												listeASCourant :=  List.append  [new_assign_simple id  (getSortie e rc [])]  !listeASCourant; 
 												()
 											| TAB (id, e1, e2) ->  
-												listeASCourant := List.append [ASSIGN_DOUBLE (id, applyStoreVA e1 rc, applyStoreVA e2 rc)] !listeASCourant;
+												listeASCourant := List.append [ASSIGN_DOUBLE (id, applyStoreVA e1 rc, getSortie e2 rc [])] !listeASCourant;
 												()
 											|MEMASSIGN (id, e1, e2)-> 
 												listeASCourant := List.append [ASSIGN_MEM (id, applyStoreVA e1 rc, applyStoreVA e2 rc)] !listeASCourant;
@@ -4888,6 +4965,32 @@ afficherUneAffect (BEGIN(corps)); new_line();
 			(*Printf.printf "evalStore fonction %s  \n" nomFonc ;afficherListeAS !listeASCourant; Printf.printf "fin res\n" ;*)
 		end
 	end	
+
+and getSortie exp a gl =
+match exp with
+EXP(VARIABLE (v))->  
+if (existeAffectationVarListe v a ) then 
+		begin
+			let newassign = (ro v a) in
+			
+			match newassign with 
+				ASSIGN_SIMPLE  (_,(va)) -> applyStoreVA (va) gl
+				
+				| ASSIGN_MEM (_, _, va) ->  applyStoreVA (va) gl
+				|_->MULTIPLE
+		end
+else if (existeAffectationVarListe v gl ) then 
+		begin
+			let newassign = (ro v a) in
+			
+			match newassign with 
+				ASSIGN_SIMPLE  (_,(va)) ->  (va) 
+				
+				| ASSIGN_MEM (_, _, va) ->   (va) 
+				|_->MULTIPLE
+		end
+	else MULTIPLE
+|_-> MULTIPLE
 
 
 

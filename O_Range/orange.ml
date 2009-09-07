@@ -3119,25 +3119,29 @@ afficherListeAS( globalesBefore);new_line () ;*)
 							  List.iter (
 								  fun sortie -> 
 								  (match sortie with 
-								  VAR (id, e) ->    (*Printf.printf "\nevalUneBoucleOuAppel var SORTIE %s  %s\n" nomFonction id ;*)
+								  VAR (id, e) ->    (*Printf.printf "\nevalUneBoucleOuAppel var SORTIE %s  %s\n" nomFonction id ;afficherListeAS( rc);new_line () ;*)
 									  listeASCourant :=  List.append 
-									  [new_assign_simple id (applyStoreVA (applyStoreVA e rc)globalesAA) ]  !listeASCourant; 
+									  [new_assign_simple id ( getSortie e rc  globalesAA) ]  !listeASCourant; 
 									  ()
-								  | TAB (id, e1, e2) -> (* Printf.printf "\nvar SORTIEn %s  tab %s\n" nomFonction id ;*)
+								  | TAB (id, e1, e2) ->  (*Printf.printf "\nvar SORTIEn %s  tab %s\n" nomFonction id ;*)
 									  listeASCourant := List.append
-										  [ASSIGN_DOUBLE (id, applyStoreVA (applyStoreVA e1 rc)globalesAA, 
-								 applyStoreVA(applyStoreVA e2 rc)globalesAA)] !listeASCourant;
+										  [ASSIGN_DOUBLE (id, applyStoreVA (applyStoreVA e1 rc)globalesAA,   getSortie e2 rc  globalesAA)] !listeASCourant;
 										  ()
-									  |_-> (* Printf.printf "\nvar SORTIE memassign %s  \n" nomFonction  ;*)())
+									  |MEMASSIGN (id, e1, e2)-> (*Printf.printf "sortie %s mem\n" id;*)
+												listeASCourant := List.append [ASSIGN_MEM (id, applyStoreVA (applyStoreVA e1 rc)globalesAA, 
+								 applyStoreVA(applyStoreVA e2 rc)globalesAA)] !listeASCourant;
+												 
+									 ()
+									|_->())
 								  )sorties	
-						  end ;
+						  end   ;
 						  let returnf = Printf.sprintf "res%s"  nomFonc in
 						 (* if existeAffectationVarListe returnf rc then
 						  begin
 							  let affectres = ro returnf rc in
-							  listeASCourant :=  List.append [affectres] !listeASCourant
+							  listeASCourant :=  List.append [affectres] !listeASCourant  afficherListeAS( !listeASCourant);new_line () ;
 						  end;*)
-						    
+						   
 						  let nginterne = filterGlobales rc !globalesVar in
 
 							if existeAffectationVarListe returnf rc then
@@ -3231,7 +3235,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 											(evaluerComposant nomFonction [] isExecutedCall dansBoucle [] 
 												(List.append [typeE] listeEng) typeE comp_base ))::(!compEvalue);
 									(*Printf.printf "FONCTION composant%s: NON EXECUTED FIN\n" nomFonction ;*)
-									 let (vt, vf) =    creerVarTF lt lf contexte globale   in	 
+									 let (vt, vf) =    creerVarTF lt lf [] []   in	 
 									let new_fct = [ new_elementEvala typeE (EXP(appel)) [] vt vf] in						
 									corpsEvalTMP := List.append !corpsEvalTMP	 new_fct;
 									docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append !docEvalue.maListeEval new_fct);
