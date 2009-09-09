@@ -3116,20 +3116,101 @@ afficherListeAS( globalesBefore);new_line () ;*)
 						  let sorties = (match s with BEGIN(sss)-> sss |_->[]) in
 						  if sorties <> [] then
 						  begin				
-							  List.iter (
+							(*  List.iter (
 								  fun sortie -> 
 								  (match sortie with 
 								  VAR (id, e) ->    (*Printf.printf "\nevalUneBoucleOuAppel var SORTIE %s  %s\n" nomFonction id ;afficherListeAS( rc);new_line () ;*)
-									  listeASCourant :=  List.append 
-									  [new_assign_simple id ( getSortie e rc  globalesAA) ]  !listeASCourant; 
-									  ()
+										let (isOkSortie, isnotchange) =  isOkSortie e rc [] id in
+										if isnotchange = false then
+										begin
+											if isOkSortie then
+												(*if existAssosArrayIDsize id  then   (getTabAssign sortie rc globalesAA )  
+													else*)
+												  listeASCourant :=  List.append   [new_assign_simple id ( getSortie e rc  globalesAA id) ]  !listeASCourant
+											else  listeASCourant :=  List.append  [new_assign_simple id ( getSortie e rc  globalesAA id) ]  !listeASCourant
+										end; 
+										  ()
 								  | TAB (id, e1, e2) ->  (*Printf.printf "\nvar SORTIEn %s  tab %s\n" nomFonction id ;*)
 									  listeASCourant := List.append
-										  [ASSIGN_DOUBLE (id, applyStoreVA (applyStoreVA e1 rc)globalesAA,   getSortie e2 rc  globalesAA)] !listeASCourant;
+										  [ASSIGN_DOUBLE (id, applyStoreVA (applyStoreVA e1 rc)globalesAA,   getSortie e2 rc  globalesAA id )] !listeASCourant;
 										  ()
 									  |MEMASSIGN (id, e1, e2)-> (*Printf.printf "sortie %s mem\n" id;*)
 												listeASCourant := List.append [ASSIGN_MEM (id, applyStoreVA (applyStoreVA e1 rc)globalesAA, 
 								 applyStoreVA(applyStoreVA e2 rc)globalesAA)] !listeASCourant;
+												 
+									 ()
+									|_->())
+								  )sorties	
+
+									
+
+
+																		List.iter (
+												fun sortie -> 
+												(match sortie with 
+												VAR (id, e) -> 
+													let (isOkSortie, isnotchange) =  isOkSortie e rc [] id in
+													if isnotchange = false then
+														(if isOkSortie then 
+															if existAssosArrayIDsize id  then  (getTabAssign sortie rc globalesAA )  
+																	else listeASCourant :=  List.append  [new_assign_simple id  (getSortie e rc globalesAA id) ]  !listeASCourant
+														else listeASCourant :=  List.append  [new_assign_simple id  MULTIPLE ]  !listeASCourant); 
+													()
+												| TAB (id, e1, e2) ->  
+														let (isOkSortie, isnotchange) =  isOkSortie e2 rc [] id in
+													if isnotchange = false then
+													begin
+														if isOkSortie then 
+														begin
+															let index = ( calculer (applyStoreVA (applyStoreVA e1 rc) globalesAA)  !infoaffichNull [] 1) in
+															if estNul index then 
+																if existAssosArrayIDsize id  then  (getTabAssign sortie rc globalesAA )  
+																else (*listeASCourant := List.append [ASSIGN_DOUBLE (id,  applyStoreVA (applyStoreVA e1 rc) g,  getSortie e2 rc g id)] !listeASCourant*)
+																	listeASCourant := List.append [ASSIGN_DOUBLE (id,  MULTIPLE,  MULTIPLE)] !listeASCourant
+															else listeASCourant := List.append [ASSIGN_DOUBLE (id,  MULTIPLE,  MULTIPLE)] !listeASCourant
+														end
+														else listeASCourant := List.append [ASSIGN_DOUBLE (id,  MULTIPLE,  MULTIPLE)] !listeASCourant
+													end;
+													()
+												|MEMASSIGN (id, e1, e2)-> 
+													let (isOkSortie, isnotchange) =  isOkSortie e2 rc [] id in
+													if isnotchange = false then
+													begin
+														if isOkSortie then 
+															getMemAssign sortie rc  globalesAA
+														else listeASCourant := List.append [ASSIGN_MEM (id,  applyStoreVA (applyStoreVA e1 rc) globalesAA,  MULTIPLE)] !listeASCourant;
+													 end;()
+												|_->())
+									)sorties	*)
+ 								List.iter (
+								  fun sortie -> 
+								  (match sortie with 
+								  VAR (id, e) ->    (*Printf.printf "\nevalUneBoucleOuAppel var SORTIE %s  %s\n" nomFonction id ;afficherListeAS( rc);new_line () ;*)
+										let (isOkSortie, isnotchange) =  isOkSortie e rc [] id in
+										if isnotchange = false then
+										begin
+											if isOkSortie then
+												if existAssosArrayIDsize id  then   (getTabAssign sortie rc globalesAA )  
+													else
+												  listeASCourant :=  List.append   [new_assign_simple id ( getSortie e rc  globalesAA id) ]  !listeASCourant
+											else  listeASCourant :=  List.append  [new_assign_simple id MULTIPLE ]  !listeASCourant
+										end; 
+										  ()
+								  | TAB (id, e1, e2) ->   
+										let (isOkSortie, isnotchange) =  isOkSortie e2 rc [] id in
+										if isnotchange = false then
+											if isOkSortie then (getTabAssign sortie rc globalesAA )  
+											else listeASCourant := List.append [ASSIGN_DOUBLE (id, MULTIPLE, MULTIPLE)] !listeASCourant;
+										  ()
+									  |MEMASSIGN (id, e1, e2)-> (*Printf.printf "sortie %s mem\n" id;*)
+										let (isOkSortie, isnotchange) =  isOkSortie e2 rc [] id in
+										if isnotchange = false then
+										begin
+											if isOkSortie then
+											 getMemAssign sortie rc  globalesAA
+											else
+											 listeASCourant := List.append [ASSIGN_MEM (id, MULTIPLE,    MULTIPLE)] !listeASCourant
+										end;
 												 
 									 ()
 									|_->())
@@ -3141,7 +3222,8 @@ afficherListeAS( globalesBefore);new_line () ;*)
 							  let affectres = ro returnf rc in
 							  listeASCourant :=  List.append [affectres] !listeASCourant  afficherListeAS( !listeASCourant);new_line () ;
 						  end;*)
-						   
+						   (*afficherListeAS rc;
+					afficherListeAS !listeASCourant;*)
 						  let nginterne = filterGlobales rc !globalesVar in
 
 							if existeAffectationVarListe returnf rc then

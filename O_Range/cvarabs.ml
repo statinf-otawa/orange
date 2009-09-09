@@ -1180,8 +1180,22 @@ match a with
 let afficherListeAS asL =space(); new_line() ;flush(); List.iter (fun a-> afficherAS a; space(); new_line() ;flush(); )asL
 let  expVaToExp exp = match exp with EXP(e) ->e| _->NOTHING
 let hasSETCALL  =ref true
+
+
+
+let rec simplifierValeur exp =
+ match exp with
+		UNARY (MEMOF, exp1)->
+			 (match exp1 with UNARY (ADDROF, next) ->  simplifierValeur  next |_->exp	 )
+						 
+		|UNARY (ADDROF, exp1)->    	
+			(match exp1 with  UNARY (MEMOF, next) ->   simplifierValeur  next |_->exp)
+		|_-> exp
+	
+
+
 let rec consArrayFromPtrExp exp arrayName =
-	 match exp with
+	 match simplifierValeur exp with
 		
 		 UNARY (op, exp)	-> 
 			(match op with
@@ -2730,6 +2744,8 @@ else
 	
 let existeAffectationVarListe var liste =
 if liste = [] then false else  List.exists (fun aSCourant ->  match aSCourant with ASSIGN_SIMPLE (id, _) |ASSIGN_DOUBLE (id, _, _) |ASSIGN_MEM (id, _, _)->  id = var ) liste  
+let existeAffectationVarListeSimple var liste =
+if liste = [] then false else  List.exists (fun aSCourant ->  match aSCourant with ASSIGN_SIMPLE (id, _) ->  id = var|ASSIGN_DOUBLE (id, _, _) |ASSIGN_MEM (id, _, _)->false ) liste  
 			 
 let ro var liste =
    List.find  (fun aSCourant -> match aSCourant with ASSIGN_SIMPLE (id, _)  |ASSIGN_DOUBLE (id, _, _)  |ASSIGN_MEM (id, _, _)-> id = var ) liste
@@ -2737,6 +2753,20 @@ let ro var liste =
 let rofilter var liste =
 		List.filter 
 		(fun aSCourant ->  match aSCourant with ASSIGN_SIMPLE (id, _) |	ASSIGN_DOUBLE (id, _, _) |ASSIGN_MEM (id, _, _)	->  id = var ) liste
+let rofilterandmem var liste =
+		List.filter 
+		(fun aSCourant ->  match aSCourant with ASSIGN_SIMPLE (id, _) |	ASSIGN_DOUBLE (id, _, _) |ASSIGN_MEM (id, _, _)	->  id = var || id = "*"^var ) liste
+
+let rofiltertabandmemonly var liste =
+		List.filter 
+		(fun aSCourant ->  match aSCourant with ASSIGN_SIMPLE (id, _) -> false |	ASSIGN_DOUBLE (id, _, _) |ASSIGN_MEM (id, _, _)	->  id = var || id = "*"^var ) liste
+
+
+
+
+let existassigndouvle var liste =
+		List.exists 
+		(fun aSCourant ->  match aSCourant with  	ASSIGN_DOUBLE (id, _, _)  	->  id = var  |_-> false) liste
 
 
 
@@ -2812,16 +2842,6 @@ else			let x =  (List.hd lid) in
 
 
 
-
-let rec simplifierValeur exp =
- match exp with
-		UNARY (MEMOF, exp1)->
-			 (match exp1 with UNARY (ADDROF, next) ->  simplifierValeur  next |_->exp	 )
-						 
-		|UNARY (ADDROF, exp1)->    	
-			(match exp1 with  UNARY (MEMOF, next) ->   simplifierValeur  next |_->exp)
-		|_-> exp
-	
 
 let isRenameVar = ref false
 
@@ -3252,7 +3272,7 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 												(String.sub fid 1 ((String.length fid)-1) ,fid) 
 											else (fid ,fid )
 									else (fid ,fid ) in 
-					if id != fid then Printf.printf "id %s, fid %s\n" id pid;
+					(*if id != fid then Printf.printf "id %s, fid %s\n" id pid;*)
 				(*	Printf.printf "AS variable source %s\n"(List.hd lid);*)
 					traiterChampOfstruct pid a e id lid
 			
@@ -4580,6 +4600,16 @@ let estboucle = ref false
 let consInitTest varExpVa res =
 match varExpVa with EXP(VARIABLE (v)) -> [VAR (v, res)]  |_-> [] 
 
+let rec allthesame l =
+if l = [] then true
+else
+begin
+	let(firts, next) = (List.hd l, List.tl l) in
+	if next = [] then  true
+	else  firts = (List.hd next) &&  allthesame next  
+end
+
+
 let rec evalStore i a g=
 match i with 
 	VAR (id, exp) -> let res = rond a [new_assign_simple id exp] in		
@@ -4812,17 +4842,36 @@ Printf.printf "les as de la boucle avant transfo \n";*)
 							List.iter (
 								fun sortie -> 
 								(match sortie with 
-								VAR (id, e) ->   
-									listeASCourant :=  List.append 
-									[new_assign_simple id  (applyStoreVA (applyStoreVA e rc) g )]  !listeASCourant; 
+								VAR (id, e) -> 
+									let (isOkSortie, isnotchange) =  isOkSortie e rc [] id in
+									if isnotchange = false then
+										(if isOkSortie then 
+											if existAssosArrayIDsize id  then  (getTabAssign sortie rc g )  
+													else listeASCourant :=  List.append  [new_assign_simple id  (getSortie e rc g id) ]  !listeASCourant
+										else listeASCourant :=  List.append  [new_assign_simple id  MULTIPLE ]  !listeASCourant); 
 									()
 								| TAB (id, e1, e2) ->  
-									listeASCourant := List.append
-										[ASSIGN_DOUBLE (id,  applyStoreVA (applyStoreVA e1 rc) g,  applyStoreVA (applyStoreVA e2 rc) g)] !listeASCourant;
+										let (isOkSortie, isnotchange) =  isOkSortie e2 rc [] id in
+									if isnotchange = false then
+									begin
+										if isOkSortie then 
+										begin 
+											(getTabAssign sortie rc g )  
+			
+											
+										end
+										else listeASCourant := List.append [ASSIGN_DOUBLE (id,  MULTIPLE,  MULTIPLE)] !listeASCourant
+									end;
 									()
 								|MEMASSIGN (id, e1, e2)-> 
-									listeASCourant := List.append [ASSIGN_MEM (id,  applyStoreVA (applyStoreVA e1 rc) g,  applyStoreVA (applyStoreVA e2 rc) g)] !listeASCourant;
-									  ()
+									let (isOkSortie, isnotchange) =  isOkSortie e2 rc [] id in
+									if isnotchange = false then
+									begin
+										if isOkSortie then 
+											getMemAssign sortie rc  g
+										else 
+											listeASCourant := List.append [ASSIGN_MEM (id,  MULTIPLE,  MULTIPLE)] !listeASCourant;
+									 end;()
 								|_->())
 								)sorties	
 						end  ;
@@ -4912,13 +4961,26 @@ Printf.printf "les as de la boucle avant transfo \n";*)
 										fun sortie -> 
 										(match sortie with 
 											VAR (id, e) ->   
-												listeASCourant :=  List.append  [new_assign_simple id  (getSortie e rc [])]  !listeASCourant; 
+												let (isOkSortie, isnotchange) =  isOkSortie e rc [] id in
+												if isnotchange = false then
+												if isOkSortie then
+													if existAssosArrayIDsize id  then  (getTabAssign sortie rc [] )  
+													else listeASCourant :=  List.append  [new_assign_simple id  (getSortie e rc [] id)]  !listeASCourant 
+												else listeASCourant :=  List.append  [new_assign_simple id  MULTIPLE]  !listeASCourant; 
 												()
 											| TAB (id, e1, e2) ->  
-												listeASCourant := List.append [ASSIGN_DOUBLE (id, applyStoreVA e1 rc, getSortie e2 rc [])] !listeASCourant;
+												let (isOkSortie, isnotchange) =  isOkSortie e2 rc [] id in
+												if isnotchange = false then
+													if isOkSortie then  
+														(getTabAssign sortie rc [] )  
+													else listeASCourant := List.append [ASSIGN_DOUBLE (id, MULTIPLE, MULTIPLE)] !listeASCourant;
 												()
 											|MEMASSIGN (id, e1, e2)-> 
-												listeASCourant := List.append [ASSIGN_MEM (id, applyStoreVA e1 rc, applyStoreVA e2 rc)] !listeASCourant;
+												let (isOkSortie, isnotchange) =  isOkSortie e2 rc [] id in
+												if isnotchange = false then
+												if isOkSortie then
+													getMemAssign sortie rc []
+												else listeASCourant := List.append [ASSIGN_MEM (id,MULTIPLE,   MULTIPLE )] !listeASCourant;
 												  ()
 											|_->()
 										)
@@ -4966,31 +5028,157 @@ afficherUneAffect (BEGIN(corps)); new_line();
 		end
 	end	
 
-and getSortie exp a gl =
+
+
+ 
+
+
+
+and getTabAssign sortie a g =
+
+let index = match sortie with VAR(_, _)->CONSTANT(CONST_INT("0"))| TAB (_, e1, _)-> expVaToExp (applyStoreVA (applyStoreVA e1 a)g)|_->NOTHING in
+let valindex = ( calculer  (EXP(index))   !infoaffichNull [] 1) in
+match sortie with 
+		VAR (id, e) | TAB (id, _, e)-> 
+  
+				(match e with
+					EXP(VARIABLE (v))->  
+						 let var=	if (String.length v > 1) then if (String.sub v 0 1) = "*" then  String.sub v 1 ((String.length v)-1) else v else v in
+						 let listea = rofiltertabandmemonly var a in
+						 let listassign = List.map(
+									fun aSCourant ->  match aSCourant with ASSIGN_SIMPLE (_, _) -> aSCourant 
+											|	ASSIGN_DOUBLE (n, EXP(ei), ee) -> 
+													ASSIGN_DOUBLE (id, applyStoreVA (EXP(BINARY(ADD,ei,index))) g, applyStoreVA ee g)
+											|	ASSIGN_MEM  (n,ei, ee)	->  
+													let indexa =  (applyStoreVA ei  g) in
+													let assign = (applyStoreVA ee  g) in
+													let na = getArrayAssign n indexa assign  in
+													(match na with
+															ASSIGN_DOUBLE (x, EXP(y), z) ->  ASSIGN_DOUBLE ("*"^id, 
+																			EXP(BINARY(ADD,
+																						remplacerValPar  var (VARIABLE(id)) y,
+																				index)),
+																				 z)
+														|   ASSIGN_MEM  (x,EXP(y), z) ->
+															if estNul valindex 
+															then ASSIGN_MEM  ("*"^id,(EXP(remplacerValPar  var (VARIABLE(id)) y)), z) 
+															else ASSIGN_MEM  ("*"^id,MULTIPLE, z)
+														|  _ -> ASSIGN_DOUBLE ("*"^id, MULTIPLE, MULTIPLE)
+													)
+											
+											|_->ASSIGN_DOUBLE (id, MULTIPLE, MULTIPLE)
+										) listea in
+						 listeASCourant :=  List.append  listassign  !listeASCourant ;()
+					|_->())
+						 				
+|_->()
+
+and getMemAssign sortie a g =
+match sortie with 
+		MEMASSIGN (id, e1, e2)->   
+			(match e2 with
+					(EXP (UNARY(MEMOF, VARIABLE (v))))-> 
+			 let var=	if (String.length v > 1) then if (String.sub v 0 1) = "*" then  String.sub v 1 ((String.length v)-1) else v else v in
+			let vars=	if (String.length id > 1) then if (String.sub id 0 1) = "*" then  String.sub id 1 ((String.length id)-1) else id else id in
+			 let listea = rofiltertabandmemonly var a in
+			 let listassign = List.map(
+						fun aSCourant ->  match aSCourant with ASSIGN_SIMPLE (_, _) -> aSCourant 
+								|	ASSIGN_DOUBLE (n, ei, ee) -> ASSIGN_DOUBLE (vars, applyStoreVA ei g, applyStoreVA ee g)
+								|	ASSIGN_MEM  (n, EXP(ei), ee)	->   
+									
+									 	ASSIGN_MEM (id, applyStoreVA (EXP(remplacerValPar  var (VARIABLE(vars)) ei)) g, applyStoreVA ee g)
+								|_->  ASSIGN_MEM (id, MULTIPLE, MULTIPLE)
+									
+							) listea in
+ (*Printf.printf "notchangeSortie %s %s \n" id var;
+					afficherListeAS listassign;*)
+			 listeASCourant :=  List.append  listassign  !listeASCourant 
+		|_->())				 				
+|_->()
+
+
+
+and rofilteSingleAssign var liste(* first*) =
+		List.filter 
+		(fun aSCourant ->  match aSCourant with ASSIGN_SIMPLE (id, _) 	->  
+	if id = var then  true  else false
+
+
+|	ASSIGN_DOUBLE (id, _, _) |ASSIGN_MEM (id, _, _)->false ) liste
+
+
+
+and isOkSortie  exp a gl id=
+match exp with
+EXP(VARIABLE (v))| (EXP (UNARY(MEMOF, VARIABLE (v))))->  
+let var=	if (String.length v > 1) then if (String.sub v 0 1) = "*" then  String.sub v 1 ((String.length v)-1) else v else v in
+let assignvar = rofilteSingleAssign var a in
+		let isok =
+			if (assignvar = []) then true
+			else if (List.tl assignvar = []) then true else (allthesame assignvar)
+ 
+			in
+		let notc = notchangeSortie  var a && (existeAffectationVarListe id a = false) in
+(*Printf.printf "notchangeSortie %s  \n"var;
+if notc = true then Printf.printf "pas d'affect  \n" else Printf.printf "is affected  %s\n" v;
+if isok = true then Printf.printf "ok \n" else Printf.printf "nok %s\n" v;*)
+(isok, notc)
+
+|_-> (true,true)
+
+and notchangeSortie  var a  =
+(*Printf.printf "notchangeSortie %s  \n"var;*)
+let res =
+	if (existeAffectationVarListe ("*"^var) a ) then 
+		false
+	else if existassigndouvle var a  then false else true in
+(*if res = true then Printf.printf "pas d'affect  \n" else Printf.printf "is affected  \n";*)
+res
+
+and containtbinaryOrMulti exp =
+match 	exp with MULTIPLE -> true
+				| EXP(e)->
+					(match e with
+						NOTHING -> false
+						| UNARY (_, e) ->containtbinaryOrMulti (EXP(e))		 
+						| BINARY (_, exp1, exp2) ->true
+						| QUESTION (exp1, exp2, exp3) ->
+							containtbinaryOrMulti  (EXP(exp1))||containtbinaryOrMulti  (EXP(exp2)) ||containtbinaryOrMulti (EXP(exp3)) ;
+						| CAST (_, e) ->containtbinaryOrMulti (EXP(e))
+						| CALL (exp, args) ->false (* not possible*)
+						| COMMA exps ->false (* not possible*)
+						| CONSTANT cst ->false
+						| VARIABLE name ->false
+						| EXPR_SIZEOF e ->containtbinaryOrMulti (EXP(e))
+						| TYPE_SIZEOF typ ->false
+						| INDEX (exp, idx) ->false(* not possible*)
+						| MEMBEROF (exp, fld) ->false(* not possible*)
+						| MEMBEROFPTR (exp, fld) ->false(* not possible*)
+						| GNU_BODY (decs, stat) ->false(* not possible*)
+						| EXPR_LINE (expr, _, _) ->false(* not possible*))
+
+and getSortie exp a gl id= (* only call when the output value of the function is not change for call like ptr input = &var or &(p.x) or &(t->x) so into funtion
+*) 
 match exp with
 EXP(VARIABLE (v))->  
-if (existeAffectationVarListe v a ) then 
-		begin
-			let newassign = (ro v a) in
+
+		let var=	if (String.length v > 1) then if (String.sub v 0 1) = "*" then  String.sub v 1 ((String.length v)-1) else v else v in
+
+			let listea = rofilterandmem var a in
+
+			if (existeAffectationVarListe ("*"^var) listea ) then 
+			begin
+						let newassign = (ro ("*"^var) listea) in
 			
-			match newassign with 
-				ASSIGN_SIMPLE  (_,(va)) -> applyStoreVA (va) gl
-				
-				| ASSIGN_MEM (_, _, va) ->  applyStoreVA (va) gl
-				|_->MULTIPLE
-		end
-else if (existeAffectationVarListe v gl ) then 
-		begin
-			let newassign = (ro v a) in
-			
-			match newassign with 
-				ASSIGN_SIMPLE  (_,(va)) ->  (va) 
-				
-				| ASSIGN_MEM (_, _, va) ->   (va) 
-				|_->MULTIPLE
-		end
-	else MULTIPLE
+						(match newassign with 
+							ASSIGN_SIMPLE  (_,va) -> applyStoreVA (va) gl
+							| ASSIGN_MEM (_, xx, va) -> if containtbinaryOrMulti xx then(*print_expVA xx ;*)
+								(Printf.printf "getSortie pb %s  \n"var; MULTIPLE) else applyStoreVA va gl 
+							|_->MULTIPLE)
+			end
+			else  MULTIPLE
 |_-> MULTIPLE
+	
 
 
 
