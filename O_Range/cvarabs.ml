@@ -865,7 +865,7 @@ let rec evalexpression  exp =
 	| Quot (f, g)  -> 
 		let val1 = evalexpression f in
 		let val2 = evalexpression g in
-		if estNoComp val1  || estNoComp val2  then NOCOMP 
+		if estNoComp val1  || estNoComp val2 || estNul val2 then NOCOMP 
 		else 
 			begin 
 				match val1 with

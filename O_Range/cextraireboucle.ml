@@ -1471,7 +1471,7 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 		begin
 			if isLoopCtee1 then
 			begin
-				Printf.printf "rechercheConditionBinary cas 3\n";	
+			(*	Printf.printf "rechercheConditionBinary cas 3\n";	*)
 				let nop = if sens2 = CROISSANT then op else changeCompOp op in
 				let ne1 = 
 					if  b2nul then
@@ -2137,28 +2137,87 @@ and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1
 					if (typeinc1 =POSITIV||typeinc1 =NEGATIV) &&  (typeinc2 =POSITIV||typeinc2 =NEGATIV) && isindirect1 = false && isindirect2 == false then
 					begin
 						let vardeux =  Printf.sprintf "%s-%s" (List.hd l) (List.hd (List.tl l))  in	 
-						let (stringinc, valinc)=
+						let (stringinc,estNul,constval)=
 							match ( calculer (EXP(BINARY(SUB,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1) with
-							 ConstInt (i)-> (i ,int_of_string  i) | _->("",0) in
+							 ConstInt (i)-> (i ,(int_of_string  i = 0),CONSTANT  (CONST_INT i))
+							| ConstFloat (i) ->(i, (float_of_string  i = 0.0),CONSTANT(CONST_FLOAT (i)) ) 
+							| _->("",true,CONSTANT  (CONST_INT "0")) in
 
 
 					(*Printf.printf "deux variables ou plus non const %s %s %s  %d\n" vari1 vari2 vardeux valinc ;*)
-						let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (SUB,VARIABLE(vardeux), CONSTANT  (CONST_INT stringinc)))) ] in
+						let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (SUB,VARIABLE(vardeux), constval))) ] in
 						let newdans =  List.append dans 
-											[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (SUB,VARIABLE(vardeux), CONSTANT  (CONST_INT stringinc))))]
+											[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (SUB,VARIABLE(vardeux), constval)))]
 	
 											 in	
 						listADD := List.append [VAR(vardeux, EXP(BINARY(SUB,exp2, exp1)))] !listADD ;
-						listADDInc := List.append [VAR(vardeux, EXP(BINARY(SUB,VARIABLE(vardeux), CONSTANT  (CONST_INT stringinc))))] !listADDInc ;
+						listADDInc := List.append [VAR(vardeux, EXP(BINARY(SUB,VARIABLE(vardeux), constval)))] !listADDInc ;
 						let newavant =  List.append avant
 											[ASSIGN_SIMPLE(vardeux, EXP(BINARY(SUB,exp2, exp1)))]
 	
 											 in	
 	
-						rechercheConditionBinary (BINARY(SUB,exp2, exp1)) vardeux op  (CONSTANT  (CONST_INT "0")) (VARIABLE(vardeux)) [vardeux] newavant newdans (valinc = 0) t 
+						rechercheConditionBinary (BINARY(SUB,exp2, exp1)) vardeux op  (CONSTANT  (CONST_INT "0")) (VARIABLE(vardeux)) [vardeux] newavant newdans estNul  t 
 								(BINARY(op, CONSTANT(CONST_INT "0"),  VARIABLE(vardeux))) lv (List.append [vardeux] l) newinst
 
-					end else (NONMONOTONE , NOTHING, NOTHING, XOR, true, var, BINARY(op,exp1, exp2))(* if exp1 != 0 we can do the same thing with MULTI...*)
+					end 
+					else	if (typeinc1 =MULTI) &&  (typeinc2 =DIVI) && isindirect1 = false && isindirect2 == false then
+						begin
+							let vardeux =  Printf.sprintf "%s-%s" (List.hd l) (List.hd (List.tl l))  in	 
+							let (stringinc,estNul,constval)=
+							match ( calculer (EXP(BINARY(DIV,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1) with
+							 ConstInt (i)-> (i ,(int_of_string  i = 1),CONSTANT  (CONST_INT i))
+							| ConstFloat (i) ->(i, (float_of_string  i = 1.0),CONSTANT(CONST_FLOAT (i)) ) 
+							| _->("",true,CONSTANT  (CONST_INT "1")) in
+
+
+						Printf.printf "deux variables ou plus non const %s %s %s  \n" vari1 vari2 vardeux  ;
+							let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (DIV,VARIABLE(vardeux), constval))) ] in
+							let newdans =  List.append dans 
+												[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (DIV,VARIABLE(vardeux), constval)))]
+	
+												 in	
+							listADD := List.append [VAR(vardeux, EXP(BINARY(DIV,exp2, exp1)))] !listADD ;
+							listADDInc := List.append [VAR(vardeux, EXP(BINARY(DIV,VARIABLE(vardeux), constval)))] !listADDInc ;
+							let newavant =  List.append avant
+												[ASSIGN_SIMPLE(vardeux, EXP(BINARY(DIV,exp2, exp1)))]
+	
+												 in	
+	
+							rechercheConditionBinary (BINARY(DIV,exp2, exp1)) vardeux op  (CONSTANT  (CONST_INT "1")) (VARIABLE(vardeux)) [vardeux] newavant newdans estNul t 
+									(BINARY(op, CONSTANT(CONST_INT "1"),  VARIABLE(vardeux))) lv (List.append [vardeux] l) newinst
+
+						end 
+
+						else	if (typeinc1 =DIVI) &&  (typeinc2 =MULTI) && isindirect1 = false && isindirect2 == false then
+						begin
+							let vardeux =  Printf.sprintf "%s-%s" (List.hd l) (List.hd (List.tl l))  in	 
+							let (stringinc,estNul,constval)=
+							match ( calculer (EXP(BINARY(DIV,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1) with
+							 ConstInt (i)-> (i ,(int_of_string  i = 1),CONSTANT  (CONST_INT i))
+							| ConstFloat (i) ->(i, (float_of_string  i = 1.0),CONSTANT(CONST_FLOAT (i)) ) 
+							| _->("",true,CONSTANT  (CONST_INT "1")) in
+
+
+						Printf.printf "deux variables ou plus non const inc1 dive%s %s %s  \n" vari1 vari2 vardeux  ;
+							let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (MUL,VARIABLE(vardeux), constval))) ] in
+							let newdans =  List.append dans 
+												[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (DIV,VARIABLE(vardeux), constval)))]
+	
+												 in	
+							listADD := List.append [VAR(vardeux, EXP(BINARY(DIV,exp1, exp2)))] !listADD ;
+							listADDInc := List.append [VAR(vardeux, EXP(BINARY(MUL,VARIABLE(vardeux), constval)))] !listADDInc ;
+							let newavant =  List.append avant
+												[ASSIGN_SIMPLE(vardeux, EXP(BINARY(DIV,exp1, exp2)))]
+	
+												 in	
+	
+							rechercheConditionBinary (VARIABLE(vardeux))  vardeux op  (VARIABLE(vardeux)) (CONSTANT  (CONST_INT "1"))  [vardeux] newavant newdans estNul t 
+									(BINARY(op,   VARIABLE(vardeux),CONSTANT(CONST_INT "1"))) lv (List.append [vardeux] l) newinst
+
+						end 
+
+					else (NONMONOTONE , NOTHING, NOTHING, XOR, true, var, BINARY(op,exp1, exp2))(* if exp1 != 0 we can do the same thing with MULTI...*)
 				end else (NONMONOTONE , NOTHING, NOTHING, XOR, true, var, BINARY(op,exp1, exp2)))			 
 		(*NONMONOTONE , NOTHING, NOTHING, XOR, true, var, BINARY(op,exp1, exp2))*)
 		else rechercheConditionBinary ninit nv nop ne1 ne2 nl avant dans cte t c lv l inst
