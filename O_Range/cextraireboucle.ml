@@ -1345,7 +1345,8 @@ let isDivInc exp =
 		else true
 	end
 
-
+let listADD = ref []
+let listADDInc = ref []
 let rec rechercheListeDesVarDeBoucle listeVCond aS =
 if listeVCond = [] then begin (*Printf.printf "fin liste variable \n"	;*) [] end
 else
@@ -2062,8 +2063,7 @@ and setIndexWithSize lidx lsize liste avant dans cte t c lv l inst=
 
 and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1 isLoopCtee2 inst=
 
- (*print_expression exp1 0; new_line();
- print_expression exp2 0; new_line();*)
+
 	let (ninit,nv, nop,ne1,ne2,nl , fin)=
 	if isLoopCtee1 then (* exp1 is loop constant *)  
 	begin
@@ -2120,9 +2120,49 @@ and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1
 		else if liste = [] then ( init, var, op,exp1, exp2,liste, false ) 
 				 else  (VARIABLE(List.hd liste), (List.hd liste), op, exp1, exp2,  (List.tl liste), true)
 		in
-		if fin = false then (NONMONOTONE , NOTHING, NOTHING, XOR, true, var, BINARY(op,exp1, exp2))
+		if fin = false then 
+			(
+				if (List.length l) = 2 then
+				begin
+					(*Printf.printf "deux variables ou plus non const %d \n" (List.length l) ;*)
+					let ( isindirect1,inc1,vari1, before1,isMultiInc1) =  getLoopVarInc (List.hd l) inst in
+					let ( isindirect2,inc2,vari2, before2,isMultiInc2) =  getLoopVarInc (List.hd (List.tl l)) inst in
+					(*Printf.printf "deux variables ou plus non const %s %s\n" vari1 vari2 ;
+	 				print_expression exp1 0; new_line();
+ 					print_expression exp2 0; new_line();
+					print_intType (getIncType inc1); print_expression (getIncValue inc1) 0; new_line();
+					print_intType (getIncType inc2); print_expression (getIncValue inc2) 0; new_line();*)
+				   
+		 			let (typeinc1, typeinc2)= (getIncType inc1,getIncType inc2) in
+					if (typeinc1 =POSITIV||typeinc1 =NEGATIV) &&  (typeinc2 =POSITIV||typeinc2 =NEGATIV) && isindirect1 = false && isindirect2 == false then
+					begin
+						let vardeux =  Printf.sprintf "%s-%s" (List.hd l) (List.hd (List.tl l))  in	 
+						let (stringinc, valinc)=
+							match ( calculer (EXP(BINARY(SUB,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1) with
+							 ConstInt (i)-> (i ,int_of_string  i) | _->("",0) in
+
+
+					(*Printf.printf "deux variables ou plus non const %s %s %s  %d\n" vari1 vari2 vardeux valinc ;*)
+						let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (SUB,VARIABLE(vardeux), CONSTANT  (CONST_INT stringinc)))) ] in
+						let newdans =  List.append dans 
+											[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (SUB,VARIABLE(vardeux), CONSTANT  (CONST_INT stringinc))))]
+	
+											 in	
+						listADD := List.append [VAR(vardeux, EXP(BINARY(SUB,exp2, exp1)))] !listADD ;
+						listADDInc := List.append [VAR(vardeux, EXP(BINARY(SUB,VARIABLE(vardeux), CONSTANT  (CONST_INT stringinc))))] !listADDInc ;
+						let newavant =  List.append avant
+											[ASSIGN_SIMPLE(vardeux, EXP(BINARY(SUB,exp2, exp1)))]
+	
+											 in	
+	
+						rechercheConditionBinary (BINARY(SUB,exp2, exp1)) vardeux op  (CONSTANT  (CONST_INT "0")) (VARIABLE(vardeux)) [vardeux] newavant newdans (valinc = 0) t 
+								(BINARY(op, CONSTANT(CONST_INT "0"),  VARIABLE(vardeux))) lv (List.append [vardeux] l) newinst
+
+					end else (NONMONOTONE , NOTHING, NOTHING, XOR, true, var, BINARY(op,exp1, exp2))(* if exp1 != 0 we can do the same thing with MULTI...*)
+				end else (NONMONOTONE , NOTHING, NOTHING, XOR, true, var, BINARY(op,exp1, exp2)))			 
+		(*NONMONOTONE , NOTHING, NOTHING, XOR, true, var, BINARY(op,exp1, exp2))*)
 		else rechercheConditionBinary ninit nv nop ne1 ne2 nl avant dans cte t c lv l inst
-(*	end*)
+ 
 
 
 and traiterUn croissant  borneInf borneSup operateur multiple var  cond avant dans cte t inst=
@@ -2153,37 +2193,7 @@ and traiterUn croissant  borneInf borneSup operateur multiple var  cond avant da
 
 		if isindirect then 
 		begin
-			(*
-		
-				let ( indirect,nv,nt, indirectafter,typevar,multiple,operateur)= (true, vari, "dowhile", before = false,typev,multi,op) 	 
-						expressionDinitFor :=  
-							( 	let initialvar =expVaToExp(rechercheAffectVDsListeAS vari avant) in 
-								if  initialvar  = NOTHING then   VARIABLE(vari)   else initialvar );
-						initialisation := !expressionDinitFor;	
-
-				let (sup, inf, inc) = 
-				if   !opEstPlus = false && (isDivInc !expressionIncFor) then 
-					(!initialisation, !borne,  BINARY (DIV, CONSTANT  (CONST_INT "1"), !expressionIncFor)) 
-				else	if !opEstPlus = false && (isDivInc !expressionIncFor)  && typevar = DECROISSANT then 
-					(!initialisation,!borne, BINARY (DIV, CONSTANT  (CONST_INT "1"), !expressionIncFor)) 
-					 	else
-							if !opEstPlus && typevar = DECROISSANT then  (!borne,!initialisation, !expressionIncFor)  
-					 		else  (!borne,!initialisation,!expressionIncFor) in
-				borne := sup;
-				(*Printf.printf"inf sup...\n";
-				print_expression inf 0;flush(); new_line();space(); new_line();
-											print_expression sup 0;flush(); new_line();space(); new_line();
-											print_expression inc 0;flush(); new_line();space(); new_line();
-											if indirectafter = false then Printf.printf "before\n" else Printf.printf "after\n";*)
-				 
-				(*if !opEstPlus then Printf.printf"pas opestplus.\n" else  Printf.printf" opestplus.\n" ;*)
-				 
-				initialisation := inf;
-				expressionIncFor := inc;
-				((expVaToExp (getNombreIt !borne (typevar=CONSTANTE||cte) "dowhile" cond multiple [] !opEstPlus   
-								( new_variation !expressionDinitFor !borne !expressionIncFor typev  operateur false) vari []) ), !expressionIncFor, false)
 			
-*)
 			expressionIncFor := NOTHING; (* 1+*)
 			(NOTHING,NOTHING, true)
 		end
@@ -2933,7 +2943,7 @@ match op with EQ|NE->true|_->false
 (*afficherLesAffectations inst;*)
 	let listeV = listeDesVarsDeExpSeules cond in
 	(*let listeV = listeDesVarsDeExpSeules init in*)
-
+	listADD := [];listADDInc := [];
 	
 	expressionIncFor:= NOTHING;
 	expressionDinitFor := VARIABLE(var);
@@ -2949,7 +2959,7 @@ match op with EQ|NE->true|_->false
 				  if  initialvar  = NOTHING then   VARIABLE(v)   else initialvar );
 
 			opEstPlus:= true;	
-			let ((*isindirect,inc,var, before*)isindirect,inc,vari, before,isMultiInc) =  getLoopVarInc v inst in
+			let ((*isindirect,inc,var, before*)isindirect,inc,vari, before,isMultiInc) =  getLoopVarInc v (List.append inst !listADDInc) in
 			(match  inc  with 
 				NODEFINC -> 
 					if isEQoperator op then
@@ -3065,6 +3075,8 @@ Printf.printf "cas 3 EQ peut être booleen var2 %s\n" var2;
 
 and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) var2 listLoopVar avant dans lvb vcond inst =
 	(*Printf.printf "\n\ntraiterConditionBoucleFor  analyseCompFor\n" ;*)
+
+	listADD := [];listADDInc := [];
  	let (op, typev,multi,v) = analyseCompFor    var  (VARIABLE(var)) cond listLoopVar  avant dans cte t var2 lvb inst in
 	let liste = listeDesVarsDeExpSeules  cond in
 	expressionIncFor:= NOTHING;
@@ -3078,7 +3090,7 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 				  if  initialvar  = NOTHING then   VARIABLE(v)   else initialvar );
 
 			opEstPlus:= true;	
-			let ((*isindirect,inc,var, before*)isindirect,inc,var, before,isMultiInc) =  getLoopVarInc v inst in
+			let ((*isindirect,inc,var, before*)isindirect,inc,var, before,isMultiInc) =  getLoopVarInc v (List.append inst !listADDInc) in
 			(match  inc  with 
 				NODEFINC -> 
 					if isEQoperator op then
@@ -3564,7 +3576,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		end;
 		listeBouclesImbriquees :=  List.append [numBoucle] !listeBouclesImbriquees;
 		listeBouclesImbriquees :=  List.append listeBouclesInbriqueesPred !listeBouclesImbriquees ;
-		listeDesInstCourantes :=  List.append( List.append listePred !listeDesInstCourantes) !listeNextExp;
+		listeDesInstCourantes :=  List.append( List.append listePred (List.append !listADD !listeDesInstCourantes)) !listeNextExp;
 		nbImbrications := degPred; 		
 		listeBoucleOuAppelCourante :=  maListeDesBoucleOuAppelPred 
 									
@@ -3677,7 +3689,7 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 		end;
 		listeBouclesImbriquees :=  List.append [numBoucle] !listeBouclesImbriquees;
 		listeBouclesImbriquees :=  List.append listeBouclesInbriqueesPred !listeBouclesImbriquees ;
-		listeDesInstCourantes :=   List.append listePred !listeDesInstCourantes;	
+		listeDesInstCourantes :=   List.append listePred (List.append !listADD !listeDesInstCourantes);	
 		nbImbrications := degPred; 										
 		listeBoucleOuAppelCourante :=  maListeDesBoucleOuAppelPred 
 
@@ -3797,7 +3809,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		end;
 		listeBouclesImbriquees :=  List.append [num] !listeBouclesImbriquees;
 		listeBouclesImbriquees :=  List.append listeBouclesInbriqueesPred !listeBouclesImbriquees ;
-		listeDesInstCourantes :=  List.append( List.append listePred !listeDesInstCourantes) !listeNextExp;
+		listeDesInstCourantes :=  List.append( List.append listePred (List.append !listADD !listeDesInstCourantes)) !listeNextExp;
 		nbImbrications := degPred; 		
 
  											
