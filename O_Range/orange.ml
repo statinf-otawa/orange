@@ -1105,11 +1105,11 @@ if lt = [] && lf = [] then ( CONSTANT(CONST_INT("1")), CONSTANT(CONST_INT("0")) 
   begin
 	if lt != [] && lf != [] then  (
 									applyStore (applyStore (consassigntrueOrfalse lt AND) contexte)globales, 
-									applyStore (applyStore (consassigntrueOrfalse lf OR) contexte)globales
+									UNARY(NOT,applyStore (applyStore (consassigntrueOrfalse lf OR) contexte)globales)
 								 )
 	   else if lt = [] then  	 (
 									CONSTANT(CONST_INT("1")),
-									applyStore (applyStore (consassigntrueOrfalse lf OR) contexte)globales
+									UNARY(NOT,applyStore (applyStore (consassigntrueOrfalse lf OR) contexte)globales)
 								)
 	        else 
 								(
@@ -1123,8 +1123,8 @@ let creerVarTFE   ltv ntf   =
 			let second =   calculer  (EXP( ntf))  !infoaffichNull  [] 1  in
 			 
 						(match first with
-						  Boolean(false) | ConstInt("0") ->   false  
-						|_ ->  (match second with  Boolean(true)  | ConstInt("1") ->false  |_-> true))	
+						  Boolean(false) | ConstInt("0") ->  (*Printf.printf"creerVarTFE cas 1\n";*) false  
+						|_ ->  (match second with  Boolean(true)  | ConstInt("1") -> (*Printf.printf"creerVarTFE cas 2\n";*)false  |_-> (*Printf.printf"creerVarTFE cas 3\n";*) true))	
  
 
 
@@ -3109,79 +3109,14 @@ afficherListeAS( globalesBefore);new_line () ;*)
 				  numAppel := numAppelPred ;	
 				  if dansBoucle = false then 
 				  begin
-					  if isExecutedCall && nomFonction != !(!mainFonc) then
+					  if isExecutedCall (*&& nomFonction != !(!mainFonc)*) then
 					  begin
 						  let rc = endOfcontexte affec  last  new_contexte globalesAA in
 						  listeASCourant := []; 
 						  let sorties = (match s with BEGIN(sss)-> sss |_->[]) in
 						  if sorties <> [] then
 						  begin				
-							(*  List.iter (
-								  fun sortie -> 
-								  (match sortie with 
-								  VAR (id, e) ->    (*Printf.printf "\nevalUneBoucleOuAppel var SORTIE %s  %s\n" nomFonction id ;afficherListeAS( rc);new_line () ;*)
-										let (isOkSortie, isnotchange) =  isOkSortie e rc [] id in
-										if isnotchange = false then
-										begin
-											if isOkSortie then
-												(*if existAssosArrayIDsize id  then   (getTabAssign sortie rc globalesAA )  
-													else*)
-												  listeASCourant :=  List.append   [new_assign_simple id ( getSortie e rc  globalesAA id) ]  !listeASCourant
-											else  listeASCourant :=  List.append  [new_assign_simple id ( getSortie e rc  globalesAA id) ]  !listeASCourant
-										end; 
-										  ()
-								  | TAB (id, e1, e2) ->  (*Printf.printf "\nvar SORTIEn %s  tab %s\n" nomFonction id ;*)
-									  listeASCourant := List.append
-										  [ASSIGN_DOUBLE (id, applyStoreVA (applyStoreVA e1 rc)globalesAA,   getSortie e2 rc  globalesAA id )] !listeASCourant;
-										  ()
-									  |MEMASSIGN (id, e1, e2)-> (*Printf.printf "sortie %s mem\n" id;*)
-												listeASCourant := List.append [ASSIGN_MEM (id, applyStoreVA (applyStoreVA e1 rc)globalesAA, 
-								 applyStoreVA(applyStoreVA e2 rc)globalesAA)] !listeASCourant;
-												 
-									 ()
-									|_->())
-								  )sorties	
-
-									
-
-
-																		List.iter (
-												fun sortie -> 
-												(match sortie with 
-												VAR (id, e) -> 
-													let (isOkSortie, isnotchange) =  isOkSortie e rc [] id in
-													if isnotchange = false then
-														(if isOkSortie then 
-															if existAssosArrayIDsize id  then  (getTabAssign sortie rc globalesAA )  
-																	else listeASCourant :=  List.append  [new_assign_simple id  (getSortie e rc globalesAA id) ]  !listeASCourant
-														else listeASCourant :=  List.append  [new_assign_simple id  MULTIPLE ]  !listeASCourant); 
-													()
-												| TAB (id, e1, e2) ->  
-														let (isOkSortie, isnotchange) =  isOkSortie e2 rc [] id in
-													if isnotchange = false then
-													begin
-														if isOkSortie then 
-														begin
-															let index = ( calculer (applyStoreVA (applyStoreVA e1 rc) globalesAA)  !infoaffichNull [] 1) in
-															if estNul index then 
-																if existAssosArrayIDsize id  then  (getTabAssign sortie rc globalesAA )  
-																else (*listeASCourant := List.append [ASSIGN_DOUBLE (id,  applyStoreVA (applyStoreVA e1 rc) g,  getSortie e2 rc g id)] !listeASCourant*)
-																	listeASCourant := List.append [ASSIGN_DOUBLE (id,  MULTIPLE,  MULTIPLE)] !listeASCourant
-															else listeASCourant := List.append [ASSIGN_DOUBLE (id,  MULTIPLE,  MULTIPLE)] !listeASCourant
-														end
-														else listeASCourant := List.append [ASSIGN_DOUBLE (id,  MULTIPLE,  MULTIPLE)] !listeASCourant
-													end;
-													()
-												|MEMASSIGN (id, e1, e2)-> 
-													let (isOkSortie, isnotchange) =  isOkSortie e2 rc [] id in
-													if isnotchange = false then
-													begin
-														if isOkSortie then 
-															getMemAssign sortie rc  globalesAA
-														else listeASCourant := List.append [ASSIGN_MEM (id,  applyStoreVA (applyStoreVA e1 rc) globalesAA,  MULTIPLE)] !listeASCourant;
-													 end;()
-												|_->())
-									)sorties	*)
+							
  								List.iter (
 								  fun sortie -> 
 								  (match sortie with 
@@ -3299,7 +3234,8 @@ afficherListeAS( globalesBefore);new_line () ;*)
 									  TFONCTION(nomFonction,!numAppel,[] , listeInputInstruction, contexteAvantAppel,lappel,lt,lf,
 											   isExecutedCall, dansBoucle,fic,lig)
 									  in  
-									  let new_fct = [ new_elementEvala typeE (EXP(appel)) [] (( CONSTANT(CONST_INT("0")))) (( CONSTANT(CONST_INT("0"))))] in						
+									   let (vt, vf) =    creerVarTF lt lf contexteAvantAppel globale   in	
+									  let new_fct = [ new_elementEvala typeE (EXP(appel)) [] vt vf] in						
 									  corpsEvalTMP := List.append !corpsEvalTMP	 new_fct;	
 									  docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append !docEvalue.maListeEval new_fct);
 										  (contexteAvantAppel, globale) 
@@ -3435,7 +3371,11 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEn
 		let isexeEnglobantPred = !isexeEnglobant in
 		isexeEnglobant:= isexeEnglobantPred && executed && creerVarTFE elt elf;
 		let isexe = !isexeEnglobant in
-		(*if isexe then Printf.printf "ON A COMPOSE l'appel %s name %d EXECUTED \n"name numCall else Printf.printf "ON A COMPOSE l'appel %s name %d NOT EXECUTED \n"name numCall;*)
+(*print_expression lt 0 ;print_expression lf 0;*)
+(*if isexeEnglobantPred then Printf.printf "ON A COMPOSE l'appel %s name %d EXECUTED \n"name numCall else Printf.printf "ON A COMPOSE l'appel %s name %d NOT EXECUTED \n"name numCall;
+if executed then Printf.printf "ON A COMPOSE l'appel %s name %d EXECUTED \n"name numCall else Printf.printf "ON A COMPOSE l'appel %s name %d NOT EXECUTED \n"name numCall;*)
+(*if creerVarTFE elt elf then Printf.printf "ON A COMPOSE l'appel %s name %d EXECUTED \n"name numCall else Printf.printf "ON A COMPOSE l'appel %s name %d NOT EXECUTED \n"name numCall;*)
+		if isexe then Printf.printf "ON A COMPOSE l'appel %s name %d EXECUTED \n"name numCall else Printf.printf "ON A COMPOSE l'appel %s name %d NOT EXECUTED \n"name numCall;
 		let res = Call ((name, numCall, line, source, inloop, isexe, extern,elt,elf), List.map evalAuxPasBoucle subtree) in
 		isexeEnglobant:= isexeEnglobantPred;
 		res
