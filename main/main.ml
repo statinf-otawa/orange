@@ -54,6 +54,7 @@ let banner =
 	"\torange [options] -g files... [functions...|-funlist listfile] [-outdir dir]\n" ^
 	"\torange [options] -g -- [functions...|-funlist listfile] [-outdir dir]\n"
 
+
 let args: Frontc.parsing_arg list ref = ref []
 
 (* input stuff *)
@@ -95,6 +96,8 @@ let partial = ref false
 let onlyGraphe = ref false
 let completeGraphe = ref false
 let existsPartialResult _ = false
+let withoutGlobalAndStaticInit = ref false
+
 
 
 let opts = [
@@ -140,6 +143,8 @@ let opts = [
 		"Output flow facts to the given file.");
 	("-outdir", Arg.String (fun dir -> out_dir := dir; Cextraireboucle.set_out_dir dir;),
 		"Output directory for partial results (rpo files) or graphs (dot files).");
+	("-wo",  Arg.Set withoutGlobalAndStaticInit  ,
+		"Without initial global and static values")
 ]
 
 
@@ -475,6 +480,7 @@ let _ =
 				and tl =(List.tl (!Cextraireboucle.names))
 				in Cextraireboucle.maj hd tl;
 				(*XO.initref stdout firstParse;*)
+				XO.notwithGlobalAndStaticInit := !withoutGlobalAndStaticInit;
 			 	XO.docEvalue :=  XO.new_documentEvalue  [] [];compEvalue := [];
 				listeAppels :=  [];
  
@@ -493,6 +499,7 @@ let _ =
 			end
 		else	(* full analysis *)
 			begin
+				XO.notwithGlobalAndStaticInit := !withoutGlobalAndStaticInit;
 				let result = XO.printFile stdout secondParse true in
 					if !out_file = ""
 						then print_string result

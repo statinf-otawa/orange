@@ -301,6 +301,7 @@ let version = "orange Marianne de Michiel"
 let enTETE = ref false
 let numAppel = ref 0
 let estNulEng = ref false
+let notwithGlobalAndStaticInit =ref true 
 let estDansBoucle = ref false
 let varDeBoucleBoucle = ref""
 let isPartialisation = ref false
@@ -1105,11 +1106,11 @@ if lt = [] && lf = [] then ( CONSTANT(CONST_INT("1")), CONSTANT(CONST_INT("0")) 
   begin
 	if lt != [] && lf != [] then  (
 									applyStore (applyStore (consassigntrueOrfalse lt AND) contexte)globales, 
-									UNARY(NOT,applyStore (applyStore (consassigntrueOrfalse lf OR) contexte)globales)
+									applyStore (applyStore (consassigntrueOrfalse lf OR) contexte)globales
 								 )
 	   else if lt = [] then  	 (
 									CONSTANT(CONST_INT("1")),
-									UNARY(NOT,applyStore (applyStore (consassigntrueOrfalse lf OR) contexte)globales)
+									applyStore (applyStore (consassigntrueOrfalse lf OR) contexte)globales
 								)
 	        else 
 								(
@@ -1123,8 +1124,8 @@ let creerVarTFE   ltv ntf   =
 			let second =   calculer  (EXP( ntf))  !infoaffichNull  [] 1  in
 			 
 						(match first with
-						  Boolean(false) | ConstInt("0") ->  (*Printf.printf"creerVarTFE cas 1\n";*) false  
-						|_ ->  (match second with  Boolean(true)  | ConstInt("1") -> (*Printf.printf"creerVarTFE cas 2\n";*)false  |_-> (*Printf.printf"creerVarTFE cas 3\n";*) true))	
+						  Boolean(false) | ConstInt("0") ->   false  
+						|_ ->  (match second with  Boolean(true)  | ConstInt("1") ->false  |_-> true))	
  
 
 
@@ -2884,6 +2885,75 @@ end
 
 (*ATTENTION NE DEVRAIT ON PAS ENVOYER LA SUITE DU CODE CAD DES AFFECTATIONS ??*)
  let isexeEnglobant = ref true
+
+
+
+
+
+
+
+let getMaxTotalArraySizeDep finstanciedMax finstanciedTotal contexte globales =
+let (rep, var,isvar,expression) = hasPtrArrayBoundCondition (EXP(finstanciedMax)) in
+			  let (nmax,ntotal) =	
+								if rep = true then 
+								begin
+									if isvar then
+									begin	
+										(*Printf.printf "ON A COMPOSE la boucle ID %u , array \n" id ;*)
+										let av = if (existeAffectationVarListe var contexte) then 
+													applyStoreVA(rechercheAffectVDsListeAS  var contexte)globales 
+												else rechercheAffectVDsListeAS  var globales in
+				
+										 
+										let newe = expVaToExp( av )  in
+										let (tab1,lidx1, e1) =getArrayNameOfexp newe in
+										if tab1 != "" then
+										begin
+											let nsup = changeExpInto0 e1 (  finstanciedMax ) in 
+											let ntot = changeExpInto0 e1 (  finstanciedTotal ) in 
+											let size = getAssosArrayIDsize tab1 in
+											let varName =  Printf.sprintf "%s_%s" "getvarTailleTabMax" var in
+											(match size with 
+												NOSIZE -> (finstanciedMax,finstanciedTotal)
+												| SARRAY (v) ->
+													let arraySize = (CONSTANT (CONST_INT (Printf.sprintf "%d" v) )) in
+													(remplacerValPar  varName arraySize nsup,remplacerValPar  varName arraySize ntot)
+												| MSARRAY (lsize) -> 
+													let tsize = expressionEvalueeToExpression (prodListSize lsize) in
+													 (remplacerValPar  varName tsize  nsup,remplacerValPar  varName tsize ntot))
+										end
+										else (finstanciedMax,finstanciedTotal)
+									end
+									else
+									begin
+										let newe = expVaToExp( applyStoreVA(applyStoreVA  (EXP(expression)) contexte)globales)  in
+										(* Printf.printf "ON A COMPOSE la boucle ID %u , array indirect\n" id ;*)
+										let (tab1,lidx1, e1) =getArrayNameOfexp newe in
+										if tab1 != "" then
+										begin
+											let nune = changeExpInto0 e1 (  finstanciedMax) in
+											let ntot = changeExpInto0 e1 (  finstanciedTotal ) in 
+											let size = getAssosArrayIDsize tab1 in
+											 
+											(match size with 
+												NOSIZE ->  (finstanciedMax,finstanciedTotal)
+												| SARRAY (v) ->
+													let arraySize = (CONSTANT (CONST_INT (Printf.sprintf "%d" v) )) in
+													(remplacergetvarTailleTabMaxFctPar  nune arraySize ,remplacergetvarTailleTabMaxFctPar  ntot arraySize )
+												| MSARRAY (lsize) -> 
+													let tsize = expressionEvalueeToExpression (prodListSize lsize) in
+													(remplacergetvarTailleTabMaxFctPar  nune tsize,remplacergetvarTailleTabMaxFctPar  ntot tsize   ))
+										end
+										
+										else  (finstanciedMax,finstanciedTotal)
+
+
+									end
+								end
+								else  (finstanciedMax,finstanciedTotal)  in
+
+(nmax,ntotal)
+
 let rec  evalCorpsFOB corps affectations contexte listeEng estexeEng lastLoopOrCall intoLoop globales= 
 let ncorps = if intoLoop = false  then corps else sansIfCorps corps in
   if ncorps <> [] then
@@ -3071,10 +3141,11 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 
 						  ( input ,others, newGlobales) 
 					  end
-				    else (contexte,[], globale))  in
-
-	  let isExecutedCall =   if dansBoucle = false then estexeEng && isExecuted lt lf asLAppel [] globalesBefore (dansBoucle = false) else estexeEng in
-
+				    else (contexte,[], globale))  in   
+(*if !onlynochangedglobalandstatic && List.mem id ! alreadyAffectedGlobales then notchangedalreadyAffectedGlobales := List.append [id] !notchangedalreadyAffectedGlobales;*)
+ (*let (gl,glb) = if !onlynochangedglobalandstatic then ([],[]) else (globale,globalesBefore) in*)
+	  let isExecutedCall =   if dansBoucle = false then estexeEng && isExecuted lt lf contexteAvantAppel [] globale (dansBoucle = false) else estexeEng in
+		(* if depends on before context*)
 (*Printf.printf "evalUneBoucleOuAppel  appel FONCTION %s:\n Globales :\n" nomFonction ;
 afficherListeAS( globalesBefore);new_line () ;*)
 
@@ -3099,7 +3170,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 						  isExecutedCall (*|| dansBoucle*) , dansBoucle,fic,lig)
 					  in   
 
-				  let (vt, vf) =    if dansBoucle = false then  creerVarTF lt lf asLAppel globalesBefore else  (( CONSTANT(CONST_INT("1")))) , (( CONSTANT(CONST_INT("0")))) in
+				  let (vt, vf) =    if dansBoucle = false then  creerVarTF lt lf contexteAvantAppel globale else  (( CONSTANT(CONST_INT("1")))) , (( CONSTANT(CONST_INT("0")))) in
 				  let (new_contexte,last, globalesAA) = 
 					  evaluerFonction nomFonction func asLAppel (EXP(appel))  (List.append [typeE] listeEng) typeE 
 							  (isExecutedCall (*|| dansBoucle*) ) globalesBefore vt vf in	
@@ -3203,7 +3274,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 											  let nc = rond   others asLAppel in
 											  let nextnum= getfirtFreeCompParCall !numAppel nomFonction in
 											  let typeE =  
-											  TFONCTION(nomFonction,!numAppel,listeAsToListeAffect a , entrees, asLAppel,lappel,lt,lf,
+											  TFONCTION(nomFonction,!numAppel,listeAsToListeAffect a , entrees, nc,lappel,lt,lf,
 													   isExecutedCall, dansBoucle, fic,lig)  in  		 
 											  
 											  dernierAppelFct := typeE;
@@ -3213,7 +3284,9 @@ afficherListeAS( globalesBefore);new_line () ;*)
 										  	  compEvalue := (nextnum, nomFonction, 
 													(evaluerComposant nomFonction nc isExecutedCall dansBoucle globalesBefore 
 												(List.append [typeE]  listeEng) typeE comp_base ))::(!compEvalue);
-											  let (vt, vf) =    creerVarTF lt lf contexteAvantAppel globale   in	 
+											 (* let (vt, vf) =    creerVarTF lt lf contexteAvantAppel globale   in	*)
+
+											  let (vt, vf) =    creerVarTF lt lf nc globalesBefore   in 
 											  let new_fct = [ new_elementEvala typeE (EXP(appel)) [] vt vf] in						
 											  corpsEvalTMP := List.append !corpsEvalTMP	 new_fct;
 											  docEvalue := new_documentEvalue !docEvalue.maListeNidEval 
@@ -3234,8 +3307,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 									  TFONCTION(nomFonction,!numAppel,[] , listeInputInstruction, contexteAvantAppel,lappel,lt,lf,
 											   isExecutedCall, dansBoucle,fic,lig)
 									  in  
-									   let (vt, vf) =    creerVarTF lt lf contexteAvantAppel globale   in	
-									  let new_fct = [ new_elementEvala typeE (EXP(appel)) [] vt vf] in						
+									  let new_fct = [ new_elementEvala typeE (EXP(appel)) [] (( CONSTANT(CONST_INT("0")))) (( CONSTANT(CONST_INT("0"))))] in						
 									  corpsEvalTMP := List.append !corpsEvalTMP	 new_fct;	
 									  docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append !docEvalue.maListeEval new_fct);
 										  (contexteAvantAppel, globale) 
@@ -3346,7 +3418,12 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEn
 	(*Printf.printf "ON ESSAYE D APPLIQUER LE CONTEXTE SUR: " ; print_expression expMax 0;*)
 	(*let appelP = !dernierAppelFct in*)
     dernierAppelFct:= typeE;
-    let (instanciedTotal,instanciedMax) =	evalNidComposant id contexte listeEng [] [] true globales expMax expTotal varLoop direction corpsCompo source line in
+    let (finstanciedTotal,finstanciedMax) =	evalNidComposant id contexte listeEng [] [] true globales expMax expTotal varLoop direction corpsCompo source line in
+	let (nmax,ntotal) = getMaxTotalArraySizeDep finstanciedMax finstanciedTotal contexte globales in	
+
+
+	 let instanciedMax =  nmax in
+	 let instanciedTotal =ntotal in	
 
     (*Printf.printf "TOTAL: %s MAX: %s\n" (string_from_expr instanciedTotal) (string_from_expr instanciedMax);	*)
     let res = Loop ((id, line, source, exact, NOCOMP, NOCOMP, instanciedMax, instanciedTotal, expinit, sens,lt,lf), List.map evalAuxBoucle subtree) in
@@ -3371,11 +3448,7 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEn
 		let isexeEnglobantPred = !isexeEnglobant in
 		isexeEnglobant:= isexeEnglobantPred && executed && creerVarTFE elt elf;
 		let isexe = !isexeEnglobant in
-(*print_expression lt 0 ;print_expression lf 0;*)
-(*if isexeEnglobantPred then Printf.printf "ON A COMPOSE l'appel %s name %d EXECUTED \n"name numCall else Printf.printf "ON A COMPOSE l'appel %s name %d NOT EXECUTED \n"name numCall;
-if executed then Printf.printf "ON A COMPOSE l'appel %s name %d EXECUTED \n"name numCall else Printf.printf "ON A COMPOSE l'appel %s name %d NOT EXECUTED \n"name numCall;*)
-(*if creerVarTFE elt elf then Printf.printf "ON A COMPOSE l'appel %s name %d EXECUTED \n"name numCall else Printf.printf "ON A COMPOSE l'appel %s name %d NOT EXECUTED \n"name numCall;*)
-		if isexe then Printf.printf "ON A COMPOSE l'appel %s name %d EXECUTED \n"name numCall else Printf.printf "ON A COMPOSE l'appel %s name %d NOT EXECUTED \n"name numCall;
+		(*if isexe then Printf.printf "ON A COMPOSE l'appel %s name %d EXECUTED \n"name numCall else Printf.printf "ON A COMPOSE l'appel %s name %d NOT EXECUTED \n"name numCall;*)
 		let res = Call ((name, numCall, line, source, inloop, isexe, extern,elt,elf), List.map evalAuxPasBoucle subtree) in
 		isexeEnglobant:= isexeEnglobantPred;
 		res
@@ -3406,8 +3479,11 @@ if executed then Printf.printf "ON A COMPOSE l'appel %s name %d EXECUTED \n"name
 
 			  let finstanciedMax =  (expVaToExp( applyStoreVA(applyStoreVA (EXP(expMax)) contexte)globales))   in
 (*Printf.printf "ON ESSAYE D APPLIQUER LE CONTEXTE SUR: " ; print_expression finstanciedMax 0;*)
-			  let finstanciedTotal =   (expVaToExp(applyStoreVA (applyStoreVA (EXP(expTotal)) contexte)globales))  in	
-			  let (rep, var,isvar,expression) = hasPtrArrayBoundCondition (EXP(finstanciedMax)) in
+			  let finstanciedTotal =   (expVaToExp(applyStoreVA (applyStoreVA (EXP(expTotal)) contexte)globales))  in
+
+
+			  let (nmax,ntotal) = getMaxTotalArraySizeDep finstanciedMax finstanciedTotal contexte globales in	
+			(*  let (rep, var,isvar,expression) = hasPtrArrayBoundCondition (EXP(finstanciedMax)) in
 			  let (nmax,ntotal) =	
 								if rep = true then 
 								begin
@@ -3468,7 +3544,7 @@ if executed then Printf.printf "ON A COMPOSE l'appel %s name %d EXECUTED \n"name
 								
 
 		
-									
+				*)					
 
 
 			  let instanciedMax =if (not exact) then nmax else (expMax) in
@@ -3482,7 +3558,7 @@ if executed then Printf.printf "ON A COMPOSE l'appel %s name %d EXECUTED \n"name
       (*dernierAppelFct := appelP;*)isexeEnglobant:= isexeEnglobantPred;
 	  res
     end in
-  (* Printf.printf "ON A COMPOSE le compo ID %s\n" nomComp; *)
+   (*Printf.printf "ON A COMPOSE le compo ID %s\n" nomComp; *)
   (*print_string "ICI ON KONPOZE LE KONPOZAN \n";*)
   let mytree = getExpBornesFromComp nomComp in
   if dansBoucle then evalAuxBoucle mytree 
@@ -3969,18 +4045,19 @@ List.iter(fun var->Printf.printf "%s 	"var)!globalesVar;*)
 
 Printf.printf"Dans evaluerFonctionsDuDoc  \n";
 afficherLesAffectations (  f.lesAffectations) ;new_line () ;*)
-
-(*Printf.printf"GLOBALE\n";
-afficherListeAS( !abGlobales);new_line () ;flush(); space();
+(*
+Printf.printf"GLOBALE\n";
+afficherLesAffectations (!listeDesInstGlobales) ;new_line () ;new_line () ;flush(); space();
 Printf.printf"FIN GLOBALE\n";*)
-	  
-	  let typeE = TFONCTION(!(!mainFonc),!numAppel, f.lesAffectations, !listeDesInstGlobales, [], [], [],  [], true, false,"",0) in  
+
+	  let globalInst = if !notwithGlobalAndStaticInit =false then !listeDesInstGlobales else !listeDesInstGlobales in
+	  let typeE = TFONCTION(!(!mainFonc),!numAppel, f.lesAffectations, globalInst, [], [], [],  [], true, false,"",0) in  
 	  dernierAppelFct := typeE;
 	  predDernierAppelFct := typeE;
 	  
 	 let (_,_,_) = evaluerFonction !(!mainFonc) f  []
 								
-								  (EXP(NOTHING))   [typeE]  typeE true (evalStore 	(new_instBEGIN !listeDesInstGlobales) [] [])  (( CONSTANT(CONST_INT("1")))) (( CONSTANT(CONST_INT("0"))))in  ()				
+								  (EXP(NOTHING))   [typeE]  typeE true (evalStore 	(new_instBEGIN globalInst) [] [])  (( CONSTANT(CONST_INT("1")))) (( CONSTANT(CONST_INT("0"))))in  ()				
 								  
   end
   else ()

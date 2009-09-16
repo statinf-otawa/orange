@@ -2435,74 +2435,76 @@ begin
 			let mbSuraSup =  evalexpression (PartieEntiereInf ( evalexpression (Sum (mbSura,ConstInt("1"))))) in	
 
 			let bmaximum = 
-			(
-			if  (estDefExp var1 && estDefExp var2) then
-			begin
-				if  (estPositif var1)  then 
-				begin
-					if (sensVariReel = true ) then
-					begin
-						(*Printf.printf "a positif croissant\n";*)
-						let maxMoinsMbSura=evalexpression(Diff( evalexpression max, mbSuraInf)) in
-						if estDefExp maxMoinsMbSura then
-							if  estPositif maxMoinsMbSura then
-							begin (*Printf.printf"eval2\n";*)
-								evalexpression (remplacerVal var max expre) 
-							end
-							else  begin (*Printf.printf"MAXCAS2\n";*)  ConstInt("0")  end
-						else NOCOMP
-					end
-					else
-					begin
-						(*Printf.printf "a positif decroissant\n";*)
-						let maxMoinsMbSura=evalexpression (Diff( evalexpression max, mbSuraSup)) in
-						if estDefExp maxMoinsMbSura then
-							if estPositif maxMoinsMbSura then
-							begin
-								(*Printf.printf "cas 2 decroissant \n";*)
-								let maximum = maxi mbSuraSup  (ConstInt("0"))  in
-								if maximum = ConstInt("0") then 
-								begin (*Printf.printf"eval3\n";*)
-									evalexpression (remplacerVal var (ConstInt("0")) expre)
-								end
-								else  
-								begin (*Printf.printf"eval4\n";*)
-									evalexpression ( remplacerVal  var  mbSuraSup expre) 
-								end
-							end
-							else  begin  (*Printf.printf"MAXCAS3\n";*) ConstInt("0") end  
-						else NOCOMP
-					end
+					(
+						if  (estDefExp var1 && estDefExp var2) then
+						begin
+							if estNul a then borneInfSupposee
+							else
+									if  (estPositif var1)  then 
+									begin
+										if (sensVariReel = true ) then
+										begin
+											(*Printf.printf "a positif croissant\n";*)
+											let maxMoinsMbSura=evalexpression(Diff( evalexpression max, mbSuraInf)) in
+											if estDefExp maxMoinsMbSura then
+												if  estPositif maxMoinsMbSura then
+												begin (*Printf.printf"eval2\n";*)
+													evalexpression (remplacerVal var max expre) 
+												end
+												else  begin (*Printf.printf"MAXCAS2\n";*)  ConstInt("0")  end
+											else NOCOMP
+										end
+										else
+										begin
+											(*Printf.printf "a positif decroissant\n";*)
+											let maxMoinsMbSura=evalexpression (Diff( evalexpression max, mbSuraSup)) in
+											if estDefExp maxMoinsMbSura then
+												if estPositif maxMoinsMbSura then
+												begin
+													(*Printf.printf "cas 2 decroissant \n";*)
+													let maximum = maxi mbSuraSup  (ConstInt("0"))  in
+													if maximum = ConstInt("0") then 
+													begin (*Printf.printf"eval3\n";*)
+														evalexpression (remplacerVal var (ConstInt("0")) expre)
+													end
+													else  
+													begin (*Printf.printf"eval4\n";*)
+														evalexpression ( remplacerVal  var  mbSuraSup expre) 
+													end
+												end
+												else  begin  (*Printf.printf"MAXCAS3\n";*) ConstInt("0") end  
+											else NOCOMP
+										end
 				
-				end
-				else 
-				begin
-					if (sensVariReel = true )then
-					begin
-						if estDefExp mbSuraSup then
-							if estPositif mbSuraSup then 
-							begin
-								(*Printf.printf"eval5\n";*)
-								evalexpression (remplacerVal var (ConstInt("0")) expre)
-							end
-							else begin  (*Printf.printf"MAXCAS4\n";*) ConstInt("0") end  
-						else NOCOMP	
-					end
-					else
-					begin		
-						if estDefExp mbSuraInf then	
-							if estPositif mbSuraInf = false then (*revoir*)
-							begin
-								(*Printf.printf"eval6\n";*)
-								 evalexpression (remplacerVal var (ConstInt("0")) expre)
-							end
-							else begin (*Printf.printf "cas 4\n";*) ConstInt("0")
-					(*evalexpression (remplacerVal var (maxi mbSuraInf (ConstInt("0"))) expre) *) 							end	
-						else NOCOMP
-					end						
-				end
-				end else NOCOMP
-				) in
+									end
+									else 
+									begin
+										if (sensVariReel = true )then
+										begin
+											if estDefExp mbSuraSup then
+												if estPositif mbSuraSup then 
+												begin
+													(*Printf.printf"eval5\n";*)
+													evalexpression (remplacerVal var (ConstInt("0")) expre)
+												end
+												else begin  (*Printf.printf"MAXCAS4\n";*) ConstInt("0") end  
+											else NOCOMP	
+										end
+										else
+										begin		
+											if estDefExp mbSuraInf then	
+												if estPositif mbSuraInf = false then (*revoir*)
+												begin
+													(*Printf.printf"eval6\n";*)
+													 evalexpression (remplacerVal var (ConstInt("0")) expre)
+												end
+												else begin (*Printf.printf "cas 4\n";*) ConstInt("0")
+										(*evalexpression (remplacerVal var (maxi mbSuraInf (ConstInt("0"))) expre) *) 							end	
+											else NOCOMP
+										end						
+									end
+							end else NOCOMP
+						) in
 				(*Printf.printf "maximum5\n" ;*)(*print_expTerm bmaximum; new_line (); Printf.printf "maximum\n";*)
 		if estDefExp bmaximum  then if estPositif bmaximum then bmaximum else  begin  (*Printf.printf"MAXCAS5\n";*) ConstInt("0") end 
 		else NOCOMP
