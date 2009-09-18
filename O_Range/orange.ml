@@ -1945,7 +1945,73 @@ begin
 	   | _-> true		
 end
  
-															
+
+
+
+
+
+
+let getMaxTotalArraySizeDep finstanciedMax finstanciedTotal contexte globales =
+let (rep, var,isvar,expression) = hasPtrArrayBoundCondition (EXP(finstanciedMax)) in
+			  let (nmax,ntotal) =	
+								if rep = true then 
+								begin
+									if isvar then
+									begin	
+										(*Printf.printf "ON A COMPOSE la boucle ID %u , array \n" id ;*)
+										let av = if (existeAffectationVarListe var contexte) then 
+													applyStoreVA(rechercheAffectVDsListeAS  var contexte)globales 
+												else rechercheAffectVDsListeAS  var globales in
+				
+										 
+										let newe = expVaToExp( av )  in
+										let (tab1,lidx1, e1) =getArrayNameOfexp newe in
+										if tab1 != "" then
+										begin
+											let nsup = changeExpInto0 e1 (  finstanciedMax ) in 
+											let ntot = changeExpInto0 e1 (  finstanciedTotal ) in 
+											let size = getAssosArrayIDsize tab1 in
+											let varName =  Printf.sprintf "%s_%s" "getvarTailleTabMax" var in
+											(match size with 
+												NOSIZE -> (finstanciedMax,finstanciedTotal)
+												| SARRAY (v) ->
+													let arraySize = (CONSTANT (CONST_INT (Printf.sprintf "%d" v) )) in
+													(remplacerValPar  varName arraySize nsup,remplacerValPar  varName arraySize ntot)
+												| MSARRAY (lsize) -> 
+													let tsize = expressionEvalueeToExpression (prodListSize lsize) in
+													 (remplacerValPar  varName tsize  nsup,remplacerValPar  varName tsize ntot))
+										end
+										else (finstanciedMax,finstanciedTotal)
+									end
+									else
+									begin
+										let newe = expVaToExp( applyStoreVA(applyStoreVA  (EXP(expression)) contexte)globales)  in
+										(* Printf.printf "ON A COMPOSE la boucle ID %u , array indirect\n" id ;*)
+										let (tab1,lidx1, e1) =getArrayNameOfexp newe in
+										if tab1 != "" then
+										begin
+											let nune = changeExpInto0 e1 (  finstanciedMax) in
+											let ntot = changeExpInto0 e1 (  finstanciedTotal ) in 
+											let size = getAssosArrayIDsize tab1 in
+											 
+											(match size with 
+												NOSIZE ->  (finstanciedMax,finstanciedTotal)
+												| SARRAY (v) ->
+													let arraySize = (CONSTANT (CONST_INT (Printf.sprintf "%d" v) )) in
+													(remplacergetvarTailleTabMaxFctPar  nune arraySize ,remplacergetvarTailleTabMaxFctPar  ntot arraySize )
+												| MSARRAY (lsize) -> 
+													let tsize = expressionEvalueeToExpression (prodListSize lsize) in
+													(remplacergetvarTailleTabMaxFctPar  nune tsize,remplacergetvarTailleTabMaxFctPar  ntot tsize   ))
+										end
+										
+										else  (finstanciedMax,finstanciedTotal)
+
+
+									end
+								end
+								else  (finstanciedMax,finstanciedTotal)  in
+
+(nmax,ntotal)															
 
 
 let aslAux = ref []
@@ -2364,7 +2430,7 @@ afficherListeAS ncc;	*)
 								else inter
 							 	 
 							 ) in
-			
+			let (nMaxn,nTNn)= getMaxTotalArraySizeDep (expVaToExp nMax) (expVaToExp nTN)  appel globales in
 (*
 Printf.printf "1 traiterBouclesInternes  %d nom eng %d ou stopper %d sa eng %d tete nid %d\n" id	nomE idEng saBENG (getBoucleIdB nT.infoNid.laBoucle);
 			Printf.printf"traiter calcul MAX pour %s =\n" ii; print_expVA nMax; new_line ();Printf.printf"\n";
@@ -2375,10 +2441,10 @@ Printf.printf "1 traiterBouclesInternes  %d nom eng %d ou stopper %d sa eng %d t
 	(*Printf.printf "av traiterBouclesInternes num %d nom eng %d AVANT AR\n"  id nomE ;	*)			 
 					let nouNidEval = new_nidEval	 	
 									typeE
-									nTN 
+									(EXP(nTNn)) 
 									varLoop (*n.varDeBoucleNid *) 
 									direction (*info.infoVariation.direction  *)
-									nMax   isexeN !isIntoIfLoop 0 in	
+									(EXP(nMaxn))   isexeN !isIntoIfLoop 0 in	
 		(*Printf.printf "AJOUTER 1 traiterBouclesInternes  %d nom eng %d ou stopper %d sa eng %d tete nid %d \nNID EVAL" id	nomE idEng saBENG (getBoucleIdB nT.infoNid.laBoucle);
 afficheUnNidEval nouNidEval;*)
 					compNotInnerDependentLoop nouNidEval iscompo;
@@ -2889,70 +2955,6 @@ end
 
 
 
-
-
-
-let getMaxTotalArraySizeDep finstanciedMax finstanciedTotal contexte globales =
-let (rep, var,isvar,expression) = hasPtrArrayBoundCondition (EXP(finstanciedMax)) in
-			  let (nmax,ntotal) =	
-								if rep = true then 
-								begin
-									if isvar then
-									begin	
-										(*Printf.printf "ON A COMPOSE la boucle ID %u , array \n" id ;*)
-										let av = if (existeAffectationVarListe var contexte) then 
-													applyStoreVA(rechercheAffectVDsListeAS  var contexte)globales 
-												else rechercheAffectVDsListeAS  var globales in
-				
-										 
-										let newe = expVaToExp( av )  in
-										let (tab1,lidx1, e1) =getArrayNameOfexp newe in
-										if tab1 != "" then
-										begin
-											let nsup = changeExpInto0 e1 (  finstanciedMax ) in 
-											let ntot = changeExpInto0 e1 (  finstanciedTotal ) in 
-											let size = getAssosArrayIDsize tab1 in
-											let varName =  Printf.sprintf "%s_%s" "getvarTailleTabMax" var in
-											(match size with 
-												NOSIZE -> (finstanciedMax,finstanciedTotal)
-												| SARRAY (v) ->
-													let arraySize = (CONSTANT (CONST_INT (Printf.sprintf "%d" v) )) in
-													(remplacerValPar  varName arraySize nsup,remplacerValPar  varName arraySize ntot)
-												| MSARRAY (lsize) -> 
-													let tsize = expressionEvalueeToExpression (prodListSize lsize) in
-													 (remplacerValPar  varName tsize  nsup,remplacerValPar  varName tsize ntot))
-										end
-										else (finstanciedMax,finstanciedTotal)
-									end
-									else
-									begin
-										let newe = expVaToExp( applyStoreVA(applyStoreVA  (EXP(expression)) contexte)globales)  in
-										(* Printf.printf "ON A COMPOSE la boucle ID %u , array indirect\n" id ;*)
-										let (tab1,lidx1, e1) =getArrayNameOfexp newe in
-										if tab1 != "" then
-										begin
-											let nune = changeExpInto0 e1 (  finstanciedMax) in
-											let ntot = changeExpInto0 e1 (  finstanciedTotal ) in 
-											let size = getAssosArrayIDsize tab1 in
-											 
-											(match size with 
-												NOSIZE ->  (finstanciedMax,finstanciedTotal)
-												| SARRAY (v) ->
-													let arraySize = (CONSTANT (CONST_INT (Printf.sprintf "%d" v) )) in
-													(remplacergetvarTailleTabMaxFctPar  nune arraySize ,remplacergetvarTailleTabMaxFctPar  ntot arraySize )
-												| MSARRAY (lsize) -> 
-													let tsize = expressionEvalueeToExpression (prodListSize lsize) in
-													(remplacergetvarTailleTabMaxFctPar  nune tsize,remplacergetvarTailleTabMaxFctPar  ntot tsize   ))
-										end
-										
-										else  (finstanciedMax,finstanciedTotal)
-
-
-									end
-								end
-								else  (finstanciedMax,finstanciedTotal)  in
-
-(nmax,ntotal)
 
 let rec  evalCorpsFOB corps affectations contexte listeEng estexeEng lastLoopOrCall intoLoop globales= 
 let ncorps = if intoLoop = false  then corps else sansIfCorps corps in
