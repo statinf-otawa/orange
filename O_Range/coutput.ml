@@ -41,6 +41,8 @@ let string_from_expr =
 		      (match cst with
 	 		 CONST_INT i -> i   
 			|CONST_FLOAT f -> f
+			|RCONST_INT i -> Printf.sprintf "%d" i   
+			|RCONST_FLOAT f -> Printf.sprintf "%g" f
 			|CONST_CHAR c -> c
 			|CONST_STRING s -> "\""^s^"\""
 			|CONST_COMPOUND cmp -> "[COMPOUND]"

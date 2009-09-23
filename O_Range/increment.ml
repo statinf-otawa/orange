@@ -107,8 +107,12 @@ let rec rechercheInc var exp =
 			begin
 				let (a,b) = calculaetbAffineForne var val1 in	
 				let (var1, var2) = (evalexpression a , evalexpression b) in
-				(*Printf.printf"rechercheInc affine\n"; *)
-				if  (estNul var1 = true) || var1 = ConstInt("1") || var1 =  ConstFloat("1.0")  then
+				(*Printf.printf"rechercheInc affine\n"; 
+print_expression exp 0;new_line(); flush();new_line(); flush();new_line(); flush();new_line(); flush();space();new_line(); flush();new_line(); flush();space();
+print_expTerm val1  ;new_line(); flush();new_line(); flush();new_line(); flush();new_line(); flush();space();new_line(); flush();new_line(); flush();space();
+print_expTerm var1  ;new_line(); flush();new_line(); flush();new_line(); flush();new_line(); flush();space();new_line(); flush();new_line(); flush();space();
+print_expTerm var2  ;new_line(); flush();new_line(); flush();new_line(); flush();new_line(); flush();space();new_line(); flush();new_line(); flush();space();*)
+				if  (estNul var1 = true) || var1 = ConstInt("1") || var1 =  ConstFloat("1.0")||var1 =  RConstFloat(1.0)  then
 				begin 
 					opEstPlus := true ; 
 
@@ -178,7 +182,7 @@ print_expression exp 0; new_line(); flush();*)
 						end
 						else 
 						begin 
-									(*Printf.printf "recherche incremet\n";*)
+									(*Printf.printf "recherche incremet %s\n" var;*)
 							expressionIncFor:= rechercheInc var exp2	;(* print_expression !expressionIncFor 0; new_line();flush();*)
 							(!expressionIncFor, true, !opEstPlus,(!expressionIncFor != NOTHING),var)			
 						end			
@@ -304,6 +308,8 @@ and getInc var assign inst las asAs completList=
 		opEstPlus:= true;	
 		let (inc, before, isplus,iscomp,nvar)= analyseIncFor var (BINARY(ASSIGN,VARIABLE(var),assign)) inst las asAs completList in
 		let valinc = calculer (applyStoreVA   (EXP(inc)) [])  !infoaffichNull  [](*appel*) 1 in	
+
+(*print_expTerm	valinc ;*) 
 		let isIndirect = nvar != var in
 		if estNoComp valinc then (* si aucun increment alors peut être condition var bool*)(false,NODEFINC,"others", before) 
 		else
@@ -600,7 +606,7 @@ inc
 
 
 and getLoopVarInc v inst =
-		isMultiInc := false;
+		isMultiInc := false;(*Printf.printf "getincrement %s \n "v;*)
 		let (isindirect,inc,var, before) = getIncOfInstList v inst inst  in
 
 		(* IDEM match  inc  with 
@@ -618,10 +624,10 @@ and getLoopVarInc v inst =
 		|_->*)
 			opEstPlus := getIsAddInc inc;
 			expressionIncFor :=  getIncValue inc ;
-(*print_expression !expressionIncFor 0; flush();new_line();flush();flush();new_line();flush();flush();new_line();flush();
-Printf.printf "getincrement %s \n "v;print_intType (getIncType inc);*)
-
-
+(*
+Printf.printf "getincrement %s FIN\n "v;print_intType (getIncType inc);
+print_expression !expressionIncFor 0; flush();new_line();flush();flush();new_line();flush();flush();new_line();flush();
+Printf.printf "getincrement %s FIN res\n "v;*)
 
 
 		(isindirect,inc,var, before, !isMultiInc)

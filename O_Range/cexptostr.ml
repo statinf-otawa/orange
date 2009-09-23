@@ -165,6 +165,8 @@ let new_line _ =
 			| CONST_CHAR c ->		 		"'" ^ (escape_string c) ^ "'"
 			| CONST_STRING s ->			"\"" ^ (escape_string s) ^ "\""
 			| CONST_COMPOUND exps ->	"{ "^comma_expsToString exps ^"}"			(*print_comma_exps exps;*)
+			| RCONST_INT i  -> Printf.sprintf "%d" i
+			| RCONST_FLOAT r  -> Printf.sprintf "%g"  r
 		
 			
 		and comma_expsToString (*exps*)_ =

@@ -156,6 +156,7 @@ module MonList = struct
   	let extractExp = function
 	  (ConstInt(valeur)) ->  valeur
 	  |(ConstFloat(valeur)) -> valeur
+	  |(RConstFloat(valeur)) -> Printf.sprintf "%g" valeur
 	  | _ -> "NOCOMP" 
 	  in
 	let maxexpStr = string_from_expr (remplacerNOTHINGPar maxexp) in
@@ -3224,7 +3225,7 @@ afficherListeAS( globalesBefore);new_line () ;*)
 									|_->())
 								  )sorties	
 						  end   ;
-						  let returnf = Printf.sprintf "res%s"  nomFonc in
+						  let returnf = Printf.sprintf "res-%s"  nomFonc in
 						 (* if existeAffectationVarListe returnf rc then
 						  begin
 							  let affectres = ro returnf rc in
@@ -3305,11 +3306,14 @@ afficherListeAS( globalesBefore);new_line () ;*)
 								end
 								else
 								begin
+
+
+									 let (vt, vf) =    if dansBoucle = false then  creerVarTF lt lf contexteAvantAppel globale else  (( CONSTANT(CONST_INT("1")))) , (( CONSTANT(CONST_INT("0")))) in
 									let typeE =  
 									  TFONCTION(nomFonction,!numAppel,[] , listeInputInstruction, contexteAvantAppel,lappel,lt,lf,
 											   isExecutedCall, dansBoucle,fic,lig)
 									  in  
-									  let new_fct = [ new_elementEvala typeE (EXP(appel)) [] (( CONSTANT(CONST_INT("0")))) (( CONSTANT(CONST_INT("0"))))] in						
+									  let new_fct = [ new_elementEvala typeE (EXP(appel)) [] vt vf] in						
 									  corpsEvalTMP := List.append !corpsEvalTMP	 new_fct;	
 									  docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append !docEvalue.maListeEval new_fct);
 										  (contexteAvantAppel, globale) 

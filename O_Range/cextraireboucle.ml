@@ -1233,6 +1233,8 @@ let rec estUnitaireExpression expre =
 			| CONSTANT cst -> (	match cst with
 									CONST_INT i ->		if i = "1" || i ="-1" then true else false
 									| CONST_FLOAT r ->	if r = "1" || r ="-1" then true else false
+									| RCONST_INT i ->		if i = 1 || i = -1 then true else false
+									| RCONST_FLOAT r ->	if r = 1.0 || r = -1.0 then true else false
 									| CONST_CHAR _ | CONST_STRING _| CONST_COMPOUND _->false)
 			| VARIABLE _ ->		false
 			| _ -> false
@@ -2141,6 +2143,7 @@ and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1
 							match ( calculer (EXP(BINARY(SUB,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1) with
 							 ConstInt (i)-> (i ,(int_of_string  i = 0),CONSTANT  (CONST_INT i))
 							| ConstFloat (i) ->(i, (float_of_string  i = 0.0),CONSTANT(CONST_FLOAT (i)) ) 
+							| RConstFloat (i) ->(Printf.sprintf "%g" i, (  i = 0.0),CONSTANT(RCONST_FLOAT (i)) ) 
 							| _->("",true,CONSTANT  (CONST_INT "0")) in
 
 
@@ -2168,6 +2171,7 @@ and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1
 							match ( calculer (EXP(BINARY(DIV,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1) with
 							 ConstInt (i)-> (i ,(int_of_string  i = 1),CONSTANT  (CONST_INT i))
 							| ConstFloat (i) ->(i, (float_of_string  i = 1.0),CONSTANT(CONST_FLOAT (i)) ) 
+							| RConstFloat (i) ->(Printf.sprintf "%g" i, (  i = 1.0),CONSTANT(RCONST_FLOAT (i)) ) 
 							| _->("",true,CONSTANT  (CONST_INT "1")) in
 
 
@@ -2196,6 +2200,7 @@ and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1
 							match ( calculer (EXP(BINARY(DIV,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1) with
 							 ConstInt (i)-> (i ,(int_of_string  i = 1),CONSTANT  (CONST_INT i))
 							| ConstFloat (i) ->(i, (float_of_string  i = 1.0),CONSTANT(CONST_FLOAT (i)) ) 
+							| RConstFloat (i) ->( Printf.sprintf "%g" i, ( i = 1.0),CONSTANT(RCONST_FLOAT (i)) ) 
 							| _->("",true,CONSTANT  (CONST_INT "1")) in
 
 
@@ -2691,11 +2696,13 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 						(match const with (*estExecutee*)
 							ConstInt(i) 	-> if (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "0")) else	 EXP(NOTHING) 		 	
 							|ConstFloat (f) -> 	if (float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "0")) else   EXP(NOTHING)
+							|RConstFloat (f) -> 	if (  f) = 0.0  then EXP(CONSTANT (CONST_INT "0")) else   EXP(NOTHING)
 							| _->		(*Printf.printf (" boucle for infinie\n");*)EXP(NOTHING))
 					|"dowhile"->
 						(match const with
 							ConstInt(i) -> 	if (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "1"))  else   EXP(NOTHING)
 							|ConstFloat (f) -> 	if (float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "1"))   else EXP(NOTHING)
+							|RConstFloat (f) -> 	if ( f) = 0.0  then EXP(CONSTANT (CONST_INT "1"))   else EXP(NOTHING)
 							| _->				EXP(NOTHING))
 					|_-> EXP(NOTHING))
 			|_->			
@@ -2708,12 +2715,16 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 										   else	 if   op = EQ then   EXP(CONSTANT (CONST_INT "1"))  else EXP(NOTHING)   
 						|ConstFloat (f) -> 	if (float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "0"))
 											else  if  op = EQ then   EXP(CONSTANT (CONST_INT "1"))  else EXP(NOTHING)
+						|RConstFloat (f) -> 	if (  f) = 0.0  then EXP(CONSTANT (CONST_INT "0"))
+											else  if  op = EQ then   EXP(CONSTANT (CONST_INT "1"))  else EXP(NOTHING)
 						| _->		(*Printf.printf (" boucle for infinie\n");*)EXP(NOTHING))
 					|"dowhile"->
 					(match const with
 						ConstInt(i) -> 	if (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "1"))
 										  else if  op = EQ  then  EXP(CONSTANT (CONST_INT "2"))   else EXP(NOTHING)
 						|ConstFloat (f) -> 	if (float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "1"))
+											else if  op = EQ then   EXP(CONSTANT (CONST_INT "2"))   else EXP(NOTHING)
+						|RConstFloat (f) -> 	if ( f) = 0.0  then EXP(CONSTANT (CONST_INT "1"))
 											else if  op = EQ then   EXP(CONSTANT (CONST_INT "2"))   else EXP(NOTHING)
 						| _->				EXP(NOTHING))
 					|_-> EXP(NOTHING)
@@ -2732,10 +2743,14 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 					let bornesup = if listeDesVarsDeExpSeules bse = [] then calculer  (EXP ( bse)) !infoaffichNull  [] 1 else NOCOMP in
 					let typeSup = expressionType bornesup in 
 
+	
 					let valEPSILON = if  ( typeInf = INTEGERV && typeSup  = INTEGERV && typeInc  = INTEGERV) then (CONSTANT (CONST_INT "1")) 
-									 else if typeInf = FLOATV || typeSup  = FLOATV || typeInc  = FLOATV then !vEPSILONFLOAT
-										  else  if 	espIsNotOnlyVar bornesup || espIsNotOnlyVar borneinf  || espIsNotOnlyVar valinc then !vEPSILON
-												else !vEPSILONFLOAT in
+									 else if typeInf = FLOATV || typeSup  = FLOATV || typeInc  = FLOATV then  (*valAbsincDiv2 valinc*)!vEPSILONFLOAT
+										  else  if 	espIsNotOnlyVar bornesup || espIsNotOnlyVar borneinf  || espIsNotOnlyVar valinc then (*valAbsincDiv2 valinc*)!vEPSILON
+												else  (*valAbsincDiv2 valinc*)!vEPSILONFLOAT in
+
+
+
 				
 					(*afficherListeAS appel; new_line();*)
  					let bs = applyStoreVA(applyStoreVA   (EXP ( infoVar.borneSup)) appel)globales in
@@ -3058,7 +3073,7 @@ Printf.printf "cas 3 EQ peut être booleen var2 %s\n" var2;
 						else  (false, v, t, false,typev,multi,op)
 					end
 					else (false, v, t, false,typev,multi,op)
-				|_->
+				|_-> expressionIncFor := getIncValue inc ;
 					if isMultiInc then isExactForm := false;
 					if isindirect then 
 					begin 
@@ -3178,7 +3193,7 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 						else  (false, v, t, false,typev,multi,op)
 					end
 					else (false, v, t, false,typev,multi,op)
-				|_->
+				|_->expressionIncFor := getIncValue inc ;
 					if isMultiInc then isExactForm := false;
 					if isindirect then 
 					begin 

@@ -32,7 +32,7 @@ let (getOnlyBoolAssignment: bool ref) = ref false
 let aAntiDep = ref false
 let vDEBUG = ref false
 let vEPSILON = ref (VARIABLE("EPSILON"))
-let vEPSILONFLOAT = ref (CONSTANT (CONST_FLOAT "0.001"))
+let vEPSILONFLOAT = ref (CONSTANT (RCONST_FLOAT 0.000001(*min_float*)))
 let vEPSILONINT = ref (CONSTANT (CONST_INT "1"))
 (*let vEPSILON = ref (CONSTANT (CONST_FLOAT "0.001"))*)
 let isIntoSwithch = ref false
@@ -51,6 +51,23 @@ let resb =
 				else if (String.length x > 3) then 
 						if (String.sub x  0 3) = "ET-" ||(String.sub x  0 3) = "EF-" ||(String.sub x  0 3) = "IF-" || (String.sub x  0 3) = "tN-" then true else false else false in
 resb
+
+let rec removeSpecifieur st intType= 
+let length = String.length st in
+if length > 1 then
+begin
+	let lCar= String.get st (length-1) in
+	let sub = (String.sub st  0 (length-1)) in
+	
+		 
+		if intType then 
+			if 	(lCar == 'l' || lCar == 'L') then (  removeSpecifieur (sub) intType) else st
+		else if (lCar == 'l' || lCar == 'L' || lCar == 'f' || lCar == 'F') then removeSpecifieur (sub) intType else st
+	
+end
+else st
+
+
 
 
 
@@ -377,6 +394,7 @@ type expressionEvaluee =
 	| Var of string
    	| ConstInt of string
 	| ConstFloat of string
+	| RConstFloat of float
 	| Sum of expressionEvaluee * expressionEvaluee    (* e1 + e2 *)
 	| Shr of expressionEvaluee * expressionEvaluee    (* e1 SHR e2 *)
 	| Shl of expressionEvaluee * expressionEvaluee    (* e1 SHL e2 *)
@@ -398,6 +416,7 @@ let rec expressionEvalueeToExpression exprEvaluee =
 match exprEvaluee with
 	ConstInt(i) 			->  CONSTANT(CONST_INT(i))
 	| 	ConstFloat (f) 		->  CONSTANT(CONST_FLOAT (f))
+	| 	RConstFloat (f) 		->  CONSTANT(RCONST_FLOAT (f))
 	|	NOCOMP				->	NOTHING 
 	|   Boolean (b)			-> if b = true then CONSTANT(CONST_INT("1")) else CONSTANT(CONST_INT("0"))	
 	|  	Var (s) 			-> 	VARIABLE(s)
@@ -460,6 +479,7 @@ let rec print_expTerm	exprEvaluee =
 	match exprEvaluee with
 			ConstInt(i) 			->  Printf.printf " %s" i
 		| 	ConstFloat (f) 			-> 	Printf.printf " %s" f
+		| 	RConstFloat (f) 			-> 	Printf.printf " %g" f
 		|	NOCOMP					->	Printf.printf " NOCOMP" 		
 		|   Boolean(b)				->  if b = true then Printf.printf " true" 	else Printf.printf " false" 	
 		|  	Var (s) 				-> 	Printf.printf " %s" s
@@ -507,6 +527,7 @@ let rec print_expTerm	exprEvaluee =
 let rec epsIsonlyVar exp = 
 	match exp with
 			ConstInt(_) | 	ConstFloat (_) |	NOCOMP	|   Boolean(_)	->   true 
+		| 	RConstFloat (_)->   true 
 		|  	Var (s) 				-> 	if s = "EPSILON" then true else false (*MARQUE*)
 		|  	Sum (f, g) |Shl (f, g) | Shr (f, g) | Diff (f, g)| Prod (f, g)| Mod (f, g)| Quot (f, g) | Puis (f, g)| Maximum (f, g)| Minimum (f, g)  	
 				-> 	(epsIsonlyVar) f && (epsIsonlyVar g)
@@ -518,36 +539,37 @@ let espIsNotOnlyVar exp = epsIsonlyVar exp = false
 let estNul exp =	
 	match exp with 
 	ConstInt (i)->   (int_of_string  i) = 0 
-	|ConstFloat (i) ->  (float_of_string  i) = 0.0 | _->false
+	|ConstFloat (i) ->  (float_of_string  i) = 0.0|RConstFloat (i) ->  i = 0.0  | _->false
 					
 let estPositif exp =
 	match exp with ConstInt (i)->  (int_of_string  i) >= 0 
-	| ConstFloat (i) ->  (float_of_string  i) >= 0.0 | _->false
+	| ConstFloat (i) ->  (float_of_string  i) >= 0.0 | RConstFloat (i) ->  i>= 0.0  | _->false
 
 let estStricPositif exp =
 	match exp with 
 	 ConstInt (i)-> (int_of_string  i) > 0 
-	| ConstFloat (i) ->   (float_of_string  i) > 0.0 | _->false
+	| ConstFloat (i) ->   (float_of_string  i) > 0.0 | RConstFloat (i) ->   i > 0.0 | _->false
 
 let estUn exp =
 	match exp with 
 	 ConstInt (i)-> (int_of_string  i) = 1 
-	| ConstFloat (i) ->   (float_of_string  i) > 1.0 | _->false
+	| ConstFloat (i) ->   (float_of_string  i) > 1.0 | RConstFloat (i) ->  i > 1.0 | _->false
 
 let estMUn exp =
 	match exp with 
 	 ConstInt (i)-> (int_of_string  i) = -1 
-	| ConstFloat (i) ->   (float_of_string  i) > -1.0 | _->false
+	| ConstFloat (i) ->   (float_of_string  i) > -1.0 | RConstFloat (i) ->   i > -1.0 | _->false
 
 let estStricNegatif exp =
 	match exp with 
 	 ConstInt (i)-> (int_of_string  i) < 0 
-	| ConstFloat (i) ->   (float_of_string  i) < 0.0 | _->false
+	| ConstFloat (i) ->   (float_of_string  i) < 0.0| RConstFloat (i) ->   i < 0.0  | _->false
 
 let rec estInt exp =
 	match exp with 
 	 ConstInt (_)	-> 	true
 	| ConstFloat (f)->  if (floor (float_of_string f)) = (float_of_string f)  then true else false 
+	| RConstFloat (f)->  if (floor ( f)) = ( f)  then true else false 
 	|  	Var (s) 	-> 	if s = "EPSILON" then true (*MARQUE*)
 						else 
 						begin 
@@ -571,6 +593,7 @@ let rec estFloat exp =
 	match exp with 
 	 ConstInt (_)-> false
 	| ConstFloat (f) -> if (floor (float_of_string f)) = (float_of_string f)  then false else true 
+	| RConstFloat (f) -> if (floor ( f)) = (  f)  then false else true 
 	|  	Var (s) 	-> 	if s = "EPSILON" then true (*MARQUE*)
 						else 
 						begin 
@@ -587,7 +610,8 @@ let rec estFloat exp =
 	| 	PartieEntiereSup (e) | 	PartieEntiereInf (e)| 	Log (e)| 	Eq1 (e)	-> estFloat e
    	| _	-> false	
 	
-let estDefExp exp = match exp with ConstInt (i) | ConstFloat (i) ->  true| _->false
+let estDefExp exp = match exp with ConstInt (i) | ConstFloat (i) ->  true 
+ | RConstFloat (i) ->  true| _->false
 let estBool exp = match exp with Boolean (_) ->true| _->false
 let estBoolOrVal exp = estDefExp exp || estBool exp 
 	
@@ -598,7 +622,8 @@ let rec evalexpression  exp =
 (*Printf.printf"evalexpression\n";print_expTerm exp; new_line ();*)
    match exp with
 	NOCOMP -> NOCOMP	
-	|  ConstInt (_) |  ConstFloat (_) ->  exp
+	|  ConstInt (_) |  ConstFloat (_)  ->  exp
+	|  RConstFloat (_) ->  exp
 	|  Var (_)| Boolean(_) 	-> exp
 	|  Sum (f, g)  -> 
 		let val1 = evalexpression f in
@@ -611,24 +636,37 @@ let rec evalexpression  exp =
 				(	let valeur = (int_of_string  i) in
 					match val2 with 
 					ConstInt(j) -> 		ConstInt(Printf.sprintf "%d" (valeur + (int_of_string  j)))
-					|ConstFloat(j)-> 	ConstFloat (Printf.sprintf "%f" (float(valeur) +. (float_of_string  j)))
-					|Var(v) -> 			if valeur = 0 then val2 else  Sum(Var(v),val1)
+					|ConstFloat(j)-> 	RConstFloat (  ((float_of_string  i) +. (float_of_string  j)))
+					|RConstFloat(j)-> 	RConstFloat ( ((float_of_string  i) +. (  j)))
+					|Var(v) -> 			Sum(Var(v),val1)
 					|_->exp
 				)				
 			|ConstFloat (i)->	
 			(
 				let valeur1 = (float_of_string  i) in
 				match val2 with 
-					ConstInt(j) -> 		ConstFloat(Printf.sprintf "%f" (valeur1 +. (float_of_string  j)))
-					|ConstFloat (j)-> 	ConstFloat(Printf.sprintf "%f" (valeur1 +. (float_of_string  j)))
-					|Var(v) -> 	if valeur1 = 0.0 then val2 else  begin (*Printf.printf "somme val2, val1\n";*) Sum(Var(v),val1) end
+					ConstInt(j) -> 		RConstFloat(  (valeur1 +. (float_of_string  j)))
+					|ConstFloat (j)-> 	RConstFloat(  (valeur1 +. (float_of_string  j)))
+					|RConstFloat (j)-> 	RConstFloat(  (valeur1 +. (  j)))
+					|Var(v) -> (*	if valeur1 = 0.0 then val2 else  begin (*Printf.printf "somme val2, val1\n";*)*) Sum(Var(v),val1) (*end*)
+					|_->exp
+			)
+			|RConstFloat (i)->	
+			(
+				let valeur1 = (  i) in
+				match val2 with 
+					ConstInt(j) -> 		RConstFloat( (valeur1 +. (float_of_string  j)))
+					|ConstFloat (j)-> 	RConstFloat( (valeur1 +. (float_of_string  j)))
+					|RConstFloat (j)-> 	RConstFloat(  (valeur1 +. (   j)))
+					|Var(v) -> (*	if valeur1 = 0.0 then val2 else  begin (*Printf.printf "somme val2, val1\n";*) *) Sum(Var(v),val1) (*end*)
 					|_->exp
 			)
 			|Var(_) -> 
 			(
 				match val2 with 
-					ConstInt(j) -> 			if (float_of_string  j) = 0.0 then	val1 else Sum(val2,val1)
-					|ConstFloat (j)->		if (float_of_string  j) = 0.0 then val1 else Sum(val2,val1)
+					ConstInt(j) -> 			Sum(val2,val1)
+					|ConstFloat (j)->		(*if (float_of_string  j) = 0.0 then val1 else *)Sum(val2,val1)
+					|RConstFloat (j)->		(*if (  j) = 0.0 then val1 else*) Sum(val2,val1)
 					|Var(_) ->  			Sum(val2,val1)
 					|_->exp
 			)
@@ -645,25 +683,37 @@ let rec evalexpression  exp =
 					begin
 						match val2 with 
 						ConstInt(j) -> 	  ConstInt(Printf.sprintf "%d"  ((int_of_string  i) - (int_of_string  j)))
-						|ConstFloat (j)-> ConstFloat(Printf.sprintf "%f" ((float_of_string  i) -. (float_of_string  j)))
-						|Var(v) -> 		  if (int_of_string  i) = 0 then 
-										  Diff (ConstInt("0"), val2) else  Diff(val1,val2)
+						|ConstFloat (j)-> RConstFloat( ((float_of_string  i) -. (float_of_string  j)))
+						|RConstFloat (j)-> RConstFloat(  ((float_of_string  i) -. (  j)))
+						|Var(v) -> 		  Diff(val1,val2)
 						|_->exp
 					end				
 				|ConstFloat (i)->	
 					begin
 						let valeur1 = (float_of_string  i) in
 						match val2 with 
-						ConstInt(j) -> 		ConstFloat(Printf.sprintf "%f" (valeur1 -. (float_of_string  j)))
-						|ConstFloat (j)-> 	ConstFloat(Printf.sprintf "%f" (valeur1 -. (float_of_string  j)))
-						|Var(v) -> 			if valeur1 = 0.0 then Diff (ConstInt("0"), val2) else  Diff(val1,val2)
+						ConstInt(j) -> 		RConstFloat( (valeur1 -. (float_of_string  j)))
+						|ConstFloat (j)-> 	RConstFloat(  (valeur1 -. (float_of_string  j)))
+						|RConstFloat (j)-> 	RConstFloat(  (valeur1 -. (   j)))
+						|Var(v) -> 			 Diff(val1,val2)
+						|_->exp
+					end
+				|RConstFloat (i)->	
+					begin
+						let valeur1 = (  i) in
+						match val2 with 
+						ConstInt(j) -> 		RConstFloat(  (valeur1 -. (float_of_string  j)))
+						|ConstFloat (j)-> 	RConstFloat(  (valeur1 -. (float_of_string  j)))
+						|RConstFloat (j)-> 	RConstFloat(  (valeur1 -. (   j)))
+						|Var(v) -> 			   Diff(val1,val2)
 						|_->exp
 					end
 				|Var(v) -> 
 				(
 					match val2 with 
-					ConstInt(j) -> 			if (float_of_string  j) = 0.0 then	val1	else Diff(val1,val2)
-					|ConstFloat (j)-> 		if (float_of_string  j) = 0.0 then 	val1	else Diff(val1,val2)
+					ConstInt(j) -> 			Diff(val1,val2)
+					|ConstFloat (j)-> 		(*if (float_of_string  j) = 0.0 then 	val1	else*) Diff(val1,val2)
+					|RConstFloat (j)-> 		(*if ( j) = 0.0 then 	val1	else *) Diff(val1,val2)
 					|Var(v) ->  Diff(val1,val2)
 					|_->exp	
 				)
@@ -687,7 +737,10 @@ let rec evalexpression  exp =
 					(match val2 with 
 					ConstInt(j) |ConstFloat (j)-> 
 						let val2 = (float_of_string  j) in
-						if val2  = 1.0 then	ConstInt (i) else ConstFloat(Printf.sprintf "%f" ((float_of_string  i) **val2))
+						if val2  = 1.0 then	ConstInt (i) else RConstFloat(  ((float_of_string  i) **val2))
+					|RConstFloat (j)-> 
+						let val2 = (  j) in
+						if val2  = 1.0 then	ConstInt (i) else RConstFloat(  ((float_of_string  i) **val2))
 					|Var(v) ->   Puis (val1,val2)
 					|_->exp)
 									
@@ -699,11 +752,33 @@ let rec evalexpression  exp =
 					(match val2 with 
 						ConstInt(j) ->
 							let val2 = (float_of_string  j) in
-							if val2  = 1.0 then	ConstFloat (i)
-							else ConstFloat(Printf.sprintf "%f" (valeur1 ** (float_of_string  j)))
+							if val2  = 1.0 then	RConstFloat (valeur1)
+							else RConstFloat(  (valeur1 ** (float_of_string  j)))
+						|RConstFloat (j) -> 
+							let val2 = (  j) in
+							if val2  = 1.0 then	RConstFloat (valeur1)  else RConstFloat( (valeur1 ** (  j)))
 						|ConstFloat (j) -> 
 							let val2 = (float_of_string  j) in
-							if val2  = 1.0 then	ConstFloat (i)  else ConstFloat(Printf.sprintf "%f" (valeur1 ** (float_of_string  j)))
+							if val2  = 1.0 then	RConstFloat (valeur1)  else RConstFloat(  (valeur1 ** (float_of_string  j)))
+						|Var(v) ->   Puis(val1,val2)
+						|_->exp)
+				end
+			|RConstFloat (i)->	
+				begin
+					let valeur1 = ( i) in
+					if valeur1 = 1.0 then ConstInt("1")
+					else
+					(match val2 with 
+						ConstInt(j) ->
+							let val2 = (float_of_string  j) in
+							if val2  = 1.0 then	RConstFloat (i)
+							else RConstFloat(  (valeur1 ** (float_of_string  j)))
+						|ConstFloat (j) -> 
+							let val2 = (float_of_string  j) in
+							if val2  = 1.0 then	RConstFloat (i)  else RConstFloat( (valeur1 ** (float_of_string  j)))
+						|RConstFloat (j) -> 
+							let val2 = (  j) in
+							if val2  = 1.0 then	RConstFloat (i)  else RConstFloat(  (valeur1 ** ( j)))
 						|Var(v) ->   Puis(val1,val2)
 						|_->exp)
 				end
@@ -716,6 +791,9 @@ let rec evalexpression  exp =
 					|ConstFloat (j)-> 		
 						if (float_of_string  j) = 0.0 then ConstInt("1")
 						else if (float_of_string  j) = 1.0 then	val1 else Puis(val1,val2)
+					|RConstFloat (j)-> 		
+						if ( j) = 0.0 then ConstInt("1")
+						else if (  j) = 1.0 then	val1 else Puis(val1,val2)
 					|Var(v) ->  Puis(val1,val2)
 					|_->exp
 				end						
@@ -735,7 +813,9 @@ let rec evalexpression  exp =
 					ConstInt(j) -> 
 						ConstInt(Printf.sprintf "%d"  ((int_of_string  i) * (int_of_string  j)))
 					|ConstFloat (j)-> 
-					 ConstFloat(Printf.sprintf "%f" ((float_of_string  i)*. (float_of_string  j)))
+					 RConstFloat( ((float_of_string  i)*. (float_of_string  j)))
+					|RConstFloat (j)-> 
+					 RConstFloat(  ((float_of_string  i)*. ( j)))
 					|Var(v) -> if (int_of_string  i) = 0 then ConstInt("0")
 							  else if (int_of_string  i) = 1  then	 val2 else  Prod (val2,val1)
 					|_->exp
@@ -745,9 +825,25 @@ let rec evalexpression  exp =
 					let valeur1 = (float_of_string  i) in
 					match val2 with 
 					ConstInt(j) -> 
-						ConstFloat(Printf.sprintf "%f" (valeur1 *. (float_of_string  j)))
+						RConstFloat(  (valeur1 *. (float_of_string  j)))
 					|ConstFloat (j)-> 		
-						ConstFloat(Printf.sprintf "%f" (valeur1 *. (float_of_string  j)))
+						RConstFloat(  (valeur1 *. (float_of_string  j)))
+					|RConstFloat (j)-> 		
+						RConstFloat( (valeur1 *. ( j)))
+					|Var(v) -> if valeur1 = 0.0 then ConstInt("0")
+							  else if valeur1 = 1.0  then	 val2 else  Prod(val1,val2)
+					|_->exp
+				end
+		  	|RConstFloat (i)->	
+				begin
+					let valeur1 = (  i) in
+					match val2 with 
+					ConstInt(j) -> 
+						RConstFloat(  (valeur1 *. (float_of_string  j)))
+					|ConstFloat (j)-> 		
+						RConstFloat( (valeur1 *. (float_of_string  j)))
+					|RConstFloat (j)-> 		
+						RConstFloat(  (valeur1 *. ( j)))
 					|Var(v) -> if valeur1 = 0.0 then ConstInt("0")
 							  else if valeur1 = 1.0  then	 val2 else  Prod(val1,val2)
 					|_->exp
@@ -761,6 +857,9 @@ let rec evalexpression  exp =
 					|ConstFloat (j)-> 		
 						if (float_of_string  j) = 0.0 then ConstInt("0")
 						else if (float_of_string  j) = 1.0 then	val1 else Prod(val2,val1)
+					|RConstFloat (j)-> 		
+						if (  j) = 0.0 then ConstInt("0")
+						else if (   j) = 1.0 then	val1 else Prod(val2,val1)
 					|Var(v) ->  Prod(val2,val1)
 					|_->exp
 				end					
@@ -780,6 +879,8 @@ let rec evalexpression  exp =
 					match val2 with 
 					ConstInt(j) ->  ConstInt(Printf.sprintf "%d"  (nbdec lsr (int_of_string  j)))
 					|ConstFloat (j)->  ConstInt(Printf.sprintf "%d" (nbdec lsr (int_of_string  j)))
+					(*|RConstFloat (j)->  
+							ConstInt(Printf.sprintf "%d" (nbdec lsr (int_of_string  j)))*)
 					|Var(v) ->  if nbdec = 0 then ConstInt("0") else Quot (val1,Puis (ConstInt("2"), Var(v)) )
 					|_->exp
 				end				
@@ -792,11 +893,21 @@ let rec evalexpression  exp =
 					|Var(v) -> if valeur1 = 0 then ConstInt("0")  else  Quot (val1,Puis (ConstInt("2"), Var(v)) )
 					|_->exp
 				end
+			|RConstFloat (i)->	
+				begin
+					let valeur1 = (   i) in
+					match val2 with 
+					(*ConstInt(j) ->  ConstInt(Printf.sprintf "%d" (valeur1 lsr (int_of_string  j)))
+					|ConstFloat (j)->ConstInt(Printf.sprintf "%d" (valeur1 lsr (int_of_string  j)))*)
+					|Var(v) -> if valeur1 = 0.0 then ConstInt("0")  else  Quot (val1,Puis (ConstInt("2"), Var(v)) )
+					|_->exp
+				end
 			|Var(v) -> 
 				begin
 					match val2 with 
 					ConstInt(j) -> let nbdec = (int_of_string  j) in  if nbdec = 0 then val1 else Shr(val1,val2)
 					|ConstFloat (j)-> let nbdec = (int_of_string  j) in  if nbdec = 0 then val1 else  Shr(val1,val2)
+					|RConstFloat (j)-> let nbdec = (  j) in  if nbdec = 0.0 then val1 else  Shr(val1,val2)
 					|Var(v) -> Quot (val1,Puis (ConstInt("2"), Var(v)) )
 					|_->exp
 				end					
@@ -832,6 +943,7 @@ let rec evalexpression  exp =
 						match val2 with 
 						ConstInt(j) -> 		let nbdec = (int_of_string  j) in  if nbdec = 0 then val1 else Prod (val1,Puis (ConstInt("2"), Var(v)) )
 						|ConstFloat (j)-> 	let nbdec = (int_of_string  j) in if nbdec = 0 then val1 else Prod (val1,Puis (ConstInt("2"), Var(v)) )
+						|RConstFloat (j)-> 	let nbdec = (  j) in if nbdec = 0.0 then val1 else Prod (val1,Puis (ConstInt("2"), Var(v)) )
 						|Var(v) ->  Prod (val1,Puis (ConstInt("2"), Var(v)) )
 						|_->exp
 					end				
@@ -857,6 +969,7 @@ let rec evalexpression  exp =
 						match val2 with 
 						ConstInt(j) -> if (float_of_string  j) = 1.0 then val1 else Mod(val1,val2)
 						|ConstFloat(j)->if (float_of_string  j) = 1.0 then val1 else Mod(val1,val2)
+						|RConstFloat(j)->if (  j) = 1.0 then val1 else Mod(val1,val2)
 						|Var(v1) ->  if v = v1 then ConstInt("0") else  Mod(val1,val2)
 						|_->exp
 					)				  
@@ -873,7 +986,8 @@ let rec evalexpression  exp =
 					begin
 						match val2 with 
 						ConstInt(j) ->  ConstInt(Printf.sprintf "%d" ((int_of_string  i) / (int_of_string  j)))
-						|ConstFloat (j)->   ConstFloat(Printf.sprintf "%f"((float_of_string  i)/. (float_of_string  j)))
+						|ConstFloat (j)->   RConstFloat( ((float_of_string  i)/. (float_of_string  j)))
+						|RConstFloat (j)->   RConstFloat( ((float_of_string  i)/. ( j)))
 						|Var(v) ->  Quot(val1,val2)
 						|_->exp
 					end				
@@ -881,8 +995,19 @@ let rec evalexpression  exp =
 					begin
 						let valeur1 = (float_of_string  i) in
 						match val2 with 
-						ConstInt(j) ->  ConstFloat(Printf.sprintf "%f" (valeur1 /. (float_of_string  j)))
-						|ConstFloat (j)-> ConstFloat(Printf.sprintf "%f" (valeur1 /. (float_of_string  j)))
+						ConstInt(j) ->  RConstFloat( (valeur1 /. (float_of_string  j)))
+						|ConstFloat (j)-> RConstFloat(  (valeur1 /. (float_of_string  j)))
+						|RConstFloat (j)-> RConstFloat(  (valeur1 /. ( j)))
+						|Var(v) ->  Quot(val1,val2)
+						|_->exp
+					end
+				|RConstFloat (i)->	
+					begin
+						let valeur1 = (   i) in
+						match val2 with 
+						ConstInt(j) ->  RConstFloat( (valeur1 /. (float_of_string  j)))
+						|ConstFloat (j)-> RConstFloat(  (valeur1 /. (float_of_string  j)))
+						|RConstFloat (j)-> RConstFloat(  (valeur1 /. ( j)))
 						|Var(v) ->  Quot(val1,val2)
 						|_->exp
 					end
@@ -891,6 +1016,7 @@ let rec evalexpression  exp =
 						match val2 with 
 						ConstInt(j) ->     if (float_of_string  j) = 1.0 then	val1	else Quot(val1,val2)
 						|ConstFloat (j)->  if (float_of_string  j) = 1.0 then	val1	else Quot(val1,val2)
+						|RConstFloat (j)->  if ( j) = 1.0 then	val1	else Quot(val1,val2)
 						|Var(v1) ->  
 							if v = v1 then (  ConstInt("1"))
 							else  (   Quot(val1,val2))
@@ -920,6 +1046,11 @@ let rec evalexpression  exp =
 										let (_,partieFract) =modf valeur in
 										if partieFract  = 0.0 then ConstInt(Printf.sprintf "%d" pe)
 										else 	ConstInt(Printf.sprintf "%d" (pe + 1)) (*is_integer_num*)
+				| 	RConstFloat (f) ->	let valeur = ( f) in
+										let pe = truncate valeur in
+										let (_,partieFract) =modf valeur in
+										if partieFract  = 0.0 then ConstInt(Printf.sprintf "%d" pe)
+										else 	ConstInt(Printf.sprintf "%d" (pe + 1)) (*is_integer_num*)
 				|Var(v)				-> 	PartieEntiereSup (e)
 				|	_				->	exp
 			end
@@ -930,7 +1061,19 @@ let rec evalexpression  exp =
 		begin
 			match val1 with
 			ConstInt(_) 	-> val1
-			| 	ConstFloat (f) 	->	ConstInt(Printf.sprintf "%d" (truncate (float_of_string f)))
+			| 	ConstFloat (f) 	->	
+						(*Printf.printf "%d %f %s\n"(truncate ( float_of_string f)) (float_of_string f) f;*)
+				 
+				let vf = (float_of_string f) in
+				if float (truncate vf) <= vf then
+						ConstInt(Printf.sprintf "%d" (truncate vf))
+						else if vf>=1.0 then ConstInt(Printf.sprintf "%d" (truncate (vf) - 1)) else ConstInt("0")
+
+			| 	RConstFloat (f) 	->	
+							(*Printf.printf "%d %f %e r\n"(truncate ( f)) f f;*)
+						if float (truncate ( f)) <= f then
+						ConstInt(Printf.sprintf "%d" (truncate ( f)))
+						else if f>=1.0 then ConstInt(Printf.sprintf "%d" (truncate ( f) - 1)) else ConstInt("0")
 			|	Var(v)			-> 	PartieEntiereInf (e)
 			|	_				->	exp
 		end
@@ -940,8 +1083,9 @@ let rec evalexpression  exp =
 		else 
 		begin
 			match val1 with
-			ConstInt(v) 	-> if val1 = ConstInt("0") then  NOCOMP else ConstFloat (Printf.sprintf "%f" (log ( float_of_string v)))
-			| 	ConstFloat (f) 	->	if val1 = ConstFloat("0.O") then  NOCOMP else  ConstFloat (Printf.sprintf "%f" (log ( float_of_string f)))
+			ConstInt(v) 	-> if val1 = ConstInt("0") then  NOCOMP else RConstFloat (  (log ( float_of_string v)))
+			| 	ConstFloat (f) 	->	if val1 = ConstFloat("0.O") then  NOCOMP else  RConstFloat (  (log ( float_of_string f)))
+			| 	RConstFloat (f) 	->	if val1 = RConstFloat(0.0) then  NOCOMP else  RConstFloat (  (log ( f)))
 			|	Var(v)			-> 	Log (val1)
 			|	_				->	Log (val1)
 			end	
@@ -954,6 +1098,7 @@ let rec evalexpression  exp =
 			match val1 with
 			ConstInt(_) 	->      if val1 = ConstInt("1") then ConstInt("1") else ConstInt("0")
 			| 	ConstFloat (f) 	->if val1 = ConstFloat("1.0") then ConstInt("1") else ConstInt("0")
+			| 	RConstFloat (f) 	->if val1 = RConstFloat(1.0) then ConstInt("1") else ConstInt("0")
 			|	Var(v)			-> 	Eq1 (val1)
 			|	_				->	exp
 		end
@@ -1288,9 +1433,9 @@ and  calculer expressionVA ia l sign =
 								if estNoComp val1   then NOCOMP
 								else (* print_expTerm val1;new_line();*)
 									if val1 = Boolean(true) || val1 = ConstInt ("1") 
-										|| val1 = ConstFloat("1.0")
+										|| val1 = ConstFloat("1.0")|| val1 = RConstFloat(1.0)
 									then Boolean(false) 
-									else	if val1 = Boolean (false) || val1 = ConstInt ("0")  ||	val1 = ConstFloat("0.0")							
+									else	if val1 = Boolean (false)||val1=ConstInt("0")||val1=ConstFloat("0.0")||val1=RConstFloat(0.0)					
 											then Boolean(true) else NOCOMP (*neg*)
 					| BNOT -> 	NOCOMP
 					| MEMOF  -> (*Printf.printf" calculer MEMOF\n";print_expression exp 0; new_line();*)
@@ -1388,16 +1533,16 @@ and  calculer expressionVA ia l sign =
 						else NOCOMP
 				| AND |OR ->
 					let (resb1,comp1) = 
-						(	if val1 = Boolean(true) || val1 = ConstInt ("1")  || val1 = ConstFloat("1.0")
+						(	if val1 = Boolean(true) || val1 = ConstInt ("1")  || val1 = ConstFloat("1.0")|| val1 = RConstFloat(1.0)
 							then (true,true)
 							else 
-								if val1 = Boolean (false) || val1 = ConstInt ("0")  ||val1 = ConstFloat("0.0")									
+								if val1 = Boolean (false) || val1 = ConstInt ("0")  ||val1 = ConstFloat("0.0")||val1 = RConstFloat(0.0)						
 								then (false, true) else (false, false) )in
 					let (resb2, comp2) = 
-						(	if val2 = Boolean(true) || val2 = ConstInt ("1")   || val2 = ConstFloat("1.0")	
+						(	if val2 = Boolean(true) || val2 = ConstInt ("1")   || val2 = ConstFloat("1.0")|| val2 = RConstFloat(1.0)	
 							then (true,true)
 							else 
-								if val2 = Boolean (false) || val2 = ConstInt ("0")  ||val2 = ConstFloat("0.0")									
+								if val2 = Boolean (false) || val2 = ConstInt ("0")  ||val2 = ConstFloat("0.0")||val2 = RConstFloat(0.0)						
 								then (false, true) else (true, false) )in
 (*estBoolOrVal*)
 					if comp1 = false && comp2 = false then begin (*Printf.printf " NOCOMP AND OR \n";*)NOCOMP end
@@ -1523,7 +1668,7 @@ and  calculer expressionVA ia l sign =
 						if  estNoComp max   then NOCOMP
 						else
 						begin
-							if !vDEBUG then 
+							if !vDEBUG then
 							begin
 								Printf.printf"SYGMA simplifier\n";
 								Printf.printf"SYGMA pour %s =\n" var;
@@ -1604,8 +1749,13 @@ and  calculer expressionVA ia l sign =
 			| COMMA _ ->					NOCOMP
 			| CONSTANT cst -> 													
 				(	match cst with
-						CONST_INT i 	->	  	(ConstInt(Printf.sprintf "%d" (string_to_int  i)))
-						| CONST_FLOAT r ->	   	 (ConstFloat(Printf.sprintf "%f" (string_to_float  r)))
+						CONST_INT i 	->	
+
+						  let res =	(ConstInt( (removeSpecifieur  i true)))  in res
+						| RCONST_INT i 	->	  	(ConstInt(Printf.sprintf "%d" ( i )))
+						| CONST_FLOAT r ->	   (ConstFloat( (removeSpecifieur r false)))
+						| RCONST_FLOAT r ->	   	 (RConstFloat(r))
+						
 						| CONST_CHAR _ 	|CONST_STRING _ | CONST_COMPOUND _ ->	NOCOMP
 				)
 			| VARIABLE (s) ->		 (Var(s))
@@ -1645,6 +1795,7 @@ match expre with
 		| Mod (f, g)	->  (estVarDsExpEval var f)  ||(estVarDsExpEval var g)
 		| ConstInt(_) 	->  false
 		| ConstFloat (_)->  false
+		| RConstFloat (_)->  false
 		| Boolean (_) -> 	false
 		| Var (s) -> 		if s = var then true else false
 		| PartieEntiereSup (e)-> 	(estVarDsExpEval var e) 
@@ -1671,6 +1822,7 @@ if !vDEBUG then Printf.printf"SYGMA simplifier dans affine\n";
 		| Shl (f, g)	->  if (estVarDsExpEval var g = false) then (estAffine var f)  else false
 		| Mod (f, g)	->  if (estVarDsExpEval var g = false)then (estAffine var f)  else false
 		| ConstInt(_)| Boolean(_) | ConstFloat (_) | Var (_) -> 		true
+		| RConstFloat (_)  -> 		true
 		| PartieEntiereSup (e)->  (estAffine var e) (*revoir*)
 	    | PartieEntiereInf (e)->  (estAffine var e)
    	    | Sygma (v,_,_,_)-> 
@@ -1686,7 +1838,8 @@ and remplacerVpM var max expre =
 if !vDEBUG then Printf.printf"SYGMA simplifier avant remplacerVpM\n";
 	match expre with
 		  ConstInt(_)->evalexpression(Prod (expre,Sum(max, ConstInt("1"))))
-		| ConstFloat (_)->evalexpression(Prod (expre, Sum(max, ConstInt("1")) )) 	
+		| ConstFloat (_)->evalexpression(Prod (expre, Sum(max, ConstInt("1")) )) 
+		| RConstFloat (_)->evalexpression(Prod (expre, Sum(max, ConstInt("1")) )) 	
 		| NOCOMP		->NOCOMP	
 		| Var (s) -> if s = var then Quot ( Prod (max,(Sum (max, ConstInt("1"))) ) ,ConstInt("2")) (* n*(n+1)/2*)
 					 else evalexpression(Prod (expre,Sum(max, ConstInt("1"))))
@@ -1715,6 +1868,7 @@ and remplacerVal var max expre =
 (*if !vDEBUG then Printf.printf"SYGMA simplifier avant remplacerVpM\n";*)
 	match expre with
 		  ConstInt(_) | ConstFloat (_) | Boolean (_)->expre
+		| RConstFloat (_) ->expre
 		| NOCOMP			->NOCOMP	
 		| Var (s) 	  -> if s = var then max else expre
 		| Sum (f, g)  -> Sum((remplacerVal var max f) , (remplacerVal var max g))
@@ -1886,6 +2040,7 @@ and calculaetbAffineForne x expre = (* a*x+b d'une foction affine en x *)
 
 		| ConstInt(_) -> (ConstInt("0"),evalexpression expre)
 		| ConstFloat (_) -> (ConstInt("0"),evalexpression expre)
+		| RConstFloat (_) -> (ConstInt("0"),evalexpression expre)
 		| Var (v) -> if v = x then (ConstInt("1"), ConstInt("0")) else (ConstInt("0"),Var (v))
 		| PartieEntiereSup (e)->  	(* evalexpression (PartieEntiereSup*)
 									let (a1, b1) =calculaetbAffineForne x e 	in 
@@ -2001,6 +2156,7 @@ and sensVariation var max expre ia =
 							else NONMONOTONE
 				)				 
 			| ConstInt(_) | ConstFloat (_)  -> CONSTANTE
+			| RConstFloat (_)  -> CONSTANTE
 			| Var (_) ->  CROISSANT 
 			| PartieEntiereSup (e)  | PartieEntiereInf (e)  | Log (e)->  	 	sensVariation var max e ia
 	   	    | Sygma (_,_,_,exp)->    let sensexp = sensVariation var max exp ia  in
@@ -2183,6 +2339,7 @@ and simplifierSYGMA var max expre ia =
 				end
 		| ConstInt(_) 
 		| ConstFloat (_) -> evalexpression (Prod (Sum(max,ConstInt("1")), expre))
+		| RConstFloat (_) -> evalexpression (Prod (Sum(max,ConstInt("1")), expre))
 		| Boolean (_)-> NOCOMP
 		| Var (v) -> if v = var then evalexpression (Sygma (var , ConstInt("0"), max, Var (v)) )
 					 else  evalexpression (Prod (Sum(max,ConstInt("1")), expre))
@@ -2274,7 +2431,7 @@ begin
 
 			if (estPositif borneMaxSupposee = false) && (estPositif borneInfSupposee =false) then  
 			begin
-				(*Printf.printf "pas dans la boucle\n";		*)	
+				(*Printf.printf "pas dans la boucle\n";		*)
 				ConstInt("0")
 			end
 			else
@@ -2283,7 +2440,7 @@ begin
 				let (var1, var2) = (evalexpression a , evalexpression b) in
 				let convFloat =  ( match var1 with  ConstInt(j) -> ConstFloat(j) |_-> var1) in
 				let mbSura = 
-					(if convFloat = ConstFloat("0") then ConstFloat("0")
+					(if convFloat = ConstFloat("0")|| convFloat = RConstFloat(0.0)then ConstFloat("0")
 					 else  evalexpression (Quot ( Diff	 ( ConstInt("0"),var2 )  , convFloat)))in
 						(*-b/a*)
 				let mbSuraInf = evalexpression 
@@ -2303,14 +2460,14 @@ begin
 						if (estPositif maxMoinsMbSura) then
 						begin
 							let maximum = maxi mbSuraInf  (ConstInt("0"))  in
-							if (maximum = ConstInt("0")) then 
+							if (estNul maximum ) then 
 								evalexpression (remplacerVpM var max expre) 
 							else  evalexpression
 								(Diff  ( evalexpression (remplacerVpM var max expre) ,  
 								remplacerVpM var
 									(evalexpression (Diff (mbSuraInf,ConstInt("1")))) expre) )
 						end
-						else  begin (*Printf.printf"CAS1\n";*)ConstInt("0")  end
+						else  begin Printf.printf"CAS1\n";ConstInt("0")  end
 					end
 					else	(* decr*)
 					begin
@@ -2319,7 +2476,7 @@ begin
 						if (estPositif maxMoinsMbSura) then
 						begin 
 							let maximum = maxi mbSuraSup  (ConstInt("0"))  in
-							if maximum = ConstInt("0") then 
+							if estNul maximum  then 
 							begin
 							(*	Printf.printf "decroissant max = 0 maxMoinsMbSura >0\n";	*)	
 								evalexpression (remplacerVpM var max expre)
@@ -2333,7 +2490,7 @@ begin
 									(evalexpression (Diff (mbSuraSup,ConstInt("1")))) expre) )
 							end
 						end
-						else   begin (*Printf.printf"CAS2\n";*)ConstInt("0")  end
+						else   begin Printf.printf"CAS2\n";ConstInt("0")  end
 					end (*end decr*)
 				end
 				else (* var1 neg*)
@@ -2342,21 +2499,21 @@ begin
 					begin (*Printf.printf"negatif croissant\n";*)
 						if estPositif mbSuraSup then 
 							evalexpression (remplacerVpM var (mini mbSuraSup  max) expre) 
-						else  begin (*Printf.printf "CAS6\n";*) ConstInt("0")  	end
+						else  begin Printf.printf "CAS6\n"; ConstInt("0")  	end
 					end
 					else		
 					begin	(*Printf.printf"negatif decroissant\n";*)
 						if estPositif mbSuraInf = false then  
 							evalexpression (remplacerVpM var (ConstInt("0")) expre) 
-						else  begin (*Printf.printf "CAS7\n";*) (ConstInt("0"))
+						else  begin Printf.printf "CAS7\n"; (ConstInt("0"))
 							(*evalexpression (remplacerVpM var (maxi mbSuraInf  (ConstInt("0")))
  expre) *)  			end	
 					end
 				end
-			end else  NOCOMP
+			end else  ((*Printf.printf"X\n";*)NOCOMP)
 			end
 			end (*estDef*)
-			else  NOCOMP
+			else   ((*Printf.printf"Y\n";*)NOCOMP)
 		end (*fin affine*)
 		else (*non affine*)
 		begin
@@ -2427,7 +2584,7 @@ begin
 			let var1 = evalexpression a in
 			let var2 = evalexpression b in
 			let convFloat =  ( match var1 with  ConstInt(j) -> ConstFloat(j) |_-> var1) in
-			let mbSura =(if convFloat = ConstFloat("0") then ConstFloat("0")
+			let mbSura =(if convFloat = ConstFloat("0") || convFloat = RConstFloat(0.0) then ConstFloat("0")
 						else  evalexpression (Quot ( Diff( ConstInt("0"),var2 ), convFloat)))in	
 	(*-b/a*)
 
@@ -2463,7 +2620,7 @@ begin
 												begin
 													(*Printf.printf "cas 2 decroissant \n";*)
 													let maximum = maxi mbSuraSup  (ConstInt("0"))  in
-													if maximum = ConstInt("0") then 
+													if estNul maximum   then 
 													begin (*Printf.printf"eval3\n";*)
 														evalexpression (remplacerVal var (ConstInt("0")) expre)
 													end
@@ -4896,7 +5053,7 @@ Printf.printf "les as de la boucle avant transfo \n";*)
 						let nginterne = filterGlobales rc  !alreadyAffectedGlobales  in
 						(*let (aPart, _) = splitTotalAndOthers rc in*)
 
-						let returnf = Printf.sprintf "res%s"  nomFonc in
+						let returnf = Printf.sprintf "res-%s"  nomFonc in
 						if existeAffectationVarListe returnf rc then
 						begin
 							let affectres = ro returnf rc in
@@ -4994,7 +5151,7 @@ Printf.printf "les as de la boucle avant transfo \n";*)
 (*Printf.printf "evalStore fonction %s  \n SORTIE \n" nomFonc ;
 afficherListeAS aPart;		*)
 
-						let returnf = Printf.sprintf "res%s"  nomFonc in
+						let returnf = Printf.sprintf "res-%s"  nomFonc in
 						if existeAffectationVarListe returnf rc then
 						begin
 							let affectres = ro returnf rc in
@@ -5032,7 +5189,18 @@ afficherUneAffect (BEGIN(corps)); new_line();
 
 
 
- 
+and setExtern sorties nom =
+listeASCourant := [];
+if sorties <> [] then
+
+		List.iter (
+						fun sortie -> 
+							match sortie with 
+									VAR (id, _) -> listeASCourant :=  List.append  [new_assign_simple id  MULTIPLE ]  !listeASCourant; ()
+									| TAB (id, _, _) ->   listeASCourant := List.append  [ASSIGN_DOUBLE (id,  MULTIPLE,  MULTIPLE)] !listeASCourant;()
+									|MEMASSIGN (id, _, _)->  listeASCourant := List.append [ASSIGN_MEM (id,  MULTIPLE,  MULTIPLE)] !listeASCourant; ()
+									|_->()
+				)sorties	; 
 
 
 
