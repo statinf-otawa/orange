@@ -52,6 +52,42 @@ let resb =
 						if (String.sub x  0 3) = "ET-" ||(String.sub x  0 3) = "EF-" ||(String.sub x  0 3) = "IF-" || (String.sub x  0 3) = "tN-" then true else false else false in
 resb
 
+
+
+
+let rec remplacerValPar  var nouexp expr =
+	match expr with
+	NOTHING 					-> NOTHING
+	| UNARY (op, exp) 			-> UNARY (op, remplacerValPar   var nouexp exp)
+	| BINARY (op, exp1, exp2) 	-> BINARY (op, remplacerValPar   var nouexp exp1, remplacerValPar   var nouexp exp2)
+	| QUESTION (exp1, exp2, exp3) ->QUESTION (remplacerValPar   var nouexp exp1, remplacerValPar   var nouexp exp2, remplacerValPar   var nouexp exp3)
+	| CALL (exp, args) 			->	CALL (exp, List.map(fun a-> remplacerValPar  var nouexp a)args)
+	| VARIABLE (s) 				->	if s = var then nouexp else expr
+	| INDEX (n,exp) 			->	INDEX (n, remplacerValPar  var nouexp exp);
+	| CAST (typ, exp) ->CAST (typ, remplacerValPar   var nouexp  exp)
+	| CONSTANT ( CONST_COMPOUND expsc)  -> CONSTANT ( CONST_COMPOUND ( List.map(fun a-> remplacerValPar  var nouexp a)expsc))
+	| COMMA exps 					->	(COMMA ( List.map (fun a -> remplacerValPar  var nouexp a) exps))
+	| MEMBEROF (ex, c) 			->  (match nouexp with 
+											VARIABLE (v) -> MEMBEROF (remplacerValPar   var nouexp ex,   c) 
+										|  	UNARY (MEMOF, VARIABLE(v)) -> MEMBEROF (remplacerValPar   var (VARIABLE(v)) ex,   c) 
+					
+										|_-> expr)
+	| MEMBEROFPTR (ex, c) 		->	(match nouexp with 
+											VARIABLE (v) -> MEMBEROF (remplacerValPar   var nouexp ex,   c) 
+										|  	UNARY (ADDROF, VARIABLE(v)) -> MEMBEROF (remplacerValPar   var (VARIABLE(v)) ex,   c) 
+					
+										|_-> expr)
+	| EXPR_SIZEOF exp -> EXPR_SIZEOF (remplacerValPar   var nouexp exp )
+	| EXPR_LINE (expr, _, _) ->
+			remplacerValPar   var nouexp  expr
+	| _ 						-> 	expr
+
+
+
+
+
+
+
 let rec removeSpecifieur st intType= 
 let length = String.length st in
 if length > 1 then
@@ -1036,7 +1072,7 @@ let rec evalexpression  exp =
 		end
    | PartieEntiereSup (e)-> 
 		let val1 = evalexpression e in 	
-		if estNoComp val1  then NOCOMP 
+		if estNoComp val1  then NOCOMP
 		else
 			begin
 				match val1 with
@@ -1051,12 +1087,14 @@ let rec evalexpression  exp =
 										let (_,partieFract) =modf valeur in
 										if partieFract  = 0.0 then ConstInt(Printf.sprintf "%d" pe)
 										else 	ConstInt(Printf.sprintf "%d" (pe + 1)) (*is_integer_num*)
-				|Var(v)				-> 	PartieEntiereSup (e)
-				|	_				->	exp
+				|_				-> 	exp
 			end
    | PartieEntiereInf (e)-> 
 		let val1 = evalexpression e in 
-		if estNoComp val1  then NOCOMP 
+		if estNoComp val1  then 
+		begin
+			NOCOMP
+		end  
 		else 
 		begin
 			match val1 with
@@ -1203,29 +1241,6 @@ let rec remplacerValPar0  var expr =
 (*		| MEMOF -> ("*", 13)
 		| ADDROF -> ("&", 13)*)
 
-let rec remplacerValPar  var nouexp expr =
-	match expr with
-	NOTHING 					-> NOTHING
-	| UNARY (op, exp) 			-> UNARY (op, remplacerValPar   var nouexp exp)
-	| BINARY (op, exp1, exp2) 	-> BINARY (op, remplacerValPar   var nouexp exp1, remplacerValPar   var nouexp exp2)
-	| CALL (exp, args) 			->	CALL (exp, List.map(fun a-> remplacerValPar  var nouexp a)args)
-	| VARIABLE (s) 				->	if s = var then nouexp else expr
-	| INDEX (n,exp) 			->	INDEX (n, remplacerValPar  var nouexp exp);
-	| CONSTANT ( CONST_COMPOUND expsc)  -> CONSTANT ( CONST_COMPOUND ( List.map(fun a-> remplacerValPar  var nouexp a)expsc))
-	| COMMA exps 					->	(COMMA ( List.map (fun a -> remplacerValPar  var nouexp a) exps))
-	| MEMBEROF (ex, c) 			->  (match nouexp with 
-											VARIABLE (v) -> MEMBEROF (remplacerValPar   var nouexp ex,   c) 
-										|  	UNARY (MEMOF, VARIABLE(v)) -> MEMBEROF (remplacerValPar   var (VARIABLE(v)) ex,   c) 
-					
-										|_-> expr)
-	| MEMBEROFPTR (ex, c) 		->	(match nouexp with 
-											VARIABLE (v) -> MEMBEROF (remplacerValPar   var nouexp ex,   c) 
-										|  	UNARY (ADDROF, VARIABLE(v)) -> MEMBEROF (remplacerValPar   var (VARIABLE(v)) ex,   c) 
-					
-										|_-> expr)
-	| _ 						-> 	expr
-
-
 let rec mapVar fct = function 
          NOTHING				-> NOTHING
 	|UNARY (op, exp)			-> UNARY (op, mapVar fct exp)
@@ -1235,8 +1250,6 @@ let rec mapVar fct = function
 	| INDEX (n,exp) 			->	INDEX (n, mapVar fct exp)
 	| CONSTANT ( CONST_COMPOUND expsc)  -> CONSTANT ( CONST_COMPOUND ( List.map(fun a-> mapVar fct a)expsc))
 	| COMMA exps 					->	(COMMA ( List.map (fun a -> mapVar fct a) exps))
-(*	| MEMBEROF (ex, c) 			-> MEMBEROF ( mapVar fct ex,   c)
-	| MEMBEROFPTR (ex, c) 		->	MEMBEROFPTR (  mapVar fct ex,    c)*)
 	| expr 					-> 	expr
 	
 let rec remplacerNOTHINGPar  expr =
@@ -1247,8 +1260,7 @@ let rec remplacerNOTHINGPar  expr =
 	| CALL (exp, args) 			->	CALL (exp, List.map(fun a-> remplacerNOTHINGPar a)args)
 	| VARIABLE (s) 				->	expr
 	| INDEX (n,exp) 			->	INDEX (n, remplacerNOTHINGPar    exp)
-(*	| CONSTANT ( CONST_COMPOUND expsc)  -> CONSTANT ( CONST_COMPOUND ( List.map(fun a-> remplacerNOTHINGPar a)expsc))
-	| COMMA exps 					->	(COMMA ( List.map (fun a -> remplacerNOTHINGPar    a) exps))*)
+
 	| _ 						-> 	expr
 
 
@@ -1260,10 +1272,6 @@ let rec remplacergetvarTailleTabMaxFctPar  expr ne =
 	| BINARY (op, exp1, exp2) 	-> BINARY (op, remplacergetvarTailleTabMaxFctPar exp1 ne, remplacergetvarTailleTabMaxFctPar exp2 ne)
 	| CALL(VARIABLE("getvarTailleTabMax_"), _)-> ne
 	| CALL (exp, args) 			->	CALL (exp, List.map(fun a-> remplacergetvarTailleTabMaxFctPar a ne )args)
- 
- 
-(*	| CONSTANT ( CONST_COMPOUND expsc)  -> CONSTANT ( CONST_COMPOUND ( List.map(fun a-> remplacerNOTHINGPar a)expsc))
-	| COMMA exps 					->	(COMMA ( List.map (fun a -> remplacerNOTHINGPar    a) exps))*)
 	| _ 						-> 	expr
 
 
@@ -1572,15 +1580,91 @@ and  calculer expressionVA ia l sign =
 						print_expression (List.hd args) 0;		new_line ()	
 					end;
 					let val1 =  (calculer (EXP(List.hd args)) ia l sign)in
-					if estNoComp val1  then 
-					begin (*Printf.printf"NO COMP partieEntiereInf\n";*)	NOCOMP end
-					else evalexpression (PartieEntiereInf (val1)) 	
+					let listeDesVar = listeDesVarsDeExpSeules  (List.hd args) in
+					(*if estDefExp val1 then evalexpression (PartieEntiereInf (val1)) 
+					else*)
+					begin  	
+						if List.mem "EPSILON" listeDesVar = false then
+							 if estNoComp val1 then NOCOMP else  evalexpression (PartieEntiereInf (val1)) 
+							 	
+						else
+						begin
+							let sanseps = remplacerValPar  "EPSILON" (CONSTANT (CONST_INT "0")) (List.hd args) in
+							let valsanseps =(calculer (EXP(sanseps)) ia l sign) in
+											(*+ or - espsilon ?*)
+							let sanseps2 = remplacerValPar  "EPSILON" (CONSTANT (CONST_INT "1")) (List.hd args) in
+							let valsanseps2  =(calculer (EXP(sanseps2)) ia l sign) in
+							(*Printf.printf"\ncalcul partieEntiereInf expression avec epsilon\n";
+						    print_expression (List.hd args) 0;		new_line ()	;*)
+
+							let sens = if estPositif(evalexpression (Diff (valsanseps2,valsanseps)) ) then(  1) else ( 0) in
+							let nexp= (match valsanseps with
+										ConstInt(_) 	->Printf.printf "+epsilon int\n"; if sens = 1 then valsanseps else  Diff (valsanseps, ConstInt("1")) 
+										| 	ConstFloat (f) ->	 let valeur = (float_of_string f) in
+																let pe = truncate valeur in
+																let partieFract = valeur -. float_of_int pe in
+																if sens = 1 then 
+																	if partieFract+.min_float  = 1.0 then ConstInt(Printf.sprintf "%d" (pe+1))
+																	else    ConstInt(Printf.sprintf "%d" pe)
+																else if partieFract   = 0.0 then ConstInt(Printf.sprintf "%d" (pe-1))
+																	else    ConstInt(Printf.sprintf "%d" pe)
+										| 	RConstFloat (f) ->	  let valeur = (  f) in
+																let pe = truncate valeur in
+
+																let partieFract = f -. float_of_int pe in
+																 
+																if sens = 1 then ( 
+																	if partieFract+.min_float  = 1.0 then ConstInt(Printf.sprintf "%d" (pe+1))
+																	else    ConstInt(Printf.sprintf "%d" pe))
+																else ( if partieFract   <min_float then ( ConstInt(Printf.sprintf "%d" (pe-1)))
+																	else    ConstInt(Printf.sprintf "%d" pe))
+										|_			-> 	  if estNoComp val1 then NOCOMP else  evalexpression (PartieEntiereInf (val1)) 
+										) in
+				 						nexp
+				
+							(*NOCOMP*)
+						end
+					end
 															  
 				|VARIABLE("partieEntiereSup") ->
 					let val1 = evalexpression (calculer (EXP(List.hd args)) ia l sign)in
-					if estNoComp val1  then 
-					begin (*Printf.printf"NO COMP partieEntiereSup\n";	*)NOCOMP end
-					else evalexpression (PartieEntiereSup (val1)) 	
+					let listeDesVar = listeDesVarsDeExpSeules  (List.hd args)  in
+					(*if estDefExp val1 then evalexpression (PartieEntiereInf (val1)) 
+					else*)
+					begin  	
+						if  List.mem "EPSILON" listeDesVar = false then 
+							 if estNoComp val1 then NOCOMP else  evalexpression (PartieEntiereSup (val1)) 
+							 		
+						else
+						begin
+							let sanseps = remplacerValPar  "EPSILON" (CONSTANT (CONST_INT "0")) (List.hd args) in
+							let valsanseps =(calculer (EXP(sanseps)) ia l sign) in
+											(*+ or - espsilon ?*)
+							let sanseps2 = remplacerValPar  "EPSILON" (CONSTANT (CONST_INT "1")) (List.hd args) in
+							let valsanseps2  =(calculer (EXP(sanseps2)) ia l sign)  in
+							let sens = if estPositif(evalexpression (Diff (valsanseps2,valsanseps)) ) then 1 else 0 in
+
+							let nexp= (match valsanseps with
+							ConstInt(_) 	-> if sens = 1 then (Sum (valsanseps, ConstInt("1")))  else valsanseps
+							| 	ConstFloat (f) ->	let valeur = (float_of_string f) in
+													let pe = truncate valeur in
+													let partieFract = valeur -. float_of_int pe in
+													if sens = 1 then ConstInt(Printf.sprintf "%d" (pe+1))
+													else 	if partieFract  = 0.0 then ConstInt(Printf.sprintf "%d" pe)
+															else 	ConstInt(Printf.sprintf "%d" (pe + 1)) (*is_integer_num*)
+							| 	RConstFloat (f) ->	let valeur = (  f) in
+													let pe = truncate valeur in
+													let partieFract = f -. float_of_int pe in
+													if sens = 1 then ConstInt(Printf.sprintf "%d" (pe+1))
+													else 	if partieFract  = 0.0 then ConstInt(Printf.sprintf "%d" pe)
+															else 	ConstInt(Printf.sprintf "%d" (pe + 1)) (*is_integer_num*)
+							|_			-> 	if estNoComp val1 then NOCOMP else  evalexpression (PartieEntiereSup (val1)) 
+							) in
+	 						nexp
+							 
+						end
+					end
+					 
 				|VARIABLE("pow10") ->
 					let val1 = evalexpression (calculer (EXP(List.hd args)) ia l sign)in
 					if estNoComp val1  then  NOCOMP  
@@ -1677,14 +1761,23 @@ and  calculer expressionVA ia l sign =
 								print_expTerm max; new_line ();
 								print_expression (List.hd (List.tl suite) ) 0;new_line ();
 							end;
+
+					    	let listvar = listeDesVarsDeExpSeules (List.hd (List.tl suite)) in
+
+							let (expToMax,has,expAvec) = if List.mem "EPSILON" listvar then 
+									((*Printf.printf "has epsilon\n";*)
+									(remplacerValPar  "EPSILON" (CONSTANT (CONST_INT "0")) (List.hd (List.tl suite)), true,(List.hd (List.tl suite))))
+											 else (List.hd (List.tl suite) , false,(List.hd (List.tl suite)))  in
+
+
 							if List.mem var l then NOCOMP
 							else
 							begin
-								let expE = (calculer  (EXP(List.hd (List.tl suite) ))ia  (List.append [var] l) 1) in
+								let expE = (calculer  (EXP(expToMax))ia  (List.append [var] l) 1) in
 								if  estNoComp expE   then  NOCOMP
 								else
 								begin
-									let val1 = simplifier var max expE ia in
+									let val1 = simplifier var max expE ia has (calculer  (EXP(expAvec))ia l 1) in
 									if  estNoComp val1 then   Sygma (var ,ConstInt("0")(* ou 1 voir*), max,expE)(* NOCOMP*)
 									else	val1
 								end	
@@ -1701,6 +1794,10 @@ and  calculer expressionVA ia l sign =
 					VARIABLE (var) ->		
 
 						let listvar = listeDesVarsDeExpSeules (List.hd (List.tl suite)) in
+
+						let (expToMax,has,expAvec) = if List.mem "EPSILON" listvar then 
+									((remplacerValPar  "EPSILON" (CONSTANT (CONST_INT "0")) (List.hd (List.tl suite)), true,(List.hd (List.tl suite))))
+											 else (List.hd (List.tl suite) , false,(List.hd (List.tl suite)))  in
 						if List.mem var listvar then
 						begin									
 							let max = (calculer (EXP(List.hd suite )) ia l 1)in
@@ -1725,12 +1822,18 @@ and  calculer expressionVA ia l sign =
 								end
 								else
 								begin
-									let expE = (calculer  (EXP(List.hd (List.tl suite) ))ia l 1) in
-									if estNoComp expE  then  NOCOMP
+									let expE = (calculer  (EXP(expToMax))ia l 1) in
+									if estNoComp expE  then
+									begin
+										 
+										  NOCOMP
+										 
+									end
 									else
 									begin		
-										let val1 = simplifierMax var max expE ia in
+										let val1 = simplifierMax var max expE ia has (calculer  (EXP(expAvec))ia l 1)  in
 										(*Printf.printf"calcul MAX pour %s =\n" var; 
+										print_expression expAvec 0;
 										print_expTerm val1; new_line ();
 										Printf.printf"MAX apres calcul =\n";*)
 										if  estNoComp val1 then  NOCOMP
@@ -1761,11 +1864,6 @@ and  calculer expressionVA ia l sign =
 			| VARIABLE (s) ->		 (Var(s))
 			| _ -> 	NOCOMP
 
-
-(*
-		 EXPR_SIZEOF e ->
-		 | TYPE_SIZEOF _ -> false		
-*)
 	)
 |	MULTIPLE -> NOCOMP
 and roindex var l i=
@@ -2196,47 +2294,45 @@ and estDecroissantOuCte var max expre ia =
 let sens = sensVariation  var max expre ia in
 sens = DECROISSANT || sens = CONSTANTE 
 
-and simplifierSYGMA var max expre ia =
+and simplifierSYGMA var max expre ia witheps exprea=
 	match expre with
 		NOCOMP -> NOCOMP
 	 	| Sum (f, g) 	->  
 			if (estVarDsExpEval var f = false) then
 			begin 
-				if (estVarDsExpEval var g = false) then 
-					(*let maximum = simplifierMax var max val2 ia in*)
+				if (estVarDsExpEval var g = false) then  
 					evalexpression (Prod (Sum(max,ConstInt("1")), expre))
 				else 
 					evalexpression ( Sum ( evalexpression (Prod (Sum(max,ConstInt("1")), f)),
-										  simplifierSYGMA var max g ia	))
+										  simplifierSYGMA var max g ia	witheps exprea))
 			end
 			else 
 			begin
 				if (estVarDsExpEval var g = false) then 
-					evalexpression ( Sum ( simplifierSYGMA var max f ia	,
-										  evalexpression (Prod (Sum(max,ConstInt("1")), g))
+					evalexpression ( Sum ( simplifierSYGMA var max f ia	witheps exprea,
+										  evalexpression (Prod (Sum(max,ConstInt("1")) , g))
 										 ))
 				else
-					evalexpression ( Sum  ( simplifierSYGMA var max f ia,  simplifierSYGMA var max g ia	))
+					evalexpression ( Sum  ( simplifierSYGMA var max f ia witheps exprea,  simplifierSYGMA var max g ia	witheps exprea))
 			end
 		| Diff (f, g) 	->  
 			if (estVarDsExpEval var f = false) then
 			begin 
-				if (estVarDsExpEval var g = false) then 
-					(*let maximum = simplifierMax var val1 val2 ia in*)
+				if (estVarDsExpEval var g = false) then  
 					evalexpression (Prod (Sum(max,ConstInt("1")), expre))
 				else 
 					evalexpression ( Diff 
 										( evalexpression (Prod (Sum(max,ConstInt("1")), f)),
-										  simplifierSYGMA var max g ia	))
+										  simplifierSYGMA var max g ia	witheps exprea))
 			end
 			else 
 			begin
 				if (estVarDsExpEval var g = false) then 
-					evalexpression ( Diff ( simplifierSYGMA var max f ia	,
+					evalexpression ( Diff ( simplifierSYGMA var max f ia	witheps exprea,
 										  evalexpression (Prod (Sum(max,ConstInt("1")), g))
 										 ))
 				else
-					evalexpression ( Diff  ( simplifierSYGMA var max f ia,  simplifierSYGMA var max g ia	))
+					evalexpression ( Diff  ( simplifierSYGMA var max f ia witheps exprea,  simplifierSYGMA var max g ia	witheps exprea))
 			end
 	
 		| Prod (f, g)  | Shr (f, g) ->  
@@ -2249,21 +2345,21 @@ and simplifierSYGMA var max expre ia =
 						(*Printf.printf "pas dans f mais dans g\n";
 						 print_expTerm (evalexpression f);  new_line ();Printf.printf " * ";
  print_expTerm (simplifierSYGMA var max g ia);  new_line ();Printf.printf " \n\n ";*)
-						evalexpression(Prod ( f, simplifierSYGMA var max g ia))
+						evalexpression(Prod ( f, simplifierSYGMA var max g ia witheps exprea))
 					 end
 				end
 				else
 				 	if (estVarDsExpEval var g = false) then 
 					begin
-						if expre =  Prod (f, g) then evalexpression(Prod ( simplifierSYGMA var max f ia, g))
-						else  evalexpression(Shr ( simplifierSYGMA var max f ia, g))
+						if expre =  Prod (f, g) then evalexpression(Prod ( simplifierSYGMA var max f ia witheps exprea, g))
+						else  evalexpression(Shr ( simplifierSYGMA var max f ia witheps exprea, g))
 					end 
 					else 
 					begin
                         if ((sensVariation var max  f ia = CROISSANT) && (sensVariation var max g ia = CROISSANT) )
 						|| ((sensVariation var max f ia = DECROISSANT) && (sensVariation var max g ia =DECROISSANT))then
 						begin
-							let maximum = simplifierMax var max expre ia in
+							let maximum = simplifierMax var max expre ia  witheps exprea in
 							if (estNoComp maximum) || estNul maximum then begin (*Printf.printf "NOCOMP2\n";*)NOCOMP end
 							else  evalexpression (Prod (Sum(max,ConstInt("1")), maximum))
 						end
@@ -2273,7 +2369,7 @@ and simplifierSYGMA var max expre ia =
 			|  Mod (f, g)	->  
 				if (estVarDsExpEval var g = false) then 
 					if (estVarDsExpEval var f = false) then evalexpression(Prod (Sum(max,ConstInt("1")), expre))
-					else evalexpression(Mod (simplifierSYGMA var max f ia , g))
+					else evalexpression(Mod (simplifierSYGMA var max f ia witheps exprea, g))
 				else  NOCOMP
 			| Quot (f, g)	|  Shl (f, g)->  
 				if (estVarDsExpEval var g = false) then 
@@ -2281,7 +2377,7 @@ and simplifierSYGMA var max expre ia =
 					if (estVarDsExpEval var f = false) then  evalexpression(Prod (Sum(max,ConstInt("1")), expre))
 					else	
 					begin
-						let res = simplifierSYGMA var max f ia in
+						let res = simplifierSYGMA var max f ia witheps exprea in
 						if expre = Quot (f, g) 	then	evalexpression(Quot (res , g))
 						else evalexpression(Shl (res , g))
 					end
@@ -2293,7 +2389,7 @@ and simplifierSYGMA var max expre ia =
 						(match valg with
 							Puis(e,vare) ->if (estVarDsExpEval var e = false) then
 										   begin
-											let res = simplifierSYGMA var max (Puis(Quot(ConstInt("1"), e), vare)) ia in
+											let res = simplifierSYGMA var max (Puis(Quot(ConstInt("1"), e), vare)) ia witheps exprea in
 											evalexpression(Quot (f, res) )
 										  end
 										 else NOCOMP
@@ -2343,30 +2439,30 @@ and simplifierSYGMA var max expre ia =
 		| Boolean (_)-> NOCOMP
 		| Var (v) -> if v = var then evalexpression (Sygma (var , ConstInt("0"), max, Var (v)) )
 					 else  evalexpression (Prod (Sum(max,ConstInt("1")), expre))
-		| PartieEntiereSup (e) ->  evalexpression	(PartieEntiereSup(simplifierSYGMA var max e ia))
-		| PartieEntiereInf (e)->  evalexpression	(PartieEntiereInf(simplifierSYGMA var max e ia))
-		| Log (e)->  evalexpression	(Log(simplifierSYGMA var max e ia))
-   	    | Sygma(v,inf,sup,e)-> evalexpression(Sygma (v,inf,simplifierSYGMA var max sup ia,simplifierSYGMA var max e ia))
-		| Max (v,inf,sup,e)->  evalexpression(Max (v,inf,simplifierSYGMA var max sup ia,simplifierSYGMA var max e ia))
+		| PartieEntiereSup (e) ->  evalexpression	(PartieEntiereSup(simplifierSYGMA var max e ia witheps exprea))
+		| PartieEntiereInf (e)->  evalexpression	(PartieEntiereInf(simplifierSYGMA var max e ia witheps exprea))
+		| Log (e)->  evalexpression	(Log(simplifierSYGMA var max e ia witheps exprea))
+   	    | Sygma(v,inf,sup,e)-> evalexpression(Sygma (v,inf,simplifierSYGMA var max sup ia witheps exprea,simplifierSYGMA var max e ia witheps exprea))
+		| Max (v,inf,sup,e)->  evalexpression(Max (v,inf,simplifierSYGMA var max sup ia witheps exprea,simplifierSYGMA var max e ia witheps exprea))
 		| Eq1 (v)->  Eq1 (v)		
 		|  Maximum (f, g)  ->  
 			if (estVarDsExpEval var f = false) then
 				if (estVarDsExpEval var g = false) then 
 					evalexpression  (Maximum (evalexpression f, evalexpression g)) 
-				else evalexpression  (Maximum (evalexpression f, simplifierSYGMA var max g ia)) 
+				else evalexpression  (Maximum (evalexpression f, simplifierSYGMA var max g ia witheps exprea)) 
 			else if (estVarDsExpEval var g = false) then 
-					evalexpression  (Maximum (simplifierSYGMA var max f ia, evalexpression g)) 
+					evalexpression  (Maximum (simplifierSYGMA var max f ia witheps exprea, evalexpression g)) 
 				else NOCOMP
 		|  Minimum (f, g)  ->  
 			if (estVarDsExpEval var f = false) then
 				if (estVarDsExpEval var g = false) then 
 					evalexpression  (Minimum (evalexpression f, evalexpression g)) 
-				else evalexpression  (Minimum (evalexpression f, simplifierSYGMA var max g ia)) 
+				else evalexpression  (Minimum (evalexpression f, simplifierSYGMA var max g ia witheps exprea)) 
 			else if (estVarDsExpEval var g = false) then 
-					evalexpression  (Minimum (simplifierSYGMA var max f ia, evalexpression g)) 
+					evalexpression  (Minimum (simplifierSYGMA var max f ia witheps exprea, evalexpression g)) 
 				else NOCOMP
 	
-and evalProd var max expre ia=
+and evalProd var max expre ia witheps exprea=
 	let val1 = evalexpression max in
 	let val2 = evalexpression expre in
 	(*Printf.printf "produit\n";
@@ -2376,11 +2472,11 @@ and evalProd var max expre ia=
 	if (estNoComp val1) || (estNoComp val2 ) then begin (*Printf.printf "NOCOMP\n";*)NOCOMP end
 	else 
 	begin
-		let res = simplifierSYGMA var val1 val2 ia in
+		let res = simplifierSYGMA var val1 val2 ia witheps exprea in
 		if estNoComp res then
 			if (estCroissantOuCte var val1 val2 ia) || (estDecroissantOuCte var val1 val2 ia) then
 			begin
-				let maximum = simplifierMax var max expre ia in
+				let maximum = simplifierMax var max expre ia witheps exprea in
 				if (estNoComp maximum) || estNul maximum then begin (*Printf.printf "NOCOMP2\n";*) NOCOMP end
 				else  evalexpression (Prod (Sum(max,ConstInt("1")), maximum))
 			end
@@ -2390,7 +2486,7 @@ and evalProd var max expre ia=
 
 and invaq1 v = if v = ConstInt("0") then ConstInt("1") else if v = ConstInt("1") then ConstInt("0") else invaq1 v 
 
-and simplifieraa var max expre ia =
+and simplifieraa var max expre ia witheps exprea =
 	if !vDEBUG then 
 	begin  
 		Printf.printf "SYGMA simplifier avant affine\n";
@@ -2400,7 +2496,7 @@ and simplifieraa var max expre ia =
 	if !vDEBUG then Printf.printf"SYGMA simplifier dans simplifier\n"; 
 if estDefExp max = false then NOCOMP
 else
-if estNul max then (remplacerVpM  var (ConstInt("0")) expre) 
+if estNul max then calculer  (EXP (expressionEvalueeToExpression  (remplacerVpM  var (ConstInt("0")) exprea) ))  !infoaffichNull  [] 1
 else
 begin
     if (ia = NONMONOTONE) then   NOCOMP
@@ -2409,8 +2505,8 @@ begin
 		if ((estAffine var expre) && (estVarDsExpEval var max = false))  then 
 		begin 
 			(*Printf.printf"SYGMA simplifier dans simplifier affine\n"; *)
-			let borneMaxSupposee = evalexpression (remplacerVpM  var max expre) in
-			let borneInfSupposee = evalexpression (remplacerVpM  var (ConstInt("0")) expre) in
+			let borneMaxSupposee = calculer  (EXP (expressionEvalueeToExpression   (remplacerVpM  var max exprea)))  !infoaffichNull  [] 1 in
+			let borneInfSupposee = calculer  (EXP (expressionEvalueeToExpression   (remplacerVpM  var (ConstInt("0")) exprea)))  !infoaffichNull  [] 1 in
 
 		if  estDefExp borneMaxSupposee && estDefExp borneInfSupposee then
 		begin
@@ -2461,11 +2557,12 @@ begin
 						begin
 							let maximum = maxi mbSuraInf  (ConstInt("0"))  in
 							if (estNul maximum ) then 
-								evalexpression (remplacerVpM var max expre) 
-							else  evalexpression
-								(Diff  ( evalexpression (remplacerVpM var max expre) ,  
+								calculer  (EXP (expressionEvalueeToExpression  (remplacerVpM var max exprea) ))  !infoaffichNull  [] 1
+								 
+							else  calculer  (EXP (expressionEvalueeToExpression
+								(Diff  ( calculer  (EXP (expressionEvalueeToExpression  (remplacerVpM var max exprea) ))  !infoaffichNull  [] 1,  
 								remplacerVpM var
-									(evalexpression (Diff (mbSuraInf,ConstInt("1")))) expre) )
+									(evalexpression (Diff (mbSuraInf,ConstInt("1")))) exprea) )))  !infoaffichNull  [] 1
 						end
 						else  begin Printf.printf"CAS1\n";ConstInt("0")  end
 					end
@@ -2479,15 +2576,22 @@ begin
 							if estNul maximum  then 
 							begin
 							(*	Printf.printf "decroissant max = 0 maxMoinsMbSura >0\n";	*)	
-								evalexpression (remplacerVpM var max expre)
+
+
+								calculer  (EXP (expressionEvalueeToExpression  (remplacerVpM var max exprea)))!infoaffichNull  [] 1
 							end
 							else
 							begin
 								(*Printf.printf "decroissant max > 0maxMoinsMbSura >0\n"; *)
-								evalexpression (Diff 
-									( evalexpression (remplacerVpM var max expre) ,  
+
+
+
+
+
+								calculer  (EXP (expressionEvalueeToExpression  (Diff 
+									( calculer  (EXP (expressionEvalueeToExpression  (remplacerVpM var max exprea) ))  !infoaffichNull  [] 1,  
 									 remplacerVpM  var  
-									(evalexpression (Diff (mbSuraSup,ConstInt("1")))) expre) )
+									(evalexpression (Diff (mbSuraSup,ConstInt("1")))) exprea) )))  !infoaffichNull  [] 1
 							end
 						end
 						else   begin Printf.printf"CAS2\n";ConstInt("0")  end
@@ -2498,13 +2602,13 @@ begin
 					if  (sensVariReel = true) then
 					begin (*Printf.printf"negatif croissant\n";*)
 						if estPositif mbSuraSup then 
-							evalexpression (remplacerVpM var (mini mbSuraSup  max) expre) 
+							calculer  (EXP (expressionEvalueeToExpression (remplacerVpM var (mini mbSuraSup  max) exprea) ))  !infoaffichNull  [] 1
 						else  begin Printf.printf "CAS6\n"; ConstInt("0")  	end
 					end
 					else		
 					begin	(*Printf.printf"negatif decroissant\n";*)
 						if estPositif mbSuraInf = false then  
-							evalexpression (remplacerVpM var (ConstInt("0")) expre) 
+							calculer  (EXP (expressionEvalueeToExpression (remplacerVpM var (ConstInt("0")) exprea) ))  !infoaffichNull  [] 1
 						else  begin Printf.printf "CAS7\n"; (ConstInt("0"))
 							(*evalexpression (remplacerVpM var (maxi mbSuraInf  (ConstInt("0")))
  expre) *)  			end	
@@ -2518,21 +2622,22 @@ begin
 		else (*non affine*)
 		begin
 			if  ((estVarDsExpEval var expre = false) && (estVarDsExpEval var max) )then 
-				evalexpression(Prod (expre,Sum(max, ConstInt("1"))))
+ 
+				calculer  (EXP (expressionEvalueeToExpression (Prod (expre,Sum(max, ConstInt("1"))))))!infoaffichNull  [] 1
 			else 
 			begin 
 				if !vDEBUG then Printf.printf"SYGMA simplifier non affine !!!\n"; 
 			(*	 traiterGeometrique var expre max ia *) 
-				evalProd var max expre ia
+				evalProd var max expre ia witheps exprea
 			end
 		end
 	end
 end
 
-and simplifier var max expre ia =
-let simpli = simplifieraa var max expre ia in
+and simplifier var max expre ia witheps exprea =
+let simpli = simplifieraa var max expre ia witheps exprea in
 
-let prodeng = evalProd var max expre ia in
+let prodeng = evalProd var max expre ia witheps exprea in
 if estNoComp simpli  && estNoComp prodeng  then 
 begin
 	if  estPositif (evalexpression (Diff( prodeng, simpli))) then simpli else  prodeng
@@ -2540,12 +2645,13 @@ end
 else simpli
 (*simpli*)
 
-and simplifierMax var max expre ia =
+and simplifierMax var max expre ia witheps exprea=
 	if !vDEBUG then 
 	begin  
 		Printf.printf "Max simplifier avant affine var %s \n" var;
 		print_expTerm max; new_line ();
 		print_expTerm expre; new_line ();
+		print_expTerm exprea; new_line ();
 	end;
 
 if ((estVarDsExpEval var expre = false) && (estVarDsExpEval var max = false))  then expre
@@ -2556,9 +2662,26 @@ begin
   begin		
 	if ((estAffine var expre) && (estVarDsExpEval var max = false))  then 
 	begin 
-	(*	Printf.printf"MAX simplifier dans simplifier affine\n"; *)
-		let borneMaxSupposee = evalexpression (remplacerVpM  var max expre) in
-		let borneInfSupposee = evalexpression (remplacerVpM  var (ConstInt("0")) expre) in
+		(*Printf.printf"MAX simplifier dans simplifier affine\n"; *)
+		let borneMaxSupposee = calculer  (EXP (expressionEvalueeToExpression  (remplacerVpM  var max expre)))  !infoaffichNull  [] 1 in
+		let borneInfSupposee = calculer  (EXP (expressionEvalueeToExpression  (remplacerVpM  var (ConstInt("0")) expre))) !infoaffichNull  [] 1 in
+
+		let borneMaxSupposee1 = calculer  (EXP (expressionEvalueeToExpression  (remplacerVpM  var max exprea)))  !infoaffichNull  [] 1 in
+		let borneInfSupposee1 = calculer  (EXP (expressionEvalueeToExpression  (remplacerVpM  var (ConstInt("0")) exprea))) !infoaffichNull  [] 1 in
+
+	(*begin
+					Printf.printf"MAX simplifier non affine max expre max suppose min suppose\n"; 
+					print_expTerm max; new_line ();Printf.printf"\n"; 
+					print_expTerm expre; new_line ();Printf.printf"\n"; 
+					print_expTerm borneMaxSupposee; new_line ();Printf.printf"\n"; 
+					print_expTerm borneInfSupposee; new_line ();Printf.printf"\n"; 
+print_expTerm borneMaxSupposee1; new_line ();Printf.printf"\n"; 
+					print_expTerm borneInfSupposee1; new_line ();Printf.printf"\n"; 
+
+				end;*)
+
+
+
 	if  estDefExp borneMaxSupposee && estDefExp borneInfSupposee then
 	begin
 		let sensVariReel  =
@@ -2573,7 +2696,7 @@ begin
 						estPositif ( evalexpression (Diff( evalexpression borneMaxSupposee, borneInfSupposee))) = false
 			) in
 
-		if (estPositif borneMaxSupposee = false) && (estPositif borneInfSupposee =false) then 
+		if (estPositif borneMaxSupposee1 = false) && (estPositif borneInfSupposee1 =false) then 
 		begin
 			(*Printf.printf"MAXCAS1\n";*)
 			if estDefExp borneMaxSupposee = true then 	ConstInt("0") else NOCOMP
@@ -2584,7 +2707,7 @@ begin
 			let var1 = evalexpression a in
 			let var2 = evalexpression b in
 			let convFloat =  ( match var1 with  ConstInt(j) -> ConstFloat(j) |_-> var1) in
-			let mbSura =(if convFloat = ConstFloat("0") || convFloat = RConstFloat(0.0) then ConstFloat("0")
+			let mbSura =(if convFloat = ConstFloat("0") || convFloat = ConstFloat("0.0") ||convFloat = RConstFloat(0.0) then ConstFloat("0")
 						else  evalexpression (Quot ( Diff( ConstInt("0"),var2 ), convFloat)))in	
 	(*-b/a*)
 
@@ -2595,7 +2718,7 @@ begin
 					(
 						if  (estDefExp var1 && estDefExp var2) then
 						begin
-							if estNul a then borneInfSupposee
+							if estNul a then borneInfSupposee1
 							else
 									if  (estPositif var1)  then 
 									begin
@@ -2606,7 +2729,10 @@ begin
 											if estDefExp maxMoinsMbSura then
 												if  estPositif maxMoinsMbSura then
 												begin (*Printf.printf"eval2\n";*)
-													evalexpression (remplacerVal var max expre) 
+													let res =
+													calculer  (EXP (expressionEvalueeToExpression  (remplacerVal var max exprea) )) !infoaffichNull  [] 1 in
+												(*	print_expTerm res; new_line ();Printf.printf"\n"; *)
+													res
 												end
 												else  begin (*Printf.printf"MAXCAS2\n";*)  ConstInt("0")  end
 											else NOCOMP
@@ -2622,11 +2748,13 @@ begin
 													let maximum = maxi mbSuraSup  (ConstInt("0"))  in
 													if estNul maximum   then 
 													begin (*Printf.printf"eval3\n";*)
-														evalexpression (remplacerVal var (ConstInt("0")) expre)
+														calculer  (EXP (expressionEvalueeToExpression  (remplacerVal var (ConstInt("0")) exprea) )) 
+														!infoaffichNull  [] 1
 													end
 													else  
 													begin (*Printf.printf"eval4\n";*)
-														evalexpression ( remplacerVal  var  mbSuraSup expre) 
+														calculer  (EXP (expressionEvalueeToExpression  ( remplacerVal  var  mbSuraSup exprea)  )) 
+																		!infoaffichNull  [] 1
 													end
 												end
 												else  begin  (*Printf.printf"MAXCAS3\n";*) ConstInt("0") end  
@@ -2642,7 +2770,8 @@ begin
 												if estPositif mbSuraSup then 
 												begin
 													(*Printf.printf"eval5\n";*)
-													evalexpression (remplacerVal var (ConstInt("0")) expre)
+													calculer  (EXP (expressionEvalueeToExpression  (remplacerVal var (ConstInt("0")) exprea) )) 
+													!infoaffichNull  [] 1
 												end
 												else begin  (*Printf.printf"MAXCAS4\n";*) ConstInt("0") end  
 											else NOCOMP	
@@ -2653,7 +2782,8 @@ begin
 												if estPositif mbSuraInf = false then (*revoir*)
 												begin
 													(*Printf.printf"eval6\n";*)
-													 evalexpression (remplacerVal var (ConstInt("0")) expre)
+													 calculer  (EXP (expressionEvalueeToExpression  (remplacerVal var (ConstInt("0")) exprea) )) 
+												!infoaffichNull  [] 1
 												end
 												else begin (*Printf.printf "cas 4\n";*) ConstInt("0")
 										(*evalexpression (remplacerVal var (maxi mbSuraInf (ConstInt("0"))) expre) *) 							end	
@@ -2662,7 +2792,7 @@ begin
 									end
 							end else NOCOMP
 						) in
-				(*Printf.printf "maximum5\n" ;*)(*print_expTerm bmaximum; new_line (); Printf.printf "maximum\n";*)
+				(*Printf.printf "maximum5\n" ; print_expTerm bmaximum; new_line (); Printf.printf "maximum\n";*)
 		if estDefExp bmaximum  then if estPositif bmaximum then bmaximum else  begin  (*Printf.printf"MAXCAS5\n";*) ConstInt("0") end 
 		else NOCOMP
 	end
@@ -2674,7 +2804,7 @@ end (*estDef*)
 		if  ((estVarDsExpEval var expre = false) && (estVarDsExpEval var max) )then 
 		begin 
 			if !vDEBUG then Printf.printf"MAX simplifier borne depend\n";
-				evalexpression (expre)
+				calculer  (EXP (expressionEvalueeToExpression  (exprea))) !infoaffichNull  [] 1
 		end
 		else 
 		begin 
@@ -2683,8 +2813,8 @@ end (*estDef*)
 			if sens <> NONMONOTONE then
 			begin
 				(*traiterGeometrique var expre max ia *)
-				let borneMaxSupposee = evalexpression (remplacerVal  var max expre) in
-				let borneInfSupposee = evalexpression (remplacerVal  var (ConstInt("0")) expre) in
+				let borneMaxSupposee = calculer  (EXP (expressionEvalueeToExpression  (remplacerVal  var max exprea) )) !infoaffichNull  [] 1 in
+				let borneInfSupposee = calculer  (EXP (expressionEvalueeToExpression  (remplacerVal  var (ConstInt("0")) exprea) )) !infoaffichNull  [] 1 in
 					
 				(*if estMONOTONBE var max expr then*)
 				if !vDEBUG then 
@@ -3681,7 +3811,8 @@ let rondListe a1  ro2x =
 
 
 
-				let isStruct = if (List.mem_assoc x !listAssocIdType) then  begin let (isstruct, _) =   isStructAndGetIt (List.assoc x !listAssocIdType) in isstruct end 
+				let isStruct = if (List.mem_assoc x !listAssocIdType) then  
+begin let (isstruct, _) =   isStructAndGetIt (List.assoc x !listAssocIdType) in isstruct end 
 				else if List.mem_assoc x !listeAssosPtrNameType then let (isstruct, _) =   isStructAndGetIt (List.assoc x !listeAssosPtrNameType) in isstruct else false  in
 
 				let hasstructtorename =  !isRenameVar && isStruct in				 
@@ -3831,78 +3962,7 @@ let rec consArraySum var min max tab1 indexexp a  =
 	end
 	else NOTHING
 
-(*let extractArrayExp var min max expE endcontexte lesAs estvalue =
-	let (tab1,_, _) =getArrayNameOfexp  expE  in
-	if tab1 != "" &&  estvalue = true then
-	begin
-		let (indexexp , isok) = consArrayFromPtrExp ( expE  )  tab1 in
-		if isok then 
-		begin
-			if existAssosArrayIDsize tab1  then 
-			begin
-				if  (listeDesVarsDeExpSeules indexexp)  = [var] then 
-				begin
-					let rescons = consArraySum var (0 -1) (max -1) tab1 indexexp (rond endcontexte lesAs) in
-					if rescons  = NOTHING then e else (EXP(rescons),true)
-				end
-			else (EXP(NOTHING),false) 
-		end else (EXP(NOTHING),false)
-	end else (EXP(NOTHING),false)
-end else (EXP(NOTHING),false)
 
-let sygmaArray e endcontexte lesAs =
-	match expVaToExp(e) with  
- 		CALL (exp1, args) 			->	
-			(match exp1 with  
-				VARIABLE("SYGMA") ->
-				 begin
-					let varexp = ( List.hd args )in
-				 	let suite = List.tl args in
-					(match varexp with	
-					VARIABLE (var) ->												
-						let max1 = (calculer (EXP(List.hd suite )) !infoaffichNull [])in
-						if  estNoComp max1   || estDefExp max1 = false then e
-						else
-						begin 
-								let (max,estvalue) = 	(match max1 with   ConstInt (i)-> (int_of_string  i, true)  | ConstFloat (i) ->   (0, true) | _->(0, false)) in
-								let expE =  (List.hd (List.tl suite) ) in
-
-								
-								let thevar =  (listeDesVarsDeExpSeules expE)  in
-								if thevar = [] || thevar = [var] then e
-								else
-								begin
-									
-									let listarrayvar = List.filter(fun v-> existAssosArrayIDsize v)thevar in
-									if inclus thevar (union listarrayvar [var]) then (*all var without var are array*)
-									begin
-										match expE with
-										BINARY(op,e1,e2)->
-												let (tab1,_, _) =getArrayNameOfexp  expE  in
-												if tab1 != "" &&  estvalue = true then
-												begin
-													let (indexexp , isok) = consArrayFromPtrExp ( expE  )  tab1 in
-													if isok then 
-													begin
-														if existAssosArrayIDsize tab1  then 
-														begin
-															if  (listeDesVarsDeExpSeules indexexp)  = [var] then 
-															begin
-																let rescons = consArraySum var (0 -1) (max -1) tab1 indexexp (rond endcontexte lesAs) in
-																if rescons  = NOTHING then e else EXP(rescons)
-															end
-															else e 
-														end else e
-													end else e
-												end else e
-										|CALL(e1,a1)->
-									end else e
-								end 
-						end			
-					|_-> e)
-				end					
-				|_-> e)
-		| _->e*)
 
 let estModifie = ref false
 let listeDesCloseChanged = ref []
@@ -4193,89 +4253,6 @@ let isVarTrue  var e=
 
 let consSETASSIGN var firstAssign secondAssign =
 
- (* if (String.length var > 3) && (String.sub var  0 3) = "IF-"  then    secondAssign
-else
-*)
-
-(*let isBool = 
-if (String.length var > 5) && (String.sub var  0 5) = "__tmp" then true 
-else if (String.length var > 4) && (String.sub var  0 4) = "TWH_" then true
-	 else if (String.length var > 3)&& (String.sub var  0 3) = "IF-" then  true else false  in
-
-if isBool || !getOnlyBoolAssignment  = true then  ASSIGN_SIMPLE (var, MULTIPLE) 
-else
-begin
-(*Printf.printf "consSETASSIGN %s\n" var; afficherAS firstAssign;space();flush();new_line();
-							afficherAS secondAssign;space();flush();new_line(); *)
-	
-
-(*
-				(match valeur1 with
-
-					CONSTANT(CONST_INT v1)| CONSTANT(CONST_FLOAT v1)| CONSTANT(CONST_CHAR v1)|CONSTANT(CONST_STRING v1)->
-
-		
-						( 	match secondAssign with 
-							ASSIGN_SIMPLE (var, EXP(valeur2)) ->
-								(match valeur2 with
-
-									CONSTANT(CONST_INT _)| CONSTANT(CONST_FLOAT _)| CONSTANT(CONST_CHAR _)|CONSTANT(CONST_STRING _)->
-											ASSIGN_SIMPLE (var, EXP(CALL (VARIABLE "SET" , List.append [valeur1] [valeur2])))
-									| CALL(VARIABLE"SET", l)->
-										let (arg1,arg2) =(List.hd  l,List.hd(List.tl l)) in
-											(
-												match arg1 with
-												  CONSTANT(CONST_INT v2)|CONSTANT(CONST_FLOAT v2)|CONSTANT(CONST_CHAR v2)|CONSTANT(CONST_STRING v2)->
-											ASSIGN_SIMPLE (var, EXP(CALL (VARIABLE "SET" , List.append [valeur1] [valeur2])))
-												
-											)
-									|_-> ASSIGN_SIMPLE (var,MULTIPLE)
-								)
-							|_-> ASSIGN_SIMPLE (var,MULTIPLE)
-						)
-							ASSIGN_SIMPLE (var, EXP(CONSTANT(CONST_INT _)))|ASSIGN_SIMPLE (var, EXP(CONSTANT(CONST_FLOAT _)))|
-							ASSIGN_SIMPLE (var, EXP(CONSTANT(CONST_CHAR _)))|ASSIGN_SIMPLE (var, EXP(CONSTANT(CONST_STRING _))) ->
-
-*)
-								ASSIGN_SIMPLE (var, EXP(CALL(VARIABLE"SET", l))) ->
-								 	(match List.hd l with 
-										VARIABLE(var) -> 
-												ASSIGN_SIMPLE (var, EXP(CALL (VARIABLE("SET") , 
-															List.append [first] [List.hd(List.tl l)])))
-												|_-> ASSIGN_SIMPLE (var,MULTIPLE)
-								 	)
-								|_-> ASSIGN_SIMPLE (var,MULTIPLE)
-						)
-
-					(*match first with ASSIGN_SIMPLE (var, EXP(CALL(VARIABLE"SET", l))) ->
-						(
-
-								(match (List.hd l,List.hd (List.tl l) with 
-										(VARIABLE(var), CONSTANTE(_)) -> 
-												ASSIGN_SIMPLE (var, EXP(CALL (VARIABLE("SET") , 
-															List.append [List.hd l] 
-																	[CALL (VARIABLE("SET") , List.append (List.hd(List.tl l)) ])))
-												|_-> ASSIGN_SIMPLE (var,MULTIPLE)
-								 	)
-								|_-> ASSIGN_SIMPLE (var,MULTIPLE)
-						)
-					|_->	*)
-						(	match secondAssign with  
-								ASSIGN_SIMPLE (var, EXP(CALL(VARIABLE"SET", l))) ->
-								 	(match List.hd l with 
-										VARIABLE(var) -> 
-												ASSIGN_SIMPLE (var, EXP(CALL (VARIABLE("SET") , 
-															List.append [first] [List.hd(List.tl l)])))
-												|_-> ASSIGN_SIMPLE (var,MULTIPLE)
-								 	)
-								|_-> ASSIGN_SIMPLE (var,MULTIPLE)
-						)
-				)
-		|_-> ASSIGN_SIMPLE (var,MULTIPLE)*)
-(*end*)
-							(* *)
-								(*ASSIGN_SIMPLE (var,    
-									EXP(CALL (VARIABLE("SET") , List.append [expVaToExp first] [expVaToExp second])))  *)
 
 	match firstAssign with  
 		ASSIGN_SIMPLE (var, EXP(valeur1)) ->
@@ -4294,8 +4271,7 @@ begin
 								end
 								else 
 								begin
-									(*if isVarTrue  var valeur1  && isTruecteArg2 then ASSIGN_SIMPLE (var, EXP(CALL (VARIABLE "SET" , List.append [VARIABLE(var)] [valeur2])))
-									else*) ASSIGN_SIMPLE (var,MULTIPLE)
+									 ASSIGN_SIMPLE (var,MULTIPLE)
 								end
 							|_-> ASSIGN_SIMPLE (var,MULTIPLE)
 				)
@@ -4338,26 +4314,7 @@ match firstAssign with
 											let (isTruecteArg1, v1) =isTrueConstant valeur1 in
 											let (isTruecteArg2, v2) =isTrueConstant valeur2 in
 	
-											((*	match e1 with 
-													EXP(UNARY (ADDROF,VARIABLE( v)))-> 
-														isMemMultiSet := true; varMulti:=v;
-														if isTruecteArg1 then
-														begin Printf.printf "consMultiSET eq isTruecteArg %s %s=\n" var v; 
-
-														(*listMultiSet*)
-
-
-															if isTruecteArg2 then 
-																if v1 = v2 then 
-																	ASSIGN_SIMPLE (v,  EXP(valeur1))
-																else ASSIGN_SIMPLE (v,  EXP(CALL (VARIABLE "SET" , List.append [valeur1] [valeur2])))
-															else 
-																if isVarTrue  var valeur2  then  ASSIGN_SIMPLE (v,   EXP(valeur1))
-																else ASSIGN_SIMPLE (v, MULTIPLE)	
-														end
-														else ASSIGN_SIMPLE (v, MULTIPLE)
- 
-													|_-> *)
+											(
 														if isTruecteArg1 then
 														begin 
 
@@ -5036,14 +4993,7 @@ Printf.printf "les as de la boucle avant transfo \n";*)
 						end  ;
 
 
-					(*	let nginterne = filterGlobales rc  !alreadyAffectedGlobales in
-						let returnf = Printf.sprintf "res%s"  nomFonc in
-						if existeAffectationVarListe returnf rc then
-						begin
-							let affectres = ro returnf rc in
-							listeASCourant :=  List.append [affectres] (List.append nginterne !listeASCourant )
-						end
-						else listeASCourant :=     (List.append nginterne !listeASCourant );
+					(*	
 	
 			
 						(*Printf.printf "evalStore fonction %s  \n" nomFonc ;*)
@@ -5343,7 +5293,7 @@ EXP(VARIABLE (v))->
 						(match newassign with 
 							ASSIGN_SIMPLE  (_,va) -> applyStoreVA (va) gl
 							| ASSIGN_MEM (_, xx, va) -> if containtbinaryOrMulti xx then(*print_expVA xx ;*)
-								(Printf.printf "getSortie pb %s  \n"var; MULTIPLE) else applyStoreVA va gl 
+								(  MULTIPLE) else applyStoreVA va gl 
 							|_->MULTIPLE)
 			end
 			else  MULTIPLE
@@ -5437,21 +5387,6 @@ and closeFormPourToutXdelisteES l id  =
 	Printf.printf "others\n";
 	afficherListeAS others ;space();flush();new_line();
 	Printf.printf "\nend\n";*)
-	
-			(*let newsuite = 	if listeDesVarModifiees != [] then 
-						(	
-							List.map (fun assign ->
-							let (nax,_)= rondListe listeDesVarModifiees  assign   in
-							if (List.hd nax) != assign then 
-							begin
-									Printf.printf "add into list\n";afficherListeAS nax;new_line(); 
-								(*	listeDesVarDependITitcour := List.append !listeDesVarDependITitcour nax*)
-							end;
-							(List.hd nax)) suite
-							
-						) 
-						else suite in*)
-
 
 	(*Printf.printf "\nothers traites\n";
 	afficherListeAS nl;space();flush();new_line();*)
@@ -5570,21 +5505,6 @@ else
 
 		let (predna, new_affect, otherAffect) =  closeForm aSCourant  id listeDesVarModifiees 	in
 
-		(*let deppred = !listeDesVarDependITitcour in
-		listeDesVarDependITitcour := [];*)
-		(*let newsuite = 	if listeDesVarModifiees != [] then 
-						(	
-							List.map (fun assign ->
-							let (nax,_)= rondListe listeDesVarModifiees  assign   in
-							if (List.hd nax) != assign then 
-							begin
-									Printf.printf "add into list\n";afficherListeAS nax;new_line(); 
-								(*	listeDesVarDependITitcour := List.append !listeDesVarDependITitcour nax*)
-							end;
-							(List.hd nax)) suite
-							
-						) 
-						else suite in*)
 		let (nextAffect, othersNext) = closeFormrec id l suite listeDesVarModifiees  in
 (*Printf.printf "otherAffect\n";
 

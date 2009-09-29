@@ -1306,16 +1306,7 @@ let traiterEQ init borne var c =
 		(*end*)
 
 let traiterNEQ init borne var c =
-	(*if !opEstPlus then (*incrément type +/-constant*)
-	begin
-		match !estPosInc with
-			INCVIDE  -> (CONSTANTE , NOTHING, NOTHING, NE, false, var, c)(* si init = borne toujours sinon 0*)
-			|POS -> (CROISSANT , init,  BINARY (SUB, borne, !vEPSILON), LT, false, var, BINARY(LT, VARIABLE(var), borne))(* si init = borne 1 sinon 0*)
-			|NEG-> (DECROISSANT , BINARY (ADD, borne, !vEPSILON), init, GT, false, var,BINARY(GT, VARIABLE(var), borne))(* si init = borne 1 sinon 0 BINARY (ADD, borne, !vEPSILON)*)
-			|_ ->  (CROISSANT , init, borne, NE, true, var, c)(*voir signe INC*)
-		end (*incrément type *// constant*)
-	else
-	begin*)
+
 		match !estPosInc with
 			INCVIDE  -> (CONSTANTE , NOTHING, NOTHING, NE, false, var, c)(* case constant = 1 then si init = borne 1 sinon 0*)
 			|POS -> (CROISSANT , init,   BINARY (SUB, borne, !vEPSILON) , LT, false, var, BINARY(LT, VARIABLE(var), borne))
@@ -1443,20 +1434,7 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 			| NE -> let ((*isindirect,inc,var, before*)isindirect,inc,_,_,isMultiInc) =  getLoopVarInc var inst in
 					if isMultiInc then isExactForm := false;
 					if isindirect then Printf.printf "NE cas 2 indirect change\n";
-					(*match  inc  with 
-						NODEFINC -> (* pas trouvé d'increment peut être condition = var booleenne *)Printf.printf "cas 2 NE peut être booleen\n";
-							let (isAssignedOK, assign, isConditionnal, ltrue, lfalse, ifvar) = containBoolxAssignementBody var  inst inst in
-							if isAssignedOK then 
-								let (_,_,_,_,_,_,_, _,_) =getBooleanAssignementInc  assign isConditionnal ltrue lfalse  init var op exp1 exp2 liste avant dans cte t c lv l inst ifvar in ()
-						|_->());*)
 
-
-					(*if isindirect then
-					begin
-				 		expressionIncFor := NOTHING;
-						(NONMONOTONE , NOTHING, NOTHING, NE,true, var, BINARY(op,exp1, exp2))
-					end
-					else*) 
 					(match  inc  with 
 							NODEFINC -> (* pas trouvé d'increment peut être condition = var booleenne *)
 								
@@ -1493,12 +1471,7 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 					| OR -> (NONMONOTONE , NOTHING, NOTHING, XOR, true, var, BINARY(op,exp1, exp2))
 					| EQ -> let ((*isindirect,inc,var, before*)isindirect,inc,_,_,isMultiInc) =  getLoopVarInc var inst in
 							if isMultiInc then isExactForm := false;
-						(*	if isindirect then
-							begin
-						 		expressionIncFor := NOTHING;
-								(NONMONOTONE , NOTHING, NOTHING, EQ,true, var, BINARY(op,exp1, exp2))
-							end
-							else*)
+				
 							(*if isindirect then Printf.printf "EQ cas 2 indirect change\n";*)
 							(match  inc  with 
 							NODEFINC -> (* pas trouvé d'increment peut être condition = var booleenne *)
@@ -1513,12 +1486,7 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 							 
 					| NE ->  let ((*isindirect,inc,var, before*)isindirect,inc,_,_,isMultiInc) =  getLoopVarInc var inst in
 							 if isMultiInc then isExactForm := false;
-							(*if isindirect then
-							begin
-						 		expressionIncFor := NOTHING;
-								(NONMONOTONE , NOTHING, NOTHING, NE,true, var, BINARY(op,exp1, exp2))
-							end
-							else*)
+					
 						   (* if isindirect then Printf.printf "NE cas 3 indirect change\n";*)
 							(match  inc  with 
 							NODEFINC -> (* pas trouvé d'increment peut être condition = var booleenne *)
@@ -2491,176 +2459,7 @@ and changeExpInto0 expToChange exp  =
 			| _ ->exp
 	end
 
-(*
-and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple appel typeopPlusouMUL infoVar var globales=
-	(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var;*)
-	let varCond = match conditionI with VARIABLE(v)->v |_-> "NODEF" in
-	(*print_expVA (EXP(conditionI)); new_line ();*)
-	let affect = if (  conditionConstante) then  (  (*Printf.printf"cons cte";*) EXP(conditionI) )
-			else 
-				if (existeAffectationVarListe varCond appel) then ( (* Printf.printf"cons non cte 1";*) 
-					applyStoreVA(rechercheAffectVDsListeAS  varCond appel)globales )
-				else ( (* Printf.printf"cons non cte 2"; *) EXP(NOTHING)) in
- 
-	let const = calculer   affect !infoaffichNull  [](*appel*) 1 in
-	(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var; print_expTerm const; new_line ();*)
 
-	let isExecutedV = (match const with Boolean(b)	->  if b = false then false  else true 
-										|_->if estDefExp const then if estNul const then false else true else true) in	
-	(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var; print_expTerm const; new_line ();*)
-	(*if isExecutedV  then Printf.printf "isexecuted \n" else Printf.printf "is not executed \n" ;Printf.printf "FIN...\n";*)
-
-	if isExecutedV then
-	begin
-
-		if (conditionMultiple) then   EXP(NOTHING)
-		else
-		begin	
-			let (valinc, op, sensinc) = analyseInc infoVar appel typeopPlusouMUL globales in
-			(*Printf.printf "NON MULTIPLE\n";*)
-			match sensinc with
-			 NOVALID ->	 EXP(NOTHING)
-			| INCVIDE ->
-				(match typeBoucle with
-					"for" |"while"->
-						(match const with (*estExecutee*)
-							ConstInt(i) 	-> if (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "0")) else	 EXP(NOTHING) 		 	
-							|ConstFloat (f) -> 	if (float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "0")) else   EXP(NOTHING)
-							| _->		(*Printf.printf (" boucle for infinie\n");*)EXP(NOTHING))
-					|"dowhile"->
-						(match const with
-							ConstInt(i) -> 	if (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "1"))  else   EXP(NOTHING)
-							|ConstFloat (f) -> 	if (float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "1"))   else EXP(NOTHING)
-							| _->				EXP(NOTHING))
-					|_-> EXP(NOTHING))
-			|_->			
-				if conditionConstante || op = EQ then
-				begin
-					match typeBoucle with
-					"for" |"while"->
-						(match const with (*estExecutee*)
-						ConstInt(i) 	-> if (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "0"))
-										   else	 if   op = EQ then   EXP(CONSTANT (CONST_INT "1"))  else EXP(NOTHING)   
-						|ConstFloat (f) -> 	if (float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "0"))
-											else  if  op = EQ then   EXP(CONSTANT (CONST_INT "1"))  else EXP(NOTHING)
-						| _->		(*Printf.printf (" boucle for infinie\n");*)EXP(NOTHING))
-					|"dowhile"->
-					(match const with
-						ConstInt(i) -> 	if (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "1"))
-										  else if  op = EQ  then  EXP(CONSTANT (CONST_INT "2"))   else EXP(NOTHING)
-						|ConstFloat (f) -> 	if (float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "1"))
-											else if  op = EQ then   EXP(CONSTANT (CONST_INT "2"))   else EXP(NOTHING)
-						| _->				EXP(NOTHING))
-					|_-> EXP(NOTHING)
-				end
-				else 
-				begin 
-					let typeInc =  expressionType valinc  in
-					let bie = expVaToExp (applyStoreVA (applyStoreVA
-										(EXP ( remplacerValPar  "EPSILON" (CONSTANT (CONST_INT "1")) (infoVar.borneInf))) appel)globales)  in
-					
-					let borneinf =  if listeDesVarsDeExpSeules bie = [] 
-									then calculer  (EXP ( bie)) !infoaffichNull  [] 1 else NOCOMP in
-					let typeInf =  expressionType borneinf  in
-					let bse = expVaToExp (applyStoreVA (applyStoreVA
-										(EXP ( remplacerValPar  "EPSILON" (CONSTANT (CONST_INT "1")) (infoVar.borneSup))) appel)globales)   in
-					let bornesup = if listeDesVarsDeExpSeules bse = [] then calculer  (EXP ( bse)) !infoaffichNull  [] 1 else NOCOMP in
-					let typeSup = expressionType bornesup in 
-
-					let valEPSILON = if typeInf = INTEGERV && typeSup  = INTEGERV && typeInc  = INTEGERV then (CONSTANT (CONST_INT "1")) 
-									 else if typeInf = FLOATV || typeSup  = FLOATV || typeInc  = FLOATV then !vEPSILONFLOAT
-										  else  if 	espIsNotOnlyVar bornesup || espIsNotOnlyVar borneinf  || espIsNotOnlyVar valinc then !vEPSILON
-												else !vEPSILONFLOAT in
-				
-					(*afficherListeAS appel; new_line();*)
- 					let bs = applyStoreVA(applyStoreVA   (EXP ( infoVar.borneSup)) appel)globales in
-					let bi = applyStoreVA(applyStoreVA   (EXP ( infoVar.borneInf)) appel)globales in
-					let bu = applyStoreVA(applyStoreVA   (EXP ( une )) appel)globales in
-					(*print_expVA bs; new_line();*)
-(*
-Printf.printf "getNombreIt recherche de affect : \n";
-print_expression infoVar.borneSup 0; space() ;flush() ;new_line(); flush();new_line(); 
-print_expVA bs;flush(); space(); new_line();space() ;flush() ;new_line(); flush();new_line(); 
-
-print_expression infoVar.borneInf 0; space() ;flush() ;new_line(); flush();new_line(); 
-print_expVA bi;flush(); space(); new_line();space() ;flush() ;new_line(); flush();new_line(); 
-
-print_expression infoVar.increment 0; space() ;flush() ;new_line(); flush();new_line(); 
-print_expression  une 0; space() ;flush() ;new_line(); flush();new_line(); 
-print_expVA bu;flush(); space(); new_line();space() ;flush() ;new_line(); flush();new_line(); 
-Printf.printf "getNombreIt recherche de affect : \n";*)
-
-(*Printf.printf "getNombreIt recherche de affect :%s \n"var;
-								afficherListeAS appel; Printf.printf "FIN CONTEXTE \n";
-							    afficherListeAS globales; Printf.printf "FIN GLOBALES \n";*)
-
-
-
-					let (rep, var) = hasPtrArrayBoundCondition bs in
-					let (bsup, binf,expune, istabdep)=
-								if rep = true then 
-								begin
-									(*Printf.printf "getNombreIt recherche de affect :%s \n"var;*)
-								(*afficherListeAS appel; Printf.printf "FIN CONTEXTE \n";
-							    afficherListeAS globales; Printf.printf "FIN GLOBALES \n";*)
-									let av = if (existeAffectationVarListe var appel) then 
-												applyStoreVA(rechercheAffectVDsListeAS  var appel)globales 
-											else rechercheAffectVDsListeAS  var globales in
-				
-									(*print_expVA av;flush(); space(); new_line();*)
-									let newe = expVaToExp( av )  in
-									let (tab1,lidx1, e1) =getArrayNameOfexp newe in
-									if tab1 != "" then
-									begin
-										let nsup = changeExpInto0 e1 (expVaToExp bs) in
-										(*print_expression e1 0; new_line();
-										Printf.printf "nom du tableau :%s\n"tab1;*)
-										let ninf = changeExpInto0 e1 (expVaToExp bi) in
-										let nune = changeExpInto0 e1 (expVaToExp bu) in
-										let size = getAssosArrayIDsize tab1 in
-										let varName =  Printf.sprintf "%s_%s" "getvarTailleTabMax" var in
-										(match size with 
-											NOSIZE -> (nsup, ninf, nune, true)
-											| SARRAY (v) ->
-												let arraySize = (CONSTANT (CONST_INT (Printf.sprintf "%d" v) )) in
-												(remplacerValPar  varName arraySize  nsup, ninf,remplacerValPar  varName arraySize  nune, true)
-											| MSARRAY (lsize) -> 
-												let tsize = expressionEvalueeToExpression (prodListSize lsize) in
-												(*flush(); space();
-												print_expression tsize 0; flush(); space();new_line();flush(); space();*)
-
-												(*let nb = remplacerValPar  varName tsize  nsup in*)
-												(*print_expression nb 0; flush(); space(); new_line();*)
-												(remplacerValPar  varName tsize  nsup, ninf,remplacerValPar  varName tsize  nune,true))
-									end
-									else  (infoVar.borneSup, infoVar.borneInf, une,false)
-								end
-								else (infoVar.borneSup, infoVar.borneInf, une,false) in
-					if sensinc = NDEF || istabdep =true(* || (op != NE)*) then  
-						((*Printf.printf "GET 1\n";*)applyStoreVA(applyStoreVA   (EXP( remplacerValPar  "EPSILON" valEPSILON expune)) appel)globales)
-					else 
-					begin
-						if sensinc = POS then  
-							applyStoreVA(applyStoreVA   (EXP(calculForIndependant typeBoucle (BINARY (ADD, binf, valEPSILON))  bsup infoVar.increment typeopPlusouMUL infoVar.afterindirect)) appel)globales
-						
-						else 
-						begin
-							
-							Printf.printf "GET 3\n";
-							applyStoreVA(applyStoreVA   (EXP(calculForIndependant typeBoucle (BINARY (ADD, binf, valEPSILON))  bsup infoVar.increment typeopPlusouMUL infoVar.afterindirect)) appel)globales
-						end
-					end
-					
-				end
-		end
-	end 
-	else 
-	begin
-		match typeBoucle with
-			"for" |"while"->  EXP(CONSTANT (CONST_INT "0") )
-			|"dowhile"-> 	  EXP(CONSTANT (CONST_INT "1"))
-			|_-> 	 EXP(NOTHING)
-	end*)
 and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple appel typeopPlusouMUL infoVar var globales=
 	(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var;*)
 	let varCond = match conditionI with VARIABLE(v)->v |_-> "NODEF" in
@@ -2745,9 +2544,9 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 
 	
 					let valEPSILON = if  ( typeInf = INTEGERV && typeSup  = INTEGERV && typeInc  = INTEGERV) then (CONSTANT (CONST_INT "1")) 
-									 else if typeInf = FLOATV || typeSup  = FLOATV || typeInc  = FLOATV then  (*valAbsincDiv2 valinc*)!vEPSILONFLOAT
+									 else if typeInf = FLOATV || typeSup  = FLOATV || typeInc  = FLOATV then  (*valAbsincDiv2 valinc!vEPSILONFLOAT*)!vEPSILON
 										  else  if 	espIsNotOnlyVar bornesup || espIsNotOnlyVar borneinf  || espIsNotOnlyVar valinc then (*valAbsincDiv2 valinc*)!vEPSILON
-												else  (*valAbsincDiv2 valinc*)!vEPSILONFLOAT in
+												else  (*valAbsincDiv2 valinc!vEPSILONFLOAT*) !vEPSILON in
 
 
 
@@ -2773,21 +2572,7 @@ print_expression  valEPSILON 0; space() ;flush() ;new_line(); flush();new_line()
 					(*if sensinc = NDEF || (op != NE) then  *)
 						(applyStoreVA(applyStoreVA   (EXP( remplacerValPar  "EPSILON" valEPSILON expune)) appel)globales)
 
-					(*else if sensinc = POS then  
-						(Printf.printf "GET 2\n";
-								(*EXP(calculForIndependant typeBoucle (BINARY(SUB, bsup,valEPSILON))
-								 binf infoVar.increment typeopPlusouMUL infoVar.afterindirect)) appel)globales*)
-								applyStoreVA
-											(applyStoreVA   (EXP(BINARY(SUB, bsup,valEPSILON))) appel )globales
-						)
-						else 
-						begin
-						(*	sensNE := NEG;*)
-							(Printf.printf "GET 3\n";applyStoreVA(applyStoreVA  
-									(*EXP(calculForIndependant typeBoucle (BINARY (ADD, binf, valEPSILON))  
-									bsup infoVar.increment typeopPlusouMUL infoVar.afterindirect)) appel)globales)*)
-										(EXP  (BINARY (ADD, binf, valEPSILON)))  appel)globales)
-						end*)
+					
 				end
 		end
 	end 
@@ -4975,41 +4760,7 @@ and  onlyAexpressionaux exp =
 				end	
 
 
-			(*	let listeInstPred = !listeDesInstCourantes in
-				idAppel := !idAppel + 1;
-				let ida = !idAppel in									
-				if existeFonction (nomFonctionDeExp e) then 
-				begin
-
-					let fonction = rechercheFonction (nomFonctionDeExp e) in
-					let (_, f) = fonction in
-					listeDesInstCourantes := [];
-					construireAsAppel f.declaration	exp ;
-
-					listeBoucleOuAppelCourante	:= 
-						List.append  !listeBoucleOuAppelCourante  [IDAPPEL(!idAppel, exp, !listeDesInstCourantes,"", !trueList,!falseList )];
-					let _ = traiterAppelFonction e args !listeDesInstCourantes in
-					
-					let nouvar = Printf.sprintf "call%s%d" (nomFonctionDeExp e) ida in
-					let nouvarres = Printf.sprintf "res%s" (nomFonctionDeExp e) in
-					let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
-					listeDesInstCourantes :=  List.append !listeDesInstCourantes  [newaffect];
-					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
-					nouvExp:=VARIABLE(nouvar)
-				end
-				else 
-				begin 
-					List.iter (fun ep -> analyse_expressionaux ep) args;
-			
-					
-					let isComponant = let _ onlytraiterAF e args !listeDesInstCourantes in
-					let nouvar = Printf.sprintf "call%s%d" (nomFonctionDeExp e) ida in
-					let nouvarres = Printf.sprintf "res%s" (nomFonctionDeExp e) in
-					let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
-					listeDesInstCourantes :=  List.append !listeDesInstCourantes  [newaffect];
-					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
-					if isComponant then nouvExp:=VARIABLE(nouvar) else nouvExp:=exp
-				end		;*)
+		
 
 			 
 	| COMMA e 				->    List.iter (fun ep -> onlyAexpression ep) e; nouvExp:=COMMA(e)
@@ -5166,21 +4917,7 @@ let r = !idAppel in
 		listeDesInstCourantes :=   List.append init [ new_instAPPEL r  (new_instBEGIN !entrees)  f.nom (new_instBEGIN !sorties) (new_instBEGIN aff) ""];
 	    false
 	end
-
-
-   (*   let nom = nomFonctionDeExp exp in (* il faut construire la liste d es entrées et la liste des sorties*)
-      (*Printf.printf "La fonction: %s existe=%b \n" nom (existeFonction nom);*)
-
-      if (existeFonction nom) then (	
-	  		let (_, f) = rechercheFonction nom in
-	  		if f.lesAffectations = [] then   aUneFctNotDEf := true;
-	  		entrees := init;
-      		sorties := [];
-	  		construireListesES f.listeES args;
-	  		ajouterReturn nom f.lesAffectations;
-	  		listeDesInstCourantes :=   List.append init [ new_instAPPEL !idAppel  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  (new_instBEGIN f.lesAffectations) ""];
-			false
-	) *)else (
+	else (
 	
 		entrees := init;
 		sorties := [];
