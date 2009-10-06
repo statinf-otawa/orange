@@ -2097,18 +2097,47 @@ and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1
 					(*Printf.printf "deux variables ou plus non const %d \n" (List.length l) ;*)
 					let ( isindirect1,inc1,vari1, before1,isMultiInc1) =  getLoopVarInc (List.hd l) inst in
 					let ( isindirect2,inc2,vari2, before2,isMultiInc2) =  getLoopVarInc (List.hd (List.tl l)) inst in
-					(*Printf.printf "deux variables ou plus non const %s %s\n" vari1 vari2 ;
+
+
+					let (typeinc1, typeinc2)= (getIncType inc1,getIncType inc2) in
+				(*	Printf.printf "deux variables ou plus non const %s %s\n" vari1 vari2 ;
 	 				print_expression exp1 0; new_line();
  					print_expression exp2 0; new_line();
 					print_intType (getIncType inc1); print_expression (getIncValue inc1) 0; new_line();
 					print_intType (getIncType inc2); print_expression (getIncValue inc2) 0; new_line();*)
-				   
-		 			let (typeinc1, typeinc2)= (getIncType inc1,getIncType inc2) in
-					if (typeinc1 =POSITIV||typeinc1 =NEGATIV) &&  (typeinc2 =POSITIV||typeinc2 =NEGATIV) && isindirect1 = false && isindirect2 == false then
+					let isLeft1 = List.mem (List.hd l) (listeDesVarsDeExpSeules exp1) in
+					let isLeft2 = List.mem (List.hd (List.tl l)) (listeDesVarsDeExpSeules exp1) in
+					let oppose =  (isLeft1 &&  isLeft2 = false) || (isLeft2 &&  isLeft1 = false) in
+				
+					let isOK = control inc1 inc2 oppose isMultiInc1 isMultiInc2 (BINARY(SUB,exp2, exp1)) (List.hd l) (List.hd (List.tl l)) in
+					
+					
+					let value =
+						if oppose then 
+							if typeinc1 =POSITIV||typeinc1 =NEGATIV then
+							( calculer (EXP(BINARY(SUB,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1)
+							else calculer (EXP(BINARY(DIV,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1
+						else
+	  						if typeinc1 =POSITIV||typeinc1 =NEGATIV then
+								if isLeft1 then
+								begin
+									let newexp = ((remplacerValPar  (List.hd (List.tl l)) (getIncValue inc2) (remplacerValPar  (List.hd l) (getIncValue inc1) exp1))) in
+									calculer (EXP(newexp))  !infoaffichNull [] 1
+
+								end
+								else
+								begin
+									let newexp = UNARY(MINUS,(remplacerValPar  (List.hd (List.tl l)) (getIncValue inc2) (remplacerValPar  (List.hd l) (getIncValue inc1) exp2))) in
+									calculer  (EXP(newexp))   !infoaffichNull [] 1
+								end
+
+							else calculer (EXP(BINARY(MUL,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1 in
+		 			(*Printf.printf " result inc : > %f\n"( getDefValue value);*)
+					if isOK &&(typeinc1 =POSITIV||typeinc1 =NEGATIV) &&  (typeinc2 =POSITIV||typeinc2 =NEGATIV) && isindirect1 = false && isindirect2 == false then
 					begin
 						let vardeux =  Printf.sprintf "%s-%s" (List.hd l) (List.hd (List.tl l))  in	 
 						let (stringinc,estNul,constval)=
-							match ( calculer (EXP(BINARY(SUB,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1) with
+							match value with
 							 ConstInt (i)-> (i ,(int_of_string  i = 0),CONSTANT  (CONST_INT i))
 							| ConstFloat (i) ->(i, (float_of_string  i = 0.0),CONSTANT(CONST_FLOAT (i)) ) 
 							| RConstFloat (i) ->(Printf.sprintf "%g" i, (  i = 0.0),CONSTANT(RCONST_FLOAT (i)) ) 
@@ -2132,18 +2161,18 @@ and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1
 								(BINARY(op, CONSTANT(CONST_INT "0"),  VARIABLE(vardeux))) lv (List.append [vardeux] l) newinst
 
 					end 
-					else	if (typeinc1 =MULTI) &&  (typeinc2 =DIVI) && isindirect1 = false && isindirect2 == false then
+					else	if oppose && isOK &&(typeinc1 =MULTI) &&  (typeinc2 =DIVI) && isindirect1 = false && isindirect2 == false then
 						begin
 							let vardeux =  Printf.sprintf "%s-%s" (List.hd l) (List.hd (List.tl l))  in	 
 							let (stringinc,estNul,constval)=
-							match ( calculer (EXP(BINARY(DIV,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1) with
+							match value with
 							 ConstInt (i)-> (i ,(int_of_string  i = 1),CONSTANT  (CONST_INT i))
 							| ConstFloat (i) ->(i, (float_of_string  i = 1.0),CONSTANT(CONST_FLOAT (i)) ) 
 							| RConstFloat (i) ->(Printf.sprintf "%g" i, (  i = 1.0),CONSTANT(RCONST_FLOAT (i)) ) 
 							| _->("",true,CONSTANT  (CONST_INT "1")) in
 
 
-						Printf.printf "deux variables ou plus non const %s %s %s  \n" vari1 vari2 vardeux  ;
+						(*Printf.printf "deux variables ou plus non const %s %s %s  \n" vari1 vari2 vardeux  ;*)
 							let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (DIV,VARIABLE(vardeux), constval))) ] in
 							let newdans =  List.append dans 
 												[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (DIV,VARIABLE(vardeux), constval)))]
@@ -2161,18 +2190,18 @@ and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1
 
 						end 
 
-						else	if (typeinc1 =DIVI) &&  (typeinc2 =MULTI) && isindirect1 = false && isindirect2 == false then
+						else	if oppose && isOK && (typeinc1 =DIVI) &&  (typeinc2 =MULTI) && isindirect1 = false && isindirect2 == false then
 						begin
 							let vardeux =  Printf.sprintf "%s-%s" (List.hd l) (List.hd (List.tl l))  in	 
 							let (stringinc,estNul,constval)=
-							match ( calculer (EXP(BINARY(DIV,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1) with
+							match value with
 							 ConstInt (i)-> (i ,(int_of_string  i = 1),CONSTANT  (CONST_INT i))
 							| ConstFloat (i) ->(i, (float_of_string  i = 1.0),CONSTANT(CONST_FLOAT (i)) ) 
 							| RConstFloat (i) ->( Printf.sprintf "%g" i, ( i = 1.0),CONSTANT(RCONST_FLOAT (i)) ) 
 							| _->("",true,CONSTANT  (CONST_INT "1")) in
 
 
-						Printf.printf "deux variables ou plus non const inc1 dive%s %s %s  \n" vari1 vari2 vardeux  ;
+					(*	Printf.printf "deux variables ou plus non const inc1 dive%s %s %s  \n" vari1 vari2 vardeux  ;*)
 							let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (MUL,VARIABLE(vardeux), constval))) ] in
 							let newdans =  List.append dans 
 												[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (DIV,VARIABLE(vardeux), constval)))]
@@ -2195,7 +2224,54 @@ and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1
 		(*NONMONOTONE , NOTHING, NOTHING, XOR, true, var, BINARY(op,exp1, exp2))*)
 		else rechercheConditionBinary ninit nv nop ne1 ne2 nl avant dans cte t c lv l inst
  
+and control inc1 inc2 oppose isMultiInc1 isMultiInc2 exp v1 v2 =
+if isMultiInc1 =false && isMultiInc2 =false  then((*Printf.printf "No multidef inc\n"  ;*) true)
+else
+begin
+ 
+	let newexp2 =  calculer (EXP(remplacerValPar  v1 (CONSTANT(CONST_INT("0"))) exp))  !infoaffichNull [] 1 in
+	let newexp1 =  calculer (EXP(remplacerValPar  v2 (CONSTANT(CONST_INT("0"))) exp))  !infoaffichNull [] 1 in
+	let (sens1,vsens1) =
+		if (estAffine v1 newexp1)   then 
+			begin 
+				let (a,b) = calculaetbAffineForne  v1 newexp1 in		
+				let (var1, var2) = (evalexpression a , evalexpression b) in
+				if  (estStricPositif var1) then (CROISSANT,1)
+				else begin if (estNul var1) then  (CROISSANT,1)  else (DECROISSANT,-1) end
+			end
+		else (NONMONOTONE,0) in
 
+	let (sens2,vsens2) =
+		if (estAffine v2 newexp2)   then 
+			begin 
+				let (a,b) = calculaetbAffineForne  v2 newexp2 in		
+				let (var1, var2) = (evalexpression a , evalexpression b) in
+				if  (estStricPositif var1) then (CROISSANT,1)
+				else begin if (estNul var1) then  (CROISSANT,1)  else (DECROISSANT,-1)  end
+			end
+		else (NONMONOTONE,0) in
+	(*Printf.printf "same sens inc1\n"  ;
+(isCroissant inc1 ); if vsens1 = 1 then Printf.printf "croissant\n"  else Printf.printf "decroissant\n" ;
+
+
+	Printf.printf "same sens inc2\n"  ;
+(isCroissant inc2 ); if vsens2 = 1 then Printf.printf "croissant\n"  else Printf.printf "decroissant\n" ;*)
+
+	
+	let realSens1 = if oppose = false then (isCroissant inc1 ) * vsens1 else (isCroissant inc1 ) * vsens1  in
+	let realSens2 =   (isCroissant inc2 ) * vsens2   in
+
+	if realSens1 * realSens2 =1 then ((*Printf.printf "same sens\n"  ;*)true )
+	else 
+		if isMultiInc1  && isMultiInc2   then false
+		else
+		begin
+			let (val1, val2) =(abs_float (getDefValue( calculer (EXP(getIncValue inc1))  !infoaffichNull [] 1)), abs_float (getDefValue(calculer (EXP(getIncValue inc2))  !infoaffichNull [] 1))) in  
+			if val1 = val2 then false else  if val1 > val2 then  isMultiInc2  = false else  isMultiInc1  = false 
+			 (*only the biggest absolute value  may be minimised*)
+
+		end
+end
 
 and traiterUn croissant  borneInf borneSup operateur multiple var  cond avant dans cte t inst=
 	let (operateur, typevar, multiple,v) = 

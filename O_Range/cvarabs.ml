@@ -650,6 +650,14 @@ let estDefExp exp = match exp with ConstInt (i) | ConstFloat (i) ->  true
  | RConstFloat (i) ->  true| _->false
 let estBool exp = match exp with Boolean (_) ->true| _->false
 let estBoolOrVal exp = estDefExp exp || estBool exp 
+
+
+let getDefValue exp =
+ match exp with 
+	ConstInt(i) 			-> float_of_int (int_of_string i)
+	| 	ConstFloat (f) 		->  float_of_string f
+	| 	RConstFloat (f) 		->  f
+	|_-> 0.0
 	
 
 
@@ -1425,6 +1433,7 @@ and  calculer expressionVA ia l sign =
 	EXP  (expr) ->
 	(	match expr with
 		NOTHING -> (*Printf.printf "calculer NOTHING\n";*)NOCOMP
+		| EXPR_LINE (expr, _, _) -> calculer (EXP(expr)) ia l sign 
 		| UNARY (op, exp) ->
 			begin
 				
@@ -1599,7 +1608,7 @@ and  calculer expressionVA ia l sign =
 
 							let sens = if estPositif(evalexpression (Diff (valsanseps2,valsanseps)) ) then(  1) else ( 0) in
 							let nexp= (match valsanseps with
-										ConstInt(_) 	->Printf.printf "+epsilon int\n"; if sens = 1 then valsanseps else  Diff (valsanseps, ConstInt("1")) 
+										ConstInt(_) 	->(*Printf.printf "+epsilon int\n"; *)if sens = 1 then valsanseps else evalexpression( Diff (valsanseps, ConstInt("1")) )
 										| 	ConstFloat (f) ->	 let valeur = (float_of_string f) in
 																let pe = truncate valeur in
 																let partieFract = valeur -. float_of_int pe in
@@ -1645,7 +1654,7 @@ and  calculer expressionVA ia l sign =
 							let sens = if estPositif(evalexpression (Diff (valsanseps2,valsanseps)) ) then 1 else 0 in
 
 							let nexp= (match valsanseps with
-							ConstInt(_) 	-> if sens = 1 then (Sum (valsanseps, ConstInt("1")))  else valsanseps
+							ConstInt(_) 	-> if sens = 1 then evalexpression (Sum (valsanseps, ConstInt("1")))  else valsanseps
 							| 	ConstFloat (f) ->	let valeur = (float_of_string f) in
 													let pe = truncate valeur in
 													let partieFract = valeur -. float_of_int pe in
@@ -1815,7 +1824,7 @@ and  calculer expressionVA ia l sign =
 								end;
 								if estDefExp max && estNul max then 
 								begin
-									(*Printf.printf "remplacer max\n"	;*)
+									Printf.printf "remplacer max\n"	;
 									calculer  (EXP
 												(remplacerValPar0 var (List.hd (List.tl suite)) ))
 									ia l sign
@@ -1849,7 +1858,7 @@ and  calculer expressionVA ia l sign =
 				end
 				|_-> (*|VARIABLE("MAX") -> *)	NOCOMP
 			)
-			| COMMA _ ->					NOCOMP
+			| COMMA e ->					NOCOMP
 			| CONSTANT cst -> 													
 				(	match cst with
 						CONST_INT i 	->	
@@ -2699,7 +2708,7 @@ print_expTerm borneMaxSupposee1; new_line ();Printf.printf"\n";
 		if (estPositif borneMaxSupposee1 = false) && (estPositif borneInfSupposee1 =false) then 
 		begin
 			(*Printf.printf"MAXCAS1\n";*)
-			if estDefExp borneMaxSupposee = true then 	ConstInt("0") else NOCOMP
+			if estDefExp borneMaxSupposee1 = true then 	ConstInt("0") else NOCOMP
 		end
 		else
 		begin
@@ -2734,7 +2743,7 @@ print_expTerm borneMaxSupposee1; new_line ();Printf.printf"\n";
 												(*	print_expTerm res; new_line ();Printf.printf"\n"; *)
 													res
 												end
-												else  begin (*Printf.printf"MAXCAS2\n";*)  ConstInt("0")  end
+												else  begin (*Printf.printf"MAXCAS2\n";  *)ConstInt("0")  end
 											else NOCOMP
 										end
 										else
@@ -2757,7 +2766,7 @@ print_expTerm borneMaxSupposee1; new_line ();Printf.printf"\n";
 																		!infoaffichNull  [] 1
 													end
 												end
-												else  begin  (*Printf.printf"MAXCAS3\n";*) ConstInt("0") end  
+												else  begin  (*Printf.printf"MAXCAS3\n"; *)ConstInt("0") end  
 											else NOCOMP
 										end
 				
@@ -2785,7 +2794,7 @@ print_expTerm borneMaxSupposee1; new_line ();Printf.printf"\n";
 													 calculer  (EXP (expressionEvalueeToExpression  (remplacerVal var (ConstInt("0")) exprea) )) 
 												!infoaffichNull  [] 1
 												end
-												else begin (*Printf.printf "cas 4\n";*) ConstInt("0")
+												else begin(* Printf.printf "cas 4\n";*) ConstInt("0")
 										(*evalexpression (remplacerVal var (maxi mbSuraInf (ConstInt("0"))) expre) *) 							end	
 											else NOCOMP
 										end						
@@ -2793,7 +2802,7 @@ print_expTerm borneMaxSupposee1; new_line ();Printf.printf"\n";
 							end else NOCOMP
 						) in
 				(*Printf.printf "maximum5\n" ; print_expTerm bmaximum; new_line (); Printf.printf "maximum\n";*)
-		if estDefExp bmaximum  then if estPositif bmaximum then bmaximum else  begin  (*Printf.printf"MAXCAS5\n";*) ConstInt("0") end 
+		if estDefExp bmaximum  then if estPositif bmaximum then bmaximum else  begin (* Printf.printf"MAXCAS5\n";*) ConstInt("0") end 
 		else NOCOMP
 	end
 end (*estDef*)
@@ -4234,6 +4243,9 @@ end
 let isTrueConstant e=
 	match e with
 		CONSTANT(CONST_INT v1)| CONSTANT(CONST_FLOAT v1)| CONSTANT(CONST_CHAR v1)|CONSTANT(CONST_STRING v1)->(true,v1)
+		| CONSTANT(RCONST_INT v1)->(true,Printf.sprintf "%d"  v1)
+		| CONSTANT(RCONST_FLOAT v1)->(true,Printf.sprintf "%f"  v1)
+
 		| _-> (false,"")
 
 let isSetTrueConstant e=

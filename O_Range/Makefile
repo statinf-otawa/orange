@@ -10,6 +10,7 @@ SOURCES = \
 	constante.ml\
 	coutput.ml \
 	cvarabs.ml \
+	interval.ml \
 	increment.ml\
 	cextraireboucle.ml\
 	rename.ml\

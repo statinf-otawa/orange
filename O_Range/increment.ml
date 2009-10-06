@@ -16,6 +16,8 @@ open Cexptostr
 open Cvarabs
 open Cvariables
 open Constante
+open Interval
+
 
 
 type typeEQ =	INCVIDE (*0 pour + ou -, 1 pour * ou div*)|   NEG|   POS|   NDEF|NOVALID
@@ -55,6 +57,7 @@ match t with
 
 
 
+
 let getIncValue inc =
 match inc with
 	INC(_,v)->v
@@ -75,6 +78,26 @@ let getIsAddInc inc =
 match inc with
 	INC(MULTI,_)|INC(DIVI,_) ->false
 	|_->true
+
+
+let haveTheSameType inc1 inc2 =
+(getIncType inc1) = (getIncType inc2) 
+
+let haveTheInvesType inc1 inc2 =
+match (getIncType inc1) with
+ POSITIV->(getIncType inc2)=NEGATIV
+|NEGATIV->(getIncType inc2)=POSITIV
+|MULTI->(getIncType inc2)=DIVI
+|DIVI->(getIncType inc2)=MULTI
+|NOTYPE ->false
+
+let isCroissant inc1   =
+match (getIncType inc1) with
+ POSITIV-> 1
+|NEGATIV->  -1
+|MULTI->1
+|DIVI-> -1
+|NOTYPE ->0
 
 
 let rec containtMINIMUMCALL exp =
@@ -153,6 +176,15 @@ print_expression val1  0;new_line(); flush();new_line(); flush();new_line(); flu
 			else NOTHING
 		end
 	end 
+
+
+let beforeAffin = ref (VAR ("", MULTIPLE))
+
+let getCondition e =
+let var =( match e with VARIABLE(v)->v |_->"") in
+(match !beforeAffin with
+VAR (x, exp)-> if x = var then expVaToExp exp else ((*Printf.printf "%s not found\n" v;*) NOTHING)
+|_->  NOTHING)
 
 let rec analyseIncFor var exp inst las asAs completList=
 (*Printf.printf "analyse inc de %s \n" var ;
@@ -343,6 +375,7 @@ and getInc var assign inst las asAs completList=
 			
 
 and joinSequence x inc1 inc2 =
+(*print_interval inter ;*)
 match inc1 with 
 	INC(POSITIV,v1)->
    			(match inc2 with INC(POSITIV,v2) -> INC(POSITIV,(BINARY(ADD,v1,v2)))
@@ -416,27 +449,65 @@ match inc1 with
 	| _ -> true
 
 
-and joinAlternate  x inc1 inc2 =
+and joinAlternate  x inc1 inc2 inter1 inter2=
+
+
+
 match inc1 with 
 	INC(POSITIV,v1)->
-   			(match inc2 with INC(POSITIV,v2) -> INC(POSITIV,CALL (VARIABLE("MINIMUM") , (List.append [v1] [v2] )))
+   			(match inc2 with INC(POSITIV,v2) -> isMultiInc := true;INC(POSITIV,CALL (VARIABLE("MINIMUM") , (List.append [v1] [v2] )))
+							| INC(MULTI,v2)-> 
+							let minValue = getLower inter2 in
+							if estDefExp minValue = false then NODEFINC
+							else
+							begin
+								let minFValue = getDefValue minValue in
+								let value  = getDefValue(calculer (EXP (getIncValue inc2)) !infoaffichNull  []  1  ) in
+								if value > 0.0 && minFValue > 0.0 then
+								begin isMultiInc := true;
+									let bound  = value *. minFValue -. minFValue in
+									if bound >= value then inc1 else NODEFINC
+								end 
+								else NODEFINC
+							end
 							|_->NODEFINC)
 	| INC(NEGATIV,v1) ->
-		 	(match inc2 with INC(NEGATIV,v2) -> INC(NEGATIV,CALL (VARIABLE("MINIMUM") , (List.append [v1] [v2] )))
+		 	(match inc2 with INC(NEGATIV,v2) ->isMultiInc := true; INC(NEGATIV,CALL (VARIABLE("MINIMUM") , (List.append [v1] [v2] )))
 							|_->NODEFINC)
 	| NOINC ->(*Printf.printf "joinAlternate for %s\n"x;*) ( match inc2 with NOINC -> NOINC |_->NODEFINC)
 	| NODEFINC -> NODEFINC
 	| INC(MULTI,v1)->
-   			(match inc2 with INC(MULTI,v2) -> INC(MULTI,CALL (VARIABLE("MINIMUM") , (List.append [v1] [v2] )))	
+   			(match inc2 with INC(MULTI,v2) ->isMultiInc := true; INC(MULTI,CALL (VARIABLE("MINIMUM") , (List.append [v1] [v2] )))	
+							|INC(POSITIV,v2)->
+							let minValue = getLower inter1 in
+							if estDefExp minValue = false then NODEFINC
+							else
+							begin isMultiInc := true;
+								let minFValue = getDefValue minValue in
+								let value  = getDefValue(calculer (EXP (getIncValue inc1)) !infoaffichNull  []  1  ) in
+								if value > 0.0 && minFValue > 0.0 then
+								begin
+									let bound  = value *. minFValue -. minFValue in
+(*
+Printf.printf "joinAlternate for %s bound = %f inc = %f \n"x bound (getDefValue(calculer (EXP (getIncValue inc2)) !infoaffichNull  []  1  ) );
+print_intType (getIncType inc1);
+print_interval inter1 ;
+print_intType (getIncType inc2);
+print_interval inter2 ;*)
+
+									if bound >= value then inc2 else NODEFINC
+								end 
+								else NODEFINC
+							end
 							|_->NODEFINC)
 	| INC(DIVI,v1)->
-   			(match inc2 with INC(DIVI,v2) -> INC(DIVI,CALL (VARIABLE("MINIMUM") , (List.append [v1] [v2] )))	
-							|_->NODEFINC)
+   			(match inc2 with INC(DIVI,v2) -> isMultiInc := true; INC(DIVI,CALL (VARIABLE("MINIMUM") , (List.append [v1] [v2] )))	
+							|_-> NODEFINC)
 	|_->NODEFINC
 
 
 
-and getIncOfInstList x iList completList =
+and getIncOfInstList x iList completList interval =
 (*Printf.printf "getIncOfInstList variable %s\n" x;
 afficherLesAffectations iList;*)
 	if iList = [] then (false,NOINC,x,false)
@@ -444,7 +515,7 @@ afficherLesAffectations iList;*)
 	begin 
 		let (firstInst, nextInst) =  (List.hd iList, List.tl iList) in
 		match firstInst with
-			VAR (id, exp) ->
+			VAR (id, exp) -> beforeAffin := firstInst;
 				 let (isindirect,inc1,v, before) = 
 					 if id = x then
 						 getInc x (expVaToExp exp) 	
@@ -457,44 +528,48 @@ afficherLesAffectations iList;*)
 				else
 					if isindirect = false then
 					begin
-						let (indirect2, inc, var, before2) = getIncOfInstList x nextInst completList  in
+						let (indirect2, inc, var, before2) = getIncOfInstList x nextInst completList interval in
 						if indirect2 = false then (false, joinSequence x inc1  inc, x, false) else (true, inc, var, before2) 
 					end
 					else (true, inc1, v, before)
 
 			| TAB (id, _, _) -> 
 				if id = x then (false,NODEFINC,x,false) 
-				else  (*NOINC *)getIncOfInstList x nextInst completList   
+				else  (*NOINC *)getIncOfInstList x nextInst completList   interval
 			| MEMASSIGN (id, _, _) -> 
 				if id = x then (false,NODEFINC,x,false) 
-				else  (*NOINC *)getIncOfInstList x nextInst completList  
+				else  (*NOINC *)getIncOfInstList x nextInst completList  interval
 
 			| BEGIN liste ->
-				let (indirect1, inc1, var1, before1) = (getIncOfInstList x  liste completList ) in
+				let (indirect1, inc1, var1, before1) = (getIncOfInstList x  liste completList interval) in
 				if inc1 = NODEFINC then (indirect1,inc1, var1, before1)
 				else
 					if indirect1 = false then 
 					begin 
-						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList ) in
+						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList interval) in
 						if indirect2 = false then (false,joinSequence x inc1 inc2,x, false) else (true, inc2, var2, before2) 
 					end
 					else (true, inc1, var1,before1) 
 
-			| IFVF (_, i1, i2) ->
-				let (indirect1, inc1, var1, before1) = (getIncOfInstList x   [i1] completList ) in
+			| IFVF (exp, i1, i2) ->
+
+				let trueinterval = restictIntervalFromCond (getCondition(expVaToExp  exp)) x  interval in
+				let falseinterval = restictIntervalFromCond ( UNARY (NOT,(getCondition(expVaToExp  exp)))) x  interval in
+				let (indirect1, inc1, var1, before1) = (getIncOfInstList x   [i1] completList trueinterval) in
 				if inc1 = NODEFINC then (indirect1,inc1, var1, before1)
 				else
 					if indirect1 = false then 
 					begin 
-						let (indirect2, inc2, var2, before2) = (getIncOfInstList x [i2] completList ) in
+						let (indirect2, inc2, var2, before2) = (getIncOfInstList x [i2] completList falseinterval) in
 						if inc2 = NODEFINC then (indirect2, inc2, var2, before2) 
 						else
 							if indirect2 = false then 
 							begin
-								let (indirect3, inc3, var3, before3) = (getIncOfInstList x  nextInst completList ) in
+								let (indirect3, inc3, var3, before3) = (getIncOfInstList x  nextInst completList interval) in
 
 (*Printf.printf"joinSequence %s\n"x;*)
-								if indirect3 = false then  (false,joinSequence x ( joinAlternate x inc1 inc2)  inc3,x, false) 
+								if indirect3 = false then  
+										(false,joinSequence x ( joinAlternate x inc1 inc2 trueinterval falseinterval)  inc3  ,x, false) 
 								else (true, inc3, var3, before3) 
 							end
 							else (true, inc2, var2, before2) 
@@ -502,14 +577,16 @@ afficherLesAffectations iList;*)
 						else (true, inc1, var1, before1) 
 				
 
-			| IFV ( _, i1) ->
-				let (indirect1, inc1, var1, before1) = (getIncOfInstList x   [i1] completList ) in
+			| IFV ( exp, i1) ->
+				let trueinterval = restictIntervalFromCond (getCondition(expVaToExp  exp)) x  interval in
+
+				let (indirect1, inc1, var1, before1) = (getIncOfInstList x   [i1] completList trueinterval) in
 				if inc1 = NODEFINC then (indirect1,inc1, var1, before1)
 				else
 					if indirect1 = false then 
 					begin 
-						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList )  in
-						if indirect2 = false then   (false,joinSequence x ( joinAlternate x inc1 NOINC)  inc2,x, false)  else (true, inc2, var2, before2) 
+						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList interval)  in
+						if indirect2 = false then   (false,joinSequence x ( joinAlternate x inc1 NOINC trueinterval trueinterval)  inc2  ,x, false)  else (true, inc2, var2, before2) 
 					end
 					else (true, inc1, var1, before1) 
 
@@ -524,11 +601,11 @@ afficherLesAffectations iList;*)
 				else
 					if indirect1 = false then 
 					begin 
-						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList )  in
+						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList interval)  in
 						if indirect2 = false then 
 						begin  
 							if incifexe = inc1 ||sameType incifexe inc2 then
-								(false,(*joinAlternate*) joinSequence x inc1 inc2,x, false)  
+								(false,(*joinAlternate*) joinSequence x inc1 inc2 ,x, false)  
 							else  (indirect1,NODEFINC, var1, before1)							
 						end
 						else (true, inc2, var2, before2) 
@@ -537,12 +614,12 @@ afficherLesAffectations iList;*)
 
 
 			| APPEL (_,_,_,s,_,_,_)->
-				let (indirect1, inc1, var1, before1) = (getIncOfCall x firstInst completList s) in
+				let (indirect1, inc1, var1, before1) = (getIncOfCall x firstInst completList s ) in
 				if inc1 = NODEFINC then (indirect1,inc1, var1, before1)
 				else
 					if indirect1 = false then 
 					begin 
-						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList )  in
+						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList interval)  in
 						if indirect2 = false then   (false,joinSequence x inc1 inc2,x, false)  else (true, inc2, var2, before2) 
 					end
 					else (true, inc1, var1, before1) 
@@ -607,7 +684,7 @@ inc
 
 and getLoopVarInc v inst =
 		isMultiInc := false;(*Printf.printf "getincrement %s \n "v;*)
-		let (isindirect,inc,var, before) = getIncOfInstList v inst inst  in
+		let (isindirect,inc,var, before) = getIncOfInstList v inst inst (INTERVALLE(INFINI,INFINI)) in
 
 		(* IDEM match  inc  with 
 				NODEFINC -> (* pas trouvé d'increment peut être condition = var booleenne *)
