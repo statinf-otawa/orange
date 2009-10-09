@@ -243,8 +243,16 @@ module PartialAdapter =
   	| Loop ((id, line, source, exact, max, total, expMax, expTotal, expInit, sens,lt, lf ), subtree) ->  
 (*Printf.printf "On essaye de traiter l appel de boucle: %s %d\n" source line;*)
 	
-	  let max_final = if (estDefExp max) then max else (calculer_avec_sens (EXP expMax) sens) in
-	  let total_final =  if (estDefExp total) then total else  (calculer_avec_sens (EXP expTotal) sens) in 
+	  let max_final = if (estDefExp max) then max else
+		begin
+			let valmax = (calculer_avec_sens (EXP expMax) sens) in
+			if estDefExp valmax && getDefValue valmax <= 0.0 then ConstInt("0") else valmax
+		end in
+	  let total_final =  if (estDefExp total) then total else
+		begin
+			let valmax =   (calculer_avec_sens (EXP expTotal) sens) in 
+			if estDefExp valmax && getDefValue valmax <= 0.0 then ConstInt("0") else valmax
+		end in
 	 (* print_string (string_from_expr expTotal);*)
 	  
 	  let res = Listener.onLoop res id line source exact max_final total_final expMax expTotal expInit sens lt lf  in
@@ -1368,7 +1376,7 @@ TBOUCLE(num, appel, _,_,_,_,_,_,_) ->
 		  let varBoucleIfN =  Printf.sprintf "%s-%d" "bIt" num in	
 		listeVB := listeSansAffectVar !listeVB varBoucleIfN;
 	  	listeVBDEP := listeSansAffectVar !listeVBDEP varBoucleIfN;	
-		if estDefExp myMaxIt && (estNul myMaxIt)  then 
+		if estDefExp myMaxIt && (getDefValue myMaxIt <=0.0)  then  
 		begin
 			  borneMaxAux:= (ConstInt("0"));
 			  setAssosBoucleIdMaxIfSupOldMax num (EVALEXP(ConstInt("0")))			 
@@ -1471,7 +1479,7 @@ TBOUCLE(num, appel, _,_,_,_,_,ficaux,ligaux) ->
 	  if estDefExp c1 = false then begin 	(calculer new_expmax  nia [] 1, false) end 
 	  else (c1,true) ) in (* valeur max apres propagation*)
 
-  let myMaxIt = if estNulEngPred =false then expmax1 else  ConstInt("0") in
+  let myMaxIt = if estNulEngPred =false then  expmax1 else  ConstInt("0") in
 
   let ne =  nnE.expressionBorneToutesIt  in
   let new_exptt =(* (applyStoreVA ne !listeVB) in (* expression total apres propagation*)*)applyif ne !listeVBDEP in
@@ -1483,7 +1491,7 @@ TBOUCLE(num, appel, _,_,_,_,_,ficaux,ligaux) ->
 	  (* valeur total apres propagation*)
 
   let borne =  
-		   if  (estNulEngPred =true) || (estDefExp myMaxIt && estNul myMaxIt)   then ConstInt("0")
+		   if  (estNulEngPred =true) || (estDefExp myMaxIt && getDefValue myMaxIt <= 0.0  )   then ConstInt("0")
 				else   exptt1 in
 	 
 
@@ -3372,7 +3380,7 @@ Printf.printf "evalNid contexte  boucle: tete\n";
 		typeNidTeteCourant := typeEval;
 
 		let resaux = calculer nb  !infoaffichNull [] 1 in
-		let isNull = if  estDefExp resaux then  if estNul resaux then true else false else false in
+		let isNull = if  estDefExp resaux then  if getDefValue resaux <= 0.0 then true else false else false in
 		(*let listeSauf =*)evaluerSN   nid	nid	aSC mesBouclesOuAppel  (List.append  [typeEval] listeEng) isExe borne nid globales;
 					(*	resaux in*)
 
