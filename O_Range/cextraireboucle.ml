@@ -996,7 +996,7 @@ let rec isPowCte name expr = (* return isPow, contante pow, sign cte mul (CONSTA
 
 
 let 	calculForIndependant typeB borne init inc esttypeopPlus  afterindirect=
-
+(*Printf.printf "calculForIndependant\n" ;*)
 (*if afterindirect then Printf.printf "mettre a jour after indirect %s\n" typeB;*)
 if borne = NOTHING then 
 begin 
@@ -1026,20 +1026,24 @@ begin
 end
 
 let analyseInc infoVar appel typeopPlusouMUL contexte =
-	let valinc = calculer (applyStoreVA(applyStoreVA   (EXP(infoVar.increment)) appel)contexte)  !infoaffichNull  [](*appel*) 1 in	
+
+	let incrementEval =  (applyStoreVA(applyStoreVA   (EXP(infoVar.increment)) appel)contexte)  in
+	let valinc = calculer incrementEval  !infoaffichNull  [](*appel*) (-1) in	
+
 	let op = infoVar.operateur in 
-	let sensinc = if estNoComp valinc then NDEF 
-				  else if typeopPlusouMUL (*op +or -*) then 
-							if estNul valinc then INCVIDE else if estStricPositif valinc then POS  else NEG
-							else (*op *or /*)
+	let sensinc = 
+			if estNoComp valinc then NDEF 
+			else 	if typeopPlusouMUL (*op +or -*) then 
+						if estNul valinc then INCVIDE else if estStricPositif valinc then POS  else NEG
+						else (*op *or /*)
+						begin
+							let varMoinsUn = (evalexpression (Diff( valinc,  ConstInt("1")))) in
+							if estStricPositif valinc then
 							begin
-								let varMoinsUn = (evalexpression (Diff( valinc,  ConstInt("1")))) in
-								if estStricPositif valinc then
-								begin
 									if estNul varMoinsUn then	  INCVIDE else   if estStricPositif varMoinsUn then POS else  NEG
-								end
-								else NOVALID
 							end
+							else NOVALID
+						end
 			in
 (valinc, op, sensinc)
 
@@ -1569,7 +1573,7 @@ if isConditionnal = false then
 
 		
 		let (inc, before, isplus,iscomp,varDep)=
-				analyseIncFor varCond1 (BINARY(ASSIGN,VARIABLE(varCond1),assign)) inst cas true inst in	
+				analyseIncFor varCond1 (BINARY(ASSIGN,VARIABLE(varCond1),assign)) inst cas true inst [] in	
 		
 		
 
@@ -1625,7 +1629,7 @@ begin
 		
  
 		let  (inc, before, isplus,iscomp,varDep)=
-			analyseIncFor varCond1 (BINARY(ASSIGN,VARIABLE(varCond1),assign)) inst cas true inst in	
+			analyseIncFor varCond1 (BINARY(ASSIGN,VARIABLE(varCond1),assign)) inst cas true inst [] in	
 
 (*Printf.printf " getBooleanAssignementInc apres rechercheConditionBinary nouvelle variable %s if false + indirect %s if varDep %s \n" nnvar ifvar varDep;*)
 		let (inc, before) =
@@ -1673,7 +1677,7 @@ begin
 			 
 
 			let (inc, before, isplus,iscomp,varDep)=
-				analyseIncFor varCond1 (BINARY(ASSIGN,VARIABLE(varCond1),assign)) inst cas true inst in	
+				analyseIncFor varCond1 (BINARY(ASSIGN,VARIABLE(varCond1),assign)) inst cas true inst [] in	
 			(*Printf.printf " getBooleanAssignementInc apres rechercheConditionBinary nouvelle variable %s if false + indirect %s if varCond1 %s \n" nnvar ifvar varCond1;*)
 			let (inc, before) =
 			if varDep = varCond1 then 
@@ -2131,34 +2135,54 @@ and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1
 									calculer  (EXP(newexp))   !infoaffichNull [] 1
 								end
 
-							else calculer (EXP(BINARY(MUL,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1 in
+							else calculer (EXP(BINARY(DIV,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1 in
 		 			(*Printf.printf " result inc : > %f\n"( getDefValue value);*)
 					if isOK &&(typeinc1 =POSITIV||typeinc1 =NEGATIV) &&  (typeinc2 =POSITIV||typeinc2 =NEGATIV) && isindirect1 = false && isindirect2 == false then
 					begin
 						let vardeux =  Printf.sprintf "%s-%s" (List.hd l) (List.hd (List.tl l))  in	 
-						let (stringinc,estNul,constval)=
+						let (stringinc,estNul,estPos, constval)=
 							match value with
-							 ConstInt (i)-> (i ,(int_of_string  i = 0),CONSTANT  (CONST_INT i))
-							| ConstFloat (i) ->(i, (float_of_string  i = 0.0),CONSTANT(CONST_FLOAT (i)) ) 
-							| RConstFloat (i) ->(Printf.sprintf "%g" i, (  i = 0.0),CONSTANT(RCONST_FLOAT (i)) ) 
-							| _->("",true,CONSTANT  (CONST_INT "0")) in
+							 ConstInt (i)-> (i ,(int_of_string  i = 0),(int_of_string  i > 0),CONSTANT  (CONST_INT i))
+							| ConstFloat (i) ->(i, (float_of_string  i = 0.0),(float_of_string  i > 0.0),CONSTANT(CONST_FLOAT (i)) ) 
+							| RConstFloat (i) ->(Printf.sprintf "%g" i, (  i = 0.0),(  i > 0.0),CONSTANT(RCONST_FLOAT (i)) ) 
+							| _->("",true,false,CONSTANT  (CONST_INT "0")) in
 
-
-					(*Printf.printf "deux variables ou plus non const %s %s %s  %d\n" vari1 vari2 vardeux valinc ;*)
-						let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (SUB,VARIABLE(vardeux), constval))) ] in
-						let newdans =  List.append dans 
-											[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (SUB,VARIABLE(vardeux), constval)))]
+							if estPos then
+							begin
+								(*Printf.printf "deux variables ou plus non const %s %s %s  %s ++\n" vari1 vari2 vardeux stringinc ;*)
+									let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (ADD,VARIABLE(vardeux), constval))) ] in
+									let newdans =  List.append dans 
+														[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (ADD,VARIABLE(vardeux), constval)))]
 	
-											 in	
-						listADD := List.append [VAR(vardeux, EXP(BINARY(SUB,exp2, exp1)))] !listADD ;
-						listADDInc := List.append [VAR(vardeux, EXP(BINARY(SUB,VARIABLE(vardeux), constval)))] !listADDInc ;
-						let newavant =  List.append avant
-											[ASSIGN_SIMPLE(vardeux, EXP(BINARY(SUB,exp2, exp1)))]
+														 in	
+									listADD := List.append [VAR(vardeux, EXP(BINARY(SUB,exp1, exp2)))] !listADD ;
+									listADDInc := List.append [VAR(vardeux, EXP(BINARY(ADD,VARIABLE(vardeux), constval)))] !listADDInc ;
+									let newavant =  List.append avant
+														[ASSIGN_SIMPLE(vardeux, EXP(BINARY(SUB,exp1, exp2)))]
 	
-											 in	
+														 in	
 	
-						rechercheConditionBinary (BINARY(SUB,exp2, exp1)) vardeux op  (CONSTANT  (CONST_INT "0")) (VARIABLE(vardeux)) [vardeux] newavant newdans estNul  t 
-								(BINARY(op, CONSTANT(CONST_INT "0"),  VARIABLE(vardeux))) lv (List.append [vardeux] l) newinst
+									rechercheConditionBinary (VARIABLE(vardeux))  vardeux op  (VARIABLE(vardeux)) (CONSTANT  (CONST_INT "0"))  [vardeux] newavant newdans estNul  t 
+											(BINARY(op,VARIABLE(vardeux),   CONSTANT(CONST_INT "0") )) lv (List.append [vardeux] l) newinst
+							end
+							else
+							begin
+								(*Printf.printf "deux variables ou plus non const %s %s %s  %s --\n" vari1 vari2 vardeux stringinc ;*)
+								let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (SUB,VARIABLE(vardeux), constval))) ] in
+									let newdans =  List.append dans 
+														[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (SUB,VARIABLE(vardeux), constval)))]
+	
+														 in	
+									listADD := List.append [VAR(vardeux, EXP(BINARY(SUB,exp2, exp1)))] !listADD ;
+									listADDInc := List.append [VAR(vardeux, EXP(BINARY(SUB,VARIABLE(vardeux), constval)))] !listADDInc ;
+									let newavant =  List.append avant
+														[ASSIGN_SIMPLE(vardeux, EXP(BINARY(SUB,exp2, exp1)))]
+	
+														 in	
+	
+									rechercheConditionBinary (VARIABLE(vardeux))  vardeux op  (CONSTANT  (CONST_INT "0")) (VARIABLE(vardeux)) [vardeux] newavant newdans estNul  t 
+											(BINARY(op, CONSTANT(CONST_INT "0"),  VARIABLE(vardeux))) lv (List.append [vardeux] l) newinst
+							end
 
 					end 
 					else	if oppose && isOK &&(typeinc1 =MULTI) &&  (typeinc2 =DIVI) && isindirect1 = false && isindirect2 == false then
@@ -2200,15 +2224,14 @@ and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1
 							| RConstFloat (i) ->( Printf.sprintf "%g" i, ( i = 1.0),CONSTANT(RCONST_FLOAT (i)) ) 
 							| _->("",true,CONSTANT  (CONST_INT "1")) in
 
-
-					(*	Printf.printf "deux variables ou plus non const inc1 dive%s %s %s  \n" vari1 vari2 vardeux  ;*)
-							let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (DIV,VARIABLE(vardeux), constval))) ] in
+						(*Printf.printf "deux variables ou plus non const inc1 dive%s %s %s  \n" vari1 vari2 vardeux  ;*)
+							let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (MUL,VARIABLE(vardeux), constval))) ] in
 							let newdans =  List.append dans 
-												[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (DIV,VARIABLE(vardeux), constval)))]
+												[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (MUL,VARIABLE(vardeux), constval)))]
 	
 												 in	
 							listADD := List.append [VAR(vardeux, EXP(BINARY(DIV,exp1, exp2)))] !listADD ;
-							listADDInc := List.append [VAR(vardeux, EXP(BINARY(DIV,VARIABLE(vardeux), constval)))] !listADDInc ;
+							listADDInc := List.append [VAR(vardeux, EXP(BINARY(MUL,VARIABLE(vardeux), constval)))] !listADDInc ;
 							let newavant =  List.append avant
 												[ASSIGN_SIMPLE(vardeux, EXP(BINARY(DIV,exp1, exp2)))]
 	
@@ -2216,6 +2239,8 @@ and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1
 	
 							rechercheConditionBinary (VARIABLE(vardeux))  vardeux op  (VARIABLE(vardeux)) (CONSTANT  (CONST_INT "1"))  [vardeux] newavant newdans estNul t 
 									(BINARY(op,   VARIABLE(vardeux),CONSTANT(CONST_INT "1"))) lv (List.append [vardeux] l) newinst
+
+
 
 						end 
 
@@ -2274,11 +2299,7 @@ begin
 end
 
 and traiterUn croissant  borneInf borneSup operateur multiple var  cond avant dans cte t inst=
-
-
-let ninst = (* List.append inst !listADDInc*)inst in
-
-
+	let ninst =(* List.append inst !listADDInc *) (*inst*)  List.append inst !listADDInc in
 	let (operateur, typevar, multiple,v) = 
 		if multiple = false then
 		begin
@@ -2288,59 +2309,60 @@ let ninst = (* List.append inst !listADDInc*)inst in
 		end		
 		else 	( ADD, NONMONOTONE, true, var)   in
 
-
-
-
-	let ((*isindirect,inc,var, before*)isindirect,inc,vari,before,isMultiInc) =  getLoopVarInc v ninst in
+	let (isindirect,inc,vari,before,isMultiInc) =  getLoopVarInc v ninst in
 	(*BOOL*)
-
-
+	
+	expressionIncFor := getIncValue inc;
+	opEstPlus := getIsAddInc inc;
 	let (sup, inf, incr) = 
-	 if !opEstPlus = false && (isDivInc !expressionIncFor)  && typevar = DECROISSANT then (!initialisation,!borne, BINARY (DIV, CONSTANT  (CONST_INT "1"), !expressionIncFor)) 
-		 	else
+	 	if !opEstPlus = false && (isDivInc !expressionIncFor)  && typevar = DECROISSANT then 
+			(!initialisation,!borne, BINARY (DIV, CONSTANT  (CONST_INT "1"), !expressionIncFor)) 
+		 else
 				if !opEstPlus && typevar = DECROISSANT then  (!initialisation,!borne, !expressionIncFor)  
 		 		else  (!borne,!initialisation,!expressionIncFor) in
 
 	
 	if isMultiInc then isExactForm := false;
-
 		if isindirect then 
-		begin
-			
+		begin			
 			expressionIncFor := NOTHING; (* 1+*)
-			(NOTHING,NOTHING, true)
+			(NOTHING,NOTHING, true,NOTHING)
 		end
 		else 
 			(match  inc  with 
 				NODEFINC ->   (* 1+*)
-				(NOTHING,NOTHING, false)
+				(NOTHING,NOTHING, false,NOTHING)
 			|_->	(*print_expression borneInf 0; space() ;flush() ;new_line(); flush();new_line(); *)
 (*Printf.printf"traiterUn v = %s vari = %s\n" v vari;
 print_expression inf 0; space() ;flush() ;new_line(); flush();new_line(); 
 	print_expression sup 0; space() ;flush() ;new_line(); flush();new_line(); 
-print_expression incr 0; space() ;flush() ;new_line(); flush();new_line();*)
-			(*expVaToExp (getNombreIt !borne (typevar=CONSTANTE||cte) t cond multiple [] !opEstPlus   
-					( new_variation !initialisation !borne !expressionIncFor typevar  operateur false) v []) ), !expressionIncFor, false*)
+print_expression incr 0; space() ;flush() ;new_line(); flush();new_line();
+			*)
 
-	let infoVar =   new_variation borneInf borneSup  !expressionIncFor typevar  operateur false in
-	 
-	let nb = expVaToExp (getNombreIt sup (typevar=CONSTANTE||cte) t cond multiple [] !opEstPlus  infoVar v []) in
-	(nb, incr, false))
+	let infoVar =   new_variation borneInf borneSup  incr typevar  operateur false in
+
+	let nb = expVaToExp (getNombreIt sup (typevar=CONSTANTE||cte) t cond multiple [] (getIsAddInc inc)  infoVar v []) in
+	let borne = (getBorneBoucleFor t nb inf incr (getIsAddInc inc) isindirect) in
+(*Printf.printf"traiterUn v = %s vari = %s\n" v vari;
+print_expression nb 0; space() ;flush() ;new_line(); flush();new_line(); 
+	print_expression borne 0; space() ;flush() ;new_line(); flush();new_line(); *)
+
+	(nb, incr, false,borne))
 
 
 
 and construireCondition crois1 bInf1  bSup1  oper1 mult1 v1 cd1 crois2  bInf2  bSup2  oper2 mult2 v2 cd2 lv avant dans cte t inst=
 
 (*Printf.printf"construireCondition \n";	*)
-	let (nb1, inc1, indirect1) = traiterUn  crois1 bInf1 bSup1  oper1 mult1 v1 cd1 avant dans cte t  inst in
-	let (nb2, inc2, indirect2) = traiterUn  crois2 bInf2  bSup2 oper2 mult2 v2 cd2 avant dans cte t inst in
+	let (nb1, inc1, indirect1,b1) = traiterUn  crois1 bInf1 bSup1  oper1 mult1 v1 cd1 avant dans cte t  inst in
+	let (nb2, inc2, indirect2,b2) = traiterUn  crois2 bInf2  bSup2 oper2 mult2 v2 cd2 avant dans cte t inst in
 
 	if inc1 = NOTHING  then begin (* Printf.printf"construireCondition inc1 not def\n";*) isExactForm := false; (crois2, bInf2, bSup2, oper2,mult2, v2, BINARY(AND, cd1,cd2)) end
 	else
 		if  inc2 = NOTHING then begin  (*  Printf.printf"construireCondition inc 2 not def\n";*) isExactForm := false;(crois1, bInf1, bSup1, oper1,mult1, v1, BINARY(AND, cd1,cd2 )) end
 		else 
 			if v1 = v2 then
-			begin Printf.printf"construireCondition egal %s\n" v1;
+			begin (*Printf.printf"construireCondition egal %s\n" v1;*)
 				match crois1 with
 					CROISSANT | DECROISSANT-> (*Printf.printf"construireCondition egal crois 1 ok %s\n" v1;	*)
 						if crois2 = CROISSANT || crois2 = DECROISSANT then
@@ -2386,13 +2408,13 @@ print_expression bSup 0; space() ;flush() ;new_line(); flush();new_line(); *)
 								   else *)(crois2, bInf2, bSup2, oper2,mult2, v2, BINARY(AND, cd1,cd2))
 				end
 			else
-			begin Printf.printf"construireCondition diff\n";
+			begin (*Printf.printf"construireCondition diff\n";*)
 				if  nb1 = NOTHING then begin isExactForm := false; (crois2, bInf2, bSup2, oper2,mult2, v2, BINARY(AND, cd1,cd2)) end
 				else
 				begin
 					if  nb2 = NOTHING then begin expressionIncFor := inc1;  isExactForm := false;(crois1, bInf1, bSup1, oper1,mult1, v1, BINARY(AND, cd1,cd2 )) end
-					else(Printf.printf"construireCondition diff\n"; (	CROISSANT, CONSTANT (CONST_INT "0"), (*CONSTANT (CONST_INT "1")*)
-							BINARY (SUB, CALL (VARIABLE("MINIMUM") , List.append [ nb1] [nb2] ), CONSTANT (CONST_INT "1")),
+					else((*Printf.printf"construireCondition diff\n";*) (	CROISSANT, CONSTANT (CONST_INT "0"), (*CONSTANT (CONST_INT "1")*)
+							BINARY (SUB, CALL (VARIABLE("MINIMUM") , List.append [ b1] [b2] ), CONSTANT (CONST_INT "1")),
 							  LT,mult2, lv, BINARY(AND, cd1,cd2)))
 				end
 			end
@@ -2593,7 +2615,7 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 			let (valinc, op, sensinc) = analyseInc infoVar appel typeopPlusouMUL globales in
 			(*Printf.printf "NON MULTIPLE\n";*)
 			match sensinc with
-			 NOVALID ->	 EXP(NOTHING)
+			 NOVALID ->	Printf.printf "NON NOVALID\n"; EXP(NOTHING)
 			| INCVIDE ->
 				(match typeBoucle with
 					"for" |"while"->
@@ -2653,28 +2675,17 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 					(*let bi = applyStoreVA(applyStoreVA   (EXP ( infoVar.borneInf)) appel)globales in*)
 					let bu = applyStoreVA(applyStoreVA   (EXP ( une )) appel)globales in
 					(*print_expVA bs; new_line();*)
-(*
-Printf.printf "getNombreIt recherche de affect : \n";
-(*print_expression infoVar.borneSup 0; space() ;flush() ;new_line(); flush();new_line(); 
-print_expression infoVar.borneInf 0; space() ;flush() ;new_line(); flush();new_line(); 
 
-print_expression infoVar.increment 0; space() ;flush() ;new_line(); flush();new_line(); *)
-print_expression  une 0; space() ;flush() ;new_line(); flush();new_line(); 
-Printf.printf "getNombreIt recherche de affect : \n";
-print_expression  valEPSILON 0; space() ;flush() ;new_line(); flush();new_line(); *)
-
+					(*Printf.printf "getNombreIt recherche de affect : \n";
+					print_expression infoVar.borneSup 0; space() ;flush() ;new_line(); flush();new_line(); 
+					print_expression infoVar.borneInf 0; space() ;flush() ;new_line(); flush();new_line(); 
+					 
+					print_expression infoVar.increment 0; space() ;flush() ;new_line(); flush();new_line(); 
+					print_expression  une 0; space() ;flush() ;new_line(); flush();new_line(); 
+					Printf.printf "getNombreIt recherche de affect : \n";*)
 					
-					let ((*bsup, binf,*)expune)= evalArrayTravel  bs  appel globales une bu in
-
-					
-	
+					let expune= evalArrayTravel  bs  appel globales une bu in
 					let isInt = if  ( typeInf = INTEGERV && typeSup  = INTEGERV && typeInc  = INTEGERV)   then true else false in
-								(*	 else if typeInf = FLOATV || typeSup  = FLOATV || typeInc  = FLOATV then  (*valAbsincDiv2 valinc!vEPSILONFLOAT*)!vEPSILON
-										  else  if 	espIsNotOnlyVar bornesup || espIsNotOnlyVar borneinf  || espIsNotOnlyVar valinc then (*valAbsincDiv2 valinc*)!vEPSILON
-												else  (*valAbsincDiv2 valinc!vEPSILONFLOAT*) !vEPSILON in*)
-
-
-
 
 					if isInt then 	 (applyStoreVA(applyStoreVA   (EXP(  remplacerValPar  "EPSILON" !vEPSILONINT expune)) appel)globales)  	 
 					(*if sensinc = NDEF || (op != NE) then  *)
@@ -2907,6 +2918,7 @@ match op with EQ|NE->true|_->false
 
 
  let traiterConditionBoucleFor t nom nbIt cond eng (*exp*) (*init*) inc var cte var2 listLoopVar avant dans lvb vcond inst =
+(*Printf.printf "traiterConditionBoucleFor\n" ;*)
 (*afficherLesAffectations inst;*)
 	let listeV = listeDesVarsDeExpSeules cond in
 	(*let listeV = listeDesVarsDeExpSeules init in*)
@@ -2942,25 +2954,20 @@ match op with EQ|NE->true|_->false
 								getBooleanAssignementInc 
 									assign isConditionnal ltrue lfalse  
 									(VARIABLE(var)) var op exp1 exp2 listLoopVar avant dans cte t cond var2 lvb  inst ifvar in
-
 							
 								(* 	let initialvar =expVaToExp(rechercheAffectVDsListeAS varDep avant) in 
 									if  initialvar  = NOTHING then   VARIABLE(varDep)   else initialvar );*)
 
 								expressionIncFor := inc;
 								
-(*Printf.printf "cas 3 EQ peut être booleen vari %s\n" vari;
-
+								(*Printf.printf "cas 3 EQ peut être booleen vari %s\n" vari;
 								print_expression borneInf 0;flush(); new_line();space(); new_line();
 								print_expression borneSup 0;flush(); new_line();space(); new_line();
-
-
-Printf.printf "cas 3 EQ peut être booleen ifvar %s\n" ifvar;
-Printf.printf "cas 3 EQ peut être booleen var2 %s\n" var2;
-
+								Printf.printf "cas 3 EQ peut être booleen ifvar %s\n" ifvar;*)
+								(*Printf.printf "cas 3 EQ peut être booleen var2 %s\n" var2;*)
 
 								print_expression inc 0;flush(); new_line();space(); new_line();
-								if before then Printf.printf "before\n" else Printf.printf "after\n";*)
+								(*if before then Printf.printf "before\n" else Printf.printf "after\n";*)
 								(true,		varDep	,"dowhile", b = false, croissant, m, op)
 							)
 						else  (false, v, t, false,typev,multi,op)
@@ -2991,16 +2998,17 @@ Printf.printf "cas 3 EQ peut être booleen var2 %s\n" var2;
 	let (sup, inf, inc) = 
 	if indirect && !opEstPlus = false && (isDivInc !expressionIncFor) then 
 		(!initialisation, !borne,  BINARY (DIV, CONSTANT  (CONST_INT "1"), !expressionIncFor)) 
-	else	if !opEstPlus = false && (isDivInc !expressionIncFor)  && typevar = DECROISSANT then (!initialisation,!borne, BINARY (DIV, CONSTANT  (CONST_INT "1"), !expressionIncFor)) 
+	else	if !opEstPlus = false && (isDivInc !expressionIncFor)  && typevar = DECROISSANT then 
+	(!initialisation,!borne, BINARY (DIV, CONSTANT  (CONST_INT "1"), !expressionIncFor)) 
 		 	else
 				if !opEstPlus && typevar = DECROISSANT then  (!borne,!initialisation, !expressionIncFor)  
 		 		else  (!borne,!initialisation,!expressionIncFor) in
 
 	expressionIncFor := inc;
-
-
+	
 	let isConstructVar = if (String.length nv > 4) then begin if (String.sub nv  0 4) = "bIt-" then  true else   false end else false in
-	let isIntVar = 	if isConstructVar = false &&  List.mem_assoc nv !listAssocIdType then   ( match getBaseType (List.assoc nv !listAssocIdType) with INT_TYPE-> true|_-> false) else  false in
+	let isIntVar = 	if isConstructVar = false &&  List.mem_assoc nv !listAssocIdType then   
+		( match getBaseType (List.assoc nv !listAssocIdType) with INT_TYPE-> true|_-> false) else  false in
 
 
 	let ( ninf ,nsup) =
@@ -3057,9 +3065,9 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 				  if  initialvar  = NOTHING then   VARIABLE(v)   else initialvar );
 
 			opEstPlus:= true;	
-			let ((*isindirect,inc,var, before*)isindirect,inc,var, before,isMultiInc) =  getLoopVarInc v (List.append inst !listADDInc) in
+			let (isindirect,inc,var, before,isMultiInc) =  getLoopVarInc v (List.append inst !listADDInc) in
 			(match  inc  with 
-				NODEFINC -> 
+				NODEFINC -> (*Printf.printf "NODEFINC\n";*)
 					if isEQoperator op then
 					begin
 						(*Printf.printf "cas 3 EQ peut être booleen\n";*)
@@ -3079,6 +3087,7 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 								print_expression borneInf 0;flush(); new_line();space(); new_line();
 								print_expression borneSup 0;flush(); new_line();space(); new_line();
 								print_expression inc 0;flush(); new_line();space(); new_line();*)
+								(*Printf.printf "while... être booleen\n";*)
 								expressionIncFor := inc;
 								(*if before then Printf.printf "before\n" else Printf.printf "after\n";*)
 								(true,		varDep	,"dowhile", b = false, croissant, multiple, op)
@@ -3086,7 +3095,9 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 						else  (false, v, t, false,typev,multi,op)
 					end
 					else (false, v, t, false,typev,multi,op)
-				|_->expressionIncFor := getIncValue inc ;
+				|_->
+					(*Printf.printf "OTHER NODEF\n";*)
+					expressionIncFor := getIncValue inc ;
 					if isMultiInc then isExactForm := false;
 					if isindirect then 
 					begin 
@@ -3110,14 +3121,18 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 	let (sup, inf, inc) = 
 	if indirect && !opEstPlus = false && (isDivInc !expressionIncFor) then 
 		(!initialisation, !borne,  BINARY (DIV, CONSTANT  (CONST_INT "1"), !expressionIncFor)) 
-	else	if !opEstPlus = false && (isDivInc !expressionIncFor)  && typevar = DECROISSANT then (!initialisation,!borne, BINARY (DIV, CONSTANT  (CONST_INT "1"), !expressionIncFor)) 
+	else	if !opEstPlus = false && (isDivInc !expressionIncFor)  && typevar = DECROISSANT then 
+		(!initialisation,!borne, BINARY (DIV, CONSTANT  (CONST_INT "1"), !expressionIncFor)) 
 		 	else
 				if !opEstPlus && typevar = DECROISSANT then  (!borne,!initialisation, !expressionIncFor)  
 		 		else  (!borne,!initialisation,!expressionIncFor) in
 	 
 	 
 	expressionIncFor := inc;
+(*Printf.printf "cas 4 EQ peut être booleen vari \n" ;
 
+								print_expression inc 0;flush(); new_line();space(); new_line();
+								print_expression sup 0;flush(); new_line();space(); new_line();*)
 
 	let isConstructVar = if (String.length nv > 4) then begin if (String.sub nv  0 4) = "bIt-" then  true else   false end else false in
 	let isIntVar = 	if isConstructVar = false &&  List.mem_assoc nv !listAssocIdType then   ( match getBaseType (List.assoc nv !listAssocIdType) with INT_TYPE-> true|_-> false) else  false in
