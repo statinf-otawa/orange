@@ -1511,14 +1511,48 @@ and  calculer expressionVA ia l sign =
 				Printf.printf"binary\n";print_expression exp1 0;new_line ()	; 
 				print_expression exp2 0;new_line () 
 			end;
+			let haspre = !hasSETCALL in
 			hasSETCALL := false;
 			
 			let val1 = (calculer (EXP(exp1 )) ia l sign ) in 
+			
 			let hasSETCALLval1 = !hasSETCALL in
+
+			let (estDefVal1, estPosVal1) =(estDefExp val1, estPositif val1) in
+			
+
 			hasSETCALL := false;
-			(*Printf.printf"var1\n "; print_expTerm val1; new_line();*)
+			
 			let val2 = calculer (EXP(exp2 )) ia l (sign * (signOf op )) in 
+			
+			let (estDefVal2, estPosVal2) =(estDefExp val2, estPositif val2) in
+
+
+
+
+			
+
 			let hasSETCALLval2 = !hasSETCALL in
+
+
+			hasSETCALL := haspre || hasSETCALLval1 || hasSETCALLval2;
+
+
+			let isOkval1 =hasSETCALLval1 =false || (  estDefVal2  && estPosVal2) in
+			let val11 = if isOkval1 then val1 else( (calculer (EXP(exp1 )) ia l (sign*(-1) ))) in 
+			let isOkval2 =   hasSETCALLval2 =false || (  estDefVal1  && estPosVal1) in
+
+			let isOKAll =
+					 if 		(estDefVal1  = false && estDefVal2 = false) 
+								|| 	(hasSETCALLval1 = false && hasSETCALLval2 = false) || (isOkval1 && isOkval2)then true else false in
+
+(* (estDefVal1  = false && estDefVal2 = false) QUE DOIT8ON RETOURNER ?*) 
+			
+			let val22 = if isOkval2 then val2 else (calculer (EXP(exp2 )) ia l ((sign * (signOf op ))*(-1)) ) in 
+
+
+
+
 			(*Printf.printf"var2\n "; print_expTerm val2;new_line();*)
 			if estNoComp val1 || estNoComp val2 then 
 				if op = OR then 
@@ -1529,14 +1563,42 @@ and  calculer expressionVA ia l sign =
 				else NOCOMP  
 			else
 			begin
+(*
+if hasSETCALLval1 || hasSETCALLval2 then
+begin 
+				Printf.printf"binary calculer\n";print_expression exp1 0;new_line ()	; flush(); space();new_line();flush(); space();new_line();
+				print_expression exp2 0;new_line () ;flush(); space();new_line();flush(); space();new_line();
+Printf.printf"var1\n "; print_expTerm val1; new_line();
+Printf.printf"var1\n "; print_expTerm val11; new_line();
+Printf.printf"var2\n "; print_expTerm val2; new_line();
+Printf.printf"var1\n "; print_expTerm val22; new_line();
+			end;*)
+
+
 				match op with
 				ADD		->  evalexpression (Sum (val1, val2)) 	
 				| SUB	->  evalexpression (Diff (val1, val2)) 	
-				| MUL	->  evalexpression (Prod (val1, val2)) 	
-				| DIV	->  evalexpression (Quot (val1, val2)) 
-				| MOD	->  evalexpression (Mod (val1, val2)) 	
-				| SHL 	->  evalexpression (Shl (val1, val2)) 
-				| SHR	->  evalexpression (Shr (val1, val2)) 		
+				| MUL	->  if 	isOKAll	then evalexpression (Prod (val1, val2)) 
+							else if isOkval1 = false && isOkval2 then evalexpression (Prod (val11, val2)) 
+									else if isOkval2 = false && isOkval1 then evalexpression (Prod (val1, val22)) 
+									
+							else evalexpression (Prod (val11, val22))
+				| DIV	->  if 	isOKAll	then  evalexpression (Quot (val1, val2)) 
+							else 	if isOkval1 = false && isOkval2 then evalexpression (Quot (val11, val2)) 
+								else 	if isOkval2 = false && isOkval1 then evalexpression (Quot (val1, val22)) 
+										else evalexpression (Quot (val11, val22))
+				| MOD	-> if 	isOKAll	then evalexpression (Mod (val1, val2)) 
+							else 	if isOkval1 = false && isOkval2 then evalexpression (Mod (val11, val2)) 
+								else 	if isOkval2 = false && isOkval1 then evalexpression (Mod (val1, val22)) 
+										else evalexpression (Mod (val11, val22))				
+				| SHL 	->  if 	isOKAll	then  evalexpression (Shl (val1, val2)) 
+							else 	if isOkval1 = false && isOkval2 then evalexpression (Shl (val11, val2)) 
+								else 	if isOkval2 = false && isOkval1 then evalexpression (Shl (val1, val22)) 
+										else evalexpression (Shl (val11, val22))
+				| SHR	->   if 	isOKAll	then  evalexpression (Shr (val1, val2)) 
+							else 	if isOkval1 = false && isOkval2 then evalexpression (Shr (val11, val2)) 
+								else 	if isOkval2 = false && isOkval1 then evalexpression (Shr (val1, val22)) 
+										else evalexpression (Shr (val11, val22))				
 				| EQ 	->  
 			(*	Printf.printf"EQ exp1 , exp2\n";  print_expTerm val1; new_line(); print_expTerm val2;new_line();*)
 				if hasSETCALLval1 || hasSETCALLval2 then NOCOMP

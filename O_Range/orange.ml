@@ -1335,9 +1335,11 @@ TBOUCLE(num, appel, _,_,_,_,_,_,_) ->
   		let nm =  nnE.maxUneIt  in
 		  isProd := false;
 		
-
+hasSETCALL := false;
 
 		let c1 = calculer  nm   nia [] 1 in 
+
+let hasinit = !hasSETCALL in
 		curassocnamesetList := [];
 		if estDefExp c1 = false then
 		begin
@@ -1357,7 +1359,7 @@ TBOUCLE(num, appel, _,_,_,_,_,_,_) ->
 					 
 					)varOfExp  
 	      end;
-
+hasSETCALL := false;
   			let new_expmax =  if !curassocnamesetList = []  then	
 						applyif nm !listeVBDEP 
 					else 
@@ -1368,12 +1370,12 @@ TBOUCLE(num, appel, _,_,_,_,_,_,_) ->
 						 
 					end
 					in
-		  
+  
 		  let (expmax1, reseval) =(
 			  
 		  if estDefExp c1 = false then begin 	(calculer new_expmax  nia [] 1, false) end 
 		  else (c1,true) ) in (* valeur max apres propagation*)
-
+let hass = !hasSETCALL in		
 		  let myMaxIt = expmax1  in
 	
 		  let varBoucleIfN =  Printf.sprintf "%s-%d" "bIt" num in	
@@ -1400,7 +1402,7 @@ TBOUCLE(num, appel, _,_,_,_,_,_,_) ->
 		end;
 
 		  let (iAmExact, myVar)= 
-				if existeNid num then  ((rechercheNid num).infoNid.isExactExp && (nnE.isIntoIf = false),  varBoucleIfN) 
+				if existeNid num then  ( hasinit= false&&hass=false &&(rechercheNid num).infoNid.isExactExp && (nnE.isIntoIf = false),  varBoucleIfN) 
 				else (false ,  varBoucleIfN) 
 					in
 	 	 let mymax = !borneMaxAux in
@@ -1413,9 +1415,9 @@ TBOUCLE(num, appel, _,_,_,_,_,_,_) ->
 			  if  estDefExp myMaxIt && (estNul myMaxIt) 	 then 
 			  begin
 					if (not (estNothing (EXP nb))) then
-						ASSIGN_SIMPLE (myVar,  EXP(CALL (VARIABLE("SET") ,  List.append [CONSTANT (CONST_INT "0")] [nb] )) )
+						ASSIGN_SIMPLE (myVar,  EXP(CALL (VARIABLE("SET") ,  List.append [CONSTANT (CONST_INT "-1")] [nb] )) )
 					else
-					 ASSIGN_SIMPLE (myVar,  EXP(CALL (VARIABLE("SET") ,  List.append [CONSTANT (CONST_INT "0")] [exp_nb] )) )					
+					 ASSIGN_SIMPLE (myVar,  EXP(CALL (VARIABLE("SET") ,  List.append [CONSTANT (CONST_INT "-1")] [exp_nb] )) )					
 			  end
 			  else  ASSIGN_SIMPLE (varBoucleIfN, EXP(CONSTANT  (CONST_INT "-1"))) ;
 		  	end in
@@ -1443,8 +1445,11 @@ TBOUCLE(num, appel, _,_,_,_,_,ficaux,ligaux) ->
  (*
 
  
- *)
+ *)hasSETCALL:=false;
+
+
 	let c1 = calculer  nm   nia [] 1 in 
+let hasinit = !hasSETCALL in
 	curassocnamesetList := [];
 	if estDefExp c1 = false then
 	begin
@@ -1476,12 +1481,12 @@ TBOUCLE(num, appel, _,_,_,_,_,ficaux,ligaux) ->
 					end
 					in
 
-  
+hasSETCALL:=false;  
   let (expmax1, reseval) =(
 	  
 	  if estDefExp c1 = false then begin 	(calculer new_expmax  nia [] 1, false) end 
 	  else (c1,true) ) in (* valeur max apres propagation*)
-
+let hass = !hasSETCALL in	
   let myMaxIt = if estNulEngPred =false then  expmax1 else  ConstInt("0") in
 
   let ne =  nnE.expressionBorneToutesIt  in
@@ -1561,10 +1566,10 @@ TBOUCLE(num, appel, _,_,_,_,_,ficaux,ligaux) ->
 
 	  
 	  valeurEng := !borneAux;
-
+(* ajouter SET*)
 	  let (iAmExact, myVar,myBorne)=
 		 if existeNid num then 
-		  ((rechercheNid num).infoNid.isExactExp && (!isProd = false) && (hasSygmaExpVA ne = false) && !isExactEng && (nnE.isIntoIf = false), varBoucleIfN, !borneAux)
+		  (hasinit= false&&hass=false &&(rechercheNid num).infoNid.isExactExp && (!isProd = false) && (hasSygmaExpVA ne = false) && !isExactEng && (nnE.isIntoIf = false), varBoucleIfN, !borneAux)
 		 else (false, 	varBoucleIfN, !borneAux)	
 		 in
 
@@ -1596,9 +1601,9 @@ let em = if nnE.isIntoIf then if !borneAux = NOCOMP then NOTHING else (expVaToEx
 		  if  iAmNotNul	 then 
 		  begin
 				if (not (estNothing (EXP nb))) then
-					ASSIGN_SIMPLE (myVar,  EXP(CALL (VARIABLE("SET") ,  List.append [CONSTANT (CONST_INT "0")] [nb] )) )
+					ASSIGN_SIMPLE (myVar,  EXP(CALL (VARIABLE("SET") ,  List.append [CONSTANT (CONST_INT "-1")] [nb] )) )
 				else
-				 ASSIGN_SIMPLE (myVar,  EXP(CALL (VARIABLE("SET") ,  List.append [CONSTANT (CONST_INT "0")]
+				 ASSIGN_SIMPLE (myVar,  EXP(CALL (VARIABLE("SET") ,  List.append [CONSTANT (CONST_INT "-1")]
 						[exp_nb] )) )		
 				
 				
@@ -4028,7 +4033,7 @@ listCaseFonction := []
 
 
 
-let listnoteqLoop l = List.iter (fun  (fic,lig) -> Printf.eprintf "WARNING != test => bound is either this one or infini line %d into source %s \n" lig fic ) l
+let listnoteqLoop l = List.iter (fun  (fic,lig) -> Printf.eprintf "WARNING != condition => bound is either this one or infini line %d into source %s \n" lig fic ) l
 
 
 let printFile (result : out_channel)  (defs2 : file) need_analyse_defs=
