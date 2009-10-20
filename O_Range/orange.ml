@@ -181,6 +181,9 @@ type typeCompEvalue =  int * string * TreeList.tree
 let compEvalue = ref ([]: typeCompEvalue list)
 
 let listeAppels = ref []
+let listNotEQ = ref []
+
+ 
 
 let existeCompParCall num nom= 
   let rec aux = function 
@@ -2772,8 +2775,14 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
   IDBOUCLE (num, lt,lf,fic,lig) -> 
 	  if  (existeNid  num) then
 	  begin
+
+		  
 		 (* Printf.printf"Dans evalUneBoucleOuAppel de la boucle...%d \n"num;*)
 		  let nid = (rechercheNid num) in
+
+		 
+
+		  if  (getBoucleInfoB (nid.infoNid.laBoucle)).infoVariation.operateur = NE then listNotEQ := List.append [(fic,lig)] !listNotEQ;
 		  let asL = if !estDansBoucle = false then  (jusquaBaux affectations num  contexte lastLoopOrCall globale) 
 				    else (* (evalSIDB affectations num contexte )  *) contexte in
 		  estDansBoucleLast := true;
@@ -3547,7 +3556,7 @@ List.iter
 				  (getBoucleIdB nid.infoNid.laBoucle);
 			  let varDeBouclePred = !varDeBoucleBoucle in
 			  varDeBoucleBoucle :=n.varDeBoucleNid;
-
+			  if  (getBoucleInfoB (n.infoNid.laBoucle)).infoVariation.operateur = NE then listNotEQ := List.append [(fic,lig)] !listNotEQ;
 			  let info = getBoucleInfoB n.infoNid.laBoucle in
 			  let valBorne =	if isExeE then getNombreIt (n.infoNid.expressionBorne) 
 								  info.conditionConstante  info.typeBoucle  info.conditionI 
@@ -4017,19 +4026,9 @@ listeInstNonexe := [];
 aslAux := [];
 listCaseFonction := []
 
-let noteqLoop n =
-  match n.idBoucleN with
-  TBOUCLE(num, _, _,_,_,_,_,ficaux,ligaux) ->	
-	 if existeNid  num then
-	 begin
-	  let nid = rechercheNid num in
-	  if  (getBoucleInfoB (nid.infoNid.laBoucle)).infoVariation.operateur = NE then
-	 		Printf.eprintf "WARNING != test => bound is either this one or infini line %d into source %s \n" ligaux ficaux
-	end
-  |_->	()
 
 
-let listnoteqLoop l = List.iter (fun unNid -> noteqLoop unNid) l
+let listnoteqLoop l = List.iter (fun  (fic,lig) -> Printf.eprintf "WARNING != test => bound is either this one or infini line %d into source %s \n" lig fic ) l
 
 
 let printFile (result : out_channel)  (defs2 : file) need_analyse_defs=
@@ -4073,10 +4072,11 @@ print_AssosArrayIDsize !listAssosArrayIDsize;
 	  begin*)
 		  evaluerNbFunctionOfDoc  doc  !evalFunction;
 getOnlyBoolAssignment := false;
+		 listNotEQ := [];
 		  Printf.printf "\n\n\n DEBUT EVALUATION \n\n\n";
 		  evaluerFonctionsDuDoc doc ; 
 
-		  listnoteqLoop			!docEvalue.maListeNidEval;
+		  listnoteqLoop		!listNotEQ;
 		  (*afficheNidEval !docEvalue.maListeNidEval; *)
  		  Printf.printf "\n\n\n FIN EVALUATION \n\n\n";
 

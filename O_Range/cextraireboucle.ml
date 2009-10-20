@@ -1314,18 +1314,12 @@ let traiterNEQ init borne var c isBOOL=(*ATTENTION PEUT ETRE INFINI*)
 		match !estPosInc with
 			INCVIDE  -> (CONSTANTE , NOTHING, NOTHING, NE, false, var, c)(* case constant = 1 then si init = borne 1 sinon 0*)
 			|POS -> 
-if isBOOL = false then
-begin
-	Printf.printf "ATTENTION NEQ remplace par %s<...borne ok ou infinie\n" var; print_expression (BINARY(LT, VARIABLE(var), borne)) 0;flush(); new_line();space(); new_line();
-end;
+ 
 (CROISSANT , init,   BINARY (SUB, borne, !vEPSILON) , NE, false, var, BINARY(NE, VARIABLE(var), borne))
 
 			(* case constant > 1  si init = borne toujours sinon 0*)
 			|NEG ->  (*isExactForm := false;(NONMONOTONE , NOTHING, NOTHING, NE, true, var, c)*) 
-if isBOOL = false then
-begin
-Printf.printf "ATTENTION NEQ remplace par %s>...borne ok ou infinie\n" var;print_expression (BINARY(GT, VARIABLE(var), borne)) 0;flush(); new_line();space(); new_line();
-end;
+ 
 (DECROISSANT , BINARY (ADD, borne, !vEPSILON) ,   init , NE, false, var, BINARY(NE, VARIABLE(var), borne))
 			|_ ->   (CROISSANT , init, borne, NE, true, var, c)
 		(*end*)
