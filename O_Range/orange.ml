@@ -4017,6 +4017,19 @@ listeInstNonexe := [];
 aslAux := [];
 listCaseFonction := []
 
+let noteqLoop n =
+  match n.idBoucleN with
+  TBOUCLE(num, _, _,_,_,_,_,ficaux,ligaux) ->	
+	 if existeNid  num then
+	 begin
+	  let nid = rechercheNid num in
+	  if  (getBoucleInfoB (nid.infoNid.laBoucle)).infoVariation.operateur = NE then
+	 		Printf.eprintf "WARNING != test => bound is either this one or infini line %d into source %s \n" ligaux ficaux
+	end
+  |_->	()
+
+
+let listnoteqLoop l = List.iter (fun unNid -> noteqLoop unNid) l
 
 
 let printFile (result : out_channel)  (defs2 : file) need_analyse_defs=
@@ -4032,6 +4045,10 @@ let printFile (result : out_channel)  (defs2 : file) need_analyse_defs=
   
   if need_analyse_defs
   	then  analyse_defs defs2; (*step 1*)
+
+ 
+
+
 
   (*afficherNidDeBoucle doc;	*)
   (*Printf.printf "les globales\n";
@@ -4058,6 +4075,8 @@ print_AssosArrayIDsize !listAssosArrayIDsize;
 getOnlyBoolAssignment := false;
 		  Printf.printf "\n\n\n DEBUT EVALUATION \n\n\n";
 		  evaluerFonctionsDuDoc doc ; 
+
+		  listnoteqLoop			!docEvalue.maListeNidEval;
 		  (*afficheNidEval !docEvalue.maListeNidEval; *)
  		  Printf.printf "\n\n\n FIN EVALUATION \n\n\n";
 
@@ -4069,4 +4088,5 @@ getOnlyBoolAssignment := false;
   flush (); 
   result   
   end;;
+  
   

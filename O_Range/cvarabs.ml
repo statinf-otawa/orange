@@ -5043,12 +5043,11 @@ Printf.printf "les as de la boucle avant transfo \n";*)
 
 					let affectSortie = evalStore s [] [] in	
 					let entrees = (match e with BEGIN(eee) -> eee |_->[]) in
+					let isAbs = match corpsAbs with CORPS(_) -> if List.mem_assoc  nomFonc !alreadyEvalFunctionAS then true else false 
+								| ABSSTORE(_) -> true in
 
-
-					 
-					let isAbs = match corpsAbs with CORPS(_) -> if List.mem_assoc  nomFonc !alreadyEvalFunctionAS then true else false | ABSSTORE(_) -> true in
-
-					let absStore = match corpsAbs with ABSSTORE(a) -> a | _ -> if List.mem_assoc  nomFonc !alreadyEvalFunctionAS then List.assoc nomFonc !alreadyEvalFunctionAS else [] in
+					let absStore = match corpsAbs with ABSSTORE(a) -> a | _ -> 
+									if List.mem_assoc  nomFonc !alreadyEvalFunctionAS then List.assoc nomFonc !alreadyEvalFunctionAS else [] in
 		
 					if varB = "" then
 					begin

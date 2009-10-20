@@ -1309,13 +1309,24 @@ let traiterEQ init borne var c =
 			|_ ->  (CROISSANT , (CONSTANT (CONST_INT "1")), NOTHING, EQ, true, var, c)
 		(*end*)
 
-let traiterNEQ init borne var c =
+let traiterNEQ init borne var c isBOOL=(*ATTENTION PEUT ETRE INFINI*)
 
 		match !estPosInc with
 			INCVIDE  -> (CONSTANTE , NOTHING, NOTHING, NE, false, var, c)(* case constant = 1 then si init = borne 1 sinon 0*)
-			|POS -> (CROISSANT , init,   BINARY (SUB, borne, !vEPSILON) , LT, false, var, BINARY(LT, VARIABLE(var), borne))
+			|POS -> 
+if isBOOL = false then
+begin
+	Printf.printf "ATTENTION NEQ remplace par %s<...borne ok ou infinie\n" var; print_expression (BINARY(LT, VARIABLE(var), borne)) 0;flush(); new_line();space(); new_line();
+end;
+(CROISSANT , init,   BINARY (SUB, borne, !vEPSILON) , NE, false, var, BINARY(NE, VARIABLE(var), borne))
+
 			(* case constant > 1  si init = borne toujours sinon 0*)
-			|NEG ->  (*isExactForm := false;(NONMONOTONE , NOTHING, NOTHING, NE, true, var, c)*) (DECROISSANT , BINARY (ADD, borne, !vEPSILON) ,   init , GT, false, var, BINARY(GT, VARIABLE(var), borne))
+			|NEG ->  (*isExactForm := false;(NONMONOTONE , NOTHING, NOTHING, NE, true, var, c)*) 
+if isBOOL = false then
+begin
+Printf.printf "ATTENTION NEQ remplace par %s>...borne ok ou infinie\n" var;print_expression (BINARY(GT, VARIABLE(var), borne)) 0;flush(); new_line();space(); new_line();
+end;
+(DECROISSANT , BINARY (ADD, borne, !vEPSILON) ,   init , NE, false, var, BINARY(NE, VARIABLE(var), borne))
 			|_ ->   (CROISSANT , init, borne, NE, true, var, c)
 		(*end*)
 	
@@ -1424,7 +1435,7 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 			| EQ ->  
 					let ((*isindirect,inc,var, before*)isindirect,inc,_,_,isMultiInc) =  getLoopVarInc var inst in		
 					if isMultiInc then isExactForm := false;
-					if isindirect then Printf.printf "EQ cas 2 indirect change\n";
+					(*if isindirect then Printf.printf "EQ cas 2 indirect change\n";*)
 							(match  inc  with 
 							NODEFINC -> 
 								 
@@ -1437,16 +1448,16 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 			
 			| NE -> let ((*isindirect,inc,var, before*)isindirect,inc,_,_,isMultiInc) =  getLoopVarInc var inst in
 					if isMultiInc then isExactForm := false;
-					if isindirect then Printf.printf "NE cas 2 indirect change\n";
+					(*if isindirect then Printf.printf "NE cas 2 indirect change\n";*)
 
 					(match  inc  with 
 							NODEFINC -> (* pas trouvé d'increment peut être condition = var booleenne *)
 								
 								let (isAssignedOK, assign, isConditionnal, ltrue, lfalse , ifvar) = containBoolxAssignementBody var  inst inst in
 								if isAssignedOK then 
-									(*let (_,_,_,_,_,_,_, _,_) =getBooleanAssignementInc  assign isConditionnal ltrue lfalse  init var op exp1 exp2 liste avant dans cte t c lv l inst ifvar in ()*)(CROISSANT , NOTHING, NOTHING, NE, true, var, ne) else traiterNEQ init ne2  var ne
+									(*let (_,_,_,_,_,_,_, _,_) =getBooleanAssignementInc  assign isConditionnal ltrue lfalse  init var op exp1 exp2 liste avant dans cte t c lv l inst ifvar in ()*)(CROISSANT , NOTHING, NOTHING, NE, true, var, ne) else traiterNEQ init ne2  var ne true
 
-							|_->traiterNEQ init ne2  var ne)
+							|_->traiterNEQ init ne2  var ne false)
 					
 			| _-> isExactForm := false;(*| BAND -> | XOR ->| BOR ->*) if !vDEBUG then Printf.printf   "\terreur test for non traite\n";
 					(NONMONOTONE , NOTHING, NOTHING, XOR,true, var, BINARY(op,exp1, exp2))
@@ -1498,9 +1509,9 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 								let (isAssignedOK, assign, isConditionnal, ltrue, lfalse , ifvar) = containBoolxAssignementBody var  inst inst in
 								if isAssignedOK then 
 									(*let (_,_,_,_,_,_,_, _,_) =getBooleanAssignementInc  assign isConditionnal ltrue lfalse  init var op exp1 exp2 liste avant dans cte t c lv l inst ifvar in ()*)
-										(CROISSANT , NOTHING, NOTHING, NE, true, var, ne) else traiterNEQ init ne1 var ne
+										(CROISSANT , NOTHING, NOTHING, NE, true, var, ne) else traiterNEQ init ne1 var ne true
 
-							|_->traiterNEQ init ne1 var ne)
+							|_->traiterNEQ init ne1 var ne false)
 					
 						   
 					| _-> isExactForm := false;(* | BAND -> | XOR ->| BOR ->*) if !vDEBUG then Printf.printf   "\terreur test for non traite\n";
@@ -2341,6 +2352,8 @@ print_expression incr 0; space() ;flush() ;new_line(); flush();new_line();
 
 	let infoVar =   new_variation borneInf borneSup  incr typevar  operateur false in
 
+(*if operateur != NE *)
+
 	let nb = expVaToExp (getNombreIt sup (typevar=CONSTANTE||cte) t cond multiple [] (getIsAddInc inc)  infoVar v []) in
 	let borne = (getBorneBoucleFor t nb inf incr (getIsAddInc inc) isindirect) in
 (*Printf.printf"traiterUn v = %s vari = %s\n" v vari;
@@ -2357,9 +2370,11 @@ and construireCondition crois1 bInf1  bSup1  oper1 mult1 v1 cd1 crois2  bInf2  b
 	let (nb1, inc1, indirect1,b1) = traiterUn  crois1 bInf1 bSup1  oper1 mult1 v1 cd1 avant dans cte t  inst in
 	let (nb2, inc2, indirect2,b2) = traiterUn  crois2 bInf2  bSup2 oper2 mult2 v2 cd2 avant dans cte t inst in
 
-	if inc1 = NOTHING  then begin (* Printf.printf"construireCondition inc1 not def\n";*) isExactForm := false; (crois2, bInf2, bSup2, oper2,mult2, v2, BINARY(AND, cd1,cd2)) end
+	if inc1 = NOTHING  then begin (* Printf.printf"construireCondition inc1 not def\n";*) 
+			isExactForm := false; (crois2, bInf2, bSup2, oper2,mult2, v2, BINARY(AND, cd1,cd2)) end
 	else
-		if  inc2 = NOTHING then begin  (*  Printf.printf"construireCondition inc 2 not def\n";*) isExactForm := false;(crois1, bInf1, bSup1, oper1,mult1, v1, BINARY(AND, cd1,cd2 )) end
+		if  inc2 = NOTHING then begin  
+		(*  Printf.printf"construireCondition inc 2 not def\n";*) isExactForm := false;(crois1, bInf1, bSup1, oper1,mult1, v1, BINARY(AND, cd1,cd2 )) end
 		else 
 			if v1 = v2 then
 			begin (*Printf.printf"construireCondition egal %s\n" v1;*)
@@ -2409,10 +2424,12 @@ print_expression bSup 0; space() ;flush() ;new_line(); flush();new_line(); *)
 				end
 			else
 			begin (*Printf.printf"construireCondition diff\n";*)
-				if  nb1 = NOTHING then begin isExactForm := false; (crois2, bInf2, bSup2, oper2,mult2, v2, BINARY(AND, cd1,cd2)) end
+				if  nb1 = NOTHING || oper1 = NE then 
+				begin isExactForm := false; (crois2, bInf2, bSup2, oper2,mult2, v2, BINARY(AND, cd1,cd2)) end
 				else
 				begin
-					if  nb2 = NOTHING then begin expressionIncFor := inc1;  isExactForm := false;(crois1, bInf1, bSup1, oper1,mult1, v1, BINARY(AND, cd1,cd2 )) end
+					if  nb2 = NOTHING || oper2 = NE then 
+					begin expressionIncFor := inc1;  isExactForm := false;(crois1, bInf1, bSup1, oper1,mult1, v1, BINARY(AND, cd1,cd2 )) end
 					else((*Printf.printf"construireCondition diff\n";*) (	CROISSANT, CONSTANT (CONST_INT "0"), (*CONSTANT (CONST_INT "1")*)
 							BINARY (SUB, CALL (VARIABLE("MINIMUM") , List.append [ b1] [b2] ), CONSTANT (CONST_INT "1")),
 							  LT,mult2, lv, BINARY(AND, cd1,cd2)))
@@ -2588,6 +2605,8 @@ and changeExpInto0 expToChange exp  =
 
 
 and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple appel typeopPlusouMUL infoVar var globales=
+let isNE = infoVar.operateur =NE in
+
 	(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var;*)
 	let varCond = match conditionI with VARIABLE(v)->v |_-> "NODEF" in
 	(*print_expVA (EXP(conditionI)); new_line ();*)
@@ -2687,9 +2706,17 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 					let expune= evalArrayTravel  bs  appel globales une bu in
 					let isInt = if  ( typeInf = INTEGERV && typeSup  = INTEGERV && typeInc  = INTEGERV)   then true else false in
 
+
+				if isNE then
+				begin
+					if isInt then 	 (applyStoreVA(applyStoreVA   (EXP(  remplacerValPar  "EPSILON" !vEPSILONINT expune)) appel)globales)  	 
+					 
+					else	(applyStoreVA(applyStoreVA   (EXP(   expune)) appel)globales)
+				end
+				else
 					if isInt then 	 (applyStoreVA(applyStoreVA   (EXP(  remplacerValPar  "EPSILON" !vEPSILONINT expune)) appel)globales)  	 
 					(*if sensinc = NDEF || (op != NE) then  *)
-					else	(applyStoreVA(applyStoreVA   (EXP( (*remplacerValPar  "EPSILON" valEPSILON*) expune)) appel)globales)
+					else	(applyStoreVA(applyStoreVA   (EXP(   expune)) appel)globales)
 
 					
 				end
@@ -2968,7 +2995,7 @@ match op with EQ|NE->true|_->false
 
 								print_expression inc 0;flush(); new_line();space(); new_line();
 								(*if before then Printf.printf "before\n" else Printf.printf "after\n";*)
-								(true,		varDep	,"dowhile", b = false, croissant, m, op)
+								(true,		varDep	,"dowhile", b = false, croissant, m, o)
 							)
 						else  (false, v, t, false,typev,multi,op)
 					end
@@ -3090,7 +3117,7 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 								(*Printf.printf "while... être booleen\n";*)
 								expressionIncFor := inc;
 								(*if before then Printf.printf "before\n" else Printf.printf "after\n";*)
-								(true,		varDep	,"dowhile", b = false, croissant, multiple, op)
+								(true,		varDep	,"dowhile", b = false, croissant, multiple, o)
 							)
 						else  (false, v, t, false,typev,multi,op)
 					end

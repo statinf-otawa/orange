@@ -42,13 +42,13 @@ let isMultiInc = ref false
 						
 let getAssosExactLoopInit name  = (List.assoc name !listAssosExactLoopInit)
 
-type increaseType = POSITIV|NEGATIV|MULTI|DIVI|NOTYPE (* +,-,*or/, NODEF*)
+type increaseType = POSITIV|NEGATIV|MULTI|DIVI|NOTYPE|NOTYPEMUL (* +,-,*or/, NODEF*)
 type increaseValue = NOINC|NODEFINC| INC of increaseType * expression
 
 let print_intType t =
 match t with
 	POSITIV->Printf.printf"POSITIV\n" |NEGATIV->Printf.printf"NEGATIV\n" |MULTI->Printf.printf"MULTI\n" 
-	|DIVI->Printf.printf"DIVI\n"|NOTYPE ->Printf.printf"NOTYPE\n" (* +,-,*or/, NODEF*)
+	|DIVI->Printf.printf"DIVI\n"|NOTYPE ->Printf.printf"NOTYPE\n"|NOTYPEMUL->Printf.printf"NOTYPEMUL\n" (* +,-,*or/, NODEF*)
 
 let getIncValue inc =
 match inc with INC(_,v)->v	|_->NOTHING
@@ -58,11 +58,11 @@ match inc with INC(t,_)->t	|_->NOTYPE
 
 let getIstMulInc inc =
 match inc with
-	INC(MULTI,_)|INC(DIVI,_)->true |_->false
+	INC(MULTI,_)|INC(DIVI,_)|INC(NOTYPEMUL,_)->true |_->false
 
 let getIsAddInc inc =
 match inc with
-	INC(MULTI,_)|INC(DIVI,_) ->false |_->true
+	INC(MULTI,_)|INC(DIVI,_)|INC(NOTYPEMUL,_)->false |_->true
 
 
 let haveTheSameType inc1 inc2 =
@@ -74,7 +74,7 @@ match (getIncType inc1) with
 |NEGATIV->(getIncType inc2)=POSITIV
 |MULTI->(getIncType inc2)=DIVI
 |DIVI->(getIncType inc2)=MULTI
-|NOTYPE ->false
+|NOTYPE |NOTYPEMUL->false
 
 let isCroissant inc1   =
 match (getIncType inc1) with
@@ -82,7 +82,7 @@ match (getIncType inc1) with
 |NEGATIV->  -1
 |MULTI->1
 |DIVI-> -1
-|NOTYPE ->0
+|NOTYPE|NOTYPEMUL ->0
 
 
 let rec containtMINIMUMCALL exp =
@@ -105,7 +105,10 @@ let rec rechercheInc var exp before=
 	(*Printf.printf"rechercheInc\n"; 
 	print_expression exp 0;new_line(); flush();new_line(); flush();new_line(); flush();new_line(); flush();space();new_line(); flush();space();*)
 	let val1 = calculer (EXP exp) !infoaffichNull [] (-1) in 
-	if val1 = NOCOMP  then NOTHING
+	if val1 = NOCOMP  then 
+	begin (*Printf.printf"NOCOMP\n"; *)
+		NOTHING
+	end
 	else
 	begin
 		if (estVarDsExpEval var val1 = false)  then (*exp*) NOTHING
@@ -117,18 +120,25 @@ let rec rechercheInc var exp before=
 				(*	Printf.printf"rechercheInc affine\n";*) 
 				let (expa, expb) = if estDefExp a = false  || estDefExp b = false  then
 									begin
-										getOnlyBoolAssignment := false; 
+										(*getOnlyBoolAssignment := false;*)
 										(* set to change abstract interpretation of if to find Bool condition loop increment*)
 										let las = evalStore (new_instBEGIN(before)) [] [] in
 											(*afficherListeAS las;*)
-										getOnlyBoolAssignment := true;
+										(*getOnlyBoolAssignment := true;*)
 										applyStoreVA (EXP(expressionEvalueeToExpression a)) las ,
 										applyStoreVA (EXP(expressionEvalueeToExpression b)) las	 
 									end 
 									else ((EXP(expressionEvalueeToExpression a)),(EXP(expressionEvalueeToExpression b)))
 									in 
 				(* because inc has to be menimized => (-1))*)
-				let (var1, var2) = (  calculer (expa) !infoaffichNull [] (-1)   , calculer (expb) !infoaffichNull [] (-1) ) in
+				hasSETCALL := false;
+			
+				let var1 = calculer (expa) !infoaffichNull [] (-1) in 
+				let isMulti1 = !hasSETCALL in
+				hasSETCALL := false;
+				let var2 = calculer (expb) !infoaffichNull [] (-1) in
+				let isMulti2 = !hasSETCALL in
+				if isMulti1 || isMulti2 then isMultiInc := true;
 				(*		Printf.printf"rechercheInc affine\n"; 
 					print_expression exp 0;new_line(); flush();new_line(); flush();new_line(); flush();new_line(); flush();space();new_line(); flush();
 					print_expTerm val1  ;new_line(); flush();new_line(); flush();new_line(); flush();new_line(); flush();space();new_line(); flush();
@@ -160,12 +170,12 @@ let rec rechercheInc var exp before=
 							begin
 								estPosInc := POS ;	(*Printf.printf"div or mult inc\n"; *)
 								if estStricPositif varMoinsUn then val1
-								else begin estPosInc := NEG ;(*Printf.printf"div inc\n"; *)(* BINARY (DIV, CONSTANT  (CONST_INT "1"),*) val1(* ) *) end
+								else begin estPosInc := NEG ;  (* BINARY (DIV, CONSTANT  (CONST_INT "1"),*) val1(* ) *) end
 							end
 						end
 						else 
 						begin
-							estPosInc := NDEF;(*Printf.printf"rechercheInc affine var1 struct pos et val2 non nul\n"; *)
+							estPosInc := NDEF;(* NOTYPEMUL Printf.printf"rechercheInc affine var1 struct pos et val2 non nul\n"; *)
 						    val1
 						end
 					end
@@ -303,8 +313,10 @@ and getIndirectIncrease var exp inst las asAs completList =
 	else
 	 match exp with
 		VARIABLE (v) -> 
-			
+let pred = !getOnlyBoolAssignment in
+			getOnlyBoolAssignment := true;
 			let cas =evalStore (new_instBEGIN(completList)) [] [] in
+			getOnlyBoolAssignment := pred;
 			let assignj = expVaToExp(rechercheAffectVDsListeAS var cas) in
 						
 			(match assignj with
@@ -346,7 +358,7 @@ and getInc var assign inst las asAs completList beforei=
 			if isNoDef inc then (false,NODEFINC,"others", before) 
 			else if isplus then ( (*Printf.printf "inc var dependent\n" ; print_expression inc 0; new_line();flush();*)
 								(isIndirect,INC(NOTYPE,  inc),nvar, before) )
-				 else (false,NODEFINC,"others", before) 
+				 else ((*Printf.printf"isIndirect DIVI or MUL\n"; *)opEstPlus:= false;	(isIndirect,INC(NOTYPEMUL,  inc),nvar, before))
 		else
 		begin 
 			if isplus (*op +or -*) then 
@@ -381,23 +393,23 @@ match inc1 with
 	INC(POSITIV,v1)->
    			(match inc2 with INC(POSITIV,v2) -> INC(POSITIV,(BINARY(ADD,v1,v2)))
 							| INC(NEGATIV,v2) -> 
-								let v1Moinsv2 = calculer  (EXP(BINARY(SUB, v1,  v2))) !infoaffichNull [] (-1) in
-								if estStricPositif v1Moinsv2 then INC(POSITIV,(BINARY(SUB,v1,v2)))
+								let v1Moinsv2 = calculer  (EXP(BINARY(ADD, v1,  v2))) !infoaffichNull [] (-1) in
+								if estStricPositif v1Moinsv2 then INC(POSITIV,(BINARY(ADD,v1,v2)))
 								else
 									if estNul v1Moinsv2 then	NOINC
-									else  INC(NEGATIV,(BINARY(SUB,v1,v2)))
+									else  INC(NEGATIV,(BINARY(ADD,v1,v2)))
 							| INC(NOTYPE,v2) ->   INC(NOTYPE,(BINARY(ADD,v1,v2)))								
 							| NOINC -> inc1
 							|_->NODEFINC)
 	| INC(NEGATIV,v1) ->
 		 (	match inc2 with INC(NEGATIV,v2) -> INC(NEGATIV,(BINARY(ADD,v1,v2)))
 							| INC(POSITIV,v2) -> 
-								let v1Moinsv2 = calculer  (EXP(BINARY(SUB, v1,  v2))) !infoaffichNull [] (-1) in
-								if estStricPositif v1Moinsv2 then INC(POSITIV,(BINARY(SUB,v2,v1)))
+								let v1Moinsv2 = calculer  (EXP(BINARY(ADD, v1,  v2))) !infoaffichNull [] (-1) in
+								if estStricPositif v1Moinsv2 then INC(POSITIV,(BINARY(ADD,v2,v1)))
 								else
 									if estNul v1Moinsv2 then	NOINC
-									else  INC(NEGATIV,(BINARY(SUB,v2,v1)))
-							| INC(NOTYPE,v2) ->   INC(NOTYPE,(BINARY(SUB,v2,v1)))		
+									else  INC(NEGATIV,(BINARY(ADD,v2,v1)))
+							| INC(NOTYPE,v2) ->   INC(NOTYPE,(BINARY(ADD,v2,v1)))		
 							| NOINC -> inc1
 							|_->NODEFINC)
 	
@@ -406,32 +418,37 @@ match inc1 with
 	| INC(MULTI,v1)->
    			(match inc2 with INC(MULTI,v2) -> INC(MULTI,(BINARY(MUL,v1,v2)))
 							| INC(DIVI,v2) -> 
-								let v1Divv2 = calculer  (EXP(BINARY(DIV, v1,  v2))) !infoaffichNull [] (-1) in
+								let v1Divv2 = calculer  (EXP(BINARY(MUL, v1,  v2))) !infoaffichNull [] (-1) in
 								let varMoinsUn = (evalexpression (Diff( v1Divv2,  ConstInt("1")))) in
 								if estStricPositif v1Divv2 then
 								begin
 									if estNul varMoinsUn then  NOINC 
-									else   if estStricPositif varMoinsUn then   INC(MULTI, (BINARY(DIV, v1,  v2))) 
-											else   INC(DIVI, (BINARY(DIV, v1,  v2))) 
+									else   if estStricPositif varMoinsUn then   INC(MULTI, (BINARY(MUL, v1,  v2))) 
+											else   INC(DIVI, (BINARY(MUL, v1,  v2))) 
 								end
 								else  NODEFINC
+							| INC(NOTYPEMUL,v2)->INC(NOTYPEMUL,(BINARY(MUL,v1,v2)))
 							| NOINC -> inc1
 							|_->NODEFINC)
 	| INC(DIVI,v1)->
    			(match inc2 with INC(DIVI,v2) -> INC(DIVI,(BINARY(MUL,v1,v2)))
 							| INC(MULTI,v2) -> 
-								let v1Divv2 = calculer  (EXP(BINARY(DIV, v2,  v1))) !infoaffichNull [] (-1) in
+								let v1Divv2 = calculer  (EXP(BINARY(MUL, v2,  v1))) !infoaffichNull [] (-1) in
 								let varMoinsUn = (evalexpression (Diff( v1Divv2,  ConstInt("1")))) in
 								if estStricPositif v1Divv2 then
 								begin
 									if estNul varMoinsUn then  NOINC 
-									else   if estStricPositif varMoinsUn then   INC(MULTI, (BINARY(DIV, v2,  v1))) 
-											else   INC(DIVI, (BINARY(DIV, v2,  v1))) 
+									else   if estStricPositif varMoinsUn then   INC(MULTI, (BINARY(MUL, v2,  v1))) 
+											else   INC(DIVI, (BINARY(MUL, v2,  v1))) 
 								end
 								else  NODEFINC
+							| INC(NOTYPEMUL,v2)->INC(NOTYPEMUL,(BINARY(MUL,v1,v2)))
 							| NOINC -> inc1
 							|_->NODEFINC)
-	| INC(NOTYPE,v1) ->  (	match inc2 with  NOINC -> inc1 | INC(NOTYPE,v2) ->   INC(NOTYPE,BINARY(ADD,v2,v1))		|_->NODEFINC)
+	| INC(NOTYPEMUL,v1)->	(match inc2 with INC(DIVI,v2) | INC(MULTI,v2) | INC(NOTYPEMUL,v2)-> INC(NOTYPEMUL,(BINARY(MUL,v1,v2)))
+							| NOINC -> inc1
+							|_->NODEFINC)
+	| INC(NOTYPE,v1) ->  (	match inc2 with  NOINC -> inc1 | INC(_,v2) ->   INC(NOTYPE,BINARY(ADD,v2,v1))		|_->NODEFINC)
 
 
 
@@ -454,9 +471,6 @@ match inc1 with
 
 
 and joinAlternate  x inc1 inc2 inter1 inter2=
-
-
-
 match inc1 with 
 	INC(POSITIV,v1)->
    			(match inc2 with INC(POSITIV,v2) -> isMultiInc := true;INC(POSITIV,CALL (VARIABLE("MINIMUM") , (List.append [v1] [v2] )))
@@ -668,11 +682,12 @@ and extractIncOfLoop x inst varL nbItL completList beforei=
 
 
 and getIncOfCall x call completList s beforei=
-if List.mem x !alreadyAffectedGlobales then withoutTakingCallIntoAccount:= false;
+let predval = !withoutTakingCallIntoAccount in
+if List.mem x !alreadyAffectedGlobales then withoutTakingCallIntoAccount:= false else withoutTakingCallIntoAccount := true;
 let affectSortie = evalStore s [] [] in	
-
+if existAffectVDsListeAS x affectSortie then withoutTakingCallIntoAccount:= false  else withoutTakingCallIntoAccount := true;
 let las = evalStore call [] [] in
-if existAffectVDsListeAS x affectSortie then withoutTakingCallIntoAccount:= false;
+
 let inc = 
 if existAffectVDsListeAS x las then
 begin
@@ -680,7 +695,7 @@ begin
 			getInc x extinc [call] !listeASCourant true completList beforei
 end
 else (false,NOINC,x, false) in
-withoutTakingCallIntoAccount := true;
+withoutTakingCallIntoAccount := predval;
 inc
 
 
@@ -690,10 +705,11 @@ inc
 
 
 and getLoopVarInc v inst =
- 
+		let pred = !getOnlyBoolAssignment in
+ 		getOnlyBoolAssignment := false;
 		isMultiInc := false;(*Printf.printf "getincrement %s \n "v;*)
 		let (isindirect,inc,var, before) = getIncOfInstList v inst inst (INTERVALLE(INFINI,INFINI)) [] in
-
+		getOnlyBoolAssignment := pred;
 		(* IDEM match  inc  with 
 				NODEFINC -> (* pas trouvé d'increment peut être condition = var booleenne *)
 						let (isAssignedOK, assign, isConditionnal, ltrue, lfalse) = containBoolxAssignementBody x  inst inst in
