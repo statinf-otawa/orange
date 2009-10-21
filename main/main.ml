@@ -38,8 +38,8 @@ end
 
 (* === Options management === *)
 let banner =
-	"orange V1.0 (02/14/04)\n" ^
-	"Copyright (c) 2004, Hugues Cass� <hugues.casse@laposte.net>\n\n" ^
+	"orange V1.0\n" ^
+	"Copyright (c) 2009, Marianne de Michiel <michiel@irit.fr>\n\n" ^
 	"SYNTAX:\n" ^
 	"Automated full analysis:\n" ^
 	"\torange [options] -auto [-allow-pessimism] files... entry-point [functions...|-funlist listfile] [-o flowfacts-file] [-outdir /tmp]\n" ^

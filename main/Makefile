@@ -11,6 +11,6 @@ OCAMLC_LDFLAGS += -g
 OCAML_INC += ../../frontc/frontc ../O_Range ../inst/lib/ ../graph 
 OCAML_LIB += unix str ../../frontc/frontc/frontc ../O_Range/orange ../graph/resumeforgraph 
 
-$(eval $(call ocaml_prog,main,$(SOURCES)))
+$(eval $(call ocaml_prog,orange,$(SOURCES)))
 
 include ../Makefile.tail

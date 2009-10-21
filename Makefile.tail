@@ -63,7 +63,7 @@ _subdirs_install:
 ifdef SUBDIRS
 	@for d in $(SUBDIRS); do \
 		cd $$d; \
-		$(MAKE) install; \
+		$(MAKE) install || exit 1; \
 		cd ..; \
 	done
 endif

@@ -60,6 +60,19 @@ define ocaml_sources
 endef
 
 # Library compilation
+
+# ocaml_install_lib root_name, extension, cmis
+define ocaml_install_lib
+
+_INSTALL += _install_$(1)_$(2)
+_install_$(1)_$(2):
+	install -d $(OCAML_SITE)/$(1)
+	install $(1).$(2) $(3) $(OCAML_SITE)/$(1)
+
+endef
+
+
+# ocaml_byte_code_lib root_name, sources, [no_install]
 define ocaml_byte_code_lib
 
 _ALL += $(1).cma 
@@ -78,14 +91,16 @@ _CLEAN += $$($(1)_CMO) \
 	$$(patsubst %.mly,%.mli,$$($(1)_MLYO))
 _DIST += $(2)
 _BINARY_DIST += $(1).cma $(patsubst %.cmo,%.cmi,$$($(1)_CMO))
-_INSTALL += _install_$(1)_CMA
 
 $(1).cma: $$($(1)_CMO)
 	$$(OCAMLC) -a $$($(1)_LDFLAGS) $$(OCAMLC_LDFLAGS) -o $$@ $$($(1)_CMO) $$(OCAMLC_LIBS)
 
-_install_$(1)_CMA:
-	install -d $(OCAML_SITE)/$(1)
-	install $(1).cma $$($(1)_CMIO) $(OCAML_SITE)/$(1)
+$(if $(findstring no_install,$(3)),,$(call ocaml_install_lib,$(1),cma,$$($(1)_CMIO)))
+
+#_INSTALL += _install_$(1)_CMA
+#_install_$(1)_CMA:
+#	install -d $(OCAML_SITE)/$(1)
+#	install $(1).cma $$($(1)_CMIO) $(OCAML_SITE)/$(1)
 	
 endef
 
@@ -108,24 +123,27 @@ _CLEAN += $$($(1)_CMX) \
 	$$(patsubst %.mly,%.mli,$$($(1)_MLYX))
 _DIST += $(2)
 _BINARY_DIST += $(1).cmxa $(1).a $(patsubst %.cmx,%.cmi,$$($(1)_CMX))
-_INSTALL += _install_$(1)_CMXA
 
 $(1).cmxa: $$($(1)_CMX)
 	$$(OCAMLOPT) -a $$($(1)_LDFLAGS) $$(OCAMLOPT_LDFLAGS) -o $$@ $$($(1)_CMX) $$(OCAMLOPT_LIBS)
 
-_install_$(1)_CMXA:
-	install -d $(OCAML_SITE)/$(1)
-	install $(1).cmxa $(1).a $$($(1)_CMIX) $(OCAML_SITE)/$(1)
+$(if $(findstring no_install,$(3)),,$(call ocaml_install_lib,$(1),cmxa,$$($(1)_CMIX)))
+
+#_INSTALL += _install_$(1)_CMXA
+#_install_$(1)_CMXA:
+#	install -d $(OCAML_SITE)/$(1)
+#	install $(1).cmxa $(1).a $$($(1)_CMIX) $(OCAML_SITE)/$(1)
 	
 endef
 
+# ocaml_lib root_name, sources, [byte_code, native, no_install]
 define ocaml_lib
 $(if $(findstring byte_code,$(3)),\
-	$(call ocaml_byte_code_lib,$(1),$(2)),\
+	$(call ocaml_byte_code_lib,$(1),$(2),$(3)),\
 	$(if $(findstring native,$(3)),\
-		$(call ocaml_native_lib,$(1),$(2)),\
-		$(call ocaml_byte_code_lib,$(1),$(2))\
-		$(call ocaml_native_lib,$(1),$(2))\
+		$(call ocaml_native_lib,$(1),$(2),$(3)),\
+		$(call ocaml_byte_code_lib,$(1),$(2),$(3))\
+		$(call ocaml_native_lib,$(1),$(2),$(3))\
 ))
 endef
 
