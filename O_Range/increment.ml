@@ -448,7 +448,8 @@ match inc1 with
 	| INC(NOTYPEMUL,v1)->	(match inc2 with INC(DIVI,v2) | INC(MULTI,v2) | INC(NOTYPEMUL,v2)-> INC(NOTYPEMUL,(BINARY(MUL,v1,v2)))
 							| NOINC -> inc1
 							|_->NODEFINC)
-	| INC(NOTYPE,v1) ->  (	match inc2 with  NOINC -> inc1 | INC(_,v2) ->   INC(NOTYPE,BINARY(ADD,v2,v1))		|_->NODEFINC)
+	| INC(NOTYPE,v1) ->  (	match inc2 with  NOINC -> inc1 | INC(POSITIV,v2) | INC(NEGATIV,v2) | INC(NOTYPE,v2)->   INC(NOTYPE,BINARY(ADD,v2,v1))		
+							|_->NODEFINC)
 
 
 

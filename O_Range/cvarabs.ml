@@ -1512,49 +1512,51 @@ and  calculer expressionVA ia l sign =
 				print_expression exp2 0;new_line () 
 			end;
 			let haspre = !hasSETCALL in
-			hasSETCALL := false;
-			
-			let val1 = (calculer (EXP(exp1 )) ia l sign ) in 
-			
-			let hasSETCALLval1 = !hasSETCALL in
 
+			hasSETCALL := false;
+			let val1 = (calculer (EXP(exp1 )) ia l sign ) in 
+			let hasSETCALLval1 = !hasSETCALL in
 			let (estDefVal1, estPosVal1) =(estDefExp val1, estPositif val1) in
 			
 
-			hasSETCALL := false;
-			
-			let val2 = calculer (EXP(exp2 )) ia l (sign * (signOf op )) in 
-			
+			hasSETCALL := false;			
+			let val2 = calculer (EXP(exp2 )) ia l (sign * (signOf op )) in 			
 			let (estDefVal2, estPosVal2) =(estDefExp val2, estPositif val2) in
-
-
-
-
-			
-
 			let hasSETCALLval2 = !hasSETCALL in
-
 
 			hasSETCALL := haspre || hasSETCALLval1 || hasSETCALLval2;
 
-
 			let isOkval1 =hasSETCALLval1 =false || (  estDefVal2  && estPosVal2) in
-			let val11 = if isOkval1 then val1 else( (calculer (EXP(exp1 )) ia l (sign*(-1) ))) in 
 			let isOkval2 =   hasSETCALLval2 =false || (  estDefVal1  && estPosVal1) in
-
-			let isOKAll =
-					 if 		(estDefVal1  = false && estDefVal2 = false) 
+			let isOKAll = if 		(estDefVal1  = false && estDefVal2 = false) 
 								|| 	(hasSETCALLval1 = false && hasSETCALLval2 = false) || (isOkval1 && isOkval2)then true else false in
 
 (* (estDefVal1  = false && estDefVal2 = false) QUE DOIT8ON RETOURNER ?*) 
+			let multop = (op=MUL)||(op=DIV)||(op=MOD)||(op=SHL)||(op=SHR) in
+
+			let (val22,estPosVal22,val11,estPosVal11,oksign) =
+			if multop then
+			begin
+				let (val22,estPosVal22) = if isOkval2 then (val2, estPosVal2) else 
+					( let v = (calculer (EXP(exp2 )) ia l ((sign * (signOf op ))*(-1)) ) in
+					  (v , estPositif v)	
+					) in 
+				let (val11,estPosVal11) = if isOkval1 then (val1, estPosVal1) else
+					(
+						let v = ( (calculer (EXP(exp1 )) ia l (sign*(-1) ))) in
+						(v , estPositif v)	
+					)  in 	
+
+				let oksign =  ((estPosVal22 = estPosVal2)||isOkval1) && ((estPosVal11 = estPosVal1(* || estNul val1 || estNul val11*))||isOkval2) in 
+
 			
-			let val22 = if isOkval2 then val2 else (calculer (EXP(exp2 )) ia l ((sign * (signOf op ))*(-1)) ) in 
-
-
-
-
+				if oksign = false && multop then Printf.printf "problème inversion de sign\n";
+				(val22,estPosVal22,val11,estPosVal11,oksign)
+			end
+			else  (val2, estPosVal2, val1, estPosVal1, true) in
+		 
 			(*Printf.printf"var2\n "; print_expTerm val2;new_line();*)
-			if estNoComp val1 || estNoComp val2 then 
+			if estNoComp val1 || estNoComp val2 || (multop && oksign = false )  then 
 				if op = OR then 
 					if estNoComp val1  then 
 					 	if estNoComp val2 then NOCOMP 
@@ -3480,6 +3482,20 @@ in
 	else begin (*Printf.printf "AS non exist \n" ;*) (e)end
 let hasSet = ref false
 
+
+let  unaryToConstConv e isplus=
+let unaryTOconst = (*expressionEvalueeToExpression( calculer (EXP(e))  !infoaffichNull [] 1) *) e in
+	match e with
+		CONSTANT(CONST_INT v)->if isplus then unaryTOconst else
+								CONSTANT(CONST_INT( Printf.sprintf "%d" (- (int_of_string  v))))
+								 
+		| CONSTANT(CONST_FLOAT v)-> if isplus then unaryTOconst else  
+				CONSTANT(RCONST_FLOAT(   (-. (float_of_string  v))))
+		| CONSTANT(RCONST_INT v1)-> if isplus then unaryTOconst else CONSTANT(RCONST_INT (- v1))
+		| CONSTANT(RCONST_FLOAT v1)-> if isplus then unaryTOconst else CONSTANT(RCONST_FLOAT (-. v1))
+		| _-> if isplus then e else UNARY (MINUS,e)
+
+
 let rec applyStore e a =
 match e with
 	NOTHING  -> NOTHING
@@ -3598,7 +3614,10 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 					)
 
 			|ADDROF->    	(match exp1 with  UNARY (MEMOF, next) ->    applyStore next a   |_->  UNARY (op, (applyStore exp1 a)))
-			|_->  UNARY (op, (applyStore exp1 a) )
+			|MINUS->unaryToConstConv (applyStore exp1 a) false
+			|PLUS-> unaryToConstConv (applyStore exp1 a) true
+			|_->  
+				UNARY (op, (applyStore exp1 a) )
 		)
 
 	| BINARY (op, exp1, exp2) 		-> 	(BINARY (op, (applyStore exp1 a), (applyStore exp2 a)))
@@ -4408,22 +4427,26 @@ begin
 
 end
 
-let isTrueConstant e=
+(*let isTrueConstant e=
 	match e with
 		CONSTANT(CONST_INT v1)| CONSTANT(CONST_FLOAT v1)| CONSTANT(CONST_CHAR v1)|CONSTANT(CONST_STRING v1)->(true,v1)
 		| CONSTANT(RCONST_INT v1)->(true,Printf.sprintf "%d"  v1)
 		| CONSTANT(RCONST_FLOAT v1)->(true,Printf.sprintf "%f"  v1)
 
+		| _-> (false,"")*)
+
+
+ let rec isTrueConstant e=
+	match e with
+		CONSTANT(CONST_INT v1)| CONSTANT(CONST_FLOAT v1)| CONSTANT(CONST_CHAR v1)|CONSTANT(CONST_STRING v1)->(true,v1)
+		| CONSTANT(RCONST_INT v1)->(true,Printf.sprintf "%d"  v1)
+		| CONSTANT(RCONST_FLOAT v1)->(true,Printf.sprintf "%f"  v1)
+		| UNARY(MINUS,  CONSTANT(CONST_INT v)) -> (true,( Printf.sprintf "%d" (- (int_of_string  v))))
+		| UNARY(MINUS,  CONSTANT(CONST_FLOAT v)) -> (true, Printf.sprintf "%f" (-. (float_of_string  v)))
+		| UNARY(MINUS,  CONSTANT(RCONST_INT v1)) -> (true,Printf.sprintf "%d"  (- v1))
+		| UNARY(MINUS,  CONSTANT(RCONST_FLOAT v1)) -> (true,Printf.sprintf "%f" (-. v1))
 		| _-> (false,"")
 
-let isSetTrueConstant e=
-	match e with
-		CALL(VARIABLE"SET", l)->
-			 let (arg1,arg2) =(List.hd  l,List.hd(List.tl l)) in
-			 let (isTruecteArg1, v1) =isTrueConstant arg1 in
-			 let (isTruecteArg2, v2) =isTrueConstant arg2 in
-			 (isTruecteArg1 && isTruecteArg2, v1, v2)
-		|_-> (false,"","")
 
 let isVarTrue  var e=
 	match e with
@@ -4433,7 +4456,7 @@ let isVarTrue  var e=
 
 let consSETASSIGN var firstAssign secondAssign =
 
-
+(*Printf.printf "consSETASSIGN %s\n" var;*)
 	match firstAssign with  
 		ASSIGN_SIMPLE (var, EXP(valeur1)) ->
 				(match secondAssign with 
@@ -4451,7 +4474,10 @@ let consSETASSIGN var firstAssign secondAssign =
 								end
 								else 
 								begin
-									 ASSIGN_SIMPLE (var,MULTIPLE)
+(*Printf.printf "consSETASSIGN 3 %s\n" var;*)
+									if isVarTrue  var valeur1  then ASSIGN_SIMPLE (var, EXP(valeur2))
+									else ASSIGN_SIMPLE (var,MULTIPLE)
+									 
 								end
 							|_-> ASSIGN_SIMPLE (var,MULTIPLE)
 				)
@@ -4479,7 +4505,11 @@ match firstAssign with
 													else ASSIGN_DOUBLE (var, e1,MULTIPLE)	
 
 											end
-											else  ASSIGN_DOUBLE (var, e1,MULTIPLE)
+											else  
+											begin
+												if isVarTrue  var valeur1  then  ASSIGN_DOUBLE (var, e1,  EXP(valeur2))
+													else ASSIGN_DOUBLE (var, e1,MULTIPLE)	
+											end
 										end
 
 										else  ASSIGN_DOUBLE (var, e1,MULTIPLE)
@@ -4509,7 +4539,11 @@ match firstAssign with
 																if isVarTrue  var valeur2  then  ASSIGN_MEM (var, e1,  EXP(valeur1))
 																else ASSIGN_MEM (var, e1,MULTIPLE)	
 														end
-														else ASSIGN_MEM (var, e1,MULTIPLE))
+														else
+														begin
+															 if isVarTrue  var valeur1  then  ASSIGN_MEM (var, e1,  EXP(valeur2))
+																else ASSIGN_MEM (var, e1,MULTIPLE)	
+														end)
 										end
 										else ASSIGN_MEM (var, e1,MULTIPLE)
 									  |_-> ASSIGN_MEM (var, e1,MULTIPLE))
@@ -4582,7 +4616,7 @@ let absMoinsT x a1 a2 =
 			begin
 				(*Printf.printf "MULTIPLE %s dans absMoinsT\n" x;*)
 				match ro1 with
-						ASSIGN_SIMPLE (_, _)-> (*Printf.printf "MULTIPLE %s dans absMoinsT\n" x;*) structmultidef x ro1 ro2
+						ASSIGN_SIMPLE (_, _)-> (*Printf.printf "MULTIPLE %s dans absMoinsT\n" x; *)structmultidef x ro1 ro2
 
 (*ASSIGN_SIMPLE (x, MULTIPLE)*)(*var MULTIPLE def voir si on
 						utilise le max*)
@@ -4641,7 +4675,7 @@ let res =
 				begin
 					(*Printf.printf "MULTIPLE %s dans absMoinsTEm\n" x;*)
 					match ro2 with
-							ASSIGN_SIMPLE (_, _)->(*Printf.printf "MULTIPLE %s dans absMoinsTEm\n" x;*)
+							ASSIGN_SIMPLE (_, _)->(*Printf.printf "MULTIPLE %s dans absMoinsTEm 2\n" x;*)
 								structmultidef x ro1  ro2 
 							(*ASSIGN_SIMPLE (x, MULTIPLE)*)(*var MULTIPLE def voir si on utilise le max*)
 						|	ASSIGN_DOUBLE (_, exp, _)-> consMultiSET x ro1 ro2
@@ -4691,7 +4725,7 @@ let res =
 									if !getOnlyBoolAssignment = true then ( ASSIGN_SIMPLE (x, MULTIPLE))
 									else if y = MULTIPLE || containtNothing (expVaToExp y )  then ( ASSIGN_SIMPLE (x,MULTIPLE))
 								  		 else 
-										 begin	(*Printf.printf "MULTIPLE %s dans absMoinsTEm 4\n" x;*)
+										 begin (*	Printf.printf "MULTIPLE %s dans absMoinsTEm 4\n" x;*)
 											match y with 
 												EXP(CONSTANT(_)) ->(*Printf.printf "produit 1 %s\n" x;
 														afficherAS (ro x a2);space();flush();new_line();*)
