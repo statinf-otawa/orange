@@ -42,17 +42,17 @@ let banner =
 	"Copyright (c) 2009, Marianne de Michiel <michiel@irit.fr>\n\n" ^
 	"SYNTAX:\n" ^
 	"Automated full analysis:\n" ^
-	"\torange [options] -auto [-allow-pessimism] files... entry-point [functions...|-funlist listfile] [-o flowfacts-file] [-outdir /tmp]\n" ^
-	"\torange [options] -auto [-allow-pessimism] -- entry-point [functions...|-funlist listfile] [-o flowfacts-file] [-outdir /tmp]\n" ^
+	"\torange [options] --auto [--allow-pessimism] files... entry-point [functions...|--funlist listfile] [-o flowfacts-file] [--outdir /tmp]\n" ^
+	"\torange [options] --auto [--allow-pessimism] -- entry-point [functions...|--funlist listfile] [-o flowfacts-file] [--outdir /tmp]\n" ^
 	"Full analysis:\n" ^
-	"\torange [options] files... entry-point [functions...|-funlist listfile] [-o flowfacts-file]\n" ^
+	"\torange [options] files... entry-point [functions...|--funlist listfile] [-o flowfacts-file]\n" ^
 	"\torange [options] -- entry-point [functions...|-funlist listfile] [-o flowfacts-file]\n" ^
 	"Partial analysis:\n" ^
-	"\torange [options] -k files... [functions...|-funlist listfile] [-outdir dir]\n" ^
-	"\torange [options] -k -- [functions...|-funlist listfile] [-outdir dir]\n" ^
+	"\torange [options] -k files... [functions...|--funlist listfile] [--outdir dir]\n" ^
+	"\torange [options] -k -- [functions...|-funlist listfile] [--outdir dir]\n" ^
 	"Call graph generation:\n" ^
-	"\torange [options] -g files... [functions...|-funlist listfile] [-outdir dir]\n" ^
-	"\torange [options] -g -- [functions...|-funlist listfile] [-outdir dir]\n"
+	"\torange [options] -g files... [functions...|-funlist listfile] [--outdir dir]\n" ^
+	"\torange [options] -g -- [functions...|-funlist listfile] [--outdir dir]\n"
 
 
 let args: Frontc.parsing_arg list ref = ref []
@@ -101,12 +101,50 @@ let withoutGlobalAndStaticInit = ref false
 
 
 let opts = [
+
+	
+
+
+	(* Input options *)
+	("--", Arg.Set from_stdin,
+		"Takes input from standard input.");
+	("--funlist", Arg.String (fun file -> fun_list_file := file),
+		"File with the list of function names to be processed.");
+	("--up", Arg.String (fun name -> Cextraireboucle.add_use_partial name; alreadyEvalFunctionAS := List.map (fun n ->  (n,Cextraireboucle.getAbsStoreFromComp n)  )!use_partial	;),
+		"Use partial result (rpo file) for this function.");
+	(* Mode options *)
+	("--auto", Arg.Set auto,
+		"Automated full analysis");
+	("--allow-pessimism", Arg.Set allow_pessimism,
+		"Allow to automatically partialize even function that imply pessimism (faster)");
+	("-k", Arg.Set partial,
+		"Perform partial analysis on the given functions");
+
+	(* Output options *)
+	("-o", Arg.Set_string out_file,
+		"Output flow facts to the given file.");
+	("--outdir", Arg.String (fun dir -> out_dir := dir; Cextraireboucle.set_out_dir dir;),
+		"Output directory for partial results (rpo files) or graphs (dot files).");
+	("--wo",  Arg.Set withoutGlobalAndStaticInit  ,
+		"Without initial global and static values");
+
+	(* graph   *)
+	("-g", Arg.Unit (fun _ ->args := (Frontc.LINE_RECORD true)::!args; calipso_rrec := true; run_calipso := true;args := USE_CPP :: !args;onlyGraphe := true),
+		"Generate informations to draw call graph for given functions.");
 	(* Frontc input options *)
-	("-nogcc", Arg.Unit (fun _ -> args := (GCC_SUPPORT false) :: !args),
+	("--nogcc",  Arg.Unit (fun _ ->args := (Frontc.LINE_RECORD true)::!args; calipso_rrec := true; run_calipso := true;args := USE_CPP :: !args ;args := (GCC_SUPPORT false) :: !args),
 		"Do not use the GCC extensions.");
-	("-pp", Arg.Unit (fun _ -> args := USE_CPP :: !args),
+	(*"--pp", Arg.Unit (fun _ -> args := (Frontc.LINE_RECORD true)::!args; calipso_rrec := true; run_calipso := true;args := USE_CPP :: !args ),
 		"Preprocess the input files.");
-	("-proc", Arg.String (fun cpp -> args := (PREPROC cpp) :: !args),
+	("-l", Arg.Unit (fun _ ->args := (Frontc.LINE_RECORD true)::!args; calipso_rrec := true; run_calipso := true;),
+		"Generate #line directive.");*)
+	("--crec", Arg.Unit (fun _ -> args := (Frontc.LINE_RECORD true)::!args; calipso_rrec := false; run_calipso := true;args := USE_CPP :: !args ),
+		"Remove simple recursions using Calipso.");
+	("--no_contolReduction", Arg.Unit (fun _ -> args := (Frontc.LINE_RECORD true)::!args;  run_calipso := false; args := USE_CPP :: !args),
+		"No Process input files using Calipso.");
+
+
+	("--proc", Arg.String (fun cpp -> args := (PREPROC cpp) :: !args),
 		"Use the given preprocessor.");
 	("-D", Arg.String (fun def -> args := (DEF def) :: !args),
 		"Pass this definition to the preprocessor.");
@@ -115,36 +153,7 @@ let opts = [
 	("-i", Arg.String (fun file -> args := (INCLUDE file) :: !args),
 		"Include the given file.");
 	("-I", Arg.String (fun dir -> args := (INCLUDE_DIR dir) :: !args),
-		"Include retrieval directory.");
-	("-l", Arg.Unit (fun _ -> args := (Frontc.LINE_RECORD true)::!args),
-		"Generate #line directive.");
-	("-c", Arg.Set run_calipso,
-		"Process input files using Calipso.");
-	("-crec", Arg.Unit (fun _ -> calipso_rrec := true; run_calipso := true),
-		"Remove simple recursions using Calipso.");
-	(* Input options *)
-	("--", Arg.Set from_stdin,
-		"Takes input from standard input.");
-	("-funlist", Arg.String (fun file -> fun_list_file := file),
-		"File with the list of function names to be processed.");
-	("-up", Arg.String (fun name -> Cextraireboucle.add_use_partial name; alreadyEvalFunctionAS := List.map (fun n ->  (n,Cextraireboucle.getAbsStoreFromComp n)  )!use_partial	;),
-		"Use partial result (rpo file) for this function.");
-	(* Mode options *)
-	("-auto", Arg.Set auto,
-		"Automated full analysis");
-	("-allow-pessimism", Arg.Set allow_pessimism,
-		"Allow to automatically partialize even function that imply pessimism (faster)");
-	("-k", Arg.Set partial,
-		"Perform partial analysis on the given functions");
-	("-g", Arg.Unit (fun _ -> onlyGraphe := true),
-		"Generate informations to draw call graph for given functions.");
-	(* Output options *)
-	("-o", Arg.Set_string out_file,
-		"Output flow facts to the given file.");
-	("-outdir", Arg.String (fun dir -> out_dir := dir; Cextraireboucle.set_out_dir dir;),
-		"Output directory for partial results (rpo files) or graphs (dot files).");
-	("-wo",  Arg.Set withoutGlobalAndStaticInit  ,
-		"Without initial global and static values")
+		"Include retrieval directory.")
 ]
 
 
@@ -296,6 +305,8 @@ let _ =
 	Cextraireboucle.set_out_dir (!out_dir);
 	
 	(* Parse arguments *)
+	 args := (Frontc.LINE_RECORD true)::!args; calipso_rrec := true; run_calipso := true;args := USE_CPP :: !args ;
+	out_dir := "/tmp"; Cextraireboucle.set_out_dir "/tmp";
 	Arg.parse opts add_file_and_name banner;
 	(* Get input file names and function names *)
 	list_file_and_name := !list_file_and_name @ (get_fun_list !fun_list_file);

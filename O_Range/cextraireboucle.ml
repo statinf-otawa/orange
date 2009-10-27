@@ -1301,11 +1301,11 @@ let changeCompOp op =
 let arrayShown = ref true
 
 let isDivInc exp =
-	let val1 = calculer (EXP exp) !infoaffichNull [] 1 in 
+	let val1 = calculer (EXP exp) !infoaffichNull [] (-1) in 
 	if val1 = NOCOMP  then false
 	else
 	begin
-		let varMoinsUn = calculer (EXP (BINARY(SUB,exp, CONSTANT  (CONST_INT "1")))) !infoaffichNull [] 1 in 
+		let varMoinsUn = calculer (EXP (BINARY(SUB,exp, CONSTANT  (CONST_INT "1")))) !infoaffichNull [] (-1) in 
 		 
 		if estStricPositif varMoinsUn then false
 		else true
@@ -1789,8 +1789,10 @@ and traiterAffineForm  e var l=
 if List.mem var (listeDesVarsDeExpSeules  e) = false then   (CONSTANTE, CONSTANT(CONST_INT "1"), CONSTANT(CONST_INT "0"), false ,true)
 else
 begin
-let exp1 = calculer (EXP e) !infoaffichNull  [] 1 in
-		if (estAffine var exp1)   then 
+hasSETCALL := false;
+let exp1 = calculer (EXP e) !infoaffichNull  [] 1 in(*voir*)
+let isMulti1 = !hasSETCALL in
+		if (estAffine var exp1 && isMulti1 = false)   then 
 		begin 
 			let (a,b) = calculaetbAffineForne var exp1 in		
 			let (var1, var2) = (evalexpression a , evalexpression b) in
@@ -1881,7 +1883,7 @@ and isTabDependCond exp1 liste avant dans cte t c lv l inst =
 
 								if isMultiInc then isExactForm := false;
 								if isindirect then expressionIncFor := NOTHING;
-								let valinc = calculer (applyStoreVA   (EXP(!expressionIncFor)) [])  !infoaffichNull  [](*appel*) 1 in	
+								let valinc = calculer (applyStoreVA   (EXP(!expressionIncFor)) [])  !infoaffichNull  [](*appel*) (-1) in	
 								let sensinc = 
 									if estNoComp valinc then NDEF 
 									else 
@@ -1916,7 +1918,7 @@ and isTabDependCond exp1 liste avant dans cte t c lv l inst =
 						if isMultiInc then isExactForm := false;
 
 						
-						let valinc = calculer (applyStoreVA   (EXP(!expressionIncFor)) [])  !infoaffichNull  [](*appel*) 1 in	
+						let valinc = calculer (applyStoreVA   (EXP(!expressionIncFor)) [])  !infoaffichNull  [](*appel*) (-1) in	
 						let sensinc = 
 									if !opEstPlus (*op +or -*) then 
 										if estNoComp valinc then NDEF 
@@ -1968,7 +1970,7 @@ and setIndexWithSize lidx lsize liste avant dans cte t c lv l inst=
 			if isMultiInc then isExactForm := false;
 			expressionIncFor := if isindirect then  NOTHING else !expressionIncFor ;
 				
-			let valinc = calculer (applyStoreVA   (EXP(!expressionIncFor)) [])  !infoaffichNull  [](*appel*) 1 in	
+			let valinc = calculer (applyStoreVA   (EXP(!expressionIncFor)) [])  !infoaffichNull  [](*appel*) (-1) in	
 			let sensinc = if estNoComp valinc then NDEF 
 				  else if !opEstPlus (*op +or -*) then 
 							if estNul valinc then INCVIDE else if estStricPositif valinc then POS  else NEG
@@ -2249,7 +2251,7 @@ begin
 		if isMultiInc1  && isMultiInc2   then false
 		else
 		begin
-			let (val1, val2) =(abs_float (getDefValue( calculer (EXP(getIncValue inc1))  !infoaffichNull [] 1)), abs_float (getDefValue(calculer (EXP(getIncValue inc2))  !infoaffichNull [] 1))) in  
+			let (val1, val2) =(abs_float (getDefValue( calculer (EXP(getIncValue inc1))  !infoaffichNull [] (-1))), abs_float (getDefValue(calculer (EXP(getIncValue inc2))  !infoaffichNull [] (-1)))) in  
 			if val1 = val2 then false else  if val1 > val2 then  isMultiInc2  = false else  isMultiInc1  = false 
 			 (*only the biggest absolute value  may be minimised*)
 
@@ -2764,7 +2766,18 @@ and analyse_defPB def =
 		| DECDEF n -> 		
 			let (baseType, _, namelist) = n in
 			if estProto baseType then  
-				List.iter (fun (n, _ , _,_)-> ajouteNomDansListeNomFonction n baseType) namelist;
+				List.iter (fun (n, _ , _,_)-> ajouteNomDansListeNomFonction n baseType) namelist
+			else
+			begin
+				if namelist <> [] then	
+				List.iter  
+				(fun name -> 
+					let (_,_, _, exp) = name in
+					consRefexpression   exp ;
+				
+				) namelist
+			end;
+			
 		()	
 		| TYPEDEF (n, _)  -> 
 				let (typ, _, names) =n in (*let base = get_base_type typi*)
@@ -2830,8 +2843,9 @@ and  consRefexpression exp =
 	| BINARY (_, exp1, exp2) ->  consRefexpression exp1 ; consRefexpression exp2;	()
 	| QUESTION (exp1, exp2, exp3) -> consRefexpression exp1 ; consRefexpression exp2; consRefexpression exp3;()
 	| CAST (_, e) 		 ->  consRefexpression e ; ()
-	| CALL (e , args) 				->		List.iter (fun ep -> consRefexpression ep) args; idAppel := !idAppel+1;
-				setAssosIdCallFunctionRef !idAppel (!fileCour , !numLine );
+	| CALL (e , args) 				->		idAppel := !idAppel+1;
+				setAssosIdCallFunctionRef !idAppel (!fileCour , !numLine );(*Printf.printf "setAssosIdCallFunctionRef functiuon %s numAppel %d \n" (nomFonctionDeExp e) !idAppel;*)
+				List.iter (fun ep -> consRefexpression ep) args; 
 				(* Printf.printf "setAssosIdCallFunctionRef functiuon %s numAppel %d \n" (nomFonctionDeExp e) !idAppel;*) ()
 	| COMMA e 				->    List.iter (fun ep -> consRefexpression ep) e; ()
 	| MEMBEROF (e , _) 		
@@ -3446,7 +3460,7 @@ print_statement  s2 ;*)
 
 			let li = if !aUneFctNotDEf = true then 
 			begin 
-				(*Printf.printf "traitement particulier boucle\n";*)
+				Printf.printf "traitement particulier boucle\n";
 				let (ida,nbi,idb,id_if) = (!idAppel,!nbImbrications , !idBoucle,!idIf) in	
 				let maListeDesBoucleOuAppelPredP = !listeBoucleOuAppelCourante in
 				listeDesInstCourantes := []; onlyAexpression   exp ; onlyAstatement stat;onlyAexpression   exp ;
@@ -3560,7 +3574,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 	
 		let li = if !aUneFctNotDEf = true then 
 		begin 
-			(*Printf.printf "traitement particuloier boucle\n";*)
+			Printf.printf "traitement particuloier boucle\n";
 			let maListeDesBoucleOuAppelPredP = !listeBoucleOuAppelCourante in
 			let (ida,nbi,idb,id_if) = (!idAppel,!nbImbrications , !idBoucle,!idIf) in	
 			listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp ; idAppel := ida; nbImbrications :=nbi;idBoucle:=idb;idIf:=id_if; (*Printf.printf "traitement particulier boucle FIN\n";  *)
@@ -4125,21 +4139,20 @@ and  analyse_expressionaux exp =
 				let listeInstPred = !listeDesInstCourantes in					
 				if existeFonction (nomFonctionDeExp e) && (not (is_in_use_partial (nomFonctionDeExp e))) then 
 				begin
-
-					let fonction = rechercheFonction (nomFonctionDeExp e) in
+					let name = (nomFonctionDeExp e) in
+					let fonction = rechercheFonction name in
 					let (_, f) = fonction in
 					listeDesInstCourantes := [];
 					construireAsAppel f.declaration	exp ;
-					(*let (t, _, _) = f.declaration in 
-					let isvoid =	if t = VOID then true else false in*)
-					(*if isvoid then Printf.printf "la fonction %s is void \n"(nomFonctionDeExp e) 
-					else Printf.printf "la fonction %s is NOT void \n"(nomFonctionDeExp e) ;*)
+	
 					idAppel := !idAppel + 1;
 				    let ida = !idAppel in	
 
-					(*Printf.printf "analyse_expressionaux %s num appel %d \n" (nomFonctionDeExp e) ida;	*)
-					(*Printf.printf "analyse_expressionaux %s EXISTE \n" (nomFonctionDeExp e) ;*)
+					(*Printf.printf "analyse_expressionaux %s num appel %d \n" name ida;	
+					Printf.printf "analyse_expressionaux %s EXISTE \n" name ;*)
 					 let (fichier , ligne ) = getAssosIdCallFunctionRef ida in
+
+					(*Printf.printf "analyse_expressionaux %s EXISTE %s fichier %d line\n" name fichier ligne ;*)
 					listeBoucleOuAppelCourante	:= 
 						List.append  !listeBoucleOuAppelCourante  [IDAPPEL(ida, exp, !listeDesInstCourantes,"", !trueList,!falseList ,fichier , ligne)];
 					let _ = traiterAppelFonction e args !listeDesInstCourantes ida in
@@ -4808,7 +4821,7 @@ and  onlyAexpressionaux exp =
 				else
 				begin 
 					listeDesInstCourantes := [];
-					List.iter (fun ep -> analyse_expressionaux ep) args;			
+					List.iter (fun ep -> onlyAexpressionaux ep) args;			
 					let isComponant =  onlytraiterAF e args !listeDesInstCourantes in
 					let nouvar = Printf.sprintf "call-%s%d" (nomFonctionDeExp e) 0 in
 					let nouvarres = Printf.sprintf "res-%s" (nomFonctionDeExp e) in

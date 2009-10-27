@@ -138,15 +138,19 @@ let rec rechercheInc var exp before=
 				hasSETCALL := false;
 				let var2 = calculer (expb) !infoaffichNull [] (-1) in
 				let isMulti2 = !hasSETCALL in
-				if isMulti1 || isMulti2 then isMultiInc := true;
+
+				let varMoinsUn = (evalexpression (Diff( var1,  ConstInt("1")))) in
+
+				let isaffineButDef = estPositif varMoinsUn in
+				if isMulti1 || isMulti2 || (estStricPositif varMoinsUn && estNul var2= false && estPositif var2) then isMultiInc := true;
 				(*		Printf.printf"rechercheInc affine\n"; 
 					print_expression exp 0;new_line(); flush();new_line(); flush();new_line(); flush();new_line(); flush();space();new_line(); flush();
 					print_expTerm val1  ;new_line(); flush();new_line(); flush();new_line(); flush();new_line(); flush();space();new_line(); flush();
 					print_expTerm var1  ;new_line(); flush();new_line(); flush();new_line(); flush();new_line(); flush();space();new_line(); flush();
 					print_expTerm var2  ;new_line(); flush();new_line(); flush();new_line(); flush();new_line(); flush();space();new_line(); flush();*)
 			
-				if (estNul var1 = true) || var1 = ConstInt("1") || var1 =  ConstFloat("1.0")||var1 =  RConstFloat(1.0)  then
-				begin 
+				if   isMulti1 =false &&((estNul var1 = true) || var1 = ConstInt("1") || var1 =  ConstFloat("1.0")||var1 =  RConstFloat(1.0))  || (isaffineButDef && estNul var2= false && estPositif var2) then
+				begin
 					opEstPlus := true ; 
 
 					if estNul var2 then	estPosInc := INCVIDE 
@@ -162,7 +166,7 @@ let rec rechercheInc var exp before=
 						let val1 = if estDefExp var1 then expressionEvalueeToExpression var1 else expVaToExp expa in
 						(*print_expression val1  0;new_line();flush();new_line();flush();new_line(); flush();new_line();flush();space();new_line(); *)
 						opEstPlus := false ; (*Printf.printf"rechercheInc affine var1 struct pos et val2  nul\n"; *)
-						let varMoinsUn = (evalexpression (Diff( var1,  ConstInt("1")))) in
+						
 						if estStricPositif var1 then
 						begin (*Printf.printf"rechercheInc affine test de var1 - 1 \n"; *)
 							if estNul varMoinsUn then	begin estPosInc := INCVIDE; val1 end
