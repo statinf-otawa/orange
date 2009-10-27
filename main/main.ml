@@ -140,7 +140,7 @@ let opts = [
 		"Generate #line directive.");*)
 	("--crec", Arg.Unit (fun _ -> args := (Frontc.LINE_RECORD true)::!args; calipso_rrec := false; run_calipso := true;args := USE_CPP :: !args ),
 		"Remove simple recursions using Calipso.");
-	("--no_contolReduction", Arg.Unit (fun _ -> args := (Frontc.LINE_RECORD true)::!args;  run_calipso := false; args := USE_CPP :: !args),
+	("--no-control-reduction", Arg.Unit (fun _ -> args := (Frontc.LINE_RECORD true)::!args;  run_calipso := false; args := USE_CPP :: !args),
 		"No Process input files using Calipso.");
 
 
