@@ -179,7 +179,7 @@ let listOfArrayType = ref [](*[(" ", NO_TYPE)]*)
 
 
 
-	let majTypeDefAssosArrayIDsize name typ exp=
+	let majTypeDefAssosArrayIDsize name typ =
 	(*Printf.printf "dans majTypeDefAssosArrayIDsize %s\t" name;*)
 	let liste = getArraysize typ in
 	(*List.iter(fun dim-> Printf.printf "%d  " dim; )liste;Printf.printf "\n" ;*)
@@ -525,32 +525,38 @@ if names =[] then result
 else
 begin
 	let ((id, t, _, _), others) = (List.hd names, List.tl names) in
+	
+	(*ajouter une option pour struct détaillé*)(match t with ARRAY (_, _) -> majTypeDefAssosArrayIDsize id t ; () |_->());
+			
 	makeListItem typ others (List.append result [(id, get_base_typeEPS  t)])
 end
 
 and get_base_typeEPS  ntyp = 
 	match ntyp with
-	 PROTO (typ, _, _)| OLD_PROTO (typ, _, _)| PTR typ | RESTRICT_PTR typ | ARRAY (typ, _) | CONST typ | VOLATILE typ | GNU_TYPE (_, typ) | TYPE_LINE (_, _, typ) ->   get_base_typeEPS typ 
+	 PROTO (typ, _, _)| OLD_PROTO (typ, _, _)| PTR typ | RESTRICT_PTR typ  | CONST typ | VOLATILE typ | GNU_TYPE (_, typ) | TYPE_LINE (_, _, typ) ->   get_base_typeEPS typ 
+	| ARRAY (typ, _)->   get_base_typeEPS typ 
 	| FLOAT (_) | DOUBLE (_) |NO_TYPE -> FLOAT_TYPE
 	| NAMED_TYPE id  ->   TYPEDEF_NAME(id)
 	| STRUCT (id, dec) -> 
 			 	 
 			let nid = if id ="" then 
 				((*Printf.printf "NONAMMED STRUCT %s_T\n"!nonamedForTypeDef; *)Printf.sprintf "%s_T"  !nonamedForTypeDef) else id in			
-			if  (List.mem_assoc nid !listAssosIdTypeTypeDec)= false then 
+			if  dec != [] && (List.mem_assoc nid !listAssosIdTypeTypeDec)= false then 
 					listAssosIdTypeTypeDec := List.append !listAssosIdTypeTypeDec [(nid,  newDecTypeSTRUCTORUNION (getItemList dec []))];
 						
 						let newType = STRUCT_TYPE (nid) in
 						(*printfBaseType newType;*)
-						newType
+			if  dec != [] then newType else ((*Printf.printf "recursive type not implemented\n";*) FLOAT_TYPE)
 			
 	| UNION (id, dec) ->   
 			let nid = if id ="" then ((*Printf.printf "NONAMMED UNION %s_T\n"!nonamedForTypeDef;*) Printf.sprintf "%s_T"  !nonamedForTypeDef) else id in
-			if  (List.mem_assoc nid !listAssosIdTypeTypeDec)= false then 
+			if  (*dec != [] &&*) (List.mem_assoc nid !listAssosIdTypeTypeDec)= false then 
 					listAssosIdTypeTypeDec := List.append !listAssosIdTypeTypeDec [(nid, newDecTypeSTRUCTORUNION (getItemList dec []))]; 					  
 						UNION_TYPE (nid) 
 	| ENUM (id, items) -> enumCour := ntyp; INT_TYPE
 	| _->   INT_TYPE
+
+
 
 	
 
@@ -660,6 +666,24 @@ let existeBoucle id =
 let rec  prodListSize l =
 if l = [] then ConstInt ("1")
 else  evalexpression(	Prod (ConstInt (Printf.sprintf "%d" (List.hd l)), prodListSize (List.tl l) ))
+
+
+
+let rec  prodListSizeIndex l l2=
+if l = [] then  CONSTANT(CONST_INT("1"))
+else  
+begin
+	if l2 = [] then CONSTANT(CONST_INT("0"))
+	else
+	begin
+		let (firstSize, nextSize) =  (List.hd l, List.tl l) in
+		let (firstIndex, nextIndex) =  (List.hd l2, List.tl l2) in
+		BINARY(ADD,BINARY (MUL,firstIndex, expressionEvalueeToExpression (prodListSize nextSize)), prodListSizeIndex nextSize nextIndex)
+		
+	end
+end
+
+
 
 let rec getItemType dec result=
 if dec = [] then result
@@ -3460,7 +3484,7 @@ print_statement  s2 ;*)
 
 			let li = if !aUneFctNotDEf = true then 
 			begin 
-				Printf.printf "traitement particulier boucle\n";
+				(*Printf.printf "traitement particulier boucle\n";*)
 				let (ida,nbi,idb,id_if) = (!idAppel,!nbImbrications , !idBoucle,!idIf) in	
 				let maListeDesBoucleOuAppelPredP = !listeBoucleOuAppelCourante in
 				listeDesInstCourantes := []; onlyAexpression   exp ; onlyAstatement stat;onlyAexpression   exp ;
@@ -3574,7 +3598,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 	
 		let li = if !aUneFctNotDEf = true then 
 		begin 
-			Printf.printf "traitement particuloier boucle\n";
+		(*	Printf.printf "traitement particuloier boucle\n";*)
 			let maListeDesBoucleOuAppelPredP = !listeBoucleOuAppelCourante in
 			let (ida,nbi,idb,id_if) = (!idAppel,!nbImbrications , !idBoucle,!idIf) in	
 			listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp ; idAppel := ida; nbImbrications :=nbi;idBoucle:=idb;idIf:=id_if; (*Printf.printf "traitement particulier boucle FIN\n";  *)
@@ -3924,7 +3948,7 @@ and creerAFFECT op e1 e2 =
 					if lid != [] then 
 					begin
 						(*Printf.printf "varDefList id %s type :\n"id; printfBaseType btype;new_line();*)
-						let ne = consCommaExp (VARIABLE(id)) btype [id] lid (BINARY(op, e1, e2))  in
+						let ne = consCommaExp (VARIABLE(id)) btype [id] lid (BINARY(op, e1, e2)) false NOTHING in
 						let newaff = new_instVar id (EXP(ne) ) in
 							(*Printf.printf"Dans creerAFFECT  struct (*ptr*) assign\n";
 						Printf.printf "affect du & \n"; afficherUneAffect newaff;new_line();*)
@@ -4035,7 +4059,7 @@ and  analyse_expressionaux exp =
 								(
 									match opr with
 									MEMOF		->analyse_expressionaux exp2;	 let ne = !nouvExp in   
-					(** "*" operator. *)(* revoir e n'est pas forcement une variable *)
+										(** "*" operator. *)(* revoir e n'est pas forcement une variable *)
 										listeDesInstCourantes := 
 											List.append !listeDesInstCourantes 
 														[new_instTab ("*"^v) (EXP(i))	(EXP(ne))]
@@ -4047,7 +4071,85 @@ and  analyse_expressionaux exp =
 								)
 								| _->  if !vDEBUG then  Printf.printf "array expr not implemented\n" 
 							)
-						| _->	 if !vDEBUG then  Printf.printf "array expr not implemented\n" 	
+						| MEMBEROF (_ , _) 			
+				 		| MEMBEROFPTR (_ , _) 	->		(* Printf.printf "array struct expr not implemented\n" ;	*)
+							let lid =	getInitVarFromStruct exp1  in
+							let id = if lid != [] then List.hd lid else (Printf.printf "not id 3876\n"; "noid") in
+							let (btype, isdeftype) = 
+									if List.mem_assoc id !listAssocIdType then (getBaseType (List.assoc id !listAssocIdType), true) 
+									else 
+										if List.mem_assoc id !listeAssosPtrNameType then (getBaseType (List.assoc id !listeAssosPtrNameType), true) 
+										else (INT_TYPE, false) in
+						
+							if lid != [] then 
+							begin
+								
+								 
+								let (isTruecteArg, _) =isTrueConstant i in
+								let nee =
+									if isTruecteArg then
+									begin 
+										
+										let tid = if lid != [] then List.hd (List.rev lid) else (Printf.printf "not id 3876\n"; "noid") in
+										(*print_expression exp1 0 ; flush();space() ;flush();space() ;  Printf.printf "array of array expr not implemented %s\n" id ;*)
+										if (List.mem_assoc tid !listAssosTypeDefArrayIDsize) then (*ajouter une option pour struct détaillé*)
+										begin
+											let size = getAssosTypeDefArrayIDsize tid in
+											match size with 
+												NOSIZE ->  consCommaExp (VARIABLE(id)) btype [id] lid NOTHING false NOTHING 
+												| SARRAY (v) -> (*let realSize = expressionEvalueeToExpression (prodListSize nextSize) in*)
+
+																let val1 = int_of_float(getDefValue (calculer (EXP(i ))  !infoaffichNull [] 1 )) in
+																analyse_expressionaux exp2;	 let ne = !nouvExp in  
+
+																let expn = CONSTANT(CONST_COMPOUND (creerInitTabStruct   0 (v-1) t  val1 ne))  in
+																(*print_expression expn 0 ; flush();space() ;*)
+																consCommaExp (VARIABLE(id)) btype [id] lid expn(* NOTHING *)false NOTHING 
+												| MSARRAY (lsize) -> consCommaExp (VARIABLE(id)) btype [id] lid NOTHING false NOTHING 
+										end else  consCommaExp (VARIABLE(id)) btype [id] lid NOTHING false NOTHING 
+									end
+									else consCommaExp (VARIABLE(id)) btype [id] lid NOTHING false NOTHING 
+								in
+								(*if id = "c" then
+								(Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression exp2 0 ; flush();space() ; print_expression ne 0 ; flush();space() ;
+								Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression nee 0 ; flush();space() ;new_line(); );*)
+								let newaffect = new_instVar id (EXP(nee) ) in
+							
+								listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect];
+							end
+						| INDEX (_,_)->  
+							let (tab,lidx) = analyseArray exp1 []  in
+							if tab = "" then 
+							begin
+								let (tab,lidx) = analyseArrayIntostruct exp1 [] in 
+								let lid =	getInitVarFromStruct tab  in
+								let id = if lid != [] then List.hd (List.rev lid) else (Printf.printf "not id 3876\n"; "noid") in
+								(*print_expression exp1 0 ; flush();space() ;flush();space() ;  Printf.printf "array of array expr not implemented %s\n" id ;*)
+								if (List.mem_assoc id !listAssosTypeDefArrayIDsize) then
+								begin
+									let size = getAssosTypeDefArrayIDsize id in
+									match size with 
+										NOSIZE -> analyse_expressionaux (BINARY (op, INDEX (tab,NOTHING), NOTHING))
+										| SARRAY (_) -> analyse_expressionaux (BINARY (op, INDEX (tab,List.hd lidx), exp2))
+										| MSARRAY (lsize) -> (*ajouter une option pour struct détaillé*)(*let index = prodListSizeIndex lsize lidx in
+											analyse_expressionaux (BINARY (op, INDEX (tab,index), exp2)) *)
+											analyse_expressionaux (BINARY (op, INDEX (tab,NOTHING), NOTHING))
+								end else  analyse_expressionaux (BINARY (op, INDEX (tab,NOTHING), NOTHING))
+								
+							end
+							else 
+							begin
+								if (List.mem_assoc tab !listAssosArrayIDsize) then
+								begin
+									let size = getAssosArrayIDsize tab in
+									match size with 
+										NOSIZE -> analyse_expressionaux (BINARY (op, INDEX (VARIABLE(tab),NOTHING), NOTHING))
+										| SARRAY (v) -> analyse_expressionaux (BINARY (op, INDEX (VARIABLE(tab),List.hd lidx), exp2))
+										| MSARRAY (lsize) -> let index = prodListSizeIndex lsize lidx in
+											analyse_expressionaux (BINARY (op, INDEX (VARIABLE(tab),index), exp2)) 
+								end else analyse_expressionaux (BINARY (op, INDEX (VARIABLE(tab),NOTHING), NOTHING))
+							end
+						| _->	 if !vDEBUG then( print_expression exp1 0 ; flush();space() ;flush();space() ; Printf.printf "array expr not implemented\n" 	)
 					)
 				| UNARY (opr,e) -> 
 					(*let p = !listeNextExp in*)
@@ -4102,9 +4204,10 @@ and  analyse_expressionaux exp =
 						begin
 							analyse_expressionaux exp2;	 let ne = !nouvExp in  
 							(*Printf.printf "varDefList id %s type :\n"id;  new_line();*)
-							let nee = consCommaExp (VARIABLE(id)) btype [id] lid ne  in
-							(*Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression ne 0 ; flush();space() ;
-							Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression nee 0 ; flush();space() ;new_line(); *)
+							let nee = consCommaExp (VARIABLE(id)) btype [id] lid ne false NOTHING  in
+							(*if id = "c" then
+							(Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression exp2 0 ; flush();space() ; print_expression ne 0 ; flush();space() ;
+							Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression nee 0 ; flush();space() ;new_line(); );*)
 							let newaffect = new_instVar id (EXP(nee) ) in
 							
 							listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect];
@@ -4288,7 +4391,17 @@ Printf.printf "\n";*)
 			nouvExp:=VARIABLE( "SIZEOF_"  ^ (get_baseinittype typ));
 (*traiter sizeof*)
 	| _->(*Printf.printf "other cases\n";*)nouvExp:=exp
-		
+	
+
+and creerInitTabStruct  min max exp  autreIndex autreExp=
+	if min <= max then
+	begin
+		 if autreIndex = min then 
+				List.append [autreExp] (creerInitTabStruct  (min+1) max exp autreIndex autreExp)
+		 else  	List.append [(*INDEX (exp, CONSTANT(CONST_INT(Printf.sprintf "%d"  min)))*)VARIABLE ("--NOINIT--")] (creerInitTabStruct  (min+1) max exp autreIndex autreExp)			
+	end
+	else []
+	
 
 and convael l =
 if l = [] then []
@@ -4503,7 +4616,7 @@ and analyse_def def =
 		let (typi, sto, namelist) = n in 
 		List.iter  (fun name ->
 					let (id,typ, _, exp) = name in   
-					match typ with ARRAY (t, dim) -> majTypeDefAssosArrayIDsize id typ exp; () |ENUM(_,_)->consEnum typ;()
+					match typ with ARRAY (t, dim) -> 	 majTypeDefAssosArrayIDsize id typ ; () |ENUM(_,_)->consEnum typ;()
 									 |_->let base = get_base_type typi in 
 											(match base with ENUM(_,_) ->consEnum  base ;()|_->());()
 					) namelist; ;
@@ -4513,7 +4626,7 @@ and analyse_def def =
 		let (typ, sto, namelist) = n in 
 		List.iter  (fun name -> 
 					let (id,typ, _, exp) = name in  
-					match typ with ARRAY (t, dim) -> majTypeDefAssosArrayIDsize id typ exp; () |ENUM(_,_)->consEnum typ;|_->()
+					match typ with ARRAY (t, dim) ->   majTypeDefAssosArrayIDsize id typ ; () |ENUM(_,_)->consEnum typ;|_->()
 					) namelist;
 		
 		()	
@@ -4561,6 +4674,8 @@ and creerInitTab id min max exp estChar=
 				creerInitTab id (min+1) max suite estChar
 		end
 	end
+
+
 				
 and majFonctionDansDocument proto body =
 let listeP = !listeDesInstCourantes in
@@ -5147,7 +5262,7 @@ and onlyanalysedef def =
 	|TYPEDEF (n, _) -> 		let (typei, sto, namelist) = n in 
 		List.iter  (fun name -> 
 					let (id,typ, _, exp) = name in
-					match typ with ARRAY (t, dim) -> majTypeDefAssosArrayIDsize id typ exp; () |ENUM(_,_)->consEnum typ;()
+					match typ with ARRAY (t, dim) -> majTypeDefAssosArrayIDsize id typ ; () |ENUM(_,_)->consEnum typ;()
 									 |_->let base = get_base_type typei in 
 											(match base with ENUM(_,_) ->consEnum  base ;()|_->());()
 					
@@ -5158,7 +5273,7 @@ and onlyanalysedef def =
 		let (typ, sto, namelist) = n in 
 		List.iter  (fun name -> 
 					let (id,typ, _, exp) = name in (*Printf.printf "id : %s\n" id;*)
-					match typ with ARRAY (t, dim) -> majTypeDefAssosArrayIDsize id typ exp; () |ENUM(_,_)->consEnum typ;()
+					match typ with ARRAY (t, dim) -> majTypeDefAssosArrayIDsize id typ ; () |ENUM(_,_)->consEnum typ;()
 				|_->()
 					) namelist;
 		()
