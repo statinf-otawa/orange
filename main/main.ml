@@ -42,17 +42,17 @@ let banner =
 	"Copyright (c) 2009, Marianne de Michiel <michiel@irit.fr>\n\n" ^
 	"SYNTAX:\n" ^
 	"Automated full analysis:\n" ^
-	"\torange [options] --auto [--allow-pessimism] files... entry-point [functions...|--funlist listfile] [-o flowfacts-file] [--outdir /tmp]\n" ^
-	"\torange [options] --auto [--allow-pessimism] -- entry-point [functions...|--funlist listfile] [-o flowfacts-file] [--outdir /tmp]\n" ^
+	"\torange [options] --auto [--allow-pessimism] [--no-control-reduction] [--without-gobal-initial] files... entry-point [functions...|--funlist listfile] [-o flowfacts-file] [--outdir /tmp]\n" ^
+	"\torange [options] --auto [--allow-pessimism] [--no-control-reduction] [--without-gobal-initial] -- entry-point [functions...|--funlist listfile] [-o flowfacts-file] [--outdir /tmp]\n" ^
 	"Full analysis:\n" ^
-	"\torange [options] files... entry-point [functions...|--funlist listfile] [-o flowfacts-file]\n" ^
-	"\torange [options] -- entry-point [functions...|-funlist listfile] [-o flowfacts-file]\n" ^
+	"\torange [options] files... entry-point [--no-control-reduction] [--without-gobal-initial] [functions...|--funlist listfile ] [-o flowfacts-file]\n" ^
+	"\torange [options] -- entry-point [--no-control-reduction] [--without-gobal-initial] [functions...|--funlist listfile] [-o flowfacts-file]\n" ^
 	"Partial analysis:\n" ^
-	"\torange [options] -k files... [functions...|--funlist listfile] [--outdir dir]\n" ^
-	"\torange [options] -k -- [functions...|-funlist listfile] [--outdir dir]\n" ^
+	"\torange [options] -k files... [--no-control-reduction] [functions...|--funlist listfile] [--outdir dir]\n" ^
+	"\torange [options] -k -- [--no-control-reduction] [functions...|--funlist listfile] [--outdir dir]\n" ^
 	"Call graph generation:\n" ^
-	"\torange [options] -g files... [functions...|-funlist listfile] [--outdir dir]\n" ^
-	"\torange [options] -g -- [functions...|-funlist listfile] [--outdir dir]\n"
+	"\torange [options] -g files... [functions...|--funlist listfile] [--outdir dir]\n" ^
+	"\torange [options] -g -- [functions...|--funlist listfile] [--outdir dir]\n"
 
 
 let args: Frontc.parsing_arg list ref = ref []
@@ -125,7 +125,7 @@ let opts = [
 		"Output flow facts to the given file.");
 	("--outdir", Arg.String (fun dir -> out_dir := dir; Cextraireboucle.set_out_dir dir;),
 		"Output directory for partial results (rpo files) or graphs (dot files).");
-	("--wo",  Arg.Set withoutGlobalAndStaticInit  ,
+	("--without-gobal-initial",  Arg.Set withoutGlobalAndStaticInit  ,
 		"Without initial global and static values");
 
 	(* graph   *)

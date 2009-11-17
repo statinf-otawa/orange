@@ -3571,7 +3571,7 @@ Printf.printf"GLOBALE\n";
 afficherLesAffectations (!listeDesInstGlobales) ;new_line () ;new_line () ;flush(); space();
 Printf.printf"FIN GLOBALE\n";*)
 
-	  let globalInst = if !notwithGlobalAndStaticInit =false then !listeDesInstGlobales else !listeDesInstGlobales in
+	  let globalInst = if !notwithGlobalAndStaticInit =false then !listeDesInstGlobales else [] in
 	  let typeE = TFONCTION(!(!mainFonc),!numAppel, f.lesAffectations, globalInst, [], [], [],  [], true, false,"",0) in  
 	  dernierAppelFct := typeE;
 	  predDernierAppelFct := typeE;
