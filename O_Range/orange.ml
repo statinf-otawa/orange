@@ -651,12 +651,6 @@ and traiterUneIntructionPourBoucle premiere sId  l=
 		else APPEL (num, avant, nom, apres, CORPS (traiterUneIntructionPourBoucle corps sId l),x,r)   
   |_-> premiere
 
-let  evalSIDB listeInst saufId contexte  l =
-let res = listeSAUFIDB listeInst saufId  l in
-(*afficherLesAffectations ( res) ;new_line () ;*)
-   evalStore (new_instBEGIN(res)) contexte []
-
-
 let rec estDansListeInstBoucle l id =
 if l = [] then false
 else estDansCorpsBoucle (List.hd l) id || estDansListeInstBoucle (List.tl l) id
@@ -1061,7 +1055,7 @@ and traiterUneIntructionPourAppel premiere sId ainserer  input le la =
 			  begin  
 				  appelcourant := [premiere]; 
 				  estTROUVEID := true;
-				  let nas = evalStore 	( BEGIN (   ainserer)) [] [] in				  
+				  let nas = evalStore 	( BEGIN (   ainserer)) [] [] in		(*OK *)		  
 				  let new_appel = APPEL (num, avant, nom, apres,   ABSSTORE nas, varB,r)	in
 				(* afficherUneAffect (new_instBEGIN input); Printf.printf "evalSIDA fin\n";
 			afficherUneAffect (avant); Printf.printf "evalSIDA fin\n";*)
@@ -1326,6 +1320,17 @@ TBOUCLE(num, appel, _,_,_,_,_,_,_) ->
 				if existeNid num then  ( hasinit= false&&hass=false &&(rechercheNid num).infoNid.isExactExp && (nnE.isIntoIf = false),  varBoucleIfN) 
 				else (false ,  varBoucleIfN) 
 					in
+
+		 
+		if !isPartialisation = false && hasinit= false&&hass=false&& (rechercheNid num).infoNid.isExactExp && (nnE.isIntoIf = false) && estDefExp myMaxIt && (estNul myMaxIt) = false then
+		begin
+		
+		 
+			isExecutedOneTimeOrMoreList := List.append  !isExecutedOneTimeOrMoreList [(num,true)]
+		end
+		else isExecutedOneTimeOrMoreList := List.append !isExecutedOneTimeOrMoreList  [(num,false)];
+
+
 	 	 let mymax = !borneMaxAux in
 	  	let nb = expressionEvalueeToExpression (evalexpression  (Diff (mymax, ConstInt ("1"))))  in
 	  	let exp_nb = (BINARY(SUB, (expVaToExp new_expmax), CONSTANT (CONST_INT "1"))) in
@@ -2667,7 +2672,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 		  let nid = (rechercheNid num) in
 		  if  (getBoucleInfoB (nid.infoNid.laBoucle)).infoVariation.operateur = NE then listNotEQ := List.append [(fic,lig)] !listNotEQ;
 		  let asL = if !estDansBoucle = false then  (jusquaBaux affectations num  contexte lastLoopOrCall globale) 
-				    else (* (evalSIDB affectations num contexte )  *) contexte in
+				    else  contexte in
 		  estDansBoucleLast := true;
 		  (evalNid nid asL  listeEng  lt lf estexeEng globale fic lig, globale)
 	  end
@@ -2912,7 +2917,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 									let new_fct = [ new_elementEvala typeE (EXP(appel)) [] vt vf] in						
 									corpsEvalTMP := List.append !corpsEvalTMP	 new_fct;
 									docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append !docEvalue.maListeEval new_fct);			
-									let inter = 	(evalStore (List.hd lappel) nc	globalesBefore) in    
+									let inter = 	(evalStore (List.hd lappel) nc	globalesBefore) in    (*OK*)
 									(* afficherListeAS( inter);new_line () ;	*) 
 									(*Printf.printf "FIN Eval appel FONCTION composant%s:\n" nomFonction ;*)
 									( inter ,globalesBefore)
@@ -3205,7 +3210,7 @@ if !vDEBUG then  Printf.printf "evalNid NID av eval nid de %d \n" (getBoucleIdB 
 	let mesBouclesOuAppel = sansIfCorps info.boucleOuAppelB in
 	if !estDansBoucle = false then
 	begin
-		
+		(*isExecutedOneTimeOrMoreList := [];*)
 		let aSC =    appel in 
 		if !vDEBUG then Printf.printf "evalNid contexte  boucle: \n";
 	(*	afficherListeAS aSC;flush(); space(); new_line();
@@ -3261,7 +3266,11 @@ Printf.printf "evalNid contexte  boucle: tete\n";
 		docEvalue :=  new_documentEvalue  (List.append [ nouNidEval] !docEvalue.maListeNidEval) !docEvalue.maListeEval;		
 		if !vDEBUG then Printf.printf "av evaluerSN de %d dans nid tete appel %d\nNEW NID EVAL\n" (getBoucleIdB nid.infoNid.laBoucle)	!numAppel;
 		(*ignore (afficherNidUML nouNidEval  [] 1 Listener.null);*)
+
+		isExecutedOneTimeOrMoreList := [];
 		compNotInnerDependentLoop nouNidEval false;
+
+		
 
 		let borne  =  nouNidEval.expressionBorneToutesIt  in
 		let tetePred = (TBOUCLE(0,0,[],[], true,[],[],"",0))  in
@@ -3270,6 +3279,9 @@ Printf.printf "evalNid contexte  boucle: tete\n";
 
 		let resaux = calculer nb  !infoaffichNull [] 1 in
 		let isNull = if  estDefExp resaux then  if getDefValue resaux <= 0.0 then true else false else false in
+
+
+
 		(*let listeSauf =*)evaluerSN   nid	nid	aSC mesBouclesOuAppel  (List.append  [typeEval] listeEng) isExe borne nid globales;
 					(*	resaux in*)
 
@@ -3298,10 +3310,13 @@ Printf.printf "evalNid contexte  boucle: tete\n";
 		  firstLoop := 0 ;
 		   listeDesVarDependITitcour:=[] ;
 		
-(*Printf.printf "CONTEXTE RES ajout dans liste corpsEval %d %s\n"  (getBoucleIdB nid.infoNid.laBoucle) id; ICI*)
-(*afficherUneAffect (new_instBEGIN ni); Printf.printf "evalSIDA fin\n";*)
+(*Printf.printf "CONTEXTE RES ajout dans liste corpsEval %d \n"  (getBoucleIdB nid.infoNid.laBoucle) ; 
+afficherUneAffect (new_instBEGIN ni); Printf.printf "evalSIDA fin\n"; c'est bien une instruction for*)
 		estDansBoucleLast:= false;(* to omit some rond of abstact store *)
-		let res=	evalStore (((*FORV ((getBoucleIdB nid.infoNid.laBoucle),id, EXP(NOTHING), EXP(NOTHING), EXP(NOTHING), EXP(NOTHING), *)new_instBEGIN ni) ) aSC globales in
+
+			 
+		let res=	evalStore ((new_instBEGIN ni) ) aSC globales in
+		isExecutedOneTimeOrMore := false;
   		estDansBoucleLast := true ; 	
 (*afficherListeAS res;flush(); space(); new_line();*)
 		res
@@ -3915,10 +3930,10 @@ print_AssosArrayIDsize !listAssosArrayIDsize;
 		  evaluerNbFunctionOfDoc  doc  !evalFunction;
 		  getOnlyBoolAssignment := false;
 		 listNotEQ := [];
-		  Printf.printf "\n\n\n  EVALUATION BEGIN\n\n\n";
+		  Printf.printf "\nEVALUATION BEGIN\n";
 		  evaluerFonctionsDuDoc doc ; 
 		  listnoteqLoop		!listNotEQ; 
- 		  Printf.printf "\n\n\n  EVALUATION END\n\n\n";
+ 		  Printf.printf "\nEVALUATION END\n";
   		  afficherInfoFonctionDuDocUML !docEvalue.maListeEval 
   in 
   print_newline () ;

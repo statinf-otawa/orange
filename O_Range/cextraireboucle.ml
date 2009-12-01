@@ -109,17 +109,17 @@ let aUneFctNotDEf = ref false
 	
 	type refAppel = string * int (* id fichier numline*)
 
-	let listAssosTypeDefArrayIDsize  = ref [(" ", NOSIZE)]
+	
 	 
 	(*let listeAssosPtrNameType = ref []*)
 	let setAssosIDTYPEINIT = ref []
 
-
+	(*let listAssosTypeDefArrayIDsize  = ref [(" ", NOSIZE)]
 	let existAssosTypeDefArrayIDsize  name  = (List.mem_assoc name !listAssosTypeDefArrayIDsize)
 	let setAssosTypeDefArrayIDsize  name size = 
 		if existAssosTypeDefArrayIDsize name = false then listAssosTypeDefArrayIDsize := List.append   [(name, size)]   !listAssosTypeDefArrayIDsize 	
 
-	let getAssosTypeDefArrayIDsize name  = if existAssosTypeDefArrayIDsize name then (List.assoc name !listAssosTypeDefArrayIDsize) else NOSIZE
+	let getAssosTypeDefArrayIDsize name  = if existAssosTypeDefArrayIDsize name then (List.assoc name !listAssosTypeDefArrayIDsize) else NOSIZE*)
 	
 	let listLoopIdRef = ref []
 	let listIdCallFunctionRef =ref  []

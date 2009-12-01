@@ -183,7 +183,7 @@ let rec rechercheInc var exp before=
 						    val1
 						end
 					end
-					else (	Printf.printf"rechercheInc NOT affine\n"; NOTHING		)
+					else (	(*Printf.printf"rechercheInc NOT affine\n"; *) NOTHING		)
 			end
 			else NOTHING
 		end
