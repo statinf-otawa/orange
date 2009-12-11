@@ -223,10 +223,10 @@ listeASCourant := [];
 			(*Printf.printf "Longueur de l'arbre: avant %d.\n" (List.length !TO.docEvalue.TO.maListeEval);*)
 			let globales = !alreadyAffectedGlobales in
 				globalesVar := !alreadyAffectedGlobales;
-			let typeE = TO.TFONCTION(fn.nom,!TO.numAppel, fn.lesAffectations, [], [], [], [],  [], true, false,"",0) in
+			let typeE = TO.TFONCTION(fn.nom,!TO.numAppel, fn.lesAffectations, !listeDesEnum, [], [], [],  [], true, false,"",0) in
 				TO.dernierAppelFct := typeE;
 			TO.predDernierAppelFct := typeE;
-			let (aslist,_,_) = TO.evaluerFonction (fn.nom) fn []  (EXP(NOTHING))   [typeE]  typeE true (*!listeASCourant*) [] (( CONSTANT(CONST_INT("1")))) (( CONSTANT(CONST_INT("0")))) in () ;
+			let (aslist,_,_) = TO.evaluerFonction (fn.nom) fn []  (EXP(NOTHING))   [typeE]  typeE true (*!listeASCourant*) (evalStore (new_instBEGIN !listeDesEnum) [] []) (( CONSTANT(CONST_INT("1")))) (( CONSTANT(CONST_INT("0")))) in () ;
 			let compAS: abstractStore list = 
 				filterwithoutInternal (*(evalStore (new_instBEGIN fn.lesAffectations) [] []) (listeOutputs fn.listeES) globales *) 
 						aslist (listeOutputs fn.listeES) globales in

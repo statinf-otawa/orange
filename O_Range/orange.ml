@@ -1322,7 +1322,7 @@ TBOUCLE(num, appel, _,_,_,_,_,_,_) ->
 					in
 
 		 
-		if !isPartialisation = false && hasinit= false&&hass=false&& (rechercheNid num).infoNid.isExactExp && (nnE.isIntoIf = false) && estDefExp myMaxIt && (estNul myMaxIt) = false then
+		if (*!isPartialisation = false &&*) hasinit= false&&hass=false&& (rechercheNid num).infoNid.isExactExp &&  !isExecutedOneTimeOrMore && estDefExp myMaxIt && (estNul myMaxIt) = false then
 		begin
 		
 		 
@@ -1826,7 +1826,7 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 		else  Printf.printf "la boucle englobante n'est pas exécutée\n";*) 
 		estDansBoucle := true;
 		let (nlt,nlf,exeloop) = if id = idpred then   creerLesAffectEXECUTED lt lf "Loop" id idEng !cptFunctiontestIntoLoop else (lt,lf, lcond) in
-		let (lesAsf, intofunction,newlt, newlf) = 
+		let (lesAsf, intofunction,newlt, newlf,intocondcall) = 
 		(	if (!dernierAppelFct <> !predDernierAppelFct)  
 			then 
 			begin
@@ -1841,7 +1841,7 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 						TFONCTION (nomf, numF,corps,listeInputInst, contexteAvantAppel,appelF,lFt,lFf,_,_,_,_) ->		
 				(*	Printf.printf"traiterboucleinterne Dans evaluation de la fonction...%s %d %s \n "nomf id nEC.varDeBoucleNid ;*)
 				(*		Printf.printf"traiterboucleinterne Dans evaluation de la fonction...%s %d %s \n "nomf id nEC.varDeBoucleNid ;*)
-						if appelF = [] then (Printf.printf "ces appel vide\n"; ([], true,lt,lf))
+						if appelF = [] then (Printf.printf "ces appel vide\n"; ([], true,lt,lf,!isExecutedOneTimeOrMore))
 						else
 						begin
 							(match List.hd appelF with  											
@@ -1885,16 +1885,16 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 								
 								isExeBoucle := isExeE && isExecutedF;
 								(*							Printf.printf "ces as 3\n";*)
-							  (aSC, nb > 0, nlt,nlf)
-						  | _-> ([], true,lt,lf))
+							  (aSC, nb > 0, nlt,nlf,!isExecutedOneTimeOrMore && lFt = [] && lFf = [])
+						  | _-> ([], true,lt,lf,!isExecutedOneTimeOrMore))
 					  end
-					  |_->([], true,lt,lf))
-			  |_->(*Printf.printf "lesAS NON par fonction valeur\n"; *)  (lesVardeiSansj nEC idpred    (List.append   l exeloop) , false,lt,lf)
+					  |_->([], true,lt,lf,!isExecutedOneTimeOrMore))
+			  |_->(*Printf.printf "lesAS NON par fonction valeur\n"; *)  (lesVardeiSansj nEC idpred    (List.append   l exeloop) , false,lt,lf,!isExecutedOneTimeOrMore)
 		  end
-		  else begin (*Printf.printf "cas3\n"; *) (lesVardeiSansj nEC idpred   (List.append   l exeloop) , false,lt,lf)end
+		  else begin (*Printf.printf "cas3\n"; *) (lesVardeiSansj nEC idpred   (List.append   l exeloop) , false,lt,lf,!isExecutedOneTimeOrMore)end
 	  )in
 
-
+	 (* isExecutedOneTimeOrMore := intocondcall;*)
 	  let lesAs =  (*if  !estDansBoucleLast then rond appel lesAsf else *)lesAsf in
 	  let ii = (nEC.varDeBoucleNid) in
 	  let vij =  rechercheLesVar  lesAs [] in
@@ -2144,6 +2144,7 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 									(EXP(nMaxn))   isexeN !isIntoIfLoop 0 in	
 			(*Printf.printf "AJOUTER 1 traiterBouclesInternes  %d nom eng %d ou stopper %d sa eng %d tete nid %d \nNID EVAL" id	nomE idEng
 			 saBENG (getBoucleIdB nT.infoNid.laBoucle);*)
+					(*isExecutedOneTimeOrMore := !isExecutedOneTimeOrMore && (nouNidEval.isIntoIf = false);*)
 					compNotInnerDependentLoop nouNidEval iscompo;
 						
 					(*Printf.printf "av traiterBouclesInternes num %d nom eng %d AVANT FIN\n"  id nomE ;*)
@@ -2710,27 +2711,34 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 		let (ifelsecontexte, lastelse,globalesElse) =  evalCorpsFOB treeelse instelse asL listeEng isExcutedElse [] false globale in
 		let nonexelse = !listeInstNonexe in
 		listeInstNonexe := listeInstNonexePred;
-
-		if isExecutedIf = false then 
-		begin
-			(* Printf.printf "IDIF %s is not executed\n" var	; *)
-			(asL, globale)
-		end
-		else
-		begin  
-			(match executedBranch with
-				 1 ->   (*Printf.printf "IDIF %s then\n" var; *) (endOfcontexte instthen  lastthen  ifthencontexte globalesThen, globalesThen)
-				| 2  -> (* Printf.printf "IDIF %s else \n" var	; *)(endOfcontexte instelse  lastelse  ifelsecontexte globalesElse, globalesElse)
-				|_->  (*Printf.printf "IDIF %s is executed then ou else ??\n" var	; *)
-				  	let nthen = reecrireCorpsNonExe  instthen nonexethen !numAppel in
-					let nelse = reecrireCorpsNonExe  instelse nonexelse !numAppel in
-					if nelse = [] then  
-						(evalStore (		IFV (	EXP(VARIABLE(var)), BEGIN(nthen)	)		) asL globale, globale)
-					else 	(evalStore (		IFVF(   EXP(VARIABLE(var)), BEGIN(nthen), BEGIN(nelse))	) asL globale, globale)
-			)
-		end 
-	 end
-	 else (contexte, globale)
+		(*let isIntoIf = !isExecutedOneTimeOrMore in*)
+		let (nas, ng) =
+			if isExecutedIf = false then 
+			begin
+				(* Printf.printf "IDIF %s is not executed\n" var	; *)
+				(asL, globale)
+			end
+			else
+			begin  
+				(match executedBranch with
+					 1 ->  
+						   (*Printf.printf "IDIF %s then\n" var; *) (endOfcontexte instthen  lastthen  ifthencontexte globalesThen, globalesThen)
+					| 2  -> (* Printf.printf "IDIF %s else \n" var	; *)(endOfcontexte instelse  lastelse  ifelsecontexte globalesElse, globalesElse)
+					|_->  (*Printf.printf "IDIF %s is executed then ou else ??\n" var	; *)
+						(*isExecutedOneTimeOrMore:= false;*)
+					  	let nthen = reecrireCorpsNonExe  instthen nonexethen !numAppel in
+						let nelse = reecrireCorpsNonExe  instelse nonexelse !numAppel in
+						if nelse = [] then  
+							(evalStore (		IFV (	EXP(VARIABLE(var)), BEGIN(nthen)	)		) asL globale, globale)
+						else 	(evalStore (		IFVF(   EXP(VARIABLE(var)), BEGIN(nthen), BEGIN(nelse))	) asL globale, globale)
+				)
+			
+			end in
+			(*isExecutedOneTimeOrMore := isIntoIf;*)
+			(nas, ng)
+		 end
+		 else (contexte, globale)  
+		
 
   | IDAPPEL (numf,appel,listeInputInstruction,var, lt,lf,fic,lig) ->
 	  let numAppelPred = !numAppel in
@@ -3281,10 +3289,10 @@ Printf.printf "evalNid contexte  boucle: tete\n";
 		let isNull = if  estDefExp resaux then  if getDefValue resaux <= 0.0 then true else false else false in
 
 
-
+		 let previsExecutedOneTimeOrMore = !isExecutedOneTimeOrMore in			
 		(*let listeSauf =*)evaluerSN   nid	nid	aSC mesBouclesOuAppel  (List.append  [typeEval] listeEng) isExe borne nid globales;
 					(*	resaux in*)
-
+		isExecutedOneTimeOrMore :=previsExecutedOneTimeOrMore;
 		if !vDEBUG then  Printf.printf "ap evaluerSN de %d dans nid tete appel %d\n"  (getBoucleIdB nid.infoNid.laBoucle) !numAppel;
 
 		typeNidTeteCourant :=tetePred;
@@ -3316,7 +3324,7 @@ afficherUneAffect (new_instBEGIN ni); Printf.printf "evalSIDA fin\n"; c'est bien
 
 			 
 		let res=	evalStore ((new_instBEGIN ni) ) aSC globales in
-		isExecutedOneTimeOrMore := false;
+		
   		estDansBoucleLast := true ; 	
 (*afficherListeAS res;flush(); space(); new_line();*)
 		res
@@ -3392,9 +3400,9 @@ afficherUneAffect (new_instBEGIN ni); Printf.printf "evalSIDA fin\n"; c'est bien
 				  if !vDEBUG then Printf.printf "evalNid av evaluerSN de %d dans nid tete %d appel %d\n" (getBoucleIdB nid.infoNid.laBoucle)
 						  (getBoucleIdB nidTETE.infoNid.laBoucle) !numAppel;
 
-
+				  let previsExecutedOneTimeOrMore = !isExecutedOneTimeOrMore in
 				  evaluerSN   nidTETE	nid	courcont mesBouclesOuAppel (List.append  [typeEval] listeEng) isExeE borne nid globales;
-
+				  isExecutedOneTimeOrMore :=previsExecutedOneTimeOrMore;
 				  if !vDEBUG then   Printf.printf "ap evaluerSN de %d dans nid tete appel %d\n" 
 						  (getBoucleIdB nid.infoNid.laBoucle)	!numAppel;
 				  let corpsEvalPourB = !corpsEvalTMP  in 
@@ -3461,6 +3469,7 @@ List.iter
 			  let typeEval = TBOUCLE ( (getBoucleIdB n.infoNid.laBoucle), !numAppel, 
 				  (reecrireCallsInLoop n.varDeBoucleNid 	n.lesAffectationsBNid ),appel, isExeE, lt,lf,fic,lig) in
 			  dernierAppelFct := !predDernierAppelFct;
+			
 			  traiterBouclesInternes 	
 						  nid (*le noeud complet qui la contient *)
 						  niddepart (* noeud courant *)
@@ -3486,9 +3495,13 @@ List.iter
 				  (*Printf.printf "contexte dans eval sous nid: \n";
 				  afficherListeAS appel;
 				  Printf.printf "FIN CONTEXTE \n"*)
-			  end;					
+			  end;		
+
+			  let previsExecutedOneTimeOrMore = !isExecutedOneTimeOrMore in			
 			  evaluerSN nid (*tete*) n 	appel  corps	(* passer au niveau suivant *) (List.append [typeEval] listeEng) isExeE   borneN tetePred globales;
-			 if !vDEBUG then 
+			
+			  isExecutedOneTimeOrMore := previsExecutedOneTimeOrMore;
+			   if !vDEBUG then 
 				  Printf.printf "AP EVALUERSN ajout sousnid de %d = %d 
 				  dans liste des boucle de %d\n" (getBoucleIdB n.infoNid.laBoucle)	
 				  num (getBoucleIdB nid.infoNid.laBoucle);
@@ -3583,10 +3596,10 @@ Printf.printf"Dans evaluerFonctionsDuDoc  \n";
 afficherLesAffectations (  f.lesAffectations) ;new_line () ;*)
 (*
 Printf.printf"GLOBALE\n";
-afficherLesAffectations (!listeDesInstGlobales) ;new_line () ;new_line () ;flush(); space();
+afficherLesAffectations (!listeDesEnum) ;new_line () ;new_line () ;flush(); space();
 Printf.printf"FIN GLOBALE\n";*)
 
-	  let globalInst = if !notwithGlobalAndStaticInit =false then !listeDesInstGlobales else [] in
+	  let globalInst = if !notwithGlobalAndStaticInit =false then   !listeDesInstGlobales  else !listeDesEnum in
 	  let typeE = TFONCTION(!(!mainFonc),!numAppel, f.lesAffectations, globalInst, [], [], [],  [], true, false,"",0) in  
 	  dernierAppelFct := typeE;
 	  predDernierAppelFct := typeE;

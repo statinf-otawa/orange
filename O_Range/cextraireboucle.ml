@@ -83,6 +83,7 @@ let aUneFctNotDEf = ref false
 
 	let expressionCondFor = ref NOTHING
 	let listeDesInstCourantes = ref []
+    let listeDesEnum = ref []
 	let listeDesInstGlobales = ref []
 	(*let alreadyAffectedGlobales = ref [] *)(* pas chez Clément*)
 	let listeAffectInit = ref []
@@ -4567,7 +4568,7 @@ and analyse_def def =
 			listeDesInstCourantes := [];
 			let (typ, sto, namelist) = n in 
 			(*print_type (fun _ -> ()) typ; new_line();*)
-			(*print_base_type typ; new_line();*)
+		
 			(*if estProto typ then  Printf.printf "is proto\n" else  Printf.printf "is not proto\n" ;*)
 
 		 
@@ -4576,6 +4577,8 @@ and analyse_def def =
 
 				enumCour := NO_TYPE;
 			let baseType = match  get_base_typeEPS  typ  with TYPEDEF_NAME(id) -> id |_-> "" in
+
+			let typenum = !enumCour in
 (*| ENUM (id, items) -> print_enum id items*)
 			let (isTypeDefTab, size ) =
 				if baseType <> "" && existAssosTypeDefArrayIDsize baseType then
@@ -4599,8 +4602,8 @@ and analyse_def def =
 			List.iter  
 			(fun name -> 
 				let (id,typ, _, exp) = name in
-				(*Printf.printf "id : %s \n" id;*)
-
+				
+				 
 				let (isArray,dim) = 
 					(match typ with
 						ARRAY (t, dim) -> majAssosArrayIDsize id typ exp; (* ok because of renaming*)
@@ -4618,38 +4621,47 @@ and analyse_def def =
 					alreadyAffectedGlobales:=List.append [id] !alreadyAffectedGlobales
 				
 			) namelist;
-			consEnum !enumCour; 
-			if estDejaDecl then begin listeDesInstCourantes := listPred; consEnum !enumCour end
+			consEnum typenum; 
+			if estDejaDecl then begin listeDesInstCourantes := listPred; consEnum typenum end
 			else if eststatic =false then listeDesInstCourantes := List.append listPred !listeDesInstCourantes 
 				 else if !estGlobale = false  && estDejaDecl = false then
 					  begin
 							listeDesInstGlobales := List.append !listeDesInstGlobales !listeDesInstCourantes;
+						   
 							listeDesInstCourantes := listPred
 					  end ;
 
 			if !estGlobale  then 
 		 	begin
 					listeDesInstGlobales := List.append !listeDesInstGlobales !listeDesInstCourantes;
+					 
 					listeDesInstCourantes := listPred
 			end ;
 (*Printf.printf "end analyse_def  DECDEF\n"  ;	*)
 			()
 	| TYPEDEF (n, _) -> 	
 		let (typi, sto, namelist) = n in 
+			let listPred = !listeDesInstCourantes in listeDesInstCourantes:= [];
 		List.iter  (fun name ->
 					let (id,typ, _, exp) = name in   
-					match typ with ARRAY (t, dim) -> 	 majTypeDefAssosArrayIDsize id typ ; () |ENUM(_,_)->consEnum typ;()
+					match typ with ARRAY (t, dim) -> 	 majTypeDefAssosArrayIDsize id typ ; () |ENUM(_,_)->consEnum typ;listeDesEnum := List.append !listeDesInstCourantes !listeDesEnum;()
 									 |_->let base = get_base_type typi in 
-											(match base with ENUM(_,_) ->consEnum  base ;()|_->());()
-					) namelist; ;
+											(match base with ENUM(_,_) ->consEnum  base ;listeDesEnum := List.append !listeDesInstCourantes !listeDesEnum;()|_->());()
+					) namelist; 
+		listeDesInstCourantes :=  List.append listPred !listeDesInstCourantes;
 		
 		()
 	| ONLYTYPEDEF n -> 
-		let (typ, sto, namelist) = n in 
+		let (typi, sto, namelist) = n in 
+			let listPred = !listeDesInstCourantes in listeDesInstCourantes:= [];
+		(match typi with  ENUM(_,_)->consEnum typi;listeDesEnum := List.append !listeDesInstCourantes !listeDesEnum;()|_->());
 		List.iter  (fun name -> 
-					let (id,typ, _, exp) = name in  
-					match typ with ARRAY (t, dim) ->   majTypeDefAssosArrayIDsize id typ ; () |ENUM(_,_)->consEnum typ;|_->()
+					let (id,typ, _, exp) = name in  	 
+					match typ with ARRAY (t, dim) ->   majTypeDefAssosArrayIDsize id typ ; () |ENUM(_,_)->consEnum typ;listeDesEnum := List.append !listeDesInstCourantes !listeDesEnum;()
+					|_->let base = get_base_type typi in 
+											(match base with ENUM(_,_) ->consEnum  base ;listeDesEnum := List.append !listeDesInstCourantes !listeDesEnum;()|_->());()
 					) namelist;
+		listeDesInstCourantes :=  List.append listPred !listeDesInstCourantes;
 		
 		()	
 
@@ -5150,36 +5162,43 @@ if l = [] then ()
 else
 begin
 	let ((n,exp), suite) = (List.hd l, List.tl l) in
-(*Printf.printf "ENUM %s \n" n;print_expression exp 0; space();flush();new_line();*)
+
 	if exp = NOTHING then 
 	begin
-		
+(*Printf.printf "ENUM sans %s \n" n;  space();flush();new_line();	*)	
 		let ne =(BINARY(ASSIGN,VARIABLE(n), CONSTANT( CONST_INT (Printf.sprintf "%d" valeur)))) in
 		analyse_expression ne;
- 
 		consListeEnum suite (valeur+1);()
 	end
 	else 
 	begin
+(*Printf.printf "ENUM %s \n" n;print_expression exp 0; space();flush();new_line();*)
 		analyse_expression (BINARY(ASSIGN,VARIABLE(n), exp));
 		let nval = calculer  (EXP(exp)) !infoaffichNull  [] 1 in
 		let nextvat = 
 			match nval with 
 	 			ConstInt (i)-> (int_of_string  i) +1
 			|_-> (valeur+1) in
-		let ne =(BINARY(ASSIGN,VARIABLE(n), CONSTANT( CONST_INT (Printf.sprintf "%d" nextvat)))) in
-		analyse_expression ne;
+		
  
-		consListeEnum suite (nextvat+1)
+		consListeEnum suite (nextvat)
 	end;()
 end
 
 and  	consEnum enumCour =
+
 match enumCour with
 	
 	 ENUM (_, items) -> (*match items with COMMA(l) ->consListeEnum l 0 |_->()*) consListeEnum items 0
 
-|_->()
+|_->();
+
+and isEnum enumCour =
+match enumCour with
+	
+	 ENUM (_, items) -> (*match items with COMMA(l) ->consListeEnum l 0 |_->()*) true
+
+|_->false;
 
 and onlyanalysedef def =
 	match def with
@@ -5233,8 +5252,8 @@ and onlyanalysedef def =
 
 			enumCour := NO_TYPE;
 			let baseType = match  get_base_typeEPS  typ  with TYPEDEF_NAME(id) -> id |_-> "" in
-			 
-			consEnum !enumCour; 
+			let typenum =  !enumCour in
+			consEnum typenum; 
 			let (isTypeDefTab, size ) =
 				if baseType <> "" && existAssosTypeDefArrayIDsize baseType then  (true,(getAssosTypeDefArrayIDsize baseType)) 
 				else (false, NOSIZE) in
@@ -5272,31 +5291,37 @@ and onlyanalysedef def =
 							end	
 						) namelist;
 			
-			if estDejaDecl then begin listeDesInstCourantes := listPred;consEnum !enumCour end
+			if estDejaDecl then begin listeDesInstCourantes := listPred;consEnum typenum end
 			else if eststatic =false then listeDesInstCourantes := List.append listPred !listeDesInstCourantes 
 				 else if !estGlobale = false  && estDejaDecl = false then
 					  begin
 							listeDesInstGlobales := List.append !listeDesInstGlobales !listeDesInstCourantes;
+							 
 							listeDesInstCourantes := listPred
 					  end ;
 			()
 
 	|TYPEDEF (n, _) -> 		let (typei, sto, namelist) = n in 
+
 		List.iter  (fun name -> 
 					let (id,typ, _, exp) = name in
-					match typ with ARRAY (t, dim) -> majTypeDefAssosArrayIDsize id typ ; () |ENUM(_,_)->consEnum typ;()
+					match typ with ARRAY (t, dim) -> majTypeDefAssosArrayIDsize id typ ; () |ENUM(_,_)->()
 									 |_->let base = get_base_type typei in 
-											(match base with ENUM(_,_) ->consEnum  base ;()|_->());()
+											(match base with ENUM(_,_) ->()|_->());()
 					
 					) namelist;
+	
 		
 		()
 	| ONLYTYPEDEF n -> 
-		let (typ, sto, namelist) = n in 
+		let (typi, sto, namelist) = n in 
+		
 		List.iter  (fun name -> 
 					let (id,typ, _, exp) = name in (*Printf.printf "id : %s\n" id;*)
-					match typ with ARRAY (t, dim) -> majTypeDefAssosArrayIDsize id typ ; () |ENUM(_,_)->consEnum typ;()
-				|_->()
+					match typ with ARRAY (t, dim) -> majTypeDefAssosArrayIDsize id typ ; () |ENUM(_,_)->()
+				|_->let base = get_base_type typi in 
+											(match base with ENUM(_,_) ->consEnum  base ;listeDesEnum := List.append !listeDesInstCourantes !listeDesEnum;()|_->());()
 					) namelist;
+		
 		()
 

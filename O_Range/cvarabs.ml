@@ -5387,7 +5387,7 @@ let filterSortiesGlobalesLoops  listES listGlobales asList    =
 asList*)
 let estboucle = ref false
 
-let isExecutedOneTimeOrMore = ref false
+let isExecutedOneTimeOrMore = ref true
 let isExecutedOneTimeOrMoreList = ref []
 
 
@@ -6220,19 +6220,30 @@ match assign with
 					else [na]
 		
 			
-	|   ASSIGN_DOUBLE (id,e1,e2)->if isexe then [ASSIGN_DOUBLE (id,e1, (*MULTIPLE*)e2)(*EXP(CALL (VARIABLE("SET") , 
+	|   ASSIGN_DOUBLE (id,e1,e2)->
+								let (isTruecteArg1, _) =isTrueConstant (expVaToExp e2)  in
+								if isTruecteArg1 then 
+								begin
+									(* Printf.printf "truecte %s \n" id; print_expression (expVaToExp e2) 0;*)
+									 [ASSIGN_DOUBLE (id,e1,  EXP(CALL (VARIABLE("SET") , 
 											List.append [INDEX(VARIABLE(id), expVaToExp e1)] 
-											[expVaToExp e2])) )*)
+											[expVaToExp e2])) ) 
 										(*EXP(CALL (VARIABLE("SET") , 
 											List.append [INDEX(VARIABLE(id), expVaToExp e1)] 
 											[expVaToExp e2])) )*)]
-									else [ASSIGN_DOUBLE (id,e1, MULTIPLE)]
-	|   ASSIGN_MEM (id, e1, e2) -> if isexe then [ASSIGN_MEM (id, e1, e2)]
-										(*EXP(CALL (VARIABLE("SET") , 
+								end
+								else [ASSIGN_DOUBLE (id,e1, MULTIPLE)]
+	|   ASSIGN_MEM (id, e1, e2) -> 
+								let (isTruecteArg1, _) =isTrueConstant (expVaToExp e2)  in
+								if isTruecteArg1 then 
+								begin
+									(*Printf.printf "truecte\n";*)
+									[ASSIGN_MEM (id, e1, EXP(CALL (VARIABLE("SET") , 
 											List.append [UNARY(MEMOF, BINARY(ADD,VARIABLE(id), expVaToExp e1))]
 
-											[expVaToExp e2])) )*)
-									else [ASSIGN_MEM (id, e1, MULTIPLE)]
+											[expVaToExp e2])) )]
+								end
+								else [ASSIGN_MEM (id, e1, MULTIPLE)]
 
 
 
