@@ -26,6 +26,7 @@ let out_dir = ref "."
 let files: string list ref = ref []
 let names : (string ref) list ref =  ref[]
 
+
 let add_file filename =
 	files := List.append !files [filename]
 
@@ -437,8 +438,9 @@ let new_variation i s inc d op b=
 		laListeDesAssosBoucleBorne =la;
 		laListeDesNids = ln;
 	}
+
 	
-	let add_fonction  (n,f) liste= if (List.mem_assoc n liste)= false then 	List.append liste [(n,f)]	else liste
+	let add_fonction  (n,f) liste= if (List.mem_assoc n liste)= false then begin 	List.append liste [(n,f)] 	end else liste
 	let doc = ref (new_document [] [] [] [])
 	let enumCour = ref NO_TYPE
 
@@ -644,6 +646,8 @@ let existeBoucle id =
 		declaration =dec ;
 		corps = c;
 		lesAffectations = l;
+	
+
 		listeES = liste;
 	}
 	
@@ -4497,7 +4501,7 @@ and traiterAppelFonction exp args init ida =
       if ((existeFonction nom) && (not (is_in_use_partial nom))) then 
 	  (	
 		let (_, f) = rechercheFonction nom in
-		if f.lesAffectations = [] then   aUneFctNotDEf := true;
+		if f.lesAffectations = [] then   aUneFctNotDEf := true else add_list_body   (f.nom,  (f.lesAffectations)) ;
 		entrees := [];
 		sorties := [];
 		(*Printf.printf "construireListesES Function name: %s exist=%b \n" nom (existeFonction nom);*)
@@ -4512,6 +4516,7 @@ and traiterAppelFonction exp args init ida =
 	 ) 
 	 else 
 	 (
+		
 		entrees := [];
 		sorties := [];
 		try 
@@ -4722,6 +4727,10 @@ let listeP = !listeDesInstCourantes in
 	 nomFctCour := nomPred;
 	 listeDesInstCourantes := [ new_instBEGIN  !listeDesInstCourantes];
 		let res = majAuxFct  []  !doc.laListeDesFonctions nom  in
+
+	if !listeDesInstCourantes != []   &&  List.mem_assoc nom !alreadyDefFunction = false then add_list_body   (nom, !listeDesInstCourantes);
+
+
 		doc := new_document !doc.laListeDesBoucles   res !doc.laListeDesAssosBoucleBorne !doc.laListeDesNids;
 listeDesInstCourantes:= listeP
 
@@ -4733,7 +4742,7 @@ and  onlyAstatement   stat =
 		let listePred = !listeDesInstCourantes in	
 		listeDesInstCourantes := [];
 		onlyAdefs  defs ;
-		if stat <> NOP then onlyAstatement  stat ;
+		if stat <> NOP then onlyAstatement  stat else Printf.printf "stat vide\n";
 		listeDesInstCourantes :=  List.append listePred  !listeDesInstCourantes 
 
 	| SEQUENCE (s1, s2) ->			
@@ -5109,13 +5118,13 @@ let r = !idAppel in
 			     let res =
 					match (getCorpsFonction f).corpsS with  BLOCK (decs, stat) ->	onlyanalysedef (FUNDEF (proto, (decs, stat)));!listeDesInstCourantes 
 					|_->[] in
-
+					(*if res = [] then Printf.printf "function name: %s exist=%b NEW APPEL ONLY onlytraiterAF vide \n" nom (existeFonction nom); *)
 				listeDesInstCourantes := a;
 				listeASCourant := m;
 				nomFctCour := nfc;
 				res (*f.lesAffectations*)
 			end 
-			else f.lesAffectations in 
+			else (add_list_body   (f.nom,  (f.lesAffectations)) ; f.lesAffectations) in 
 			
 		entrees := init;
 		sorties := [];
@@ -5206,7 +5215,7 @@ and onlyanalysedef def =
 		let (_ , _ , fct )=proto in
 		let (nom,_,_,_) =fct in 
 	(*	let fonction = rechercheFonction nom in*)
-		let listeP = !listeDesInstCourantes in
+		 
 		(*Printf.printf "dans onlyanalysedef  %s %s\n" nom !nomFctCour;*)
 			let gp = !estGlobale in
 			estGlobale := false;
@@ -5217,14 +5226,14 @@ and onlyanalysedef def =
 			nomFctCour := nomPred;
 			listeDesInstCourantes := [ new_instBEGIN  !listeDesInstCourantes];
 			estGlobale := gp;
-		listeDesInstCourantes:= listeP;
+		 
 		()
 		
 	| OLDFUNDEF (proto, (*decs*)_, body) -> 	
 		let (_ , _ , fct )=proto in
 		let (nom,_,_,_) =fct in 
 		(*let fonction = rechercheFonction nom in*)
-		let listeP = !listeDesInstCourantes in
+		 
 			(*Printf.printf "dans onlyanalysedef   %s %s\n" nom !nomFctCour;*)
 			let gp = !estGlobale in
 			estGlobale := false;
@@ -5235,7 +5244,7 @@ and onlyanalysedef def =
 			nomFctCour := nomPred;
 			listeDesInstCourantes := [ new_instBEGIN  !listeDesInstCourantes];
 			estGlobale := gp;
-			listeDesInstCourantes:= listeP;
+			 
 			()
 
 	| DECDEF (n) -> 

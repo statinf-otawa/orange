@@ -267,9 +267,9 @@ listeASCourant := [];
 			let (result, _) = TO.afficherInfoFonctionDuDocUML !TO.docEvalue.TO.maListeEval in
 
 
-listeAssosPtrNameType := initListAssosPtrNameType ;
-listAssocIdType := initistAssocIdType;
-listAssosIdTypeTypeDec:= initlistAssosIdTypeTypeDec ;
+			listeAssosPtrNameType := initListAssosPtrNameType ;
+			listAssocIdType := initistAssocIdType;
+			listAssosIdTypeTypeDec:= initlistAssosIdTypeTypeDec ;
 				let fName = (Filename.concat !out_dir ((fn.nom)^".rpo")) in
 				printf "Stockage dans %s\n" fName;
 			(* TO.afficherCompo	   result; *)   
@@ -295,6 +295,10 @@ let analysePartielle file =
 	printf "analyse_defs OK, maintenant lance evaluation des composants.\n";
 	getComps !doc.laListeDesFonctions;
 	print_string "OK, fini.\n"
+
+
+
+
 
 (* === Main program === *)
 let _ =
@@ -396,6 +400,8 @@ let _ =
 	let firstParse =
 		let merge_file = (getMergedFile a1) in
 		Rename.go (Frontc.trans_old_fun_defs merge_file) in
+
+		
 		
 		if ((!partial) || (!auto)) then (
 			TO.initref stdout firstParse
@@ -511,6 +517,7 @@ let _ =
 		else	(* full analysis *)
 			begin
 				XO.notwithGlobalAndStaticInit := !withoutGlobalAndStaticInit;
+				(* Resumeforgraph.get_intervals secondParse ;*)
 				let result = XO.printFile stdout secondParse true in
 					if !out_file = ""
 						then print_string result

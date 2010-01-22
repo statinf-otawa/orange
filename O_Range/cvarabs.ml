@@ -234,8 +234,14 @@ let new_assign_double id exp1 exp2  = ASSIGN_DOUBLE(id, exp1, exp2)
 let new_assign_mem id exp1 exp2  = ASSIGN_MEM (id, exp1, exp2)
 let (alreadyEvalFunctionAS: (string * abstractStore list)list ref) = ref []
 
+
+
 let add_list_comp   v =  
   alreadyEvalFunctionAS := v :: (!alreadyEvalFunctionAS)
+
+
+
+
 
 type corpsInfo = 
       CORPS of inst
@@ -265,6 +271,16 @@ let new_instAPPELCOMP num instAffectIn nom instAffectSortie absStore s = APPEL(n
 type listeDesInst = inst list
 let listAssocIdType  = ref []
 let listeAssosPtrNameType = ref []
+
+let (alreadyDefFunction: (string * inst list)list ref) = ref []
+let add_list_body   v =  
+  alreadyDefFunction := v :: (!alreadyDefFunction)
+
+let get_fct_body   n =  
+ 
+  if List.mem_assoc n !alreadyDefFunction then List.assoc n !alreadyDefFunction else []
+
+
 
 type decType =
 STRUCTORUNION of (string*newBaseType) list
@@ -438,6 +454,28 @@ match t with
 		 end
 		
 let print_expVA e = match e with MULTIPLE -> Printf.printf "MULTIPLEDEF \n"| EXP (e) -> if e = NOTHING then Printf.printf "NOTHING" else print_expression e 0
+
+
+let rec getListIntVar l n globalesVar=
+if l = [] then ([],[])
+else
+begin
+	let ((var,typ), next) = (List.hd l, List.tl l) in
+
+	 let isInt = match getBaseType typ with INT_TYPE-> true|_-> false in
+	 let (isOk,nn) = if isInt then 
+				begin
+					if (String.length var > 4) && (String.sub var  0 4) = "bIt-" then    (false,n)
+					else 
+						if (String.length var > 5) && ((String.sub var  0 5) = "__tmp" ||  (String.sub var  0 5) = "__tag") then  (false,n) else (true, n+1)
+				end
+				else  (false,n) in
+	let (g, o)= (getListIntVar next nn globalesVar) in
+
+	if isOk then if List.mem var globalesVar then (List.append [(var, n)] g,o) else (g, List.append [(var, n)] o)
+
+	else (g, o)
+end
 
 let rec hasPtrArrayBoundConditionExp e =
 match e with
@@ -1257,7 +1295,7 @@ if l = [] then ConstInt ("1")
 else  evalexpression(	Prod (ConstInt (Printf.sprintf "%d" (List.hd l)), prodListSize (List.tl l) ))
 
 
-
+(* for array [dim1][dim2...] *)
 let rec  prodListSizeIndex l l2=
 if l = [] then  CONSTANT(CONST_INT("1"))
 else  
@@ -2181,7 +2219,7 @@ let (tab1,_, _) =getArrayNameOfexp (expVaToExp e) in
 
 ) l
 
-
+(* is the same var that is assigned ? *)
 and eqmemindex id var i e =
 if id = var&& eqindex e i then true
 else
@@ -2190,7 +2228,7 @@ begin
 
 	let (index , _) = consArrayFromPtrExp (expVaToExp e )  tab1 in
 
-	if tab1 = "" then false else tab1 = var && eqindex (EXP index) i
+	if tab1 = "" then false else tab1 = var && eqindex (EXP index) i (* the same var and the same index *)
 
 end
 
@@ -2612,11 +2650,11 @@ and sensVariation var max expre ia =
 (*printSens sensRes; Minimum*)
 sensRes
 	end
-(* terminer *)
+(* terminer is the expression a constant or inceasing function of var*)
 and estCroissantOuCte var max expre ia =
 let sens = sensVariation  var max expre ia in
 sens = CROISSANT || sens = CONSTANTE  
-
+(* terminer is the expression a constant or deceasing function of var*)
 and estDecroissantOuCte var max expre ia =
 let sens = sensVariation  var max expre ia in
 sens = DECROISSANT || sens = CONSTANTE 
@@ -2794,7 +2832,7 @@ let res = (
 				else NOCOMP
 ) in
 if  estDefExp res && getDefValue res <= 0.0 then NOCOMP else res
-	
+(* if sygma is not evaluated or as a biggest value that the product*)	
 and evalProd var max expre ia witheps exprea=
 	let val1 = evalexpression max in
 	let val2 = evalexpression expre in
@@ -5253,7 +5291,7 @@ let corpsNouvI = ref []
 let firstLoop = ref 0
 
 (*let listeApres = ref []*)
-
+(*
 
 let rec listeDesVarDuCorps corps =
 match corps with 
@@ -5273,6 +5311,26 @@ match corps with
 			List.append (listeDesVarsDeExpSeules  (expVaToExp (exp2)))  
 						(List.append  (listeDesVarsDeExpSeules  (expVaToExp (exp3))) (listeDesVarDuCorps  i))  
 
+
+
+let rec listeOfAssignedVarofBody corps =
+match corps with 
+	VAR (id, _) ->  [id] 
+		
+	| TAB (id, _, _)
+	|  MEMASSIGN ( id, _, _)	->	 [id] 
+	| BEGIN liste -> listeDesVarBegin liste
+		
+	| IFVF (_, i1, i2) ->
+			 
+						(List.append (listeOfAssignedVarofBody  i1)  (listeOfAssignedVarofBody  i2))			
+	| IFV ( _, i1) 	->
+			  (listeOfAssignedVarofBody  i1) 	
+	| APPEL (_,e,_,s,_,_,_)-> List.append (listeOfAssignedVarofBody e) (listeOfAssignedVarofBody s)
+	| FORV(_,_,_, _, _, _, i)->  (listeOfAssignedVarofBody  i) 
+
+
+
 and listeDesVarBegin liste =
 if liste = [] then []
 else
@@ -5281,7 +5339,7 @@ begin
 	List.append (listeDesVarDuCorps first) (listeDesVarBegin next)
 end
 
-	
+	*)
 let rec splitTotalAndOthers ascour globales rename = 
 List.filter(
 fun prem ->
@@ -6502,7 +6560,13 @@ begin
 			(* var may be a global *)
 if List.mem_assoc  nom !alreadyEvalFunctionAS = false then
 begin
-			let (newi1, listeaux1) = extractVarCONDAffectaux [c] listeCondVar in
+			
+let liste1 = match c with BEGIN(e)-> e |e->[e] in
+
+let corps = if liste1 = [] then  get_fct_body   nom else liste1 in
+						
+			let (newi1, listeaux1) = extractVarCONDAffectaux corps listeCondVar in
+ 
 			if newi1 = []  then (newSuite, listeaux)
 			else (List.append [ APPEL( num, e,nom ,s, CORPS (List.hd newi1),v,r)] newSuite, union  listeaux1 listeaux)			
 end 

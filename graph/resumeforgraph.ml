@@ -1174,3 +1174,48 @@ let get_only_without_pessimism_strategy secondParse =
 											classified_list)
 	) (!Cextraireboucle.names)
 
+
+
+let intervalAnalysis file =
+
+	let (globalInt, listofintVar) = getListIntVar !listAssocIdType 0 !alreadyAffectedGlobales in
+	let listLocalVar = List.map (fun (x, _)-> x) listofintVar in
+    let listGlobalVar = List.map (fun (x, _)-> x) globalInt in
+
+
+	let listIntVar = List.append listLocalVar listGlobalVar in
+
+
+	List.iter (fun (x, n)-> Printf.printf "(%s, %d) " x n) listofintVar;
+	Printf.printf " list length %d \n"  (List.length listofintVar);
+
+	List.iter (fun (x, n)-> Printf.printf "(%s, %d) " x n) globalInt;
+	Printf.printf " list length %d \n"  (List.length globalInt);
+
+
+	let functionFilter =
+	List.map(fun (_,info) -> 
+			let (name,assign) = (info.nom, info.lesAffectations) in
+			 
+	 		(name,extractVarCONDAffect assign listIntVar)
+
+
+	)!doc.laListeDesFonctions in
+
+		List.iter (fun (n, l)-> Printf.printf "(\n\n%s,   " n ;afficherLesAffectations l; Printf.printf " \n\n%s ) " n ;) functionFilter;
+
+
+	print_string "interval analysis end.\n"
+
+
+let get_intervals secondParse =
+	let _ = init secondParse in
+	intervalAnalysis secondParse
+	(*List.map (fun name ->
+		partial_computation name;
+		 
+
+
+	) (!Cextraireboucle.names)*)
+
+
