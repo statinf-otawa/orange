@@ -10,13 +10,16 @@ open Printf
 open Frontc
 open Mergec
 open Calipso
-
+open ExtractinfoPtr
 open Cextraireboucle
 open Cvarabs
 open Cabs
 open Coutput
 open Orange
+ 
 open Resumeforgraph
+open Util
+
 
 module TO = Orange.Maker(Orange.PartialAdapter(Cextraireboucle.TreeList))
 module XO = Orange.Maker(Orange.PartialAdapter(Orange.MonList))
@@ -226,13 +229,15 @@ listeASCourant := [];
 			let typeE = TO.TFONCTION(fn.nom,!TO.numAppel, fn.lesAffectations, !listeDesEnum, [], [], [],  [], true, false,"",0) in
 				TO.dernierAppelFct := typeE;
 			TO.predDernierAppelFct := typeE;
-			let (aslist,_,_) = TO.evaluerFonction (fn.nom) fn []  (EXP(NOTHING))   [typeE]  typeE true (*!listeASCourant*) (evalStore (new_instBEGIN !listeDesEnum) [] []) (( CONSTANT(CONST_INT("1")))) (( CONSTANT(CONST_INT("0")))) in () ;
+			let (aslist,_,_) = TO.evaluerFonction (fn.nom) fn []  (EXP(NOTHING))   [typeE]  typeE true (*!listeASCourant*) (evalStore (new_instBEGIN !listeDesEnum) [] [] []) (( CONSTANT(CONST_INT("1")))) (( CONSTANT(CONST_INT("0")))) [] [] in () ;
+
+
 			let compAS: abstractStore list = 
 				filterwithoutInternal (*(evalStore (new_instBEGIN fn.lesAffectations) [] []) (listeOutputs fn.listeES) globales *) 
 						aslist (listeOutputs fn.listeES) globales in
 				printf "..l'abstractStore fait %u entrees, affichage: \n"(List.length(compAS));
 			 
-			(*afficherListeAS compAS;*)
+			(*afficherListeAS aslist;*)
 			printf "\n";
 			(* find if there is a loop inside abstract stores *)
 			let nb_loop = (List.fold_left
@@ -291,9 +296,13 @@ let analysePartielle file =
 	TO.enTETE :=  false;
 	TO.estNulEng :=  false;  TO.isPartialisation := true;
 	TO.estDansBoucle :=  false;getOnlyBoolAssignment := true;
-	analyse_defs file;getOnlyBoolAssignment := false;
+	analyse_defs file;getOnlyBoolAssignment := false; phaseinit := false;
 	printf "analyse_defs OK, maintenant lance evaluation des composants.\n";
+	Resumeforgraph.endForPartial "analyse_defs OK, maintenant lance evaluation des composants.\n" ;
 	getComps !doc.laListeDesFonctions;
+
+
+
 	print_string "OK, fini.\n"
 
 
@@ -517,8 +526,9 @@ let _ =
 		else	(* full analysis *)
 			begin
 				XO.notwithGlobalAndStaticInit := !withoutGlobalAndStaticInit;
-				(* Resumeforgraph.get_intervals secondParse ;*)
-				let result = XO.printFile stdout secondParse true in
+				Resumeforgraph.get_intervals secondParse;
+
+				let result = XO.printFile stdout secondParse (*true si pas Resumeforgraph.get_intervals secondParse;*) false  in
 					if !out_file = ""
 						then print_string result
 					else

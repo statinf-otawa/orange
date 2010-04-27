@@ -17,6 +17,9 @@ open Cvarabs
 open Cvariables
 open Constante
 open Interval
+open Util
+open Rename
+open ExtractinfoPtr
 
 
 type typeEQ =	INCVIDE (*0 pour + ou -, 1 pour * ou div*)|   NEG|   POS|   NDEF|NOVALID
@@ -122,7 +125,7 @@ let rec rechercheInc var exp before=
 									begin
 										(*getOnlyBoolAssignment := false;*)
 										(* set to change abstract interpretation of if to find Bool condition loop increment*)
-										let las = evalStore (new_instBEGIN(before)) [] [] in
+										let las = evalStore (new_instBEGIN(before)) [] [] !myCurrentPtrContext in
 											(*afficherListeAS las;*)
 										(*getOnlyBoolAssignment := true;*)
 										applyStoreVA (EXP(expressionEvalueeToExpression a)) las ,
@@ -190,15 +193,15 @@ let rec rechercheInc var exp before=
 	end 
 
 
-let beforeAffin = ref (VAR ("", MULTIPLE))
+let beforeAffin = ref (VAR ("", MULTIPLE,[],[]))
 
 let getCondition e =
 let var =( match e with VARIABLE(v)->v |_->"") in
 (match !beforeAffin with
-VAR (x, exp)-> if x = var then expVaToExp exp else ((*Printf.printf "%s not found\n" v;*) NOTHING)
+VAR (x, exp,_,_)-> if x = var then expVaToExp exp else ((*Printf.printf "%s not found\n" v;*) NOTHING)
 |_->  NOTHING)
 
-let rec analyseIncFor var exp inst las asAs completList beforei=
+let rec analyseIncFor var exp inst  asAs completList beforei=
 (*Printf.printf "analyse inc de %s \n" var ;
 print_expression exp 0; new_line(); flush();*)
 (	match exp with	
@@ -212,7 +215,7 @@ print_expression exp 0; new_line(); flush();*)
 						if List.mem var (listeDesVarsDeExpSeules  exp2) =false  then
 						begin
 					(* si j=i+N avec i mofifiée par la boucle alors on peut remplacer la condition sur j dans le test de boucle par une condition sur i+N sans décalage pour un do while mais avec décalage pour les autres boucles*)							
-							let (inc, before, isAddinc, isComp, varDep) = getIndirectIncrease var exp2 inst las asAs completList in
+							let (inc, before, isAddinc, isComp, varDep) = getIndirectIncrease var exp2 inst  asAs completList in
 							if isComp then
 							begin
 							(*	Printf.printf "%s depend indirectement de %s \n" var varDep;
@@ -243,8 +246,8 @@ print_expression exp 0; new_line(); flush();*)
 				)
 				end
 				else  (NOTHING, true, true,false,var)
-			|_->if List.mem var (listeDesVarsDeExpSeules  exp1) =false   then	analyseIncFor var exp2 inst las asAs completList beforei
-				else if List.mem var (listeDesVarsDeExpSeules  exp2) =false  then	analyseIncFor var exp1 inst las asAs completList beforei
+			|_->if List.mem var (listeDesVarsDeExpSeules  exp1) =false   then	analyseIncFor var exp2 inst  asAs completList beforei
+				else if List.mem var (listeDesVarsDeExpSeules  exp2) =false  then	analyseIncFor var exp1 inst  asAs completList beforei
 					 else (NOTHING, true, true,false,var)
 		)
 		| UNARY (op, exp1) ->
@@ -263,17 +266,17 @@ print_expression exp 0; new_line(); flush();*)
 			)
 		| COMMA exps ->	
 			if List.mem var (listeDesVarsDeExpSeules exp) =false then	(NOTHING, true, true,false,var)
-			else applyComma  exps var exps inst las asAs completList	beforei		
+			else applyComma  exps var exps inst  asAs completList	beforei		
 								   			
 		|_-> (NOTHING, true, true,false,var)
 )
-and applyComma  exps var ex inst las asAs completList  beforei=
+and applyComma  exps var ex inst  asAs completList  beforei=
 if exps = [] then (NOTHING, true, true,false,var) 
 else
 begin
 	let (head, others) = (List.hd exps, List.tl exps) in
-	if List.mem var  (listeDesVarsDeExpSeules head) = true then  analyseIncFor var head inst las asAs completList beforei
-	else applyComma  others var ex inst las asAs completList (*List.append beforei [head]*)  beforei
+	if List.mem var  (listeDesVarsDeExpSeules head) = true then  analyseIncFor var head inst  asAs completList beforei
+	else applyComma  others var ex inst  asAs completList (*List.append beforei [head]*)  beforei
 end
 
 and rechercheAffectVDsListeASAndWhere v var l isbefore=
@@ -305,7 +308,7 @@ let suite = List.tl l in
 
 
 
-and getIndirectIncrease var exp inst las asAs completList =
+and getIndirectIncrease var exp inst  asAs completList =
 (*afficherLesAffectations completList;*)
 	if listeDesVarsDeExpSeules  exp  = []  then 
 	begin
@@ -317,9 +320,9 @@ and getIndirectIncrease var exp inst las asAs completList =
 	else
 	 match exp with
 		VARIABLE (v) -> 
-let pred = !getOnlyBoolAssignment in
+			let pred = !getOnlyBoolAssignment in
 			getOnlyBoolAssignment := true;
-			let cas =evalStore (new_instBEGIN(completList)) [] [] in
+			let cas =evalStore (new_instBEGIN(completList)) [] [] !myCurrentPtrContext in
 			getOnlyBoolAssignment := pred;
 			let assignj = expVaToExp(rechercheAffectVDsListeAS var cas) in
 						
@@ -330,7 +333,7 @@ let pred = !getOnlyBoolAssignment in
 						opEstPlus:= true;
 						let (assign,after)= rechercheAffectVDsListeASAndWhere v var cas false in	
 						let (inc, before, isplus,iscomp,nvar)=
-								analyseIncFor v (BINARY(ASSIGN,VARIABLE(v),assign)) inst cas true completList [] in
+								analyseIncFor v (BINARY(ASSIGN,VARIABLE(v),assign)) inst  true completList [] in
 						if nvar = v then ( inc,after=false, isplus,  (inc != NOTHING), v) else (NOTHING, true,true,false,"other")
 					end
 					else (NOTHING, true,true,false,"other")
@@ -341,7 +344,7 @@ let pred = !getOnlyBoolAssignment in
 					if  assign =  assignj then
 					begin	
 						let (inc, before, isplus,iscomp,nvar)=
-							analyseIncFor v (BINARY(ASSIGN,VARIABLE(v),assign)) inst cas true completList [] in
+							analyseIncFor v (BINARY(ASSIGN,VARIABLE(v),assign)) inst  true completList [] in
 						if nvar = v then ( inc,after=false, isplus,  (inc != NOTHING), v) else (NOTHING, true,true,false,"other")
 					end
 					else (NOTHING, true,true,false,"other") )
@@ -351,9 +354,9 @@ let pred = !getOnlyBoolAssignment in
 						Printf.printf "depend d'une expression contenant une autre variable est pas de cette variable seule non encore traité\n";
 					(NOTHING, true,true,false,"other")
 	 	
-and getInc var assign inst las asAs completList beforei=
+and getInc var assign inst  asAs completList beforei=
 		opEstPlus:= true;	
-		let (inc, before, isplus,iscomp,nvar)= analyseIncFor var (BINARY(ASSIGN,VARIABLE(var),assign)) inst las asAs completList beforei in
+		let (inc, before, isplus,iscomp,nvar)= analyseIncFor var (BINARY(ASSIGN,VARIABLE(var),assign)) inst  asAs completList beforei in
 		let valinc = calculer (EXP(inc))  !infoaffichNull  [](*appel*) (-1) in	
 		(*let resinc = if estDefExp valinc then expressionEvalueeToExpression valinc  else expVaToExp inc in*)
 		(*Printf.printf"isIndirect MUORDI\n"; print_expression inc 0;*)
@@ -538,14 +541,14 @@ afficherLesAffectations iList;*)
 	begin 
 		let (firstInst, nextInst) =  (List.hd iList, List.tl iList) in
 		match firstInst with
-			VAR (id, exp) -> beforeAffin := firstInst;
+			VAR (id, exp,_,_) -> beforeAffin := firstInst;
 				 let (isindirect,inc1,v, before) = 
 					 if id = x then
 					 begin
 
 						 getInc x (expVaToExp exp) 	
 								iList 
-								[] 
+								
 								false 
 								completList previous
 					end
@@ -559,10 +562,10 @@ afficherLesAffectations iList;*)
 					end
 					else (true, inc1, v, before)
 
-			| TAB (id, _, _) -> 
+			| TAB (id, _, _,_,_) -> 
 				if id = x then (false,NODEFINC,x,false) 
 				else  (*NOINC *)getIncOfInstList x nextInst completList   interval (List.append previous [firstInst] )
-			| MEMASSIGN (id, _, _) -> 
+			| MEMASSIGN (id, _, _,_,_) -> 
 				if id = x then (false,NODEFINC,x,false) 
 				else  (*NOINC *)getIncOfInstList x nextInst completList  interval (List.append previous [firstInst] )
 
@@ -618,7 +621,7 @@ afficherLesAffectations iList;*)
 
 				
 
-			| FORV (num,id, _, _, _, _, body)->
+			| FORV (num,id, _, _, _, _, body,_)->
 				let nbItMin = if  existAssosExactLoopInit  num then getAssosExactLoopInit num  else 0 in
 				let (indirect1, inc1, var1, before1,incifexe) = (extractIncOfLoop x [body] id nbItMin (*nbItMin_{numLoop}*)completList) (List.append previous [firstInst] ) in
 				(*if nbItMin_{numLoop}=nbItMax_{numLoop} then joinSequence x (extractIncOfLoop x [body] id nbItMin_{numLoop} )(getIncOfInstList x [nextInst])
@@ -639,8 +642,8 @@ afficherLesAffectations iList;*)
 					else (true, inc1, var1, before1) 
 
 
-			| APPEL (_,_,_,s,_,_,_)->
-				let (indirect1, inc1, var1, before1) = (getIncOfCall x firstInst completList s (List.append previous [firstInst] )  ) in
+			| APPEL (_,_,name,s,c,_,_,_)->
+				let (indirect1, inc1, var1, before1) = (getIncOfCall x name c completList s (List.append previous [firstInst] )  ) in
 				if inc1 = NODEFINC then (indirect1,inc1, var1, before1)
 				else
 					if indirect1 = false then 
@@ -653,26 +656,28 @@ afficherLesAffectations iList;*)
 
 
 and extractIncOfLoop x inst varL nbItL completList beforei=
-	if nbItL = 0 then
+	(*if nbItL = 0 then*)
 	begin
 		
-		let las = evalStore (new_instBEGIN(inst)) [] [] in
+		(*let las = evalStore (new_instBEGIN(inst)) [] [] !myCurrentPtrContext in*)
+
+ 
 		let (isindirect,inc1,v, before) = 
-			if existAffectVDsListeAS x las then
+			if List.mem x (assignVar inst) then
 			begin
-				let varBPUN = BINARY(SUB, VARIABLE varL, CONSTANT(CONST_INT("1"))) in
+				(*let varBPUN = BINARY(SUB, VARIABLE varL, CONSTANT(CONST_INT("1"))) in
 			    isMultiInc := true;
 				let extinc = expVaToExp(applyStoreVA (rechercheAffectVDsListeAS x las)  	[ASSIGN_SIMPLE (varL, EXP(varBPUN))] )   in
-				getInc x extinc inst !listeASCourant true completList beforei
+				getInc x extinc inst !listeASCourant true completList beforei*)(false,NODEFINC,x, false) 
 			end
 			else (false,NOINC,x, false) in
 		
 		 (false,NOINC,x, false, inc1)
 	end
-	else 
+	(*else 
 	begin
 		listeASCourant := [];
-		let las =evalStore (new_instBEGIN(inst)) [] [] in
+		let las =evalStore (new_instBEGIN(inst)) [] [] !myCurrentPtrContext in
 		let (isindirect,inc1,v, before) = 
 			if existAffectVDsListeAS x las then
 			begin
@@ -683,51 +688,91 @@ and extractIncOfLoop x inst varL nbItL completList beforei=
 			end
 			else (false,NOINC,x, false) in
 		 (isindirect,inc1,v, before, inc1) 
-	end
+	end*)
 
 
-and getIncOfCall x call completList s beforei=
-let predval = !withoutTakingCallIntoAccount in
-if List.mem x !alreadyAffectedGlobales then withoutTakingCallIntoAccount:= false else withoutTakingCallIntoAccount := true;
-let affectSortie = evalStore s [] [] in	
-if existAffectVDsListeAS x affectSortie then withoutTakingCallIntoAccount:= false  else withoutTakingCallIntoAccount := true;
-let las = evalStore call [] [] in
 
-let inc = 
-if existAffectVDsListeAS x las then
-begin
-			let extinc = expVaToExp(rechercheAffectVDsListeAS x las)   in
-			getInc x extinc [call] !listeASCourant true completList beforei
-end
-else (false,NOINC,x, false) in
-withoutTakingCallIntoAccount := predval;
+and getIncOfCall x name body  completList s beforei =
+ 
+(*let predval = !withoutTakingCallIntoAccount in*)
+let inc =
+		if changeGlobal x name body then  (false,NODEFINC,x, false) else
+		begin
+			let sorties = (match s with BEGIN(sss)-> sss |_->[]) in
+			let ass = 
+							List.map 
+											( fun sortie -> 
+												(match sortie with 
+													VAR (id, _,_,_) 
+													| TAB (id, _, _,_,_) 
+													|MEMASSIGN (id, _,_,_,_)->
+														let fid = 	if  String.length id > 1 then 
+														if (String.sub id  0 1)="*" then  String.sub id 1 ((String.length id)-1) else id
+														else id  in 
+
+															"*"^fid 
+													|_->"")
+											)sorties	in
+			(*let affectSortie = evalStore s [] [] [] in	*)
+			if  List.mem x (ass)  then (false,NODEFINC,x, false) 
+			else (false,NOINC,x, false)
+		end   in
+(*withoutTakingCallIntoAccount := predval;*)
 inc
 
 
+and changeGlobal x name body =
 
-
-
+let  used = 
+ 	if AFContext.mem  !myAF name = false then
+ 	begin
+		match body with CORPS(_) ->    
+		(*	!alreadyAffectedGlobales see also util.ml    function function*)[]
+			| ABSSTORE(l) ->  realgetAllVARAssign l 
+ 	end
+ 	else
+	begin
+		
+		match body with CORPS(_) ->  
+			 	if List.mem_assoc  name !alreadyEvalFunctionAS then realgetAllVARAssign ( List.assoc name !alreadyEvalFunctionAS) 
+				else assignVar (get_fct_body   name) 			 
+			| ABSSTORE(l) ->  realgetAllVARAssign l
+	end
+		in
+		let global  = List.filter(fun x->  let fid = 	if  String.length x > 1 then 
+										if (String.sub x  0 1)="*" then  String.sub x 1 ((String.length x)-1) else x
+									else x  in List.mem fid !alreadyAffectedGlobales )used in
+		let globalPtr = List.filter(fun x-> List.mem_assoc x !listeAssosPtrNameType  )global in
+		 if globalPtr != [] then true  else List.mem x global  
 
 
 and getLoopVarInc v inst =
 		let pred = !getOnlyBoolAssignment in
  		getOnlyBoolAssignment := false;
+		setOnlyIncrement true;
 		isMultiInc := false;(*Printf.printf "getincrement %s \n "v;*)
 		let (isindirect,inc,var, before) = getIncOfInstList v inst inst (INTERVALLE(INFINI,INFINI)) [] in
 		getOnlyBoolAssignment := pred;
-		(* IDEM match  inc  with 
-				NODEFINC -> (* pas trouvé d'increment peut être condition = var booleenne *)
-						let (isAssignedOK, assign, isConditionnal, ltrue, lfalse) = containBoolxAssignementBody x  inst inst in
-						if isAssignedOK then 
-								getBooleanAssignementInc  assign isConditionnal ltrue lfalse x
-						else 
-						begin
-							opEstPlus := getIsAddInc inc;
-							expressionIncFor :=  getIncValue inc ;
-							(isindirect,inc,var, before, !isMultiInc)
-						end
-				
-		|_->*)
+
+if List.mem v !myChangeVar || List.mem var !myChangeVar then
+( Printf.printf "pb increment %s %s\n" v var;
+(*Printf.printf "\n\nAssigned  \n" ;			List.iter(fun x -> Printf.printf "%s" x)!myChangeVar ;
+Printf.printf "\nptr  \n" ;	LocalAPContext.print !myCurrentPtrContext;*)
+expressionIncFor :=NOTHING;
+
+
+opEstPlus :=false;
+(isindirect,NODEFINC,var, before, !isMultiInc)
+
+)
+else
+(
+
+	(*	
+let myCurrentPtrContext = ref []
+let intoLoopCurrent = ref false
+let myChangeVar = ref []*)
+
 			opEstPlus := getIsAddInc inc;
 			expressionIncFor :=  getIncValue inc ;
 		 
@@ -735,9 +780,9 @@ and getLoopVarInc v inst =
 Printf.printf "getincrement %s FIN\n "v;print_intType (getIncType inc);
 print_expression !expressionIncFor 0; flush();new_line();flush();flush();new_line();flush();flush();new_line();flush();
 Printf.printf "getincrement %s FIN res\n "v;*)
-
+		setOnlyIncrement false;
 
 		(isindirect,inc,var, before, !isMultiInc)
 
-
+)
 

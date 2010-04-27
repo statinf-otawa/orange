@@ -6,11 +6,14 @@
 ** Date:	11.7.2008
 ** Author:	Marianne de Michiel
 *)
-
+open Cabs
 open Cextraireboucle 
 open Cvarabs
 open Printf
 open Tod
+open ExtractinfoPtr
+open Rename
+open Util
 (*open Cevalexpression*)
  
 
@@ -125,9 +128,9 @@ else
 begin
 	let (first, next) = (List.hd body, List.tl body) in
 	match first with 
-		VAR (_, exp) 
-		| TAB (_, _, exp) 
-		|  MEMASSIGN ( _, _, exp)	->	 (*+1 but it aslo may be a struct*)
+		VAR (_, exp,_,_) 
+		| TAB (_, _, exp,_,_) 
+		|  MEMASSIGN ( _, _, exp,_,_)	->	 (*+1 but it aslo may be a struct*)
 			let (nextifn, nnextln, nnextcl,nnextan, nnextclist, nnextonlyonecall, _, _, ncallsinloop, ncallsinif ) = getFunctionNumbers  next 0 0 0 0 clist onlyonecall inloop inif callsinloop callsinif in
 
 			(ifn + nextifn, ln + nnextln, cl +nnextcl , an+1+nnextan ,nnextclist, nnextonlyonecall, inloop, inif, ncallsinloop, ncallsinif) 
@@ -147,12 +150,12 @@ begin
 			let (nextifn, nnextln, nnextcl,nnextan, nnextclist, nnextonlyonecall, _,_, nextcallsinloop, nextcallsinif ) = getFunctionNumbers next 0 0 0 0 n1clist n1onlyonecall inloop inif n1callsinloop n1callsinif in
 			(ifn+n1ifn+1+nextifn, ln+n1ln+nnextln, n1cl+cl +nnextcl, an+n1an+nnextan, nnextclist, nnextonlyonecall,inloop,inif, nextcallsinloop, nextcallsinif)	 
 					
-		| FORV (_,_, _, _, _, _, inst)	-> 
+		| FORV (_,_, _, _, _, _, inst,_)	-> 
 			let (n1ifn, n1ln, n1cl,n1an, n1clist, n1onlyonecall, _, _, n1callsinloop, n1callsinif ) = getFunctionNumbers  [inst] 0 0 0 0 clist onlyonecall  true inif callsinloop callsinif in
 			let (nextifn, nnextln, nnextcl,nnextan, nnextclist, nnextonlyonecall,_, _, nextcallsinloop, nextcallsinif ) = getFunctionNumbers  next 0 0 0 0 n1clist n1onlyonecall  inloop inif n1callsinloop n1callsinif in
 			(ifn+n1ifn+nextifn, ln+n1ln +1+nnextln, n1cl+cl +nnextcl, an+n1an*fixedPointCoef+nnextan, nnextclist, nnextonlyonecall,inloop, inif, nextcallsinloop, nextcallsinif )
 	 
-		| APPEL (n,e,nomFonc,s,corpsAbs,varB,rename)->
+		| APPEL (n,e,nomFonc,s,corpsAbs,varB,rename,_)->
 
 		let (nextifn, nnextln, nnextcl,nnextan, nnextclist, nnextonlyonecall,_,_ ,nextcallsinloop, nextcallsinif  ) = getFunctionNumbers  next 0 0 0 0 clist onlyonecall inloop inif callsinloop callsinif in
 		(ifn+nextifn, ln+nnextln, cl + 1 +nnextcl, an +nnextan, List.append [nomFonc] nnextclist , (if List.mem nomFonc nnextonlyonecall then nnextonlyonecall else List.append [nomFonc] nnextonlyonecall),
@@ -174,8 +177,8 @@ List.map (fun name -> (name, (getnb name clist, getnb name cinl, getnb name cini
 
 
 let  getInfoFunctions  docu	= (* from each function or only from an entry point ?? for the moment for each *)
-List.iter(fun (_,info) -> 
-		let (name,assign) = (info.nom, info.lesAffectations) in
+List.iter(fun (_,info) -> let name = info.nom in
+		let assign = if info.lesAffectations = [] then    get_fct_body name else info.lesAffectations in
 		let (n1ifn, n1ln, n1cl,n1an, n1clist, n1onlyonecall,_,_, cinl,cini ) = getFunctionNumbers  assign 0 0 0 0 [] [] false false [] [] in
 			if assign = [] then Printf.printf "%s corps vide \n" name;
 			let (typeF, color ) = getTypeAndBoxColor n1ifn n1ln n1cl n1an (cinl=[]) in
@@ -1052,23 +1055,19 @@ let partial_tips_message call_list_number call_list =
 	(resumeString ^ biggestString ^ "\n---------------------------------*/\n")
 
 
+
+
 (* Initialize resume for graph *)
 let init = fun secondParse ->
-
-getOnlyBoolAssignment := true;
- 
+	getOnlyBoolAssignment := true;
 	idBoucle := 0;
 	idAppel:=0;
 	nbImbrications := 0;
- 
- 
 	analyse_defs secondParse;
- 
-getOnlyBoolAssignment := false;
+	phaseinit := false;
+	getOnlyBoolAssignment := false;
 	getInfoFunctions doc;
-	
 	evalCallList !callsList;
-	
 	read_dot_size dot_sizes;;
 
 (* Complete computation of the partialisation strategy *)
@@ -1153,9 +1152,168 @@ let resume secondParse complet =
 		) (!Cextraireboucle.names);
 	end;;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+let newcurrentcallslistptr = ref []
+
+let intervalAnalysis doc =
+
+	(*let (globalInt, listofintVar) = getListIntVar !listAssocIdType 0 !alreadyAffectedGlobales in
+	let listLocalVar = List.map (fun (x, _)-> x) listofintVar in
+    let listGlobalVar = List.map (fun (x, _)-> x) globalInt in*)
+
+
+	(*let listIntVar = List.append listLocalVar listGlobalVar in*)
+
+
+	(*List.iter (fun (x, n)-> Printf.printf "(%s, %d) " x n) listofintVar;
+	Printf.printf " list length %d \n"  (List.length listofintVar);
+
+	List.iter (fun (x, n)-> Printf.printf "(%s, %d) " x n) globalInt;
+	Printf.printf " list length %d \n"  (List.length globalInt);*)
+	let _= extractMemAssignAndPtrAssign !listeDesInstGlobales in
+	()
+	(* let _ =
+			List.map(fun (_,info) -> 
+					let (name,assign) = (info.nom, info.lesAffectations) in
+					  (name,extractVarCONDAffect assign listIntVar, extractMemAssignAndPtrAssign assign  )
+
+			)!doc.laListeDesFonctions in *)
+ (*Printf.printf " "  *)
+ 
+
+
+let rec alldefp fl ptrl=
+if fl = [] then true else if existFunction (List.hd fl) !callsList = false  then  alldefp (List.tl fl) ptrl else List.mem_assoc (List.hd fl)  ptrl && alldefp (List.tl fl) ptrl
+
+
+
+
+
+let rechercherFonctionParNom nom docu =
+  (List.find (fun (_, f) ->  	let (_, _, name) = (f.declaration) in 
+							  let (s,_,_,_) = name in s = nom  )!docu.laListeDesFonctions)
+
+let existeFonctionParNom nom docu =
+ (List.exists (fun (_, f) ->  let (_, _, name) = (f.declaration) in 
+							  let (s,_,_,_) = name in s = nom  )!docu.laListeDesFonctions)
+
+
+let evalPtrEffectOnFunction name  =
+  	if existeFonctionParNom	name doc =false  then  []
+	else 
+	begin
+		 let (_, info) = (rechercherFonctionParNom name doc) in
+		 let  assign =  if info.lesAffectations = [] then    get_fct_body name else info.lesAffectations in
+		 if AFContext.mem  !myAF name = false then  []
+		 else
+		 begin
+			let f = AFContext.get  !myAF name in
+			let (na,_,_) = assignAfterAssign  assign [] [] false in
+
+			add_list_bodyForPtr   (name , na ) ;
+			evalPtrEffectOnFunctionBody name na f	
+		end   
+	end 
+
+
+
+let evalAssigignVar name  =
+  	if existeFonctionParNom	name doc =false  then  ([],[])
+	else 
+	begin
+		 let (_, info) = (rechercherFonctionParNom name doc) in
+		 let  assign =  if info.lesAffectations = [] then    get_fct_body name else info.lesAffectations in
+			assignVarAndUsed  assign  
+		
+	end 
+
+
+
+let addNameToEvalPtrEffectOnFunction name =
+let (assigned, used )=evalAssigignVar name in
+
+callsListEvalAssignVar := (name,(assigned, used) )::!callsListEvalAssignVar;
+callsListEvalp :=  (name,evalPtrEffectOnFunction name)::!callsListEvalp 
+
+
+let rec evalCallListptr currentcallslist =
+if currentcallslist != [] then
+begin
+	let (first, next) =(List.hd currentcallslist , List.tl currentcallslist ) in
+		(match first with
+			(name, ifn, ln, cl,an, funcNameNbCalls, x, y ,typeF,fl) -> 
+			if List.mem_assoc name !callsListEvalp = false then
+			begin
+				match typeF with 
+					ONLYASSIGN  | ONLYASSIGNANDIF -> 
+							addNameToEvalPtrEffectOnFunction  name 
+					| LOOPWITHCALL | OTHERCALLORLOOP ->  			
+						if alldefp fl !callsListEvalp then 
+							addNameToEvalPtrEffectOnFunction  name 
+						else newcurrentcallslistptr := List.append [first] !newcurrentcallslistptr							 
+			end);
+		evalCallListptr next;
+		let functionnoteval = !newcurrentcallslistptr in
+		newcurrentcallslistptr := [];
+		evalCallListptr functionnoteval;
+
+end
+
+
+
+let rechercherFonctionParNom nom docu =
+  (List.find (fun (_, f) ->  	let (_, _, name) = (f.declaration) in 
+							  let (s,_,_,_) = name in s = nom  )!docu.laListeDesFonctions)
+
+
+let get_intervals secondParse =
+	getOnlyBoolAssignment := true;
+	idBoucle := 0;
+	idAppel:=0;
+	nbImbrications := 0;
+	getOnlyBoolAssignment := false;
+
+	analyse_defs secondParse ;	
+	phaseinit := false;
+(*Printf.printf "\nget_intervals BEGIN\n" ;*)
+	getInfoFunctions doc;
+ 	callsListEvalp :=  [];
+ 	newcurrentcallslistptr :=  [];
+	(*intervalAnalysis doc; *)
+    evalCallListptr !callsList;
+(*List.iter(fun (id,_)->Printf.printf"tete %d \n" id)!callsListEvalLoop;*)
+	setalreadyDefFunction "setalreadyDefFunction\n";
+    majCextraireDocFbody alreadyDefFunction
+
+let endForPartial s =
+getInfoFunctions doc;
+evalCallListptr !callsList;
+(*List.iter(fun (id,_)->Printf.printf"tete %d \n" id)!callsListEvalLoop;*)
+setalreadyDefFunction s;
+majCextraireDocFbody alreadyDefFunction
+
+
 (* Retreive the strategy with all big functions partialized *)
 let get_all_big_strategy secondParse =
 	let _ = init secondParse in
+	evalCallListptr !callsList;
+(*List.iter(fun (id,_)->Printf.printf"local upper loop %d \n" id)!callsListEvalLoop;*)
+	setalreadyDefFunction "setalreadyDefFunction\n";
+    majCextraireDocFbody alreadyDefFunction;
+
 	List.map (fun name ->
 		partial_computation name;
 		let (fun_list, maybe_part) = (fun_lists_with_size !callsListNumbers) in
@@ -1166,6 +1324,11 @@ let get_all_big_strategy secondParse =
 (* Retreive the strategy with only functions without pessimism partialized *)
 let get_only_without_pessimism_strategy secondParse =
 	let _ = init secondParse in
+    evalCallListptr !callsList;
+(*List.iter(fun (id,_)->Printf.printf"tete %d \n" id)!callsListEvalLoop;*)
+	setalreadyDefFunction "setalreadyDefFunction\n";
+    majCextraireDocFbody alreadyDefFunction;
+
 	List.map (fun name ->
 		partial_computation name;
 		let (fun_list, maybe_part) = (fun_lists_with_size !callsListNumbers) in
@@ -1173,49 +1336,4 @@ let get_only_without_pessimism_strategy secondParse =
 		in (only_not_pessimistic_strategy !callsListNumbers !callsList
 											classified_list)
 	) (!Cextraireboucle.names)
-
-
-
-let intervalAnalysis file =
-
-	let (globalInt, listofintVar) = getListIntVar !listAssocIdType 0 !alreadyAffectedGlobales in
-	let listLocalVar = List.map (fun (x, _)-> x) listofintVar in
-    let listGlobalVar = List.map (fun (x, _)-> x) globalInt in
-
-
-	let listIntVar = List.append listLocalVar listGlobalVar in
-
-
-	List.iter (fun (x, n)-> Printf.printf "(%s, %d) " x n) listofintVar;
-	Printf.printf " list length %d \n"  (List.length listofintVar);
-
-	List.iter (fun (x, n)-> Printf.printf "(%s, %d) " x n) globalInt;
-	Printf.printf " list length %d \n"  (List.length globalInt);
-
-
-	let functionFilter =
-	List.map(fun (_,info) -> 
-			let (name,assign) = (info.nom, info.lesAffectations) in
-			 
-	 		(name,extractVarCONDAffect assign listIntVar)
-
-
-	)!doc.laListeDesFonctions in
-
-		List.iter (fun (n, l)-> Printf.printf "(\n\n%s,   " n ;afficherLesAffectations l; Printf.printf " \n\n%s ) " n ;) functionFilter;
-
-
-	print_string "interval analysis end.\n"
-
-
-let get_intervals secondParse =
-	let _ = init secondParse in
-	intervalAnalysis secondParse
-	(*List.map (fun name ->
-		partial_computation name;
-		 
-
-
-	) (!Cextraireboucle.names)*)
-
 

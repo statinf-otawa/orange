@@ -70,14 +70,30 @@ let rec listeDesVarsDeExpSeules exp =
 	| MEMBEROFPTR (e, _) ->				listeDesVarsDeExpSeules  e
 	| GNU_BODY (_,_)(*decs, stat*) ->	[]
 	| _ -> 						 		[]
-
-
-
-
 	 
 	
 and traiterCommaExp liste =
 if liste = [] then [] else union (listeDesVarsDeExpSeules (List.hd liste)) (traiterCommaExp (List.tl liste)) 
+
+let rec listeDesVarsDeExpSeulesTab exp =
+	match exp with
+		UNARY (_, e) -> 				listeDesVarsDeExpSeulesTab e 
+	| BINARY (_, exp1, exp2) -> 		union( listeDesVarsDeExpSeulesTab  exp1)	(listeDesVarsDeExpSeulesTab exp2)
+	| QUESTION (exp1, exp2, exp3) ->	union (listeDesVarsDeExpSeulesTab exp1) (union (listeDesVarsDeExpSeulesTab exp2)	(listeDesVarsDeExpSeulesTab  exp3))
+	| CAST (_, e) ->					listeDesVarsDeExpSeulesTab  e
+	| CALL (e, args) ->					[]
+	| COMMA e -> 						[]
+	| CONSTANT _ -> 					[]
+	| VARIABLE name -> 					[name ] 
+	| EXPR_SIZEOF e ->					[]
+	| TYPE_SIZEOF _ ->					[]
+	| INDEX (e, idx) ->					 (listeDesVarsDeExpSeulesTab  e) 
+	| MEMBEROF (e, _) ->				listeDesVarsDeExpSeulesTab e
+	| MEMBEROFPTR (e, _) ->				listeDesVarsDeExpSeulesTab  e
+	| GNU_BODY (_,_)(*decs, stat*) ->	[]
+	| _ -> 						 		[]
+
+
 
 
 

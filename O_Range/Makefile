@@ -6,11 +6,13 @@ SOURCES = \
 	cvariables.ml \
 	constante.ml\
 	coutput.ml \
+	rename.ml\
+	util.ml\
+	extractinfoPtr.ml\
 	cvarabs.ml \
 	interval.ml \
 	increment.ml\
 	cextraireboucle.ml\
-	rename.ml\
 	orange.ml 
 	
 OCAMLC_CFLAGS += -g

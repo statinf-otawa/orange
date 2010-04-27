@@ -323,10 +323,10 @@ let convert_comma_exps exps =	List.map  convert_expression  exps
 
 let go  (defs : file) =
 (*CF.empty;*) 
-myAF:=AFContext.empty ;
+(*myAF:=AFContext.empty ;*)
 listeDesVariablesFic :=[];
   let decs = List.map	(fun dec -> convert_def dec)		defs in
-AFContext.print !myAF;
+(*AFContext.print !myAF;*)
 
 
 decs

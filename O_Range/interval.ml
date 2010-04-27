@@ -16,6 +16,7 @@ open Cexptostr
 open Cvarabs
 open Cvariables
 open Constante
+open Util
  
 type boundType =	
 		BINCLUDE  of float 
