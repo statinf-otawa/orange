@@ -3208,7 +3208,7 @@ afficherLesAffectations !listeDesInstCourantes;*)
 				if (s2 = NOP)	then 
 				begin
 					
-					let  fc = (localPtrAnalyse [new_instBEGIN (listeThen)]  prevPtrct   !intoLoopCurrent) in  
+					let  fc = (localPtrAnalyse [new_instBEGIN (listeThen)]  prevPtrct   !intoLoopCurrent false) in  
 							
 					myCurrentPtrContext:=(LocalAPContext.joinSet fc prevPtrct );
 
@@ -3227,8 +3227,8 @@ afficherLesAffectations !listeDesInstCourantes;*)
 afficherLesAffectations !listeDesInstCourantes;
 print_statement  s2 ;*)
 					 
-					let fc  = (localPtrAnalyse [new_instBEGIN (listeThen)]  prevPtrct   !intoLoopCurrent) in
-					let  ec= (localPtrAnalyse [new_instBEGIN (listeElse)]  prevPtrct   !intoLoopCurrent) in
+					let fc  = (localPtrAnalyse [new_instBEGIN (listeThen)]  prevPtrct   !intoLoopCurrent false) in
+					let  ec= (localPtrAnalyse [new_instBEGIN (listeElse)]  prevPtrct   !intoLoopCurrent false) in
 			 
 				 	myCurrentPtrContext:=LocalAPContext.joinSet   fc ec;
 
@@ -3290,7 +3290,7 @@ print_statement  s2 ;*)
 				let maListeDesBoucleOuAppelPredP = !listeBoucleOuAppelCourante in
 				listeDesInstCourantes := []; onlyAexpression   exp ; onlyAstatement stat;onlyAexpression   exp ;
 (*Printf.printf "\n\nAnalyse statement : la boucle while %d  ap \n" numBoucle;*)
-				let  fc = (localPtrAnalyse [new_instBEGIN (!listeDesInstCourantes)]  prevPtrct   true) in  
+				let  fc = (localPtrAnalyse [new_instBEGIN (!listeDesInstCourantes)]  prevPtrct   true false) in  
 				memAssign !listeDesInstCourantes;
 				myChangeUpperLoopPtr := !myChangePtr;(*List.iter(fun x -> Printf.printf "ptr %s  " x)!myChangePtr ;*)
 				myCurrentPtrContext:=(LocalAPContext.joinSet fc prevPtrct );					
@@ -3455,7 +3455,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 				let maListeDesBoucleOuAppelPredP = !listeBoucleOuAppelCourante in
 				listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp ;
 (*Printf.printf "\n\nAnalyse statement : la boucle do %d  ap \n" numBoucle;*)
-				let  fc = (localPtrAnalyse [new_instBEGIN (!listeDesInstCourantes)]  prevPtrct   true) in  
+				let  fc = (localPtrAnalyse [new_instBEGIN (!listeDesInstCourantes)]  prevPtrct   true false) in  
 				memAssign !listeDesInstCourantes;
 				myChangeUpperLoopPtr := !myChangePtr;(*List.iter(fun x -> Printf.printf "ptr %s  " x)!myChangePtr ;*)
 				myCurrentPtrContext:=(LocalAPContext.joinSet fc prevPtrct );
@@ -3645,7 +3645,7 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 				let maListeDesBoucleOuAppelPredP = !listeBoucleOuAppelCourante in
 				listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp3 ;onlyAexpression   exp2; 
 				(*Printf.printf "\n\nAnalyse statement : la boucle %d  for ap \n" num;*)
-				let  fc = (localPtrAnalyse [new_instBEGIN (!listeDesInstCourantes)]  prevPtrct   true) in  
+				let  fc = (localPtrAnalyse [new_instBEGIN (!listeDesInstCourantes)]  prevPtrct   true false) in  
 				memAssign !listeDesInstCourantes;
 				myChangeUpperLoopPtr := !myChangePtr;(*List.iter(fun x -> Printf.printf "ptr %s  " x)!myChangePtr ;Printf.printf "\n\n" ;*)
 				myCurrentPtrContext:=(LocalAPContext.joinSet fc prevPtrct );
@@ -4377,7 +4377,15 @@ and  analyse_expressionaux exp =
 									analyse_expressionaux exp2;	 let ne = !nouvExp in    
 									let (v,expres, isstruct) = getVarPtrOrArrayDep  exp1 in
 									
-									if v = "" then (Printf.printf "array expr not found\n"; print_expression exp1 0 ;flush();space() ;flush();space() ; ())
+									if v = "" then 	 (match e with MEMBEROF (ex, c)  | MEMBEROFPTR (ex, c) 		->		let lid =	getInitVarFromStruct e  in		
+																														let id = if lid != [] then List.hd lid else (Printf.printf "not id 3876\n"; "noid") in
+				
+																				if isstruct = false then
+																						listeDesInstCourantes := List.append !listeDesInstCourantes [ new_instVarAndPtr  id   (EXP(NOTHING))]
+																					else 
+																						listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instMem ("*"^id) (EXP(!nouvExp)) (EXP(NOTHING))]
+															|_->             Printf.printf "array expr not found\n"; print_expression exp1 0 ;flush();space() ;flush();space() ; ())
+
 									else 
 									begin 	
 										let newe = remplacerExpPar0   expres e in
@@ -4787,17 +4795,12 @@ and analyse_def def =
 
 (*List.iter(fun x->Printf.printf"%s " x)used;Printf.printf"\nused\n";
 List.iter(fun x->Printf.printf"%s " x)input;Printf.printf"\ninput\n";*)
-
-		let poiteurUsed =       
-			List.filter (fun x-> if isPtr x then true else false )used in 
-
+ 
 (*List.iter(fun x->Printf.printf"%s " x)poiteurUsed;Printf.printf"\nptr\n";*)
+        let poiteurUsed =       
+			List.filter (fun x->  if isPtr x then true else false )used in
 
-		let globalPtr = List.filter(fun x->  isPtr x)!alreadyAffectedGlobales in
-
-
-
-		let initPtrList = LocalAPContext.initIntervalAnalyse poiteurUsed input (*!myAP current context*)[] globalPtr(*externValue*) in
+		let initPtrList = LocalAPContext.initIntervalAnalyse poiteurUsed input (*!myAP current context*)[] !globalPtr(*externValue*) in
 		(*LocalAPContext.print initPtrList;*)
 		estGlobale := false;
 		let listeBoucleOuAppelPred = !listeBoucleOuAppelCourante in
@@ -4819,9 +4822,9 @@ List.iter(fun x->Printf.printf"%s " x)input;Printf.printf"\ninput\n";*)
 			 						(MyFunCont.getInput f,MyFunCont.getOtherUsed f) 
 							  end in
 		let poiteurUsed =       
-			List.filter (fun x-> if List.mem x input then false else if isPtr x then true else false )used in
-		let globalPtr = List.filter(fun x->  isPtr x)!alreadyAffectedGlobales in
-		let initPtrList = LocalAPContext.initIntervalAnalyse poiteurUsed input (*!myAP current context*)[] globalPtr(*externValue*) in
+			List.filter (fun x->  if isPtr x then true else false )used in
+		 
+		let initPtrList = LocalAPContext.initIntervalAnalyse poiteurUsed input (*!myAP current context*)[] !globalPtr(*externValue*) in
 
 		estGlobale := false; 
 		let listeBoucleOuAppelPred = !listeBoucleOuAppelCourante in
@@ -5189,64 +5192,7 @@ and  onlyAexpressionaux exp =
 						onlyAexpression e;	nouvExp := UNARY (op, !nouvExp)
 			)
 
-	(*| BINARY (op, exp1, exp2) -> 
-		onlyAexpression exp1 ;
-		let ne1 = !nouvExp in 	
-		onlyAexpression exp2;	
-		let ne = !nouvExp in   
-		(	match op with		
-			ASSIGN		->
-			(	match exp1 with
-				VARIABLE n ->   
-					listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instVarAndPtr  n  (EXP(ne))]
-				|INDEX (t,i)-> 
-					( match t with 
-						VARIABLE v -> listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instTab v (EXP(i))	(EXP(ne))]
-						| UNARY (opr,e) ->
-						(
-							match e with
-							VARIABLE v ->
-							(
-								match opr with
-								MEMOF		-> 
-										listeDesInstCourantes := List.append !listeDesInstCourantes 
-																[new_instMem ("*"^v) (EXP(VARIABLE(v))) (EXP(ne))]
 
-								| ADDROF	->  
-									listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instTab ("&"^v) (EXP(i))	(EXP(ne))]
-								|  _->	 if !vDEBUG then  Printf.printf "array expr not implemented\n" ;
-							)
-							| _->  if !vDEBUG then  Printf.printf "array expr not implemented\n" 
-						)
-						| _->	 if !vDEBUG then  Printf.printf "array expr not implemented\n" 	
-					)
-				| UNARY (opr,e) -> 
-					(
-						match e with
-						VARIABLE v ->
-						(
-							match opr with
-							MEMOF		->(* * operator *)
-									listeDesInstCourantes := List.append !listeDesInstCourantes [new_instMem ("*"^v) (EXP(VARIABLE(v))) (EXP(ne))]
-							| ADDROF	->(* & operator *) listeDesInstCourantes := List.append !listeDesInstCourantes [new_instVar ("&"^v) (EXP(ne))]
-							|  _->	 if !vDEBUG then Printf.printf "array expr not implemented\n" 	
-						)
-						| _->	 if !vDEBUG then Printf.printf "array expr not implemented\n" 	 	
-					) 
-				 |_-> if !vDEBUG then Printf.printf "array expr not implemented\n" 		 
-			); 	
-			| ADD_ASSIGN	-> analyse_expressionaux (BINARY (ASSIGN, exp1 ,BINARY (ADD,exp1, ne))) ;  nouvExp:=BINARY (op, exp1, ne) 
-			| SUB_ASSIGN	-> analyse_expressionaux (BINARY (ASSIGN, exp1 ,BINARY (SUB,exp1, ne))) ;  nouvExp:=BINARY (op, exp1, ne) 
-			| MUL_ASSIGN	-> analyse_expressionaux (BINARY (ASSIGN, exp1 ,BINARY (MUL,exp1, ne))) ;  nouvExp:=BINARY (op, exp1, ne) 
-			| DIV_ASSIGN	-> analyse_expressionaux (BINARY (ASSIGN, exp1 ,BINARY (DIV,exp1, ne))) ;  nouvExp:=BINARY (op, exp1, ne) 
-			| MOD_ASSIGN	-> analyse_expressionaux (BINARY (ASSIGN, exp1 ,BINARY (MOD,exp1, ne))) ;  nouvExp:=BINARY (op, exp1, ne) 
-			| BAND_ASSIGN	-> analyse_expressionaux (BINARY (ASSIGN, exp1 ,BINARY (BAND,exp1, ne))) ; nouvExp:=BINARY (op, exp1, ne) 
-			| BOR_ASSIGN	-> analyse_expressionaux (BINARY (ASSIGN, exp1 ,BINARY (BOR,exp1, ne))) ;  nouvExp:=BINARY (op, exp1, ne) 
-			| XOR_ASSIGN	-> analyse_expressionaux (BINARY (ASSIGN, exp1 ,BINARY (XOR,exp1, ne))) ;  nouvExp:=BINARY (op, exp1, ne) 
-			| SHL_ASSIGN	-> analyse_expressionaux (BINARY (ASSIGN, exp1 ,BINARY (SHL,exp1, ne))) ;  nouvExp:=BINARY (op, exp1, ne) 
-			| SHR_ASSIGN	-> analyse_expressionaux (BINARY (ASSIGN, exp1 ,BINARY (SHR,exp1, ne))) ;  nouvExp:=BINARY (op, exp1, ne) 
-			| _ -> nouvExp:=BINARY (op, ne1, ne) 
-		)*)
 	| BINARY (op, exp11, exp2) -> let exp1 = simplifierValeur exp11 in
 	(*	onlyAexpressionaux exp1 ; let ne1 = !nouvExp in 	
 		onlyAexpressionaux exp2;	 let ne = !nouvExp in   *)
@@ -5340,7 +5286,15 @@ and  onlyAexpressionaux exp =
 									onlyAexpressionaux exp2;	 let ne = !nouvExp in    
 									let (v,expres, isstruct) = getVarPtrOrArrayDep  exp1 in
 									
-									if v = "" then (Printf.printf "array expr not found\n"; print_expression exp1 0 ;flush();space() ;flush();space() ; ())
+									if v = "" then 	 (match e with MEMBEROF (ex, c)  | MEMBEROFPTR (ex, c) 		->		let lid =	getInitVarFromStruct e  in		
+																														let id = if lid != [] then List.hd lid else (Printf.printf "not id 3876\n"; "noid") in
+				
+																				if isstruct = false then
+																						listeDesInstCourantes := List.append !listeDesInstCourantes [ new_instVarAndPtr  id   (EXP(NOTHING))]
+																					else 
+																						listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instMem ("*"^id) (EXP(!nouvExp)) (EXP(NOTHING))]
+																|_->             Printf.printf "array expr not found\n"; print_expression exp1 0 ;flush();space() ;flush();space() ; ())
+
 									else 
 									begin 	
 										let newe = remplacerExpPar0   expres e in

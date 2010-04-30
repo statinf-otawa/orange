@@ -41,6 +41,7 @@ let torename = ref ""
 
 
 
+ 
 
 
 
@@ -4487,17 +4488,26 @@ let filterGlobales ascour globales =
 List.filter(
 fun prem ->
 		match prem with  
-		ASSIGN_SIMPLE (x, _) 
-		| ASSIGN_DOUBLE (x, _, _)  -> if (List.mem x globales ) then begin  true end else false
-		| ASSIGN_MEM	 (x, i, _)  -> if (List.mem x globales ) then begin  true end 
-			else 
-			begin
-				let listeDesVar = listeDesVarsDeExpSeules (expVaToExp (i)) in
-				let vdij = ( intersection listeDesVar  globales) in 
-				if vdij =[] then
-				false
-				else ((*Printf.printf "pointeur sur globale filterGlobales\n";*)true)
-			end
+		ASSIGN_SIMPLE (x, _) -> if (List.mem x globales ) then begin  true end else false
+		| ASSIGN_DOUBLE (x, i, _) (* -> if (List.mem x globales ) then begin  true end else false*)
+		| ASSIGN_MEM	 (x, i, _)  ->
+		
+									if (List.mem x globales ) then begin  true end 
+									else 
+									begin
+										let fid = 	if  String.length x > 1 then 
+											if (String.sub x  0 1)="*" then  String.sub x 1 ((String.length x)-1) else x
+											else x  in 
+										if List.mem_assoc fid !listeAssosPtrNameType   then 
+										begin
+											let listeDesVar = listeDesVarsDeExpSeules (expVaToExp (i)) in
+											let vdij = ( intersection listeDesVar  globales) in 
+											if vdij =[] then
+											false
+											else ((*Printf.printf "pointeur sur globale filterGlobales\n";*)true)
+										end else  false
+									end
+						
 ) ascour
 
 
@@ -4511,10 +4521,28 @@ begin
 
 
 	(match prem with  
-		ASSIGN_SIMPLE (x, _)
-		| ASSIGN_DOUBLE (x, _, _) -> 
-			if (List.mem x globales ) then  (List.append [prem] nextGlobal, nextOthers)  else (nextGlobal, List.append [prem] nextOthers)
-		| ASSIGN_MEM	 (x, i, assign)  -> 
+		ASSIGN_SIMPLE (x, _)-> if (List.mem x globales ) then  (List.append [prem] nextGlobal, nextOthers)  else  (nextGlobal, List.append [prem] nextOthers)
+		| ASSIGN_DOUBLE (x, i, assign)| ASSIGN_MEM	 (x, i, assign)  -> 
+
+				if (List.mem x globales ) then begin  (List.append [prem] nextGlobal, nextOthers)  end 
+									else 
+									begin
+										let fid = 	if  String.length x > 1 then 
+											if (String.sub x  0 1)="*" then  String.sub x 1 ((String.length x)-1) else x
+											else x  in 
+										if List.mem_assoc fid !listeAssosPtrNameType   then 
+										begin
+											let listeDesVar = listeDesVarsDeExpSeules (expVaToExp (i)) in
+											let vdij = ( intersection listeDesVar  globales) in 
+											if vdij =[] then (nextGlobal, List.append [prem] nextOthers)
+											else  (List.append [prem] nextGlobal, nextOthers) 
+										 
+										end else  (nextGlobal, List.append [prem] nextOthers)
+									end
+
+
+		
+	(*	| ASSIGN_MEM	 (x, i, assign)  -> 
 			if (List.mem x globales ) then  (List.append [prem] nextGlobal, nextOthers)  
 			else 
 			begin			
@@ -4548,7 +4576,7 @@ begin
 						(List.append [na] nextGlobal, nextOthers)
 				)(*(nextGlobal, List.append [prem] nextOthers)*)
 			end
-		)
+		)*))
 end
 
  
@@ -4904,10 +4932,17 @@ fun prem ->
 		| ASSIGN_MEM	 (x, i, _)  -> if (List.mem x globales ) then begin  true end 
 			else 
 			begin
-				let listeDesVar = listeDesVarsDeExpSeules (expVaToExp (i)) in
- 				let vdij = ( intersection listeDesVar  globales) in 
-				if vdij =[] then false else true
+				let fid = 	if  String.length x > 1 then 
+											if (String.sub x  0 1)="*" then  String.sub x 1 ((String.length x)-1) else x
+											else x  in 
+				if List.mem_assoc fid !listeAssosPtrNameType   then 
+				begin
+					let listeDesVar = listeDesVarsDeExpSeules (expVaToExp (i)) in
+	 				let vdij = ( intersection listeDesVar  globales) in 
+					if vdij =[] then false else true
+				end else  false
 			end
+
 
 
 )ascour
@@ -5012,6 +5047,70 @@ begin
 	if num =n then (b,  List.tl liste)
 	else  findIfexistAndIsExecutedOneOrMore num  (List.tl  liste) clist
 end
+
+
+let makeListOfMem u values ptrvalues gnen exp1 exp2 id=
+
+	(* traitement variables multiples *)
+	let (directList,listofpbvar) =
+	if values != [] then
+	begin
+		let listofpbvar =  List.filter(fun x->  List.mem x u    )  values  in
+		let arrayList = List.filter(fun x->  existAssosArrayType x )  listofpbvar in
+		let notarrayList = List.filter(fun x->  existAssosArrayType x = false)  listofpbvar in
+		let arrayListAssign = List.map(fun x->  new_assign_double x exp1 MULTIPLE )  arrayList in
+		let notarrayListAssign = List.map(fun x->  new_assign_simple x MULTIPLE)  notarrayList in
+		((if arrayListAssign != [] && notarrayListAssign != [] then List.append arrayListAssign notarrayListAssign
+					else if arrayListAssign != [] then arrayListAssign else notarrayListAssign),listofpbvar) 
+	end else ([],[]) in
+
+	(* traitement des pointeurs not def *)
+	
+	let directandPtr = 
+		if  ptrvalues = [] then directList
+		else
+		begin
+			let (x, onlyOnePtr ) = if values=[] && ptrvalues != [] && List.tl ptrvalues = [] then (List.hd ptrvalues, true) else ("", false) in
+			if onlyOnePtr = false then (* traitement des pointeurs not def multiples *)
+			begin
+				let listOfPtr = listWithoutv ptrvalues "__extern" in
+				let multidefPtr = 
+							if List.mem "__extern" ptrvalues then 
+								(new_assign_mem ("*"^id) 
+								(EXP(BINARY (ADD, VARIABLE id, VARIABLE "_ALL-"))) 
+								 MULTIPLE)
+										::List.map(fun x->  new_assign_mem ("*"^x) (EXP(BINARY (ADD, VARIABLE x, VARIABLE "_ALL-"))) MULTIPLE)  listOfPtr
+							else List.map(fun x->  new_assign_mem x (EXP(BINARY (ADD, VARIABLE x, VARIABLE "_ALL-")))  MULTIPLE)  listOfPtr in
+					
+				 
+					if multidefPtr != [] && directList != [] then List.append multidefPtr directList 
+					else if multidefPtr != [] then multidefPtr else directList  
+			end 
+			else 
+				if List.mem "__extern" ptrvalues then (*c'est le ptr lui même*) directList 
+				else (*c'est un autre ptr*)(new_assign_mem ("*"^x) exp1 exp2)::directList
+		end in
+
+
+
+	(* traitement des globales *)
+	let completList = 
+		if ptrvalues != [] then
+		begin
+		 	let listofpbvarG =  List.filter(fun x->   List.mem x listofpbvar = false (* pas dejà traite*)&&
+									List.mem x u   (*utilisée*))  gnen  in
+			let arrayListG = List.filter(fun x->  existAssosArrayType x )  listofpbvar in
+			let notarrayListG = List.filter(fun x->  existAssosArrayType x = false)  listofpbvarG in
+			let arrayListAssignG = List.map(fun x->  new_assign_double x exp1 MULTIPLE )  arrayListG in
+			let notarrayListAssignG = List.map(fun x->  new_assign_simple x MULTIPLE)  notarrayListG in
+	
+			let globalList = if arrayListAssignG != [] && notarrayListAssignG != [] then List.append arrayListAssignG notarrayListAssignG
+					else if arrayListAssignG != [] then arrayListAssignG else notarrayListAssignG in  
+			if directandPtr != [] && globalList != [] then List.append directandPtr globalList 
+			else if globalList != [] then globalList else directandPtr 
+		end 	 else directandPtr in
+
+completList
  
  
 (*before calling EvalStore *)
@@ -5019,39 +5118,35 @@ let rec evalStore i a g ptr=
 match i with 
 	VAR (id, exp,l,u) -> (* struct assign by ptr *)
 
-		myCurrentPtrContext:= majPtrvarAssign id exp ptr !estDansBoucle ;	
+		myCurrentPtrContext:= majPtrvarAssign id exp ptr !estDansBoucle false ;	
 			let addList = 
 				if isPtr id && ptr != [] then  
 				(    
 				
 					match exp with
 						 EXP(CONSTANT(	CONST_COMPOUND(_)))->
-							let _= LocalAPContext.getAllOfAllPtrAdress ptr [id] true in 
-							let listOfVAR = List.assoc id !assocPtrChangeVar in (* alway exits *)
-							let t = if existAssosPtrNameType id then getAssosPtrNameType id else  INT_TYPE in
+							let (values, ptrvalues) =  
+			 
+							let isD = LocalAPContext.alwayget ptr id  in
+								if MyPtrDomain.is_refer isD then ( MyPtrDomain.getVal isD , MyPtrDomain.getRef isD) else ([],["__extern"] )
+							in
 							 
-							let gnen =
-							  	if List.mem "__extern" listOfVAR then mayBeAssignVar (List.filter (fun x-> List.mem x !listEnumId = false) !alreadyAffectedGlobales) t else [] in
-							let (x, onlyOne ) = if listOfVAR != [] && List.tl listOfVAR = [] && List.mem "__extern" listOfVAR = false then (List.hd listOfVAR, true) else ("", false) in
-
-							 (*getPBMEMASSIGN id l ptr;*)
+							let t = if existAssosPtrNameType id then getAssosPtrNameType id else  INT_TYPE in
+						 
+							let gnen =	if  ptrvalues!=[] then 
+										mayBeAssignVar 
+										(List.filter 
+									(fun x-> List.mem x !listEnumId = false&& List.mem_assoc x !listeAssosPtrNameType = false) !alreadyAffectedGlobales) t 
+									else [] in
+						 
+							let (x, onlyOne ) = if ptrvalues=[] && values != [] && List.tl values = [] then (List.hd values, true) else ("", false) in
 
 							let listToAdd = 
 									if onlyOne  (*&& List.mem x u = false*) then
 										if existAssosArrayType x = false then [new_assign_simple x exp] else [new_assign_double x (EXP(VARIABLE(id))) exp]
-									else	 
-										begin 
-												let isonlyExtern = LocalAPContext.isOnlyextern ptr id in 
-												let listofpbvar = if isonlyExtern = false then List.filter(fun x->  List.mem x u(* || (List.mem x !alreadyAffectedGlobales && List.mem x listOfVAR)*))  (union listOfVAR gnen)
-														  else List.filter(fun x->  List.mem x u)  (union listOfVAR gnen)  in
-												let arrayList = List.filter(fun x->  existAssosArrayType x )  listofpbvar in
-												let notarrayList = List.filter(fun x->  existAssosArrayType x = false)  listofpbvar in
-
-												let arrayListAssign = List.map(fun x-> new_assign_double x (EXP(VARIABLE(id))) MULTIPLE  )  arrayList in
-												let notarrayListAssign = List.map(fun x->  new_assign_simple x MULTIPLE)  notarrayList in
-												List.append arrayListAssign notarrayListAssign
-										end	 							 
-								(*else []*) in
+									else	makeListOfMem u values ptrvalues gnen (EXP(VARIABLE(id))) exp id 
+										 						 
+								  in
 
 							listToAdd
 										
@@ -5073,36 +5168,28 @@ match i with
 		if ptr != [] then
 		begin
 			
-			let _= LocalAPContext.getAllOfAllPtrAdress ptr [fid] true in 
-			let listOfVAR = List.assoc fid !assocPtrChangeVar in (* alway exits *)
+			let (values, ptrvalues) =  
+			 
+				let isD = LocalAPContext.alwayget ptr fid  in
+				if MyPtrDomain.is_refer isD then ( MyPtrDomain.getVal isD , MyPtrDomain.getRef isD) else ([],["__extern"] )
+			  in
 			let t = if existAssosPtrNameType fid then getAssosPtrNameType fid else  INT_TYPE in
 							 
-			let gnen =
-					if List.mem "__extern" listOfVAR then mayBeAssignVar (List.filter (fun x-> List.mem x !listEnumId = false) !alreadyAffectedGlobales) t else [] in
+							 
+			let gnen =	if  ptrvalues!=[] then 
+							mayBeAssignVar 
+								(List.filter 
+									(fun x-> List.mem x !listEnumId = false&& List.mem_assoc x !listeAssosPtrNameType = false) !alreadyAffectedGlobales) t 
+						else [] in
 						 
-			let (x, onlyOne ) = if listOfVAR != [] && List.tl listOfVAR = [] && List.mem "__extern" listOfVAR = false then (List.hd listOfVAR, true) else ("", false) in
+			let (x, onlyOne ) = if ptrvalues=[] && values != [] && List.tl values = [] then (List.hd values, true) else ("", false) in
  
             let listToAdd =
  
 						if onlyOne  (*&& List.mem x u = false*) then  
 								if existAssosArrayType x = false then [new_assign_simple x exp2] else [new_assign_double x exp1 exp2]
-						else	
-						 
-							begin
-							 
-								let isonlyExtern = LocalAPContext.isOnlyextern ptr fid in 
-								let listofpbvar = if isonlyExtern = false then List.filter(fun x->  List.mem x u (*|| (List.mem x !alreadyAffectedGlobales && List.mem x listOfVAR)*))  (union listOfVAR gnen) 
-														  else List.filter(fun x->  List.mem x u )  (union listOfVAR gnen)  in
-								let arrayList = List.filter(fun x->  existAssosArrayType x )  listofpbvar in
-								let notarrayList = List.filter(fun x->  existAssosArrayType x = false)  listofpbvar in
-								let arrayListAssign = List.map(fun x->  new_assign_double x exp1 MULTIPLE )  arrayList in
-								let notarrayListAssign = List.map(fun x->  new_assign_simple x MULTIPLE)  notarrayList in
-								List.append arrayListAssign notarrayListAssign
-							 
-						end (*else []*)		
-					
-				
-					in
+						else	 makeListOfMem u values ptrvalues gnen exp1 exp2 fid
+ 					in
 
 			listToAdd
  
@@ -5123,41 +5210,26 @@ match i with
 	if isPtr fid then 
 		if ptr != [] then
 		begin
-			
-			let _= LocalAPContext.getAllOfAllPtrAdress ptr [fid] true in 
-			let listOfVAR = List.assoc fid !assocPtrChangeVar in (* alway exits *)
+			let (values, ptrvalues) =  
+			 
+				let isD = LocalAPContext.alwayget ptr fid  in
+				if MyPtrDomain.is_refer isD then ( MyPtrDomain.getVal isD , MyPtrDomain.getRef isD) else ([],["__extern"] )
+			  in 
+
 			let t = if existAssosPtrNameType fid then getAssosPtrNameType fid else  INT_TYPE in
 							 
-			let gnen =	if List.mem "__extern" listOfVAR then mayBeAssignVar (List.filter (fun x-> List.mem x !listEnumId = false) !alreadyAffectedGlobales) t else [] in
+			let gnen =	if  ptrvalues!=[] then 
+							mayBeAssignVar 
+								(List.filter 
+									(fun x-> List.mem x !listEnumId = false&& List.mem_assoc x !listeAssosPtrNameType = false) !alreadyAffectedGlobales) t 
+						else [] in
 						 
-			let (x, onlyOne ) = if listOfVAR != [] && List.tl listOfVAR = [] && List.mem "__extern" listOfVAR = false then (List.hd listOfVAR, true) else ("", false) in
-
- 
+			let (x, onlyOne ) = if ptrvalues=[] && values != [] && List.tl values = [] then (List.hd values, true) else ("", false) in
 
           	let listToAdd =
- 
 						if onlyOne   then  (* on sait quelle est la variable modifiée et aucun autre pointeur peut la changer donc on peut rempalcer*)
-						(
-							 
-							if  existAssosArrayType x = false then [new_assign_simple x exp2] else [new_assign_double x exp1 exp2]
-						)
-						else
- 
-								begin
-									 
-									 
-										let isonlyExtern = LocalAPContext.isOnlyextern ptr fid in 
-										let listofpbvar = if isonlyExtern = false then List.filter(fun x->  List.mem x u  (*|| (List.mem x !alreadyAffectedGlobales && List.mem x listOfVAR)*)  )  (union listOfVAR gnen) 
-														  else (  List.filter(fun x->  List.mem x u )  (union listOfVAR gnen) ) in
-										let arrayList = List.filter(fun x->  existAssosArrayType x )  listofpbvar in
-										let notarrayList = List.filter(fun x->  existAssosArrayType x = false)  listofpbvar in
-										 
-
-										let arrayListAssign = List.map(fun x->  (*Printf.printf "extern id  double %s\n" x;*) new_assign_double x exp1 MULTIPLE )  arrayList in
-										let notarrayListAssign = List.map(fun x->   (*Printf.printf "extern id  single %s\n" x;*)new_assign_simple x MULTIPLE)  notarrayList in
-									 	List.append arrayListAssign notarrayListAssign 
-								 
-								end 
+								 if  existAssosArrayType x = false then [new_assign_simple x exp2] else [new_assign_double x exp1 exp2]
+						else makeListOfMem u values ptrvalues gnen exp1 exp2 fid
 					
 				 in
 
@@ -5181,8 +5253,8 @@ Printf.printf"memassign as\n";	*)
 	| IFVF (cond, i1, i2) ->(*Printf.printf "EvalStore if then else\n";*)
 (*print_expVA cond; new_line();*)
 
-		let fc  = (localPtrAnalyse [i1]  ptr   !estDansBoucle) in
-		let  ec= (localPtrAnalyse [i2]  ptr   !estDansBoucle) in
+		let fc  = (localPtrAnalyse [i1]  ptr   !estDansBoucle false) in
+		let  ec= (localPtrAnalyse [i2]  ptr   !estDansBoucle false) in
 			 
 		
 		let myCond =  applyStoreVA (applyStoreVA  cond a) g  in 
@@ -5276,7 +5348,7 @@ Printf.printf "fin \n";*)
 		(*print_expVA myCond; new_line();
 
 		print_expTerm myTest;new_line();*)
-		let  fc = (localPtrAnalyse [i1]  ptr   !estDansBoucle) in  
+		let  fc = (localPtrAnalyse [i1]  ptr   !estDansBoucle false) in  
 							
 								
 		(*if !estDansBoucle = true then Printf.printf "IF DANS BOUCLE\n";*)
@@ -5470,7 +5542,7 @@ Printf.printf "fin \n";*)
 						
 						(* POUR ESSAYER D'OPTIMISER NE GUARDER QUE LES ENTREES ET LES GLOBALES*)
 						let (globale, others) = filterGlobalesAndOthers a !alreadyAffectedGlobales in
-						
+						 
  						let (mycontextInner, mycontextAfter(*,myInputPtr*)) = (*(ptr, ptr) in*)
 							if isAbs = false then
 									if AFContext.mem  !myAF nomFonc = false then 
@@ -5487,23 +5559,25 @@ Printf.printf "fin \n";*)
 											 if poiteurUsed = []   then   (ptr, ptr)
 											 else
 											 begin
-												let globalPtr = List.filter(fun x->  isPtr x)!alreadyAffectedGlobales in
-												let before =LocalAPContext.initIntervalAnalyse poiteurUsed input  ptr globalPtr  in
+												let newptr = localPtrAnalyse entrees ptr  false true in
+
+
+												let before =LocalAPContext.initIntervalAnalyse poiteurUsed input  newptr !globalPtr  in
 												
-												let newptr = localPtrAnalyse entrees before  false in
+												
 												if List.mem_assoc nomFonc !callsListEvalp then
 												begin
 												 	(*Printf.printf "existe %s" nomFonc;*)
 													let partial   = filterGlobalAndInput (List.assoc nomFonc !callsListEvalp) input in
-													let after = LocalAPContext.composeSet  partial newptr (*input*)  in(*passer new*)
+													let after = LocalAPContext.composeSet  partial before (*input*)  in(*passer new*)
 													
-										 		 	(LocalAPContext.unionPL  newptr ptr,LocalAPContext.joinSetSubSet ptr after)
+										 		 	(before, LocalAPContext.joinSetSubSet ptr after)
 												end
 												else
 												begin	
 													(*Printf.printf "existe PAS %s" nomFonc;*)
 
-												 	(LocalAPContext.unionPL  newptr ptr,LocalAPContext.setGlobalToTop ptr ( changeGlobalListPtr  nomFonc (CORPS c) []))
+												 	(before, LocalAPContext.setGlobalToTop ptr ( changeGlobalListPtr  nomFonc (CORPS c) []))
 												end
 											end
 										end
@@ -5513,15 +5587,16 @@ Printf.printf "fin \n";*)
 								begin
 					 				let globalUsedPtr = ( changeGlobalListPtr  nomFonc (ABSSTORE a) []) in
 									let inputPtr  = (getParamPtr entrees) in
-									let before =LocalAPContext.initIntervalAnalyse (union globalUsedPtr inputPtr)  inputPtr  ptr globalUsedPtr  in
-									let newptr = localPtrAnalyse [e] before  false in
-									(newptr,LocalAPContext.setGlobalToTop ptr globalUsedPtr) 
+									let newptr = localPtrAnalyse [e] ptr  false true  in
+									let before =LocalAPContext.initIntervalAnalyse  globalUsedPtr   inputPtr  newptr !globalPtr  in
+									
+									(before, LocalAPContext.setGlobalToTop ptr globalUsedPtr) 
 								end in
 						(*Printf.printf "EvalStore fonction pas dans boucle %s  \n" nomFonc ;*)
 						
 						
-						let getNextassign = if isAbs = false then getNextaa nomFonc entrees usedAfter mycontextInner (CORPS c) "c pas" ptr
-						else getNextaa nomFonc entrees usedAfter mycontextInner (ABSSTORE a) "AB pas" ptr in
+						let getNextassign = if isAbs = false then getNextaa nomFonc entrees usedAfter mycontextInner (CORPS c) "c pas" ptr isAbs
+						else getNextaa nomFonc entrees usedAfter mycontextInner (ABSSTORE a) "AB pas" ptr isAbs in
 
  						 
 						
@@ -5596,7 +5671,7 @@ Printf.printf "fin \n";*)
 						(*Printf.printf "EvalStore fonction %s  \n SORTIE \n" nomFonc ;		*)	
 
 					(*Printf.printf "\nsorties %s depend de var de boucle %s\n" nomFonc varB; afficherListeAS !listeASCourant; Printf.printf "fin sorties\n";*)		
-						let nc = rond others   (List.append !listeASCourant getNextassign)   in
+						let nc =if getNextassign = [] then rond others  !listeASCourant else rond others   (List.append !listeASCourant getNextassign)   in
 						myCurrentPtrContext:=mycontextAfter;
 						(*afficherListeAS nc;*)
 						(*print_string ("Appel fonction definie: FIN "^nomFonc ^"\n");*)
@@ -5616,7 +5691,7 @@ Printf.printf "fin \n";*)
 						let (listeInput,ptrc)   =   (evalInputFunction a entrees [] ptr ) in
 						
 
-
+						 
 						let (mycontextInner, mycontextAfter) = 
 							if isAbs = false then
 									if AFContext.mem  !myAF nomFonc = false then 
@@ -5630,30 +5705,27 @@ Printf.printf "fin \n";*)
 										begin
 											let poiteurUsed = externptr used input   in 
 
+
+
 											 if poiteurUsed = []   then   (ptr, ptr)
 											 else
 											 begin
 												 
-												let globalPtr = List.filter(fun x->  isPtr x)!alreadyAffectedGlobales in
-												let before =LocalAPContext.initIntervalAnalyse poiteurUsed input  ptr globalPtr  in
-												let newptr = localPtrAnalyse entrees before  false in
-												 
-
-
-
+												let newptr = localPtrAnalyse entrees ptr  false true in
+												let before =LocalAPContext.initIntervalAnalyse poiteurUsed input  newptr !globalPtr  in
 
 												if List.mem_assoc nomFonc !callsListEvalp then
 												begin
 												 
 													let partial   = filterGlobalAndInput (List.assoc nomFonc !callsListEvalp) input in
-													let after = LocalAPContext.composeSet  partial newptr (*input *) in(*passer new*)
+													let after = LocalAPContext.composeSet  partial before (*input *) in(*passer new*)
 													 
-												 	(newptr,LocalAPContext.joinSetSubSet ptr after) (*ici quand on compose *)
+												 	(before,LocalAPContext.joinSetSubSet ptr after) (*ici quand on compose *)
 												end
 												else
 												begin	
 													 								
-												 	(newptr,LocalAPContext.setGlobalToTop ptr ( changeGlobalListPtr  nomFonc (CORPS (BEGIN corps)) []))
+												 	(before,LocalAPContext.setGlobalToTop ptr ( changeGlobalListPtr  nomFonc (CORPS (BEGIN corps)) []))
 
 												end
 											end
@@ -5664,9 +5736,10 @@ Printf.printf "fin \n";*)
 								begin 
 									let globalUsedPtr = ( changeGlobalListPtr  nomFonc (ABSSTORE a) []) in
 									let inputPtr  = (getParamPtr entrees) in
-									let before =LocalAPContext.initIntervalAnalyse (union globalUsedPtr inputPtr)  inputPtr  ptr globalUsedPtr  in
-									 let newptr = localPtrAnalyse [e] before  false in
-									(newptr,LocalAPContext.setGlobalToTop ptr globalUsedPtr) 
+									let newptr = localPtrAnalyse [e] ptr  false true in
+									let before =LocalAPContext.initIntervalAnalyse globalUsedPtr   inputPtr  newptr !globalPtr  in
+									
+									(before,LocalAPContext.setGlobalToTop ptr globalUsedPtr) 
 								end in
 
 						
@@ -5714,8 +5787,8 @@ Printf.printf "fin \n";*)
 						
 						(*afficherLesAffectations ((entrees)); new_line(); Printf.printf "affect a apere reecrire fin\n";*)
 
-						let getNextassign = if isAbs = false then getNextaa nomFonc entrees usedAfter mycontextInner (CORPS (BEGIN corps)) "c dans" ptr
-						else getNextaa nomFonc entrees usedAfter mycontextInner (ABSSTORE a) "AB da,s" ptr in
+						let getNextassign = if isAbs = false then getNextaa nomFonc entrees usedAfter mycontextInner (CORPS (BEGIN corps)) "c dans" ptr isAbs
+						else getNextaa nomFonc entrees usedAfter mycontextInner (ABSSTORE a) "AB da,s" ptr isAbs in
 
 
 						(*Printf.printf "INPUT %s depend de var de boucle %s\n" nomFonc varB;
@@ -5791,7 +5864,7 @@ afficherListeAS aPart;		*)
 (*Printf.printf "EvalStore fonction %s  \n" nomFonc ;*)(*afficherListeAS !listeASCourant; Printf.printf "fin res\n" ;*)		 
 
 					(*Printf.printf "\nsorties %s depend de var de boucle %s\n" nomFonc varB; afficherListeAS !listeASCourant; Printf.printf "fin sorties\n";*)
-						let nc = rond a   (List.append !listeASCourant getNextassign) in
+						let nc = if getNextassign = [] then  rond a    !listeASCourant  else rond a   (List.append !listeASCourant getNextassign) in
 
 (*if (isAbs)  then Printf.printf "ABSTRACT STORE\n";*)
 
@@ -5811,7 +5884,7 @@ afficherListeAS aPart;		*)
 		end
 	
 	end	
-and  	getNextaa nomFonc entrees used newptr body s ptr =
+and  	getNextaa nomFonc entrees used newptr body s ptr isAbs=
 		let (xxx, _) =  changeGlobalList  nomFonc body [] in
 		let input  = getParam entrees in
 		let outputMem = List.filter(fun x-> List.mem x input )xxx in
@@ -5821,7 +5894,7 @@ and  	getNextaa nomFonc entrees used newptr body s ptr =
 			begin
 			(*Printf.printf "   nomFonc %s :%s    \n"nomFonc s; *)
  
-				let nextAssign = evalMemEffectAfterCall outputMem globalMem used newptr (*avec param et globales*) [](*changeGlobalListPtr*)ptr in
+				let nextAssign = evalMemEffectAfterCall outputMem globalMem used newptr (*avec param et globales*) [](*changeGlobalListPtr*)ptr isAbs in
 				nextAssign 
 			end else []
 
@@ -5835,18 +5908,7 @@ begin
 	union lv nlist
 end 
 
-and listOfMaybechangedVarWithout l v =
-(*let _= listOfMaybechangedVar l in
-let l2 = List.filter (fun a->let (x,_)= a in x != v) in
-let _= listOfMaybechangedVar l2 in*)
-if l = [] then [] 
-else
-begin
-	let (f,n)=(List.hd l, List.tl l)in
-	let nlist = listOfMaybechangedVarWithout n v in
-	let (x,lv) = f in
-	if x != v then union lv nlist else nlist
-end 
+
 
 
 and getLinked   l =
@@ -5865,10 +5927,7 @@ and getaddExternUsed   changedList globalNENL =
 if changedList = [] then [] 
 else
 begin
-	let ((fid, _),n)=(List.hd changedList, List.tl changedList)in
-	 
-	 
-	let t = if existAssosPtrNameType fid then getAssosPtrNameType fid else  INT_TYPE in
+	let ((fid, (t,_,_)),n)=(List.hd changedList, List.tl changedList)in
 	union ( mayBeAssignVar  globalNENL t) (getaddExternUsed   n globalNENL)
 end 
 
@@ -5884,83 +5943,86 @@ and makeListOfAssignments l =
 			List.append arrayListAssign notarrayListAssign  
 
 
+and getAllVarByGPtr l =
+		match l with
+		| [] -> []
+	    | (name, (t,v,p))::ns1 ->union v (getAllVarByGPtr ns1)
 
-and evalMemEffectAfterCall outputMem globalMem afterUsed ptrInterval changeGlobalListPtr ptr =
+and listOfMaybechangedVarWithout l v =
+(*let _= listOfMaybechangedVar l in
+let l2 = List.filter (fun a->let (x,_)= a in x != v) in
+let _= listOfMaybechangedVar l2 in*)
+if l = [] then [] 
+else
+begin
+	let (f,n)=(List.hd l, List.tl l)in
+	let nlist = listOfMaybechangedVarWithout n v in
+	let (x,(t,lv,_)) = f in
+	if x != v then union lv nlist else nlist
+end 
 
+and evalMemEffectAfterCall outputMem globalMem afterUsed ptrInterval changeGlobalListPtr ptr isAbs =
 
+ 	let  listOfGlobal =if globalMem !=[] then     LocalAPContext.getALLPTRDomain ptrInterval globalMem else [] in
+	let listOfChangeByGlobalPtr =if listOfGlobal !=[] then getAllVarByGPtr listOfGlobal else [] in
 
-
-	let  (listOfGlobal, listOfChangeByGlobalPtr) = if globalMem !=[] then
-		    begin 
-			 	let  _= LocalAPContext.getAllOfAllPtrAdress ptrInterval globalMem true in 
-	 			(!assocPtrChangeVar, listOfMaybechangedVar !assocPtrChangeVar)
-			end else ([], []) in
-
-	let  listOfIO= if outputMem !=[] then
-		    begin 
-
-			 	let  _=  LocalAPContext.getAllOfAllPtrAdress ptrInterval outputMem true in 
-	 			!assocPtrChangeVar
-			end else [] in
+ 
+	let  listOfIO= if outputMem !=[] then  begin  LocalAPContext.getALLPTRDomain ptrInterval outputMem   end else [] in
  
 
-	let getExtern = List.filter(fun (ptrName, possibleLinkedVar) -> 	(List.mem "__extern" possibleLinkedVar) )  (List.append listOfIO listOfGlobal) in
-
- (*
-Printf.printf "local \n"; 
-LocalAPContext.print ptrInterval; *)
+	let getExtern = List.filter(fun (ptrName, (_,_,p)) ->(*Printf.printf"%s \n" ptrName; *)	p != [] )  (List.append listOfIO listOfGlobal) in
+(*LocalAPContext.print ptrInterval;
+LocalAPContext.print ptr ;*)
   
- 
-			  
- 	 
+	let listOfLocalChagedByGlobalPtr =List.filter(fun x ->List.mem x !alreadyAffectedGlobales = false)  listOfChangeByGlobalPtr  in 
+(* by global ptr any variable *)
 
-	let listOfLocalChagedByGlobalPtr =List.filter(fun x ->List.mem x !alreadyAffectedGlobales = false)  listOfChangeByGlobalPtr  in
-
-	let memIO = listOfIO in
-	let listOfChangedByOther = List.map(fun(x,l)->
-			let otherLinks = listOfMaybechangedVarWithout memIO x in 
-		  	let (interWithoterIO, interWithoterGlobalPtr) = (intersection l otherLinks, intersection l listOfChangeByGlobalPtr) in
+	let memIO = listOfIO in (* parameter or local ptr => local var parametre global *)
+	let listOfChangedByOther =if listOfIO = [] then [] else List.map(fun(x,(t,v,p))->
+		let otherLinks = listOfMaybechangedVarWithout memIO x in (* list of var changed by other parametrers*)
+		  	let (interWithoterIO, interWithoterGlobalPtr) = (intersection v otherLinks, intersection v listOfChangeByGlobalPtr) in
 			(x, interWithoterIO, interWithoterGlobalPtr, interWithoterIO = [] && listOfChangeByGlobalPtr = []) ) listOfIO in
 
 	let linkedVarList = List.filter(fun(x,ol,oIO,res)-> res=false) listOfChangedByOther in
+		(* there are linked pointers real*)
 
 	(*if linkedVarList =[] then Printf.printf"has linkedVarList \n";*)
 	let (firstRes,linkedvar) = (* linked Var computing avec global ou param*)
 		if linkedVarList != [] then  
 		begin
-			 let linked = getLinkedVarByCathegorie (getLinked   listOfChangedByOther) in
+			 let linked =        (getLinked   listOfChangedByOther)   in
 			(* il ne faut passer les valiables liées à top qui si elles sont utilisées et si pas unique et le pointeur n'a pas été changé dans la fonct...je les met toutes à, top*)
 			(makeListOfAssignments linked , linked)
 		end else ([],[]) in
 
-		let secondRes = (* linked Var computing*)
+(*uniquement si isAbs sinon pas d'extern*)
+		(*  Var global extern not know used computing*)
+		let secondRes = 
 			if getExtern = [] then firstRes 
 			else
 			begin
-					let globalNENL = List.filter (fun x-> List.mem x !listEnumId = false && List.mem x linkedvar = false) !alreadyAffectedGlobales in
+					let globalNENL = 
+					List.filter (fun x-> List.mem x !listEnumId = false && List.mem_assoc x !listeAssosPtrNameType = false &&
+									List.mem x linkedvar = false &&  List.mem x afterUsed) !alreadyAffectedGlobales in
+
+					(* les variable externes ptr sur globales utilisées sont mise à top*)
  					let addExternUsed = List.filter(fun x -> List.mem x afterUsed) 	(getaddExternUsed   getExtern  globalNENL)  in
  					List.append (makeListOfAssignments addExternUsed)  firstRes
 			end in
-			let toRealChagedLocal = List.filter(fun x -> List.mem x linkedvar = false &&  List.mem x afterUsed)listOfLocalChagedByGlobalPtr in
-			if toRealChagedLocal = [] then secondRes else List.append (makeListOfAssignments toRealChagedLocal)  firstRes
+
+
+(*uniquement si isAbs sinon pas garder dans les globales ???*)
+			(*les ptr globaux sur locales appelante*)
+			let toRealChagedLocal =if listOfLocalChagedByGlobalPtr = [] then [] else 
+									 List.filter(fun x -> List.mem x linkedvar = false &&  List.mem x afterUsed)listOfLocalChagedByGlobalPtr in
+
+
+			if toRealChagedLocal = [] then secondRes else 
+											if secondRes = [] then  makeListOfAssignments toRealChagedLocal
+											else List.append (makeListOfAssignments toRealChagedLocal)  secondRes
 			(* on peut réduire ...toRealChagedLocal changeGlobalListPtr *) (* local var changer by ptr into call *)
 		 
-(*
-	let listOfInput = List.assoc fid !assocPtrChangeVar in 
-
-	let t = if existAssosPtrNameType fid then getAssosPtrNameType fid else  INT_TYPE in
-								 
-	let gnen =	if List.mem "__extern" listOfVAR then mayBeAssignVar (List.filter (fun x-> List.mem x !listEnumId = false) !alreadyAffectedGlobales) t else [] in
-							 
-	let (x, onlyOne ) = if listOfVAR != [] && List.tl listOfVAR = [] && List.mem "__extern" listOfVAR = false then (List.hd listOfVAR, true) else ("", false) in
-	let listToAdd =
-	if onlyOne   then  (* on sait quelle est la variable modifiée et aucun autre pointeur peut la changer donc on peut rempalcer*)
-	(
-		if  existAssosArrayType x = false then [new_assign_simple x exp2] else [new_assign_double x exp1 exp2]
-	)
-	else
-	begin 
-	let isonlyExtern = LocalAPContext.isOnlyextern ptr fid in *)
+ 
 
 
 
@@ -6187,8 +6249,8 @@ and evalInputFunction a entrees  globales ptr=
 			
 		match entree with 
 			VAR (id, exp,_,_) -> 
-				let nc = majPtrvarAssign id exp ptr !estDansBoucle in	
-myCurrentPtrContext:= nc ;	
+				let nc = majPtrvarAssign id exp ptr !estDansBoucle true in	
+(*myCurrentPtrContext:= nc ;	*)
 				let new_exp =
  
 						(match exp with

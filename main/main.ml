@@ -101,7 +101,7 @@ let completeGraphe = ref false
 let existsPartialResult _ = false
 let withoutGlobalAndStaticInit = ref false
 
-
+(* mettre une option pour mode trace trace:= true*)
 
 let opts = [
 
@@ -316,7 +316,7 @@ let _ =
 		if !out_file = "" then (stdout,false)
 		else ((open_out !out_file), true) in
 	Cextraireboucle.set_out_dir (!out_dir);
-	
+(*	trace:= true;*)
 	(* Parse arguments *)
 	 args := (Frontc.LINE_RECORD true)::!args; calipso_rrec := true; run_calipso := true;args := USE_CPP :: !args ;
 	out_dir := "/tmp"; Cextraireboucle.set_out_dir "/tmp";

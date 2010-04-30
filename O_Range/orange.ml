@@ -601,7 +601,7 @@ end
 
 and   endOfcontexte  affec  last new_contexte globales=
   if last = [] then begin (*Printf.printf"lastvide \n";*) 
-			 myCurrentPtrContextAux := (localPtrAnalyse [new_instBEGIN (affec)]  !myCurrentPtrContext   !estDansBoucle) ;
+			 myCurrentPtrContextAux := (localPtrAnalyse [new_instBEGIN (affec)]  !myCurrentPtrContext   !estDansBoucle false ) ;
 
 			 evalStore (BEGIN(affec)) new_contexte globales !myCurrentPtrContext
   end
@@ -616,7 +616,7 @@ and   endOfcontexte  affec  last new_contexte globales=
 	  if fin = [] then new_contexte 
 	  else 
 	  begin
-			myCurrentPtrContextAux := (localPtrAnalyse [new_instBEGIN (fin)]  !myCurrentPtrContext   !estDansBoucle) ;
+			myCurrentPtrContextAux := (localPtrAnalyse [new_instBEGIN (fin)]  !myCurrentPtrContext   !estDansBoucle false ) ;
 			evalStore (BEGIN(fin)) new_contexte globales !myCurrentPtrContext
 	  end
   end
@@ -1651,7 +1651,7 @@ begin
 		let affect = (applyStoreVA (rechercheAffectVDsListeAS  (List.hd ltrue) contexte) globales) in
      (*Printf.printf "CALCUL affect true %s\n" (List.hd ltrue) ; print_expVA affect;flush(); space(); new_line();*)
 		let cond = calculer  affect !infoaffichNull  [] 1 in
-		if affiche && !isPartialisation = false  then
+		if affiche && !isPartialisation = false && !trace then
 		begin
 				(*print_expTerm  cond; flush(); space();new_line();	*)		 
 		 	 	Printf.printf "%s=" (List.hd ltrue) ;	print_expTerm  cond;  space(); new_line() ;flush();
@@ -1677,7 +1677,7 @@ begin
   let affect = (applyStoreVA (rechercheAffectVDsListeAS  (List.hd lfalse) contexte) globales) in
   (*	Printf.printf "CALCUL affect false %s\n" (List.hd lfalse) ; print_expVA affect; flush(); space();new_line();print_expVA affect;flush(); space(); new_line();*)
 	  let cond = calculer   affect  !infoaffichNull  [] 1 in
-	  if affiche && !isPartialisation = false  then
+	  if affiche && !isPartialisation = false && !trace  then
 	  begin
 			  (*print_expTerm  cond; flush(); space();new_line(); space(); new_line() ;flush();	*)
 			  
@@ -1698,7 +1698,7 @@ let isExecuted ltrue lfalse contexte appel globales affiche=
 	Printf.printf "isExecuted : traiterboucleinterne globales : \n"; afficherListeAS globales; Printf.printf "FIN CONTEXTE \n";*)
   let listeP = !listeASCourant in
   let res = (rond appel contexte) in
-  if affiche && !isPartialisation = false then
+  if affiche && !isPartialisation = false && !trace then
   begin	
 	 if ltrue <> [] then ( Printf.printf "isExecuted : list of true conditions variables\n"; List.iter (fun e-> Printf.printf "%s "e) ltrue);
 	 if lfalse <> [] then (  Printf.printf "isExecuted : list of false conditions variables\n"; List.iter (fun e-> Printf.printf "%s "e) lfalse)
@@ -2790,12 +2790,12 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 			begin  
 				(match executedBranch with
 					 1 ->   
-							let  fc = (localPtrAnalyse [new_instBEGIN (instthen)]  prevPtrct   !estDansBoucle) in  
+							let  fc = (localPtrAnalyse [new_instBEGIN (instthen)]  prevPtrct   !estDansBoucle false) in  
 							let res = endOfcontexte instthen  lastthen  ifthencontexte globalesThen, globalesThen in
 							myCurrentPtrContext:=(LocalAPContext.joinSet fc prevPtrct ); res
 						   (*Printf.printf "IDIF %s then\n" var; *) 
 					| 2  -> 
-							let  fc = (localPtrAnalyse [new_instBEGIN (instelse)]  prevPtrct   !estDansBoucle) in  
+							let  fc = (localPtrAnalyse [new_instBEGIN (instelse)]  prevPtrct   !estDansBoucle false) in  
 							let res = endOfcontexte instelse  lastelse  ifelsecontexte globalesElse, globalesElse in
 							myCurrentPtrContext:=(LocalAPContext.joinSet fc prevPtrct ); res
 
@@ -2805,8 +2805,8 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 					  	let nthen = reecrireCorpsNonExe  instthen nonexethen !numAppel in
 						let nelse = reecrireCorpsNonExe  instelse nonexelse !numAppel in
 
-						let fc  = (localPtrAnalyse [new_instBEGIN (nthen)]  prevPtrct   !estDansBoucle) in
-						let  ec= (localPtrAnalyse [new_instBEGIN (nelse)]  prevPtrct   !estDansBoucle) in
+						let fc  = (localPtrAnalyse [new_instBEGIN (nthen)]  prevPtrct   !estDansBoucle false) in
+						let  ec= (localPtrAnalyse [new_instBEGIN (nelse)]  prevPtrct   !estDansBoucle false) in
 			 
 				 		myCurrentPtrContext:=LocalAPContext.joinSet   fc ec;
 
@@ -2934,7 +2934,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 							let before =LocalAPContext.initIntervalAnalyse 
 								(union globalUsedPtr inputPtr)  inputPtr  prevPtrct globalUsedPtr  in
  
-							let getNextassign =   getNextaa nomFonction entrees usedAfter before c  "c orange" prevPtrct in  
+							let getNextassign =   getNextaa nomFonction entrees usedAfter before c  "c orange" prevPtrct false in  
 							myCurrentPtrContext :=  LocalAPContext.joinSetSubSet prevPtrct !myCurrentPtrContextAux  ;
 
 						  	listeASCourant := []; 
@@ -2999,7 +2999,8 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 								listeASCourant :=  rond [affectres] (List.append nginterne !listeASCourant )
 							end
 							else listeASCourant :=     (List.append nginterne  !listeASCourant );
-						  let ncont = rond others   (List.append !listeASCourant  getNextassign) in(*voir remarque cvarabs.ml*)
+						  let ncont =  if getNextassign = [] then rond others  !listeASCourant 
+							 else rond others   (List.append !listeASCourant  getNextassign) in(*voir remarque cvarabs.ml*)
 						  (ncont, globalesAA)
 
 					  end	
@@ -3375,17 +3376,19 @@ afficherLesAffectations (aff) ;new_line () ;
 Printf.printf"Dans evaluerFonctions FIN  \n";*)
 	if intoLoop = false then
 	begin
-		 	(*let (inp, used) =   if AFContext.mem  !myAF id = false then  ([],[])
+		 	let (inp, used) =   if AFContext.mem  !myAF id = false then  ([],[])
 				 			  else 
 							  begin
 									let f = AFContext.get  !myAF id in
 			 						(MyFunCont.getInput f,MyFunCont.getOtherUsed f) 
 							  end in
-		 	let poiteurUsed =  	List.filter (fun x-> if isPtr x then true else false )used in *)
-			let globalPtr = List.filter(fun x->  isPtr x)!alreadyAffectedGlobales in
-			myCurrentPtrContext :=LocalAPContext.initIntervalAnalyse (getParamPtr input)   (getParamPtr input)   ptrInterval globalPtr  ;
-			myCurrentPtrContext :=localPtrAnalyse input ptrInterval  false ;
-			myCurrentPtrContext :=LocalAPContext.unionPL  !myCurrentPtrContext ptrInterval  
+		 	let poiteurUsed =  	List.filter (fun x-> if isPtr x then true else false )used in 
+			 
+			let inputPtrParam = (getParamPtr input) in
+			myCurrentPtrContext :=localPtrAnalyse input ptrInterval  false true ;
+			myCurrentPtrContext :=LocalAPContext.initIntervalAnalyse poiteurUsed inputPtrParam   !myCurrentPtrContext !globalPtr  ;
+			
+			(*myCurrentPtrContext :=LocalAPContext.unionPL  !myCurrentPtrContext ptrInterval  globalPtr inputPtrParam*)
 (*LocalAPContext.print !myCurrentPtrContext;*)
 
 	end;
@@ -3485,7 +3488,7 @@ Printf.printf "evalNid contexte  boucle: tete\n";
 		let resaux = calculer nb  !infoaffichNull [] 1 in
 		let isNull = if  estDefExp resaux then  if getDefValue resaux <= 0.0 then true else false else false in
 
-		let  fc = (localPtrAnalyse [new_instBEGIN (nid.lesAffectationsBNid)]  prevPtr   true) in  
+		let  fc = (localPtrAnalyse [new_instBEGIN (nid.lesAffectationsBNid)]  prevPtr   true false) in  
 				memAssign nid.lesAffectationsBNid;
 				myChangeUpperLoopPtr := !myChangePtr;(*List.iter(fun x -> Printf.printf "ptr %s  " x)!myChangePtr ;*)
 				myCurrentPtrContext:=(LocalAPContext.joinSet fc prevPtr );	
@@ -3519,7 +3522,7 @@ Printf.printf "evalNid contexte  boucle: tete\n";
 		  listeInstNonexe := listeInstNonexePred  ;
 		  firstLoop := 0 ;
 		   listeDesVarDependITitcour:=[] ;
-		  let  fc = (localPtrAnalyse [new_instBEGIN (ni)]  prevPtr   true) in  
+		  let  fc = (localPtrAnalyse [new_instBEGIN (ni)]  prevPtr   true false) in  
 
 			let nc = 	(LocalAPContext.joinSet fc prevPtr ) in	 
 
@@ -3814,9 +3817,9 @@ afficherLesAffectations (!listeDesEnum) ;new_line () ;new_line () ;flush(); spac
 Printf.printf"FIN GLOBALE\n";*)
 
 	  let globalInst = if !notwithGlobalAndStaticInit =false then  (
-			myCurrentPtrContext := (localPtrAnalyse [new_instBEGIN (!listeDesInstGlobales)]  []   false) ;
+			myCurrentPtrContext := (localPtrAnalyse [new_instBEGIN (!listeDesInstGlobales)]  []   false true) ;
 
-			ptrInterval :=!myAP; !listeDesInstGlobales ) 
+			ptrInterval :=!myCurrentPtrContext; !listeDesInstGlobales ) 
 		else (  myCurrentPtrContext := [];
 				ptrInterval := [];!listeDesEnum) in
 	  let typeE = TFONCTION(!(!mainFonc),!numAppel, f.lesAffectations, globalInst, [], [], [],  [], true, false,"",0) in  

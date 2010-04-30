@@ -1060,6 +1060,7 @@ let partial_tips_message call_list_number call_list =
 (* Initialize resume for graph *)
 let init = fun secondParse ->
 	getOnlyBoolAssignment := true;
+	 globalPtr := List.filter(fun x->  isPtr x)!alreadyAffectedGlobales ;
 	idBoucle := 0;
 	idAppel:=0;
 	nbImbrications := 0;
@@ -1167,7 +1168,7 @@ let resume secondParse complet =
 
 
 let newcurrentcallslistptr = ref []
-
+(*
 let intervalAnalysis doc =
 
 	(*let (globalInt, listofintVar) = getListIntVar !listAssocIdType 0 !alreadyAffectedGlobales in
@@ -1183,8 +1184,9 @@ let intervalAnalysis doc =
 
 	List.iter (fun (x, n)-> Printf.printf "(%s, %d) " x n) globalInt;
 	Printf.printf " list length %d \n"  (List.length globalInt);*)
-	let _= extractMemAssignAndPtrAssign !listeDesInstGlobales in
-	()
+	(*let _= extractMemAssignAndPtrAssign !listeDesInstGlobales in
+	()*)
+	myCurrentPtrContext := (localPtrAnalyse [new_instBEGIN (!listeDesInstGlobales)]  []   false true) ;
 	(* let _ =
 			List.map(fun (_,info) -> 
 					let (name,assign) = (info.nom, info.lesAffectations) in
@@ -1192,7 +1194,7 @@ let intervalAnalysis doc =
 
 			)!doc.laListeDesFonctions in *)
  (*Printf.printf " "  *)
- 
+ *)
 
 
 let rec alldefp fl ptrl=
@@ -1285,7 +1287,7 @@ let get_intervals secondParse =
 	idAppel:=0;
 	nbImbrications := 0;
 	getOnlyBoolAssignment := false;
-
+	 globalPtr := List.filter(fun x->  isPtr x)!alreadyAffectedGlobales ;
 	analyse_defs secondParse ;	
 	phaseinit := false;
 (*Printf.printf "\nget_intervals BEGIN\n" ;*)
