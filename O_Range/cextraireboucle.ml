@@ -4741,7 +4741,7 @@ and traiterAppelFonction exp args init ida =
 			let (absStore,listeES) = (getAbsStoreFromComp nom),(getESFromComp nom) in
 			(*Printf.printf "Number %u of E/S variables" (List.length listeES);*)
 			construireListesES listeES args;	  
-			Printf.printf "component call: %s %d\n" nom ida;
+			(*Printf.printf "component call: %s %d\n" nom ida;*)
 
 			myCurrentPtrContext := LocalAPContext.setGlobalToTop !myCurrentPtrContext ( changeGlobalListPtr  nom (ABSSTORE absStore) []);
 

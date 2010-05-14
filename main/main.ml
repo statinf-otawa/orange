@@ -188,48 +188,49 @@ let rec getComps = function
 		then begin
 			printf "Evalue le resultat partiel pour: %s\n" fn.nom;
 
-(*alreadyEvalFunctionAS := List.map (fun n ->  (n,Cextraireboucle.getAbsStoreFromComp n)  )!use_partial	;
-			List.iter(fun (n,_) ->Printf.printf "%s " n)!alreadyEvalFunctionAS;*)
+			(*alreadyEvalFunctionAS := List.map (fun n ->  (n,Cextraireboucle.getAbsStoreFromComp n)  )!use_partial	;
+						List.iter(fun (n,_) ->Printf.printf "%s " n)!alreadyEvalFunctionAS;*)
 
-TO.docEvalue :=  TO.new_documentEvalue  [] [];
-compEvalue := [];
-listeAppels :=  [];
-TO.varDeBoucleBoucle :="";
-TO.listeDesMaxParIdBoucle :=  [];
-TO.corpsEvalTMP :=  [] ;
-TO.nouBoucleEval:=  [];
-TO.appelcourant :=   [] ;
-TO.listBeforeFct :=  [];
-TO.listeVB  := [];
-TO.listeVBDEP := [];
-TO.curassocnamesetList := [];
-TO.listeInstNonexe := [];
-TO.aslAux := [];
-TO.listCaseFonction := [];
-let initListAssosPtrNameType = !listeAssosPtrNameType in
-let initistAssocIdType = !listAssocIdType in
-let initlistAssosIdTypeTypeDec = !listAssosIdTypeTypeDec in
+			TO.docEvalue :=  TO.new_documentEvalue  [] [];
+			compEvalue := [];
+			listeAppels :=  [];
+			TO.varDeBoucleBoucle :="";
+			TO.listeDesMaxParIdBoucle :=  [];
+			TO.corpsEvalTMP :=  [] ;
+			TO.nouBoucleEval:=  [];
+			TO.appelcourant :=   [] ;
+			TO.listBeforeFct :=  [];
+			TO.listeVB  := [];
+			TO.listeVBDEP := [];
+			TO.curassocnamesetList := [];
+			TO.listeInstNonexe := [];
+			TO.aslAux := [];
+			TO.listCaseFonction := [];
+			let initListAssosPtrNameType = !listeAssosPtrNameType in
+			let initistAssocIdType = !listAssocIdType in
+			let initlistAssosIdTypeTypeDec = !listAssosIdTypeTypeDec in
 
-(*TO.listeDesMaxParIdBoucle :=  [];
-TO.corpsEvalTMP :=  [] ;
-TO.nouBoucleEval:=  [];
-TO.docEvalue :=  TO.new_documentEvalue  [] [];
-TO.appelcourant :=   [] ;
-TO.listBeforeFct :=  [];
-TO.listeVB  := [];
-TO.listeVBDEP := [];
-TO.curassocnamesetList := [];
-TO.listeInstNonexe := [];
-TO.aslAux := [];
-TO.listCaseFonction := []*)TO.isPartialisation := true;
-listeASCourant := [];
+			(*TO.listeDesMaxParIdBoucle :=  [];
+			TO.corpsEvalTMP :=  [] ;
+			TO.nouBoucleEval:=  [];
+			TO.docEvalue :=  TO.new_documentEvalue  [] [];
+			TO.appelcourant :=   [] ;
+			TO.listBeforeFct :=  [];
+			TO.listeVB  := [];
+			TO.listeVBDEP := [];
+			TO.curassocnamesetList := [];
+			TO.listeInstNonexe := [];
+			TO.aslAux := [];
+			TO.listCaseFonction := []*)TO.isPartialisation := true;
+			listeASCourant := [];
 			(*Printf.printf "Longueur de l'arbre: avant %d.\n" (List.length !TO.docEvalue.TO.maListeEval);*)
 			let globales = !alreadyAffectedGlobales in
 				globalesVar := !alreadyAffectedGlobales;
 			let typeE = TO.TFONCTION(fn.nom,!TO.numAppel, fn.lesAffectations, !listeDesEnum, [], [], [],  [], true, false,"",0) in
 				TO.dernierAppelFct := typeE;
 			TO.predDernierAppelFct := typeE;
-			let (aslist,_,_) = TO.evaluerFonction (fn.nom) fn []  (EXP(NOTHING))   [typeE]  typeE true (*!listeASCourant*) (evalStore (new_instBEGIN !listeDesEnum) [] [] []) (( CONSTANT(CONST_INT("1")))) (( CONSTANT(CONST_INT("0")))) [] [] in () ;
+			let aslist  = TO.completevaluerFonction (fn.nom) fn []  (EXP(NOTHING))   [typeE]  typeE true (*!listeASCourant*) 
+				(evalStore (new_instBEGIN !listeDesEnum) [] [] []) (( CONSTANT(CONST_INT("1")))) (( CONSTANT(CONST_INT("0")))) [] [] in () ;
 
 
 			let compAS: abstractStore list = 

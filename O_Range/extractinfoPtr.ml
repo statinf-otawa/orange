@@ -379,7 +379,7 @@ module LocalPtrContext(D: PtrDomain) = struct
 					getAll s   (union [n] ln) t (MyPtrDomain.getVal md) myptr
 				else
 				begin
-					let newList = List.filter(fun x-> x != "__extern" ) myptr in
+					let newList =  (listWithoutv myptr "__extern") in
 
 					 
 					if mv = []&& newList = [] then   MyPtrDomain.setRef t []  ["__extern"]  
@@ -648,7 +648,7 @@ let majPtrvarAssign id exp beforePtr into add=
 								else ((*Printf.printf "extractMemAssignAndPtrAssign NOTYPE...";*)(INT_TYPE,false)) in
 				if isPtr then
 				begin
-					let (nl, isOnlyVar) = getVarPtrDep id exp myType in
+					let (nl, _) = getVarPtrDep id exp myType in
 				
 					if nl != []  then  
 					begin
@@ -952,10 +952,10 @@ let evalPtrEffectOnFunctionBody name assign f(*functionContext*)=
 
 
 		(*	let globalPtr = List.filter(fun x-> List.mem x !alreadyAffectedGlobales)poiteurUsed in*)
-			let globalPtr = List.filter(fun x->  isPtr x)!alreadyAffectedGlobales in
+		(*	let globalPtr = List.filter(fun x->  isPtr x)!alreadyAffectedGlobales in*)
 
 (*Printf.printf "\nfunction %s\n" name;*)
-			let initPtrList = LocalAPContext.initIntervalAnalyse poiteurUsed input (*!myAP current context*)[] globalPtr(*externValue*) in
+			let initPtrList = LocalAPContext.initIntervalAnalyse poiteurUsed input (*!myAP current context*)[] !globalPtr(*externValue*) in
 			(*LocalAPContext.print initPtrList;*)
 			myCurrentPtrContext := initPtrList;myCurrentPtrContextAux:=!myCurrentPtrContext;
 			(*let globalPtrAssignDomain = List.map(fun x-> (x, (LocalAPContext.getAllAdress initPtrList x ))) globalPtr in*)

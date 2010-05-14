@@ -3034,7 +3034,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 										|_->())
 								)sorties	
 							end  ; 
-							(rond contexteAvantAppel !listeASCourant,globale)  
+							(rond contexteAvantAppel !listeASCourant,globalesBefore)  
 						end
 
 						else (*Printf.printf "FIN Eval appel FONCTION 4%s:\n" nomFonction ; *) (contexteAvantAppel, globale) 
@@ -3075,7 +3075,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 									docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append !docEvalue.maListeEval new_fct);			
 									let inter = 	(evalStore (List.hd lappel) nc	globalesBefore) prevPtrct in    (*OK*)
 									(* afficherListeAS( inter);new_line () ;	*) 
-									(*Printf.printf "FIN Eval appel FONCTION composant%s:\n" nomFonction ;*)
+								(*	Printf.printf "FIN Eval appel FONCTION composant%s:\n" nomFonction ;*)
 									( inter ,globalesBefore)
 						end
 						else
@@ -3404,6 +3404,27 @@ Printf.printf"Dans evaluerFonctions FIN  \n";*)
   let endOfcontext = if intoLoop then new_contexte else filterwithoutWH new_contexte in
 	
   (endOfcontext, next, new_globales)
+
+
+
+
+
+
+
+
+and completevaluerFonction id f contexte exp listeEng typeA estexeEng globales et ef ptrInterval input=	
+   let lesAff =
+		( match typeA with  
+					  TFONCTION(_,_,lesAff , _, _,_,_,_, _, intoLoop,_,_) -> lesAff 
+					 |_->  []  ) in
+
+
+ let (new_contexte, next, new_globales) = evaluerFonction id f contexte exp listeEng typeA estexeEng globales et ef ptrInterval input in
+
+    endOfcontexte lesAff  next  new_contexte new_globales  
+
+
+
 
 and evalNid nid  appel (*appelée pour une mere de nid*) listeEng lt lf estexeEng globales fic lig=	
 if !vDEBUG then  Printf.printf "evalNid NID av eval nid de %d \n" (getBoucleIdB nid.infoNid.laBoucle)	;

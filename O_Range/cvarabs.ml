@@ -1073,10 +1073,9 @@ let rec consArrayFromPtrExp exp arrayName =
 			begin
 				let (resexp2, hasArray) = consArrayFromPtrExp exp2 arrayName in
 				if hasArray then
-					match op with
-					 ADD|SUB -> if resexp2 = NOTHING then ( exp1, true) else ( BINARY(op, exp1, resexp2), true)
-						|_-> (NOTHING, false)
-				else (NOTHING, false)
+					  if resexp2 = NOTHING then ( exp1, true) else ( BINARY(op, exp1, resexp2), true)
+					 
+				else (exp2, false)
 			end
 			else 
 			begin
@@ -1085,16 +1084,15 @@ let rec consArrayFromPtrExp exp arrayName =
 				begin
 					let (resexp1, hasArray) = consArrayFromPtrExp exp1 arrayName in
 					if hasArray then
-						match op with
-						 ADD|SUB -> if resexp1 = NOTHING then (exp2, true) else ( BINARY(op, resexp1, exp2), true)
-							|_-> (NOTHING, false)
-					else (NOTHING, false)
+						  if resexp1 = NOTHING then (exp2, true) else ( BINARY(op, resexp1, exp2), true)
+							 
+					else (exp1, false)
 	
 				end
-				else (NOTHING,false)
+				else (valsi,false)
 			end
 		| CONSTANT c-> (exp,false)
-		| VARIABLE name ->  if name = arrayName then (NOTHING, true) 
+		| VARIABLE name ->  if name = arrayName then ((CONSTANT (CONST_INT "0")), true) 
 							else if (String.length name > 4) then
 									if (String.sub name  0 4) = "bIt-" then  (exp, false) else (NOTHING, false)
 								 else (NOTHING, false)		(* sinon pb si ptr=tab+k ; k=k+1; *ptr=... donc pour le moment que constante*)						
@@ -3562,7 +3560,9 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 	| COMMA exps 					->	(COMMA ( List.map (fun arg -> applyStore (arg) a) exps))
 	| EXPR_SIZEOF exp 				->	(EXPR_SIZEOF (applyStore exp a))
 	| TYPE_SIZEOF _ 				->	(e)
-	| INDEX (exp, idx) 				->	(*Printf.printf " expression applystore index\n";*)
+	| INDEX (exp, idx) 				->
+
+
 		 let index = (applyStore idx a) in
 		(	match exp with
 			VARIABLE name ->
@@ -3573,7 +3573,7 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 						match absl with
 						ASSIGN_SIMPLE(_,EXP(exp2))|ASSIGN_MEM(_,_,EXP(exp2))|ASSIGN_DOUBLE  (_, _, EXP(exp2))-> (* Printf.printf " trouve =\n";*)
 					(*print_expression exp2 0; new_line ();flush(); space();  new_line ();*)exp2 (*je ne suis pas sure d'avoir bien interpete l'algo *)
-						| 	_-> INDEX (applyStore exp a, applyStore idx a) 
+						| 	_-> INDEX (applyStore exp a, index) 
 					)
 				end	 
 				else	if existeAffectationVarListe name a ||	existeAffectationVarListe ("*"^name) a then
@@ -3594,15 +3594,16 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 													) 
 											else 
 											begin  
-												INDEX (applyStore exp a, applyStore idx a) 
+												INDEX (applyStore exp a, index) 
 											end	
 											
 										| MSARRAY (lsize) -> (*Printf.printf "single tab %s \n" name ;*) 
-												INDEX (applyStore exp a, applyStore idx a)
+												INDEX (applyStore exp a, index)
 								)
 						end
-						else (INDEX (exp, index))
-			| CONSTANT (CONST_COMPOUND expsc) -> 
+						else (INDEX (applyStore exp a, index))
+
+		| CONSTANT (CONST_COMPOUND expsc) -> 
 					let indexx = (calculer (EXP( index )) !infoaffichNull  [] 1 )in
 					let conpound = applyStore exp a in
 					
@@ -3638,14 +3639,23 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 						end	
 						else
 						begin
-							 
-							begin
-								if (existeAffectationVarIndexListe tab1 a  (EXP(indexexp))  ) then
-								begin 
+							if (existeAffectationVarIndexListe tab1 a  (EXP(indexexp))  ) then
+							begin 
 									(*let tabvalue = *)
 										(match roindex tab1 a  (EXP(indexexp)) with 
 											ASSIGN_SIMPLE(_,EXP(va))|ASSIGN_MEM(_,_,EXP(va))|ASSIGN_DOUBLE(_,_, EXP(va)) -> va 
 											| 	_->INDEX (applyStore (VARIABLE(tab1)) a, applyStore indexexp a)) (*in*)
+									
+							end 
+							else 
+							begin
+								let id = applyStore indexexp a  in
+								if (existeAffectationVarIndexListe  tab1  a (EXP(id))) then
+								begin 
+									(*let tabvalue = *)
+										(match roindex tab1 a  (EXP(id)) with 
+											ASSIGN_SIMPLE(_,EXP(va))|ASSIGN_MEM(_,_,EXP(va))|ASSIGN_DOUBLE(_,_, EXP(va)) -> va 
+											| 	_->INDEX (applyStore (VARIABLE(tab1)) a, id)) (*in*)
 									
 								end 
 								else	
@@ -3671,11 +3681,13 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 														begin  
 															INDEX (applyStore (VARIABLE(tab1)) a, applyStore indexexp a)
 														end	
-												| MSARRAY (lsize) -> (*Printf.printf "single tab %s \n" tab1 ; *)
-													(*boolAS:= true;NOTHING*)INDEX (applyStore (VARIABLE(tab1)) a, applyStore indexexp a)
+												| MSARRAY (lsize) -> (*Printf.printf "single tab %s \n" tab1 ; 
+print_expression (INDEX (applyStore (VARIABLE(tab1)) a, applyStore indexexp a)) 0;flush() ;space(); flush(); new_line(); flush();new_line(); new_line(); *)
+ 
+													(*boolAS:= true;NOTHING*)INDEX (applyStore (VARIABLE(tab1)) a, id)
 										)
 									end
-									else INDEX (applyStore (VARIABLE(tab1)) a, applyStore indexexp a)
+									else INDEX (applyStore (VARIABLE(tab1)) a, id)
 							end
 						(*end*)
 					end
@@ -3687,6 +3699,117 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 						INDEX (applyStore exp a, applyStore idx a)
 				end 
 		)				
+
+
+
+
+
+
+
+
+
+
+
+
+(*	Printf.printf " expression applystore index\n";print_expression    e 0;new_line(); flush() ;space(); flush(); new_line(); flush();
+		let index = (applyStore idx a) in
+		
+ 
+		let (tab0,lidx0) = analyseArray e []  in
+		let exptab = applyStore (VARIABLE(tab0)) a in 
+		let (tab1,lidx) = if tab0 = "" then 
+							(tab0, 
+									List.map (fun x -> applyStore x a) lidx0)
+						  else
+							((match exptab with VARIABLE(n)-> n |_-> tab0),
+								 List.map (fun x -> applyStore x a) lidx0) in
+		if tab1 != "" then
+		begin
+Printf.printf "index   OK1\n" ;
+			let (indexexp , isok) = consArrayFromPtrExp ( e )  tab1 in 	
+			let id =applyStore 		indexexp a in	
+			if  (*isok = false*) id != NOTHING &&  (existeAffectationVarIndexListe tab1 a (EXP(id)))	then 
+			begin Printf.printf "index   OK\n" ;
+					let absl = roindex  tab1 a (EXP(id))	 in
+					( match absl with
+							ASSIGN_SIMPLE(_,EXP(exp2))|ASSIGN_MEM(_,_,EXP(exp2))|ASSIGN_DOUBLE  (_, _, EXP(exp2))-> (* Printf.printf " trouve =\n";*)
+						(*print_expression exp2 0; new_line ();flush(); space();  new_line ();*)exp2 (*je ne suis pas sure d'avoir bien interpete l'algo *)
+							| 	_-> INDEX (VARIABLE(tab1) , id)  )
+			end	 
+			else 
+			begin
+Printf.printf "index   OK 2\n" ;
+					let size = getAssosArrayIDsize tab1 in
+					(	match size with 
+							NOSIZE ->      Printf.printf "index   OK 3\n" ;(*boolAS:= true;NOTHING *)INDEX (applyStore exp a, index)  
+							| SARRAY (v) -> 
+								if lidx != [] && List.tl lidx = [] && (existeAffectationVarIndexListe tab1 a (EXP(List.hd lidx)))	 then
+								begin
+	 								let absl = roindex  tab1 a  (EXP(List.hd lidx))	 in
+									( match absl with
+											ASSIGN_SIMPLE(_,EXP(exp2))|ASSIGN_MEM(_,_,EXP(exp2))|ASSIGN_DOUBLE(_, _,EXP(exp2))->  exp2  
+											| 	_-> INDEX ( VARIABLE(tab1),  List.hd lidx) )
+								end	 
+								else
+								begin
+									let arrayas = arrayAssignFilter tab1 a in															 										let (alldedined, min, max) = alldefinedtabMinMax tab1 0 (v-1) arrayas in
+									if alldedined then 
+										CALL (	VARIABLE("SET") ,  List.append [expressionEvalueeToExpression min] [expressionEvalueeToExpression max]) 
+									else INDEX ( VARIABLE(tab1),  List.hd lidx) 
+								end
+											
+							| MSARRAY (lsize) ->  (*INDEX (applyStore exp a, index) *)
+								if lidx != [] && List.tl lidx = [] && (existeAffectationVarIndexListe tab1 a (EXP(List.hd lidx)))	 then
+								begin
+									let absl = roindex  tab1 a  (EXP(List.hd lidx)) in
+									( match absl with
+											ASSIGN_SIMPLE(_,EXP(exp2))|ASSIGN_MEM(_,_,EXP(exp2))|ASSIGN_DOUBLE(_, _,EXP(exp2))->  exp2  
+											| 	_-> INDEX ( applyStore exp a,  index ))
+								end	 
+								else   
+								begin
+									let ri = prodListSizeIndex lsize lidx in Printf.printf "index   OK 2\n" ;
+									if existeAffectationVarIndexListe tab1 a (EXP( ri)) then 
+									begin Printf.printf "index   OK4\n" ;
+										let absl = roindex  tab1 a  (EXP( ri)) in
+										( match absl with
+												ASSIGN_SIMPLE(_,EXP(exp2))|ASSIGN_MEM(_,_,EXP(exp2))|ASSIGN_DOUBLE(_, _,EXP(exp2))->  exp2  
+												| 	_-> INDEX ( VARIABLE(tab1),  ri) )
+									end	 
+									else INDEX ( applyStore exp a,  index ) 
+								end
+						)
+				end	
+			end (* fin tab trouvé*)
+			else
+				(match exp with
+				| CONSTANT (CONST_COMPOUND expsc) -> 
+					let indexx = (calculer (EXP( index )) !infoaffichNull  [] 1 )in
+					if estDefExp indexx  then  
+					begin    
+
+						let val1 = int_of_float(getDefValue indexx) in	
+
+						let geti = (getIndexValueOfTab val1 expsc) in							
+						let resaux = applyStore geti a in
+						if resaux = VARIABLE ("--NOINIT--") then INDEX (applyStore exp a, index) else resaux
+						
+					end	
+					else  INDEX (applyStore exp a, index)						 
+				| _-> Printf.printf "index   OK autre \n" ; INDEX (applyStore exp a, index)							 
+				)*)
+
+
+
+
+
+
+
+
+
+
+
+				
 	 | MEMBEROF (ex, c) 	->				
 				let lid =	getInitVarFromStruct e  in
 				if lid != [] && (isCallVarStruct lid = false )then 
@@ -5055,7 +5178,7 @@ let makeListOfMem u values ptrvalues gnen exp1 exp2 id=
 	let (directList,listofpbvar) =
 	if values != [] then
 	begin
-		let listofpbvar =  List.filter(fun x->  List.mem x u    )  values  in
+		let listofpbvar =  List.filter(fun x->  List.mem x u  ||List.mem x !alreadyAffectedGlobales  )  values  in
 		let arrayList = List.filter(fun x->  existAssosArrayType x )  listofpbvar in
 		let notarrayList = List.filter(fun x->  existAssosArrayType x = false)  listofpbvar in
 		let arrayListAssign = List.map(fun x->  new_assign_double x exp1 MULTIPLE )  arrayList in
@@ -5154,7 +5277,7 @@ match i with
 						|_->  []  )
 					else []  in
 			
-		let res = rond a ((new_assign_simple id exp)::addList) in		
+		let res = rond a ((new_assign_simple id exp)::addList) in	(*	if id = "c_25" then (Printf.printf "EvalStore tab\n"; afficherListeAS a;);*)
 		res
 	| TAB (id, exp1, exp2,l,u) -> (*Printf.printf "EvalStore tab\n";*)
 		
@@ -5592,8 +5715,9 @@ Printf.printf "fin \n";*)
 									
 									(before, LocalAPContext.setGlobalToTop ptr globalUsedPtr) 
 								end in
-						(*Printf.printf "EvalStore fonction pas dans boucle %s  \n" nomFonc ;*)
-						
+						(*Printf.printf "EvalStore fonction pas dans boucle %s  \n" nomFonc ;
+						afficherListeAS absStore; 
+Printf.printf "EvalStore fonction pas dans boucle %s   0\n" nomFonc ;*)
 						
 						let getNextassign = if isAbs = false then getNextaa nomFonc entrees usedAfter mycontextInner (CORPS c) "c pas" ptr isAbs
 						else getNextaa nomFonc entrees usedAfter mycontextInner (ABSSTORE a) "AB pas" ptr isAbs in
@@ -5606,19 +5730,21 @@ Printf.printf "fin \n";*)
 
 			
 						let rc =  !corpsNouv in listeASCourant := []; 
-					   (*Printf.printf "contxte \n" ;afficherListeAS rc;Printf.printf "fin liste\n" ;*)
+					 (*  Printf.printf "contxte \n" ;afficherListeAS rc;Printf.printf "fin liste\n" ;*)
 						if sorties <> [] then
 						begin
-							(*afficherListeAS rc; *)
+							(*afficherListeAS rc; 
+
+Printf.printf "EvalStore fonction pas dans boucle %s 2\n" nomFonc ;*)
 							List.iter (
 								fun sortie -> 
 								(match sortie with 
 								VAR (id, e,_,_) -> 
 									let (isOkSortie, isnotchange) =  isOkSortie e rc [] id in
 									if isnotchange = false then
-										(if isOkSortie then 
+										(if isOkSortie then ( 
 											if existAssosArrayIDsize id  then  (getTabAssign sortie rc g MULTIPLE !myCurrentPtrContext)  
-													else listeASCourant:=(new_assign_simple id  (getSortie e rc g id !myCurrentPtrContext))::!listeASCourant
+											else listeASCourant:=(new_assign_simple id  (getSortie e rc g id !myCurrentPtrContext))::!listeASCourant)
 										else listeASCourant :=  (new_assign_simple id  MULTIPLE )::!listeASCourant); 
 									()
 								| TAB (id, e1, e2,_,_) ->  
@@ -5627,9 +5753,9 @@ Printf.printf "fin \n";*)
 									begin
 										if isOkSortie then 
 										begin 
-											(getTabAssign sortie rc g MULTIPLE !myCurrentPtrContext)
+											((*afficherUneAffect sortie; flush();flush(); space(); new_line ();*)getTabAssign sortie rc g MULTIPLE !myCurrentPtrContext)
 										end
-										else listeASCourant := (ASSIGN_DOUBLE (id, MULTIPLE,  MULTIPLE))::!listeASCourant
+										else (  listeASCourant := (ASSIGN_DOUBLE (id, MULTIPLE,  MULTIPLE))::!listeASCourant)
 									end;
 									()
 								|MEMASSIGN (id, e1, e2,_,_)-> 
@@ -5641,15 +5767,15 @@ Printf.printf "fin \n";*)
 													else  EXP(BINARY (ADD, (applyStore (expVaToExp e1) input), VARIABLE "_ALL-")) in
 										
 										if isOkSortie then 
-											getMemAssign sortie rc  g index !myCurrentPtrContext
+											((*afficherUneAffect sortie; flush();flush(); space(); new_line ();*)getMemAssign sortie rc  g index !myCurrentPtrContext)
 										else 
-											listeASCourant := (ASSIGN_MEM (id,  index ,  MULTIPLE))::!listeASCourant;
+										( listeASCourant := (ASSIGN_MEM (id,  index ,  MULTIPLE))::!listeASCourant;)
 									 end;()
 								|_->())
 								)sorties	
 						end  ;
 
-
+(*Printf.printf "EvalStore fonction pas dans boucle %s 3 \n" nomFonc ;*)
 					(*	
 	
 			
@@ -5785,7 +5911,7 @@ Printf.printf "fin \n";*)
 						let memoutput = !corpsNouvI in
 						 
 						
-						(*afficherLesAffectations ((entrees)); new_line(); Printf.printf "affect a apere reecrire fin\n";*)
+						
 
 						let getNextassign = if isAbs = false then getNextaa nomFonc entrees usedAfter mycontextInner (CORPS (BEGIN corps)) "c dans" ptr isAbs
 						else getNextaa nomFonc entrees usedAfter mycontextInner (ABSSTORE a) "AB da,s" ptr isAbs in
@@ -5815,17 +5941,18 @@ Printf.printf "fin \n";*)
 												let (isOkSortie, isnotchange) =  isOkSortie e rc [] id in
 												if isnotchange = false then
 												if isOkSortie then
+												(   (*afficherUneAffect sortie; flush();flush(); space(); new_line ();*)
 													if existAssosArrayIDsize id  then  (getTabAssign sortie rc [] MULTIPLE !myCurrentPtrContext)  
 													else 
 														listeASCourant :=  
-														(new_assign_simple id  (getSortie e rc [] id !myCurrentPtrContext)):: !listeASCourant 
+														(new_assign_simple id  (getSortie e rc [] id !myCurrentPtrContext)):: !listeASCourant )
 												else listeASCourant :=  (new_assign_simple id  MULTIPLE)::!listeASCourant; 
 												()
 											| TAB (id, e1, e2,_,_) ->  
 												let (isOkSortie, isnotchange) =  isOkSortie e2 rc [] id in
 												if isnotchange = false then
 													if isOkSortie then  
-														getTabAssign sortie rc [] MULTIPLE !myCurrentPtrContext
+														((*afficherUneAffect sortie; flush();flush(); space(); new_line (); *)getTabAssign sortie rc [] MULTIPLE !myCurrentPtrContext)
 													else listeASCourant := (ASSIGN_DOUBLE (id, MULTIPLE, MULTIPLE))::!listeASCourant;
 												()
 											|MEMASSIGN (id, e1, e2,_,_)-> 
@@ -5836,7 +5963,7 @@ Printf.printf "fin \n";*)
 
 												if isnotchange = false then
 												if isOkSortie then
-													getMemAssign sortie rc [] index !myCurrentPtrContext
+													((*afficherUneAffect sortie; flush();flush(); space(); new_line ();*) getMemAssign sortie rc [] index !myCurrentPtrContext)
 												else listeASCourant := (ASSIGN_MEM (id,index,   MULTIPLE ))::!listeASCourant;
 												  ()
 											|_->()
@@ -6201,7 +6328,7 @@ match 	exp with MULTIPLE -> true
 
 and getSortie exp a gl id ptr= (* only call when the output value of the function is not change for call like ptr input = &var or &(p.x) or &(t->x) so into funtion
 *) 
-(*Printf.printf "getSortie %s\n" id;*)
+ 
 let res =
 match exp with
 EXP(VARIABLE (v))->  
@@ -6271,7 +6398,8 @@ and evalInputFunction a entrees  globales ptr=
  
 										 applyStoreVA (applyStoreVA exp a) globales
 								
-									| VARIABLE(v)->	
+
+									| VARIABLE(v)->	(*if id = "c_25" then (Printf.printf "contexte\n" ;afficherListeAS a;  Printf.printf "globale\n" ; afficherListeAS globales); *)
 										let (typ, hastype,isptr) = if List.mem_assoc v !listAssocIdType then 
 																(getBaseType (List.assoc v !listAssocIdType), true,false)
 		 										 			 else 
@@ -6290,9 +6418,9 @@ and evalInputFunction a entrees  globales ptr=
 										if isptr ||List.mem_assoc id !listeAssosPtrNameType  then 
 											if existeAffectationVarListe ("*"^v) a || existeAffectationVarListe ("*"^v) globales then
 												applyStoreVA (applyStoreVA (EXP(UNARY (ADDROF,(VARIABLE("*"^v))))) a) globales
-											else  applyStoreVA (applyStoreVA exp a) globales
-										else  applyStoreVA (applyStoreVA exp a) globales
-									|_-> applyStoreVA (applyStoreVA exp a) globales  )
+											else( (*if id = "c_25" then Printf.printf "contexte1 \n" ; *)applyStoreVA (applyStoreVA exp a) globales)
+										else  ((*if id = "c_25" then Printf.printf "contexte2\n" ;*)applyStoreVA (applyStoreVA exp a) globales)
+									|_-> (*if id = "c_25" then Printf.printf "contexte 3\n" ;*)applyStoreVA (applyStoreVA exp a) globales  )
 
 
 							|_-> applyStoreVA (applyStoreVA exp a) globales ) in
