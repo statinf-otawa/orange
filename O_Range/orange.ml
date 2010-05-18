@@ -2106,11 +2106,11 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 						MULTIPLE ->   MULTIPLE
 						| EXP(exp) ->  
 							if estNothing nbEngl || estNothing (EXP(e)) then  EXP(NOTHING) 
-							else
+							else  
 								EXP(CALL(VARIABLE("MAX") , (List.append (List.append
 			 						[VARIABLE (ii)]	
 									[BINARY(SUB,	exp, (CONSTANT (CONST_INT "1")))])  [e])))
-									)
+									) 
 					end
 				end
 				else recExptMax
@@ -2121,8 +2121,8 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 	
 				(*Printf.printf"appel rec de traiterBouclesInternes 	\n";*)
 				(*Printf.printf "1 traiterBouclesInternes %d nom eng %d ou stopper %d sa eng %d tete nid %d\n" id	nomE idEng saBENG (getBoucleIdB nT.infoNid.laBoucle);
-				Printf.printf"traiter calcul MAX pour %s =\n" ii; print_expVA !maxAuxTN; new_line ();Printf.printf"\n";
-				Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA !resAuxTN; new_line ();Printf.printf"\n";*)
+				Printf.printf"traiter calcul MAX pour %s =\n" ii; print_expVA !maxAuxTN; new_line ();Printf.printf"\n";*)
+				(*Printf.printf"traiter calcul Total pour %s =\n" ii; print_expVA !resAuxTN; new_line ();Printf.printf"\n";*)
 
  		dernierAppelFct := !predDernierAppelFct; 
 (*Printf.printf "av traiterBouclesInternes num %d nom eng %d AVANT AR\n"  id nomE ;*)
@@ -2141,6 +2141,9 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 			(*Printf.printf "av traiterBouclesInternes num %d nom eng %d AVANT AR\n"  id nomE ;*)
 			(*Printf.printf "av traiterBouclesInternes num %d nom eng %d \n"  id nomE ;afficherListeAS appel;	
 			Printf.printf "av traiterBouclesInternes num %d nom eng %d \n"  id nomE ;afficherListeAS ncc;	*)
+
+
+
 
  					let next_cond = ncc in (* afficherListeAS next_cond;*)	
 					let isexeN = !isExeBoucle && isExecutedFunction next_cond in
