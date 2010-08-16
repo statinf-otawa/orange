@@ -5079,14 +5079,17 @@ and  onlyAstatement   stat =
 		listeNextExp := [];
 		
 		onlyAexpressionaux   exp ;
-		listeDesInstCourantes :=  List.append ( List.append listePred [ (new_instBEGIN (!listeDesInstCourantes ))]) !listeNextExp;
+		listeDesInstCourantes :=  List.append ( List.append listePred [ 
+					new_instFOR 0 ""	(EXP(NOTHING)) (EXP(NOTHING)) (EXP(NOTHING))
+								 (EXP( NOTHING)) (new_instBEGIN !listeDesInstCourantes) []] ) !listeNextExp;
 									
 	| DOWHILE (exp, stat) ->			
 		let listePred = !listeDesInstCourantes in
 		listeDesInstCourantes := [];																	
 		onlyAstatement  stat;
 		onlyAexpression   exp ;
-		listeDesInstCourantes :=   List.append listePred [ (new_instBEGIN (!listeDesInstCourantes ))];
+		listeDesInstCourantes :=   List.append listePred [	new_instFOR 0 ""	(EXP(NOTHING)) (EXP(NOTHING)) (EXP(NOTHING))
+								 (EXP( NOTHING)) (new_instBEGIN (!listeDesInstCourantes  )) []] ;
 
 	| FOR (exp1, exp2, exp3, stat) ->
 		onlyAexpression  exp1;
@@ -5098,7 +5101,8 @@ and  onlyAstatement   stat =
 		onlyAexpression   exp3 ;
 		listeNextExp := [];
 		onlyAexpressionaux  exp2;
-		listeDesInstCourantes :=  List.append ( List.append listePred [ (new_instBEGIN (!listeDesInstCourantes ))]) !listeNextExp;
+		listeDesInstCourantes :=  List.append ( List.append listePred [	new_instFOR 0 ""	(EXP(NOTHING)) (EXP(NOTHING)) (EXP(NOTHING))
+								 (EXP( NOTHING)) (new_instBEGIN (!listeDesInstCourantes  )) []] ) !listeNextExp;
 	
 	| BREAK | CONTINUE -> 			()
 	| RETURN (exp) ->				if exp = NOTHING	then ()	else 

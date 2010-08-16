@@ -587,20 +587,20 @@ let rec chooseClassified n (classifiedList:(int * string list) list) cl l curren
 			(match typeOfPartialisation with
 				| ALLFUNCTION ->
 					if  (totalSize > 2500 || (mayBePessimistic && totalSize >1000)) 
-					then (biggesteString:=!biggesteString^Printf.sprintf "\t%s   totalsize %d\n" name  totalSize ; currentLevelChoosenNode := List.append [name] !currentLevelChoosenNode)
+					then (biggesteString:=!biggesteString^Printf.sprintf "\t%s   totalsize %d %d fixed\n" name  totalSize fixed; currentLevelChoosenNode := List.append [name] !currentLevelChoosenNode)
 				| ONLYNOTPESSIMISTIC ->
 					let respess =    mayHaveListLevelNPessimisticnext  pessimistic cl   [name]    in
 					let hasGoodSize =  totalSize > 2500 || (mayBePessimistic && totalSize >1000) in
 					(*let nopessimistic = allarenotPessimistic name respess in*)
 					if (respess = [] (*|| nopessimistic*)) && hasGoodSize  then  
 					(
-						biggesteString:=!biggesteString^Printf.sprintf "\nLevel %d No pessimism for %s function size %d\n" (n+1) name totalSize;
+						biggesteString:=!biggesteString^Printf.sprintf "\nLevel %d No pessimism for %s function size %d fixed %d\n" (n+1) name totalSize fixed;
 						biggesteString:=!biggesteString^Printf.sprintf "\t%s   totalsize %d\n" name  totalSize ; currentLevelChoosenNode := List.append [name] !currentLevelChoosenNode
 					)
 					else 
 					if respess != [] && hasGoodSize then
 					(
-						biggesteString:=!biggesteString^Printf.sprintf "\nLevel %d not selected possible pessimism size %d for:\n"  (n+1) totalSize;  
+						biggesteString:=!biggesteString^Printf.sprintf "\nLevel %d not selected possible pessimism size %d for: fixed %d\n"  (n+1) totalSize fixed;  
 						List.iter(fun (name, suiv)->      
 							biggesteString:=!biggesteString^Printf.sprintf "\t%s\n" name  ; 
 							List.iter(fun (n,_)-> (*if b = true then *)biggesteString:=!biggesteString^Printf.sprintf "\t\t%s\n" n 
@@ -614,13 +614,13 @@ let rec chooseClassified n (classifiedList:(int * string list) list) cl l curren
 					(*let nopessimistic = allarenotPessimistic name respess in*)
 					if (respess = []  (*|| nopessimistic*))  && hasGoodSize  then  
 					(  
-						biggesteString:=!biggesteString^Printf.sprintf "\nLevel %d No pessimism for %s function or law size size : %d \n" (n+1) name totalSize;
+						biggesteString:=!biggesteString^Printf.sprintf "\nLevel %d No pessimism for %s function or law size size : %d fixed %d\n" (n+1) name totalSize fixed ;
 						biggesteString:=!biggesteString^Printf.sprintf "\t%s   totalsize %d\n" name  totalSize ; currentLevelChoosenNode := List.append [name] !currentLevelChoosenNode
 					)
 					else 
 						if respess != [] && hasGoodSize then
 						(
-							biggesteString:=!biggesteString^Printf.sprintf "\nLevel %d possible pessimism size %d for:\n"  (n+1) totalSize;  
+							biggesteString:=!biggesteString^Printf.sprintf "\nLevel %d possible pessimism size %d for: fixed %d\n"  (n+1) totalSize fixed ;  
 							List.iter(fun (name, suiv)->    
 								biggesteString:=!biggesteString^Printf.sprintf "\t%s\n" name  ; 
 								List.iter(fun (n,_)-> (*if b = true then *)biggesteString:=!biggesteString^Printf.sprintf "\t\t%s\n" n 
@@ -678,7 +678,7 @@ let resumeForPartial l cl=
 			in
 			if initsize> 5 && totalSize > 2500 || (mayBePessimistic && totalSize >1000)  then 
 				(biggesteString:=!biggesteString^Printf.sprintf "%s   totalsize %d\n" name  totalSize ; currentChoosenNode := List.append [name,totalSize] !currentChoosenNode);
-			resumeString := !resumeString^Printf.sprintf "%s = nbcall %d, nbcallinloop %d, size %d, totalsize %d\n" name nbc nbcil initsize totalSize
+			resumeString := !resumeString^Printf.sprintf "%s = nbcall %d, nbcallinloop %d, size %d, totalsize %d, fixed %d\n" name nbc nbcil initsize totalSize fixed 
 		)
 	)l;
 	let (classifiedList,_,_) = classified !currentChoosenNode !currentChoosenNode [] cl [] l in
@@ -856,7 +856,7 @@ let fun_lists_with_size = fun call_list_number ->
 			if (initsize > 5 && totalSize > 2500
 								|| (mayBePessimistic && totalSize >1000)) then 
 				(maybe_part := !maybe_part @ [(name, totalSize)]);
-			fun_list := !fun_list @ [(name, nbc, nbcil, initsize, totalSize)];
+			fun_list := !fun_list @ [(name, nbc, nbcil, initsize, totalSize,fixed)];
 		)
 	) call_list_number;
 	(!fun_list, !maybe_part);;
@@ -1003,10 +1003,10 @@ let partial_tips_message call_list_number call_list =
 	) in
 	let resumeString = (List.fold_left
 		(fun str fun_infos ->
-			let (name, nbc, nbcil, initsize, totalSize) = fun_infos in
+			let (name, nbc, nbcil, initsize, totalSize,level) = fun_infos in
 			str ^ (Printf.sprintf
-				"%s = nbcall %d, nbcallinloop %d, size %d, totalsize %d\n"
-				name nbc nbcil initsize totalSize)
+				"%s = nbcall %d, nbcallinloop %d, size %d, totalsize %d level %d\n"
+				name nbc nbcil initsize totalSize level)
 		
 		)
 		"/*---------------------------------\n"

@@ -461,21 +461,26 @@ match inc1 with
 
 
 and sameType inc1 inc2 =
-match inc1 with 
-	INC(POSITIV,_)->
-   			(match inc2 with INC(POSITIV,_) | NOINC | NODEFINC-> true
-							|_->false)
-	| INC(NEGATIV,_) ->
-		 (	match inc2 with INC(NEGATIV,_) | NOINC | NODEFINC-> true
-							|_->false)
+	let value1  =  (calculer (EXP (getIncValue inc1 )) !infoaffichNull  []  (-1)  ) in
+						 
+
+	let value2  =  (calculer (EXP (getIncValue inc2)) !infoaffichNull  []  (-1)  ) in
+	if estNoComp value1  =false && estDefExp value1  &&estNoComp value2  =false && estDefExp value2 then
+	(match inc1 with 
+		INC(POSITIV,_)->
+	   			(match inc2 with INC(POSITIV,_)  -> true |_->false)
+		| INC(NEGATIV,_) ->
+			 (	match inc2 with INC(NEGATIV,_)  -> true |_->false)
 	
-	| INC(MULTI,v1)->
-   			 (	match inc2 with INC(MULTI,_) | NOINC | NODEFINC-> true
-							|_->false)
-	| INC(DIVI,v1)->
-   			 (	match inc2 with INC(DIVI,_) | NOINC | NODEFINC-> true
-							|_->false)
-	| _ -> true
+		| INC(MULTI,v1)->
+	   			 (	match inc2 with INC(MULTI,_)  -> true |_->false)
+		| INC(DIVI,v1)->
+	   			 (	match inc2 with INC(DIVI,_) -> true |_->false)
+		| _ ->false
+
+	)
+	else false
+
 
 
 and joinAlternate  x inc1 inc2 inter1 inter2=
@@ -626,16 +631,16 @@ afficherLesAffectations iList;*)
 				let (indirect1, inc1, var1, before1,incifexe) = (extractIncOfLoop x [body] id nbItMin (*nbItMin_{numLoop}*)completList) (List.append previous [firstInst] ) in
 				(*if nbItMin_{numLoop}=nbItMax_{numLoop} then joinSequence x (extractIncOfLoop x [body] id nbItMin_{numLoop} )(getIncOfInstList x [nextInst])
 				else*)
-				if inc1 = NODEFINC then (indirect1,inc1, var1, before1)
+				if incifexe = NODEFINC then (indirect1,inc1, var1, before1)
 				else
 					if indirect1 = false then 
 					begin 
 						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList interval (List.append previous [firstInst] ))  in
 						if indirect2 = false then 
 						begin  
-							if incifexe = inc1 ||sameType incifexe inc2 then
+							if incifexe = inc1 then
 								(false,(*joinAlternate*) joinSequence x inc1 inc2 ,x, false)  
-							else  (indirect1,NODEFINC, var1, before1)							
+							else  if sameType incifexe inc2 then ((false,(*joinAlternate*)  inc2 ,x, false) )  else ((indirect1,NODEFINC, var1, before1))							
 						end
 						else (true, inc2, var2, before2) 
 					end
@@ -662,17 +667,25 @@ and extractIncOfLoop x inst varL nbItL completList beforei=
 		(*let las = evalStore (new_instBEGIN(inst)) [] [] !myCurrentPtrContext in*)
 
  
-		let (isindirect,inc1,v, before) = 
+		let (isindirect,inc1,v, before,ifexe) = 
 			if List.mem x (assignVar inst) then
 			begin
+				let (isindirect,inc,var, before) = getIncOfInstList x inst inst (INTERVALLE(INFINI,INFINI)) [] in
 				(*let varBPUN = BINARY(SUB, VARIABLE varL, CONSTANT(CONST_INT("1"))) in
 			    isMultiInc := true;
 				let extinc = expVaToExp(applyStoreVA (rechercheAffectVDsListeAS x las)  	[ASSIGN_SIMPLE (varL, EXP(varBPUN))] )   in
-				getInc x extinc inst !listeASCourant true completList beforei*)(false,NODEFINC,x, false) 
+				getInc x extinc inst !listeASCourant true completList beforei*)
+				if inc = NODEFINC || inc = NOINC then ( (isindirect,inc,var, before, inc))
+				else
+					begin
+						let value  =  (calculer (EXP (getIncValue inc)) !infoaffichNull  []  (-1)  ) in
+						if estNoComp value  =false && estDefExp value then ( (isindirect,NODEFINC,var, before, inc) )else  (isindirect,NODEFINC,var, before, NODEFINC)
+					end
 			end
-			else (false,NOINC,x, false) in
+			else (false,NOINC,x, false,NOINC) in
 		
-		 (false,NOINC,x, false, inc1)
+		 (isindirect,inc1,x, false, ifexe) (*(isindirect,NOINC,x, before,NOINC)*)
+
 	end
 	(*else 
 	begin
@@ -750,7 +763,7 @@ and getLoopVarInc v inst =
 		let pred = !getOnlyBoolAssignment in
  		getOnlyBoolAssignment := false;
 		setOnlyIncrement true;
-		isMultiInc := false;(*Printf.printf "getincrement %s \n "v;*)
+		isMultiInc := false;(*Printf.printf "getincrement %s \n "v;afficherLesAffectations inst;*)
 		let (isindirect,inc,var, before) = getIncOfInstList v inst inst (INTERVALLE(INFINI,INFINI)) [] in
 		getOnlyBoolAssignment := pred;
 
