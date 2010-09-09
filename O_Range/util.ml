@@ -11,7 +11,8 @@ let (alreadyAffectedGlobales: string list ref) = ref []
 
 let (listEnumId: string list ref) = ref []
 
-
+let is_integer s =
+try ignore (int_of_string s); true with Failure _-> false
 (* ABSTRATC STORE TYPE*)
 type expVA = EXP  of expression |	MULTIPLE
 type abstractStore =

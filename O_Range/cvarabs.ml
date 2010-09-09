@@ -271,7 +271,7 @@ match exprEvaluee with
 								if exp1 = NOTHING || exp2 = NOTHING then NOTHING else CALL (VARIABLE("MINIMUM") , (List.append [exp1] [exp2] ))	
 
 let estNoComp expr = match expr with NOCOMP	 | 	Sygma (_,_,_,_) | 	Max (_,_,_,_)-> true 
-| 	ConstInt(i) 		-> if i = "" then true else false
+| 	ConstInt(i) 		-> if i = "" || is_integer i =false then true else false
 | 	ConstFloat (f) 			-> if f = "" then true else false 
 | 	_-> false
 
@@ -338,31 +338,31 @@ let espIsNotOnlyVar exp = epsIsonlyVar exp = false
 
 let estNul exp =	
 	match exp with 
-	ConstInt (i)->   (int_of_string  i) = 0 
+	ConstInt (i)->  if  is_integer i then (int_of_string  i) = 0 else false
 	|ConstFloat (i) ->  (float_of_string  i) = 0.0|RConstFloat (i) ->  i = 0.0  | _->false
 					
 let estPositif exp =
-	match exp with ConstInt (i)->  (int_of_string  i) >= 0 
+	match exp with ConstInt (i)->    if  is_integer i then (int_of_string  i) >= 0   else false
 	| ConstFloat (i) ->  (float_of_string  i) >= 0.0 | RConstFloat (i) ->  i>= 0.0  | _->false
 
 let estStricPositif exp =
 	match exp with 
-	 ConstInt (i)-> (int_of_string  i) > 0 
+	 ConstInt (i)-> if  is_integer i then (int_of_string  i) > 0   else false 
 	| ConstFloat (i) ->   (float_of_string  i) > 0.0 | RConstFloat (i) ->   i > 0.0 | _->false
 
 let estUn exp =
 	match exp with 
-	 ConstInt (i)-> (int_of_string  i) = 1 
+	 ConstInt (i)-> if  is_integer i then(int_of_string  i) = 1 else false 
 	| ConstFloat (i) ->   (float_of_string  i) > 1.0 | RConstFloat (i) ->  i > 1.0 | _->false
 
 let estMUn exp =
 	match exp with 
-	 ConstInt (i)-> (int_of_string  i) = -1 
+	 ConstInt (i)->if  is_integer i then (int_of_string  i) = -1 else false 
 	| ConstFloat (i) ->   (float_of_string  i) > -1.0 | RConstFloat (i) ->   i > -1.0 | _->false
 
 let estStricNegatif exp =
 	match exp with 
-	 ConstInt (i)-> (int_of_string  i) < 0 
+	 ConstInt (i)-> if  is_integer i then (int_of_string  i) < 0 else false 
 	| ConstFloat (i) ->   (float_of_string  i) < 0.0| RConstFloat (i) ->   i < 0.0  | _->false
 
 let rec estInt exp =
@@ -410,7 +410,7 @@ let rec estFloat exp =
 	| 	PartieEntiereSup (e) | 	PartieEntiereInf (e)| 	Log (e)| 	Eq1 (e)	-> estFloat e
    	| _	-> false	
 	
-let estDefExp exp = match exp with ConstInt (i) | ConstFloat (i) ->  true 
+let estDefExp exp = match exp with ConstInt (i)->if  is_integer i then true else false | ConstFloat (i) ->  true 
  | RConstFloat (i) ->  true| _->false
 let estBool exp = match exp with Boolean (_) ->true| _->false
 let estBoolOrVal exp = estDefExp exp || estBool exp 
@@ -3347,7 +3347,9 @@ let  unaryToConstConv e isplus=
 let unaryTOconst = (*expressionEvalueeToExpression( calculer (EXP(e))  !infoaffichNull [] 1) *) e in
 	match e with
 		CONSTANT(CONST_INT v)->if isplus then unaryTOconst else
-								CONSTANT(CONST_INT( Printf.sprintf "%d" (- (int_of_string  v))))
+									if  is_integer v then
+										CONSTANT(CONST_INT( Printf.sprintf "%d" (- (int_of_string  v))))
+									else UNARY (MINUS,e)
 								 
 		| CONSTANT(CONST_FLOAT v)-> if isplus then unaryTOconst else  
 				CONSTANT(RCONST_FLOAT(   (-. (float_of_string  v))))
@@ -3361,7 +3363,7 @@ let unaryTOconst = (*expressionEvalueeToExpression( calculer (EXP(e))  !infoaffi
 		CONSTANT(CONST_INT v1)| CONSTANT(CONST_FLOAT v1)| CONSTANT(CONST_CHAR v1)|CONSTANT(CONST_STRING v1)->(true,v1)
 		| CONSTANT(RCONST_INT v1)->(true,Printf.sprintf "%d"  v1)
 		| CONSTANT(RCONST_FLOAT v1)->(true,Printf.sprintf "%f"  v1)
-		| UNARY(MINUS,  CONSTANT(CONST_INT v)) -> (true,( Printf.sprintf "%d" (- (int_of_string  v))))
+		| UNARY(MINUS,  CONSTANT(CONST_INT v)) -> if  is_integer v then (true,( Printf.sprintf "%d" (- (int_of_string  v)))) else (false,"")
 		| UNARY(MINUS,  CONSTANT(CONST_FLOAT v)) -> (true, Printf.sprintf "%f" (-. (float_of_string  v)))
 		| UNARY(MINUS,  CONSTANT(RCONST_INT v1)) -> (true,Printf.sprintf "%d"  (- v1))
 		| UNARY(MINUS,  CONSTANT(RCONST_FLOAT v1)) -> (true,Printf.sprintf "%f" (-. v1))
@@ -3427,17 +3429,15 @@ match e with
 	| UNARY (op, exp1) 				-> 
 		(match op with 
 				MEMOF -> 
-				( 
+				(
+(*Printf.printf"MEMOF\n";
+print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 						let exp1e = applyStore exp1 a in
-			(*let isinto=
-						if List.mem "bIt-33" (listeDesVarsDeExpSeules exp1) then 
-						(Printf.printf"MEMOF\n";
-					(*	print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)print_expression  (exp1e) 0; space();  flush() ; new_line();flush();true)else false in*)
- 
+(*print_expression  (exp1e) 0; space();  flush() ; new_line();flush();*)
 						let (tab1,_, _) =getArrayNameOfexp  exp1e  in
 						if tab1 != "" then
 						begin
-							let (indexexp , isok) = consArrayFromPtrExp ( exp1e  )  tab1 in
+							let (indexexp , isok) = consArrayFromPtrExp ( exp1  )  tab1 in
 							if  (*isok*) indexexp != NOTHING then 
 							begin
 								(*let resindex = expressionEvalueeToExpression( calculer  (EXP(applyStore indexexp a))  !infoaffichNull [] 1) in*)
@@ -3445,7 +3445,6 @@ match e with
 								begin
 									if (existeAffectationVarIndexListe tab1 a (EXP(indexexp))) then
 									begin
-(*if isinto then Printf.printf"  exist affect\n";*)
 										let rotab =roindex tab1 a (EXP(indexexp)) in
 										(match rotab with 
 										ASSIGN_MEM (_,_,EXP(va))|ASSIGN_DOUBLE(_,_, EXP(va))|ASSIGN_SIMPLE(_,EXP(va))-> va 
@@ -3453,18 +3452,19 @@ match e with
 									end
 									else 
 									begin
-										(*if isinto then (print_expression  (INDEX(VARIABLE(tab1), indexexp)) 0; space();  flush() ; new_line();flush(); new_line(); flush();Printf.printf"non exist affect\n";);*)
+										(*print_expression  (INDEX(VARIABLE(tab1), resindex)) 0; space();  flush() ; new_line();flush(); new_line(); flush();Printf.printf"non exist affect\n";*)
 										(*let arrayas = arrayAssignFilter tab1 a in
 										if arrayas != [] then begin Printf.printf "les as rofilter array\n" ; afficherListeAS arrayas; Printf.printf "fin \n" end ;*)
-										INDEX(VARIABLE(tab1),   indexexp  )
+										INDEX(VARIABLE(tab1), applyStore indexexp a
+										)
 									end(*UNARY (op, exp1e  )*)	 
 								end
 								else 
 								begin 
-										(*if (existeAffectationVarListe tab1 a ) then 
-											(match (ro tab1 a) with ASSIGN_SIMPLE(_,EXP(va))-> UNARY (MEMOF,BINARY(ADD, va,   indexexp    ))
+										if (existeAffectationVarListe tab1 a ) then 
+											(match (ro tab1 a) with ASSIGN_SIMPLE(_,EXP(va))-> UNARY (MEMOF,BINARY(ADD, va, ((applyStore indexexp a))  ))
 											|ASSIGN_SIMPLE(_,MULTIPLE)->boolAS:= true;NOTHING|_->UNARY (op, exp1e  ))
-										else*) UNARY (op, exp1e  )  
+										else UNARY (op, exp1e  )  
 										(*print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 
 										
@@ -4378,7 +4378,7 @@ estModifie := true;
 let n =   CROISSANT      in
 let (predna,na) =
 (	match assign with
-		ASSIGN_MEM (id, e1, e2) -> 
+		ASSIGN_MEM (id, e1, e2) ->
 		if id =varB then begin estModifie:= false; (assign, assign) end
 		else 
 		begin
@@ -4395,7 +4395,7 @@ let (predna,na) =
 				end 
 				else (assign, assign))		
 		 end
-	 |ASSIGN_DOUBLE (id,e1,e2) -> 
+	 |ASSIGN_DOUBLE (id,e1,e2) ->(*Printf.printf "closeForm varB ASSIGN_DOUBLE = %s id %s =" varB id;  *)
 		if id =varB then begin estModifie:= false; (assign, assign) end
 		else 
 		begin
@@ -4412,7 +4412,7 @@ let (predna,na) =
 				end 
 				else (assign, assign))		
 		 end
-	|ASSIGN_SIMPLE (id, e)->	 
+	|ASSIGN_SIMPLE (id, e)->	
 
 	if id = varB then begin estModifie:= false; (assign, assign) end
 	else
@@ -4956,10 +4956,10 @@ let res =
 				begin
 					let var4 = (String.sub x  0 4) in
 					let var3 = (String.sub x  0 3) in
-					if var3 = "ET-" ||  var3 = "EF-" ||  var3 = "IF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" ||  var4 = "TWH-"then true else false
+					if  var3 = "ET-" ||  var3 = "EF-" ||  var3 = "IF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" ||  var4 = "TWH-"then true else false
 				end
 				else if (String.length x > 3) then 
-						if (String.sub x  0 3) = "ET-" || (String.sub x  0 3) = "EF-" ||(String.sub x  0 3) = "IF-" || (String.sub x  0 3) = "tN-" then true else false else false in
+						if (String.sub x  0 3) = "ET-" || (String.sub x  0 3) = "EF-" || (String.sub x  0 3) = "IF-" || (String.sub x  0 3) = "tN-" then true else false else false in
 		 
 			
 			if resb then ro2
@@ -6486,12 +6486,6 @@ and closeFormPourToutXdelisteES l id isexe=
 (*Printf.printf "\nl\n";
 	afficherListeAS nl ;space();flush();new_line();
 	Printf.printf "\nend\n";*)
-(*
-Printf.printf "\nlisteres\n";
-	afficherListeAS listeres ;space();flush();new_line();
-	Printf.printf "\nend\n";*)
-
-
 
 
 	(*Printf.printf "\nlisteres\n";
@@ -6551,7 +6545,7 @@ and applynewothers before firstChange=
 							if (String.length id > 4) then
 							begin
 									let var3 = (String.sub id  0 3) in
-									if  var3 = "IF-"(*|| var3 = "ET-" ||  var3 = "EF-" *) then  asc else na
+									if  var3 = "IF-"|| var3 = "ET-" ||  var3 = "EF-"  then  asc else na
 							end
 							else na
 						end else na								
@@ -6571,10 +6565,10 @@ match assign with
 		begin
 			let var4 = (String.sub id  0 4) in
 			let var3 = (String.sub id  0 3) in
-			if  var3 = "IF-" (*|| var3 = "ET-" ||  var3 = "EF-"*) || var3 = "tN-" || var4 = "max-" || var4 = "tni-" || var4 = "TWH-" then false else true
+			if  var3 = "IF-" || var3 = "ET-" ||  var3 = "EF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" || var4 = "TWH-" then false else true
 		end
 		else if (String.length id > 3) then 
-					if (String.sub id  0 3) = "IF-"(* || (String.sub id  0 3) = "ET-" ||  (String.sub id  0 3) = "EF-"*) || (String.sub id  0 3) = "tN-" then false else true
+					if (String.sub id  0 3) = "IF-" || (String.sub id  0 3) = "ET-" ||  (String.sub id  0 3) = "EF-" || (String.sub id  0 3) = "tN-" then false else true
 					else true	
 	|  _-> true
 ) others
@@ -6591,10 +6585,10 @@ match assign with
 		begin
 			let var4 = (String.sub id  0 4) in
 			let var3 = (String.sub id  0 3) in
-			if  var3 = "IF-" (*|| var3 = "ET-" ||  var3 = "EF-"*) || var3 = "tN-" || var4 = "max-" || var4 = "tni-" || var4 = "TWH-" then [] else [na]
+			if  var3 = "IF-" || var3 = "ET-" ||  var3 = "EF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" || var4 = "TWH-" then [] else [na]
 		end
 		else if (String.length id > 3) then 
-					if (String.sub id  0 3) = "IF-"  (*|| (String.sub id  0 3) = "ET-" ||  (String.sub id  0 3) = "EF-"*) || (String.sub id  0 3) = "tN-"  then [] else [na]
+					if (String.sub id  0 3) = "IF-"  || (String.sub id  0 3) = "ET-" ||  (String.sub id  0 3) = "EF-" || (String.sub id  0 3) = "tN-"  then [] else [na]
 					else [na]
 		
 			
