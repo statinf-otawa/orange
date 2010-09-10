@@ -3829,7 +3829,9 @@ and  construireListesES listeDesES arg   =
 	if (listeDesES = [] || arg = []) then begin (*Printf.printf "construireListesES vide";*) ()end
 	else
 	begin		
-		let valeurParam = List.hd arg in
+		let valeurParam = match List.hd arg with BINARY (ASSIGN, exp111, exp21) -> exp21 |_-> List.hd arg  in
+
+ 
 		(*analyse_expression  valeurParam; (*VOIR*) *)
 		let premier = List.hd listeDesES in
 			match premier with			
@@ -4292,7 +4294,8 @@ and  analyse_expressionaux exp =
 			
 			(	match  exp1 with
 				VARIABLE n ->  analyse_expressionaux exp2;	 let ne = !nouvExp in   
-					let newaffect =new_instVarAndPtr  n  (EXP(ne)) in
+
+					let newaffect = match ne with BINARY (ASSIGN, exp111, exp21) -> new_instVarAndPtr  n  (EXP(exp21)) |_->	new_instVarAndPtr  n  (EXP(ne)) in
 						(* afficherUneAffect newaffect; flush(); new_line(); *)
 					listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect]
 				|INDEX (t,i)-> 
@@ -5205,7 +5208,8 @@ and  onlyAexpressionaux exp =
 			
 			(	match  exp1 with
 				VARIABLE n ->  onlyAexpression exp2;	 let ne = !nouvExp in   
-					let newaffect =new_instVarAndPtr  n  (EXP(ne)) in
+					let newaffect = match ne with BINARY (ASSIGN, exp111, exp21) -> new_instVarAndPtr  n  (EXP(exp21)) |_->	new_instVarAndPtr  n  (EXP(ne)) in
+					(*let newaffect =new_instVarAndPtr  n  (EXP(ne)) in*)
 						(* afficherUneAffect newaffect; flush(); new_line(); *)
 					listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect]
 				|INDEX (t,i)-> 
