@@ -119,7 +119,7 @@ begin
 
 
 		if intType then
-			if 	(lCar == 'l' || lCar == 'L') then (  removeSpecifieur (sub) intType) else st
+			if 	(lCar == 'l' || lCar == 'L' || lCar == 'u' || lCar == 'U') then (  removeSpecifieur (sub) intType) else st
 		else if (lCar == 'l' || lCar == 'L' || lCar == 'f' || lCar == 'F') then removeSpecifieur (sub) intType else st
 
 end
@@ -273,7 +273,7 @@ match exprEvaluee with
 
 let estNoComp expr = match expr with NOCOMP	 | 	Sygma (_,_,_,_) | 	Max (_,_,_,_)-> true 
 | 	ConstInt(i) 		-> if i = "" || is_integer i =false then true else false
-| 	ConstFloat (f) 			-> if f = "" then true else false 
+| 	ConstFloat (f) 			-> if f = "" || is_float f =false  then true else false 
 | 	_-> false
 
 let rec print_expTerm	exprEvaluee =
@@ -341,12 +341,12 @@ let espIsNotOnlyVar exp = epsIsonlyVar exp = false
 let estNul exp =	
 	match exp with 
 	ConstInt (i)->  if  is_integer i then (int_of_string  i) = 0 else false
-	|ConstFloat (i) ->  (float_of_string  i) = 0.0|RConstFloat (i) ->  i = 0.0  | _->false
+	|ConstFloat (i) -> if  is_float i then (float_of_string  i) = 0.0 else false |RConstFloat (i) ->  i = 0.0  | _->false
 
 let estPositif exp =
 	match exp with
 	| ConstInt (i)->   if  is_integer i then (int_of_string  i) >= 0   else false
-	| ConstFloat (i) ->  (float_of_string  i) >= 0.0
+	| ConstFloat (i) ->  if  is_float i then (float_of_string  i) >= 0.0 else false
 	| RConstFloat (i) ->  i >= 0.0
 	| _ -> false
 
@@ -355,28 +355,28 @@ let estStricPositif exp =
 
 	match exp with 
 	 ConstInt (i)-> if  is_integer i then (int_of_string  i) > 0   else false 
-	| ConstFloat (i) ->   (float_of_string  i) > 0.0 | RConstFloat (i) ->   i > 0.0 | _->false
+	| ConstFloat (i) ->  if  is_float i then (float_of_string  i) > 0.0 else false| RConstFloat (i) ->   i > 0.0 | _->false
 
 let estUn exp =
 
 	match exp with 
 	 ConstInt (i)-> if  is_integer i then(int_of_string  i) = 1 else false 
-	| ConstFloat (i) ->   (float_of_string  i) > 1.0 | RConstFloat (i) ->  i > 1.0 | _->false
+	| ConstFloat (i) ->  if  is_float i then (float_of_string  i) > 1.0 else false| RConstFloat (i) ->  i > 1.0 | _->false
 
 let estMUn exp =
 	match exp with 
 	 ConstInt (i)->if  is_integer i then (int_of_string  i) = -1 else false 
-	| ConstFloat (i) ->   (float_of_string  i) > -1.0 | RConstFloat (i) ->   i > -1.0 | _->false
+	| ConstFloat (i) ->  if  is_float i then (float_of_string  i) > -1.0 else false| RConstFloat (i) ->   i > -1.0 | _->false
 
 let estStricNegatif exp =
 	match exp with 
 	 ConstInt (i)-> if  is_integer i then (int_of_string  i) < 0 else false 
-	| ConstFloat (i) ->   (float_of_string  i) < 0.0| RConstFloat (i) ->   i < 0.0  | _->false
+	| ConstFloat (i) ->  if  is_float i then (float_of_string  i) < 0.0 else false| RConstFloat (i) ->   i < 0.0  | _->false
 
 let rec estInt exp =
 	match exp with
 	 ConstInt (_)	-> 	true
-	| ConstFloat (f)->  if (floor (float_of_string f)) = (float_of_string f)  then true else false
+	| ConstFloat (f)-> if  is_float f then if (floor (float_of_string f)) = (float_of_string f)  then true else false else false
 	| RConstFloat (f)->  if (floor ( f)) = ( f)  then true else false
 	|  	Var (s) 	-> 	if s = "EPSILON" || s = "EPSILONINT"  then true (*MARQUE*)
 						else
@@ -400,7 +400,7 @@ let rec estInt exp =
 let rec estFloat exp =
 	match exp with
 	 ConstInt (_)-> false
-	| ConstFloat (f) -> if (floor (float_of_string f)) = (float_of_string f)  then false else true
+	| ConstFloat (f) -> if  is_float f then if (floor (float_of_string f)) = (float_of_string f)  then false else true else false
 	| RConstFloat (f) -> if (floor ( f)) = (  f)  then false else true
 	|  	Var (s) 	-> 	if s = "EPSILON" || s = "EPSILONINT"  then true (*MARQUE*)
 						else
@@ -418,7 +418,9 @@ let rec estFloat exp =
 	| 	PartieEntiereSup (e) | 	PartieEntiereInf (e)| 	Log (e)| 	Eq1 (e)	-> estFloat e
    	| _	-> false	
 	
-let estDefExp exp = match exp with ConstInt (i)->if  is_integer i then true else false | ConstFloat (i) ->  true 
+let estDefExp exp = match exp with 
+	ConstInt (i)->if  is_integer i then true else false 
+	| ConstFloat (i) ->  if is_float i then true else false 
  | RConstFloat (i) ->  true| _->false
 let estBool exp = match exp with Boolean (_) ->true| _->false
 let estBoolOrVal exp = estDefExp exp || estBool exp
@@ -859,12 +861,19 @@ let rec evalexpression  exp =
 				ConstInt(_) 	-> val1
 				| 	ConstFloat (f) ->	let valeur = (float_of_string f) in
 										let pe = truncate valeur in
-										let (_,partieFract) =modf valeur in
+										let (partieFract,_) =modf valeur in
 										if partieFract  = 0.0 then ConstInt(Printf.sprintf "%d" pe)
 										else 	ConstInt(Printf.sprintf "%d" (pe + 1)) (*is_integer_num*)
 				| 	RConstFloat (f) ->	let valeur = ( f) in
 										let pe = truncate valeur in
-										let (_,partieFract) =modf valeur in
+										let (partieFract,_(*pf*)) =modf valeur in
+
+(*(*PartieEntiereSup 2.999900 2 3.000000 0.000100 3.000000*)
+Printf.printf " PartieEntiereSup %f %d %f %f %f\n"  f pe (ceil f) pf partieFract;
+let (pf3,partieFract3) =modf 3.0001 in
+Printf.printf " PartieEntiereSup %f %d %f %f %f\\n"  3.0001 (truncate 3.0001 ) (ceil 3.0001 ) pf3 partieFract3;
+let (pf2,partieFract2) =modf 0.00001 in
+Printf.printf " PartieEntiereSup %f %d %f %f %f\\n"  0.00001 (truncate 0.00001 ) (ceil 0.00001 ) pf2 partieFract2;*)
 										if partieFract  = 0.0 then ConstInt(Printf.sprintf "%d" pe)
 										else 	ConstInt(Printf.sprintf "%d" (pe + 1)) (*is_integer_num*)
 				|_				-> 	exp
@@ -1830,7 +1839,7 @@ and getArraysize typ =
 			ARRAY (t, dim) ->
 				let size =
 					match calculer  (EXP(dim)) !infoaffichNull  [] 1 with
-						ConstInt(s)	-> let dime = int_of_string  s in (*Printf.printf "%d \n"dim; *) [dime]
+						ConstInt(s)	-> if  is_integer s then (let dime = int_of_string  s in (*Printf.printf "%d \n"dim; *) [dime]) else []
 						|_			-> [] in
 				List.append (getArraysize t) size
 			| 	_ -> []
@@ -3361,7 +3370,9 @@ let unaryTOconst = (*expressionEvalueeToExpression( calculer (EXP(e))  !infoaffi
 									else UNARY (MINUS,e)
 								 
 		| CONSTANT(CONST_FLOAT v)-> if isplus then unaryTOconst else  
+			if  is_float v then	
 				CONSTANT(RCONST_FLOAT(   (-. (float_of_string  v))))
+			else UNARY (MINUS,e)
 		| CONSTANT(RCONST_INT v1)-> if isplus then unaryTOconst else CONSTANT(RCONST_INT (- v1))
 		| CONSTANT(RCONST_FLOAT v1)-> if isplus then unaryTOconst else CONSTANT(RCONST_FLOAT (-. v1))
 		| _-> if isplus then e else UNARY (MINUS,e)
@@ -3373,7 +3384,7 @@ let unaryTOconst = (*expressionEvalueeToExpression( calculer (EXP(e))  !infoaffi
 		| CONSTANT(RCONST_INT v1)->(true,Printf.sprintf "%d"  v1)
 		| CONSTANT(RCONST_FLOAT v1)->(true,Printf.sprintf "%f"  v1)
 		| UNARY(MINUS,  CONSTANT(CONST_INT v)) -> if  is_integer v then (true,( Printf.sprintf "%d" (- (int_of_string  v)))) else (false,"")
-		| UNARY(MINUS,  CONSTANT(CONST_FLOAT v)) -> (true, Printf.sprintf "%f" (-. (float_of_string  v)))
+		| UNARY(MINUS,  CONSTANT(CONST_FLOAT v)) -> if  is_float v then (true, Printf.sprintf "%f" (-. (float_of_string  v)))else (false,"")
 		| UNARY(MINUS,  CONSTANT(RCONST_INT v1)) -> (true,Printf.sprintf "%d"  (- v1))
 		| UNARY(MINUS,  CONSTANT(RCONST_FLOAT v1)) -> (true,Printf.sprintf "%f" (-. v1))
 		| _->			hasSETCALL := false;
@@ -3444,6 +3455,7 @@ match e with
 print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 
 						let exp1e = applyStore exp1 a in
+(*print_expression  (exp1e) 0; space();  flush() ; new_line();flush();*)
 
 						let (tab1,_, _) =getArrayNameOfexp  exp1e  in
 						if tab1 != "" then
@@ -4656,6 +4668,36 @@ fun prem ->
 									end
 
 ) ascour
+
+
+let rec getVector   exp lv   =
+(*
+exp : an expression
+lv  : the list of variables of exp assigned into the loops body
+return :
+if ok a list of assos of (var1,k1), (var2,k2) ... where each k1 ... are coef of var 1 coefficients else [] *)
+match lv with
+[]->[]
+|v1::lvn->
+ 
+ 
+	let newexp1 =  calculer (EXP(replaceAllValByZeroBut v1  lv  exp))  !infoaffichNull [] 1 in
+	(*let newexp1 =  calculer (EXP(remplacerValPar  v2 (CONSTANT(CONST_INT("0"))) exp))  !infoaffichNull [] 1 in*)
+	 
+		if (estAffine v1 newexp1)   then 
+			begin 
+				let (a,b) = calculaetbAffineForne  v1 newexp1 in		
+				let var1 = evalexpression a  in
+
+				if  estDefExp var1 then
+				begin
+					let val1 = getDefValue var1 in
+
+					if   val1 > 0.0 then (v1,val1)::getVector   exp lvn  
+					else begin if ( val1=0.0) then  getVector   exp lvn    else (v1,val1)::getVector   exp lvn   end
+				end else []
+			end
+		else [] 
 
 
 

@@ -12,6 +12,7 @@ SOURCES = \
 	cvarabs.ml \
 	interval.ml \
 	increment.ml\
+    covariance.ml \
 	cextraireboucle.ml\
 	orange.ml 
 	

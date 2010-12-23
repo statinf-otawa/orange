@@ -305,6 +305,27 @@ module LocalPtrContext(D: PtrDomain) = struct
 								(name,nf)::composeSet ns1  globalAndInput  
 					(*end
 					else (name, cs1)::composeSet ns1 globalAndInput inputVar *)
+(* the same ptr in the same order *)
+(*compare two set *)
+let rec areTheSAme s1 s2 =
+
+ 		match (s1, s2) with
+			| ([],[]) ->  true 
+			|((name, cs1)::ns1,(name2, cs2)::ns2)->	
+				
+									let fisrtSame =
+										 if (MyPtrDomain.is_top cs1 && MyPtrDomain.is_top cs2) || 
+										 (MyPtrDomain.is_noref  cs1 && MyPtrDomain.is_noref cs2) then true
+	
+										else if MyPtrDomain.is_refer cs1 && MyPtrDomain.is_refer cs2 then 
+											  begin
+												let (v1, v2) = (MyPtrDomain.getVal cs1, MyPtrDomain.getVal cs2) in
+												let (r1, r2) = (MyPtrDomain.getRef cs1, MyPtrDomain.getRef cs2) in
+
+												 (inclus v1 v2 ) &&  (inclus r1 r2 ) &&  inclus v2  v1 &&  inclus  r2 r1
+											    end else false in
+									  if fisrtSame then areTheSAme ns1 ns2 else false
+		|_-> false
 
 
 
@@ -679,15 +700,15 @@ let rec fixPointPtr  assign beforePtr     =
 	let  fc = (localPtrAnalyse assign  beforePtr  true false) in   
 	 
 	let res = (LocalAPContext.joinSet fc   beforePtr ) in
-	let isChange = !hasChangePTRInto || (res = beforePtr) = false in
+	let isChange = !hasChangePTRInto && (LocalAPContext.areTheSAme res beforePtr) = false in
 
-	(*	LocalAPContext.print res;
+	(*	LocalAPContext.print res;ame 
 		LocalAPContext.print beforePtr ;
 if (res = beforePtr)=false  then  Printf.printf "Current   change\n";
 if !hasChangePTRInto then  Printf.printf "Inner   change\n";*)
 
-	if isChange then fixPointPtr  assign res ;
-	hasChangePTRInto:= false;
+	if isChange then    fixPointPtr  assign res  ;
+	hasChangePTRInto:= false; 
 
 
 
@@ -729,7 +750,7 @@ and onassignPtrAnalyse assign beforePtr  into  add=(* return  new prt interval l
 												if !firstPass then
 												begin
 													(*Printf.printf "boucle %d  CHANGE\n" a;*)
-											
+													
 													firstPass := false;
 													fixPointPtr [i] res   ;
 													firstPass := true;
@@ -820,7 +841,9 @@ and localPtrAnalyse assignList beforePtr into  add =
 	begin
 		let (affect, suite) = (List.hd assignList, List.tl assignList) in
 		let lm= onassignPtrAnalyse affect beforePtr   into  add in
+ 
 		let neptr=  localPtrAnalyse suite lm   into add  in
+ 
 		 neptr
 	end 
 	else  beforePtr
@@ -954,7 +977,7 @@ let evalPtrEffectOnFunctionBody name assign f(*functionContext*)=
 		(*	let globalPtr = List.filter(fun x-> List.mem x !alreadyAffectedGlobales)poiteurUsed in*)
 		(*	let globalPtr = List.filter(fun x->  isPtr x)!alreadyAffectedGlobales in*)
 
-(*Printf.printf "\nfunction %s\n" name;*)
+ 
 			let initPtrList = LocalAPContext.initIntervalAnalyse poiteurUsed input (*!myAP current context*)[] !globalPtr(*externValue*) in
 			(*LocalAPContext.print initPtrList;*)
 			myCurrentPtrContext := initPtrList;myCurrentPtrContextAux:=!myCurrentPtrContext;
@@ -972,7 +995,7 @@ let evalPtrEffectOnFunctionBody name assign f(*functionContext*)=
 
 (*Printf.printf "\nfunction %s\n" name;*)
 			 
-(*Printf.printf "\nfunction %s FIN\n" name;*)
+ 
 			 x
  		end else []
 	end  

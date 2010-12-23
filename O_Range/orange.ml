@@ -121,20 +121,36 @@ module MonList = struct
 	newRes
 
   let onCall res name numCall line source inloop executed extern lt lf =
-  	let text = sprintf "<call name=\"%s\" numcall=\"%u\" line=\"%u\" source=\"%s\" executed=\"%b\" extern=\"%b\">\n" name numCall line source executed extern in
+  	let text = sprintf "<call name=\"%s\" numcall=\"%u\" line=\"%u\" source=\"%s\" executed=\"%b\" extern=\"%b\">\n" name numCall line source executed extern  in
+	let text2 = sprintf "<function name=\"%s\">\n" name in
+	nbLigne := !nbLigne +1;
+	let resaux1 =
+		if !nbLigne>=50 then (nbLigne := 0; predListener := concat !predListener res;"") else res in
+  	let newRes1 =(indent resaux1)^text in
+
+	right ();
 	nbLigne := !nbLigne +1;
 	let resaux =
-		if !nbLigne>=50 then (nbLigne := 0; predListener := concat !predListener res;"") else res in
-  	let newRes =(indent resaux)^text in
-
+		if !nbLigne>=50 then (nbLigne := 0; predListener := concat !predListener newRes1;"") else newRes1 in
+  	let newRes =(indent resaux)^text2 in
+     
 	right ();
 	newRes
 
   let onReturn res =
+	let text2 = sprintf "</function>\n"  in
+	nbLigne := !nbLigne +1;
+	let resaux1 =
+		if !nbLigne>=50 then (nbLigne := 0; predListener := concat !predListener res;"") else res in
+    left ();
+  	let newRes1 =(indent resaux1)^text2 in
+
+
+
   	let text = "</call>\n" in
 	nbLigne := !nbLigne +1;
 	let resaux =
-		if !nbLigne>=50 then (nbLigne := 0; predListener := concat !predListener res;"") else res in
+		if !nbLigne>=50 then (nbLigne := 0; predListener := concat !predListener newRes1 ;"") else newRes1  in
 	left ();
   	let newRes =(indent resaux)^text in
 

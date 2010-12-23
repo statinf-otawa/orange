@@ -652,14 +652,14 @@ match intervalle with
 	  EMPTY -> NOCOMP
 	|INTERVALLE(INFINI,_)->  NOCOMP
 	|INTERVALLE(BINCLUDE fi,_)->  RConstFloat fi
-	|INTERVALLE(BNOTINCLUDE fi,_)->  RConstFloat fi 
+	|INTERVALLE(BNOTINCLUDE fi,_)->  RConstFloat ( fi  +. 0.000001(*min_float*))
 
 let getUpper intervalle =
 match intervalle with 
 	  EMPTY -> NOCOMP
 	|INTERVALLE(_,INFINI)->  NOCOMP
 	|INTERVALLE(_,BINCLUDE fs)-> RConstFloat fs
-	|INTERVALLE(_,BNOTINCLUDE fs)->  RConstFloat fs
+	|INTERVALLE(_,BNOTINCLUDE fs)->  RConstFloat (fs -. 0.000001(*min_float*))
 
 
 let rec restictIntervalFromCond exp var  interval =

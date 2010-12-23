@@ -25,7 +25,7 @@ begin
 	else 
 		begin
 			if List.mem (List.hd l1) l2 then union (List.tl l1) l2
-			else union (List.tl l1) (List.append [List.hd l1] l2)
+			else (List.hd l1) ::(union (List.tl l1)   l2)
 		end
 end
 
@@ -59,7 +59,7 @@ let rec listeDesVarsDeExpSeules exp =
 	| BINARY (_, exp1, exp2) -> 		union( listeDesVarsDeExpSeules  exp1)	(listeDesVarsDeExpSeules exp2)
 	| QUESTION (exp1, exp2, exp3) ->	union (listeDesVarsDeExpSeules exp1) (union (listeDesVarsDeExpSeules exp2)	(listeDesVarsDeExpSeules  exp3))
 	| CAST (_, e) ->					listeDesVarsDeExpSeules  e
-	| CALL (e, args) ->					union	(listeDesVarsDeExpSeules e) ( traiterCommaExp args)
+	| CALL (e, args) ->					(*union	(listeDesVarsDeExpSeules e)*) ( traiterCommaExp args)
 	| COMMA e -> 						traiterCommaExp e
 	| CONSTANT _ -> 					[]
 	| VARIABLE name -> 					[name ] 
@@ -92,6 +92,27 @@ let rec listeDesVarsDeExpSeulesTab exp =
 	| MEMBEROFPTR (e, _) ->				listeDesVarsDeExpSeulesTab  e
 	| GNU_BODY (_,_)(*decs, stat*) ->	[]
 	| _ -> 						 		[]
+let rec listeDesVarsDeExpSeulesWCAndIF exp =
+	match exp with
+		UNARY (_, e) -> 				listeDesVarsDeExpSeules e 
+	| BINARY (_, exp1, exp2) -> 		union( listeDesVarsDeExpSeules  exp1)	(listeDesVarsDeExpSeules exp2)
+	| QUESTION (exp1, exp2, exp3) ->	union (listeDesVarsDeExpSeules exp1) (union (listeDesVarsDeExpSeules exp2)	(listeDesVarsDeExpSeules  exp3))
+	| CAST (_, e) ->					listeDesVarsDeExpSeules  e
+	| CALL (e, args) ->					(*union	(listeDesVarsDeExpSeules e)*) ( traiterCommaExp args)
+	| COMMA e -> 						traiterCommaExp e
+	| CONSTANT _ -> 					[]
+	| VARIABLE name -> 					[name ] 
+	| EXPR_SIZEOF e ->					listeDesVarsDeExpSeules e
+	| TYPE_SIZEOF _ ->					[]
+	| INDEX (e, idx) ->					union (listeDesVarsDeExpSeules  e) (listeDesVarsDeExpSeules idx)
+	| MEMBEROF (e, _) ->				listeDesVarsDeExpSeules e
+	| MEMBEROFPTR (e, _) ->				listeDesVarsDeExpSeules  e
+	| GNU_BODY (_,_)(*decs, stat*) ->	[]
+	| _ -> 						 		[]
+
+
+
+
 
 
 

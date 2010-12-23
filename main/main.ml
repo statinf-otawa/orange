@@ -5,11 +5,14 @@
  *	Tool to compute loop bounds
  *)
 
+    (*cSNPRT false pas d'analyse de domaine de pointeur dans util.ml de O_Range*)
+
 open Printf
 
 open Frontc
 open Mergec
 open Calipso
+open Sortrec
 open ExtractinfoPtr
 open Cextraireboucle
 open Cvarabs
@@ -402,7 +405,8 @@ let _ =
 					cfiles
 				)
 			else cfiles in
-		let chk_cfiles = (Mergec.check "mergec_rename__" cfiles)
+		let removedextern = (Mergec.removeDuplicatedExtern   cfiles) in
+		let chk_cfiles = (Mergec.check "mergec_rename__" removedextern)
 		in let merge_file = Mergec.merge chk_cfiles
 		in merge_file in
 	
@@ -411,7 +415,18 @@ let _ =
 		let merge_file = (getMergedFile a1) in
 		Rename.go (Frontc.trans_old_fun_defs merge_file) in
 
+		(* cons merge file *)
+		(*let out = open_out ".merge.c" in
+		Cprint.print  out firstParse;
+		close_out out;*)
 		
+		(* get recursivity*)
+		(*let out = open_out ".rec_status" in
+		Sortrec.test out firstParse firstParse;
+		close_out out;*)
+
+ 
+
 		
 		if ((!partial) || (!auto)) then (
 			TO.initref stdout firstParse
@@ -527,9 +542,14 @@ let _ =
 		else	(* full analysis *)
 			begin
 				XO.notwithGlobalAndStaticInit := !withoutGlobalAndStaticInit;
-				Resumeforgraph.get_intervals secondParse;
+				(*Resumeforgraph.get_intervals secondParse;*)
 
-				let result = XO.printFile stdout secondParse (*true si pas Resumeforgraph.get_intervals secondParse;*) false  in
+				(*let result = XO.printFile stdout secondParse (*true si pas Resumeforgraph.get_intervals secondParse;*) (*false*) true  in*)
+				let result = 
+				if !cSNPRT then  
+					XO.printFile stdout secondParse (*true si pas Resumeforgraph.get_intervals secondParse;*) true  
+				else (	Resumeforgraph.get_intervals secondParse;
+					XO.printFile stdout secondParse (*true si pas Resumeforgraph.get_intervals secondParse;*) false ) in
 					if !out_file = ""
 						then print_string result
 					else
