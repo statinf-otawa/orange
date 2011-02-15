@@ -416,9 +416,9 @@ let _ =
 		Rename.go (Frontc.trans_old_fun_defs merge_file) in
 
 		(* cons merge file *)
-		(*let out = open_out ".merge.c" in
+		let out = open_out ".merge.cm" in
 		Cprint.print  out firstParse;
-		close_out out;*)
+		close_out out;
 		
 		(* get recursivity*)
 		(*let out = open_out ".rec_status" in

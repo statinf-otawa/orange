@@ -4169,7 +4169,7 @@ listCaseFonction := []
 
 
 
-let listnoteqLoop l = List.iter (fun  (fic,lig) -> Printf.eprintf "WARNING != condition => bound is either this one or infini line %d into source %s \n" lig fic ) l
+let listnoteqLoop l = List.iter (fun  (fic,lig) -> Printf.eprintf "WARNING != condition => bound is either this one or infinite line %d into source %s \n" lig fic ) l
 
 
 let printFile (result : out_channel)  (defs2 : file) need_analyse_defs=

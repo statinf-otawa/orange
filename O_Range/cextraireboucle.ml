@@ -4486,7 +4486,7 @@ and  analyse_expressionaux exp =
 																						listeDesInstCourantes := List.append !listeDesInstCourantes [ new_instVarAndPtr  id   (EXP(NOTHING))]
 																					else 
 																						listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instMem ("*"^id) (EXP(!nouvExp)) (EXP(NOTHING))]
-															|_->             Printf.printf "array expr not found\n"; print_expression exp1 0 ;flush();space() ;flush();space() ; ())
+															|_->             if !vDEBUG then (Printf.printf "array expr not found\n"; print_expression exp1 0 ;flush();space() ;flush();space() ); ())
 
 									else 
 									begin 	
