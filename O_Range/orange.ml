@@ -1674,8 +1674,8 @@ begin
 		end;
 		(* print_expTerm  cond;flush(); space(); new_line();	*)
 		match cond with
-		  Boolean(false) -> (*Printf.printf " non execute %s" (List.hd ltrue);*)false
-		| Boolean(true)  |_-> isExecutedTrue (List.tl ltrue) contexte affiche globales
+		  Boolean(false)  | ConstInt("0")-> (*Printf.printf " non execute %s" (List.hd ltrue);*)false
+		| Boolean(true)  | ConstInt("1")|_-> isExecutedTrue (List.tl ltrue) contexte affiche globales
 	end
 	else true
 
@@ -1700,8 +1700,8 @@ begin
 		 	  Printf.printf "%s" (List.hd lfalse) ;	print_expTerm  cond;  space(); new_line() ;flush();
 	  end;
 	  match cond with
-	    Boolean(true) -> (*Printf.printf "isExecutedFalse non execute %s" (List.hd lfalse) ;*) false
-	  | Boolean(false)  |_-> isExecutedFalse (List.tl lfalse) contexte affiche globales
+	    Boolean(true) | ConstInt("1")-> (*Printf.printf "isExecutedFalse non execute %s" (List.hd lfalse) ;*) false
+	  | Boolean(false)  | ConstInt("0") |_-> isExecutedFalse (List.tl lfalse) contexte affiche globales
   end
   else begin (*Printf.printf " liste affect non trouve sur n autre chemin\n" ;*) true end
 
@@ -1762,8 +1762,8 @@ begin
 			let first =   calculer   exp  !infoaffichNull  [] 1  in
 			let firstValue =
 						(match first with
-						  Boolean(false) -> (*Printf.printf " non execute %s" (List.hd ltrue);*)if istrue then false else true
-						| Boolean(true)  -> if istrue then true else false
+						  Boolean(false)  | ConstInt("0")-> (*Printf.printf " non execute %s" (List.hd ltrue);*)if istrue then false else true
+						| Boolean(true)   | ConstInt("1")-> if istrue then true else false
 						|_-> true)
 
 				in
@@ -2775,18 +2775,21 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 		let prevPtrct = !myCurrentPtrContextAux in
 		let isExecutedIf =    estexeEng&&isExecuted lt lf asL [] [] true in
 
+
+
 		let executedBranch =
 				if (existeAffectationVarListe var asL) || (existeAffectationVarListe var globale)  then
 				begin
 					let affect = if (existeAffectationVarListe var asL) then applyStoreVA(rechercheAffectVDsListeAS  var asL)globale
 						else rechercheAffectVDsListeAS  var globale in
+ 
 					let cond = calculer  affect !infoaffichNull  [] 1 in
 					(match cond with
-						  Boolean(true) ->   1 (*then only excuted*)
-						| Boolean(false)  ->  2(*else only excuted*)
+						  Boolean(true)  | ConstInt("1")->   1 (*then only excuted*)
+						| Boolean(false)  | ConstInt("0") ->  2(*else only excuted*)
 						|_->  3)(* ??? indifined branch is executed*)
 				end
-				else 3 in
+				else  3 in
 		let isExcutedThen =  isExecutedIf && (executedBranch != 2) in
 		let isExcutedElse =  isExecutedIf && (executedBranch !=1 ) in
 
@@ -2811,13 +2814,12 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 					 1 ->
 							let  fc = (localPtrAnalyse [new_instBEGIN (instthen)]  prevPtrct   !estDansBoucle false) in
 							let res = endOfcontexte instthen  lastthen  ifthencontexte globalesThen, globalesThen in
-							myCurrentPtrContext:=(LocalAPContext.joinSet fc prevPtrct ); res
+							myCurrentPtrContext:=(LocalAPContext.joinSet fc prevPtrct );  res
 						   (*Printf.printf "IDIF %s then\n" var; *)
 					| 2  ->
 							let  fc = (localPtrAnalyse [new_instBEGIN (instelse)]  prevPtrct   !estDansBoucle false) in
 							let res = endOfcontexte instelse  lastelse  ifelsecontexte globalesElse, globalesElse in
-							myCurrentPtrContext:=(LocalAPContext.joinSet fc prevPtrct ); res
-
+							myCurrentPtrContext:=(LocalAPContext.joinSet fc prevPtrct );    res
 							(* Printf.printf "IDIF %s else \n" var	; *)
 					|_->  (*Printf.printf "IDIF %s is executed then ou else ??\n" var	; *)
 						(*isExecutedOneTimeOrMore:= false;*)
@@ -3860,8 +3862,11 @@ Printf.printf"FIN GLOBALE\n";*)
 			myCurrentPtrContext := (localPtrAnalyse [new_instBEGIN (!listeDesInstGlobales)]  []   false true) ;
 
 			ptrInterval :=!myCurrentPtrContext; !listeDesInstGlobales )
-		else (  myCurrentPtrContext := [];
-				ptrInterval := [];!listeDesEnum) in
+		else ( myCurrentPtrContext := (localPtrAnalyse [new_instBEGIN (!listeLocalStatic)]  []   false true) ;
+
+			ptrInterval :=!myCurrentPtrContext; List.append (!listeLocalStatic) (!listeDesEnum)) in
+
+ 
 	  let typeE = TFONCTION(!(!mainFonc),!numAppel, f.lesAffectations, globalInst, [], [], [],  [], true, false,"",0) in
 	  dernierAppelFct := typeE;
 	  predDernierAppelFct := typeE;

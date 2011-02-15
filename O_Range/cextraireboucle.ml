@@ -90,6 +90,7 @@ let aUneFctNotDEf = ref false
 	let listeDesInstCourantes = ref []
     let listeDesEnum = ref []
 	let listeDesInstGlobales = ref []
+	let listeLocalStatic = ref []
 	(*let alreadyAffectedGlobales = ref [] *)(* pas chez Clément*)
 	let listeAffectInit = ref []
 
@@ -5027,7 +5028,7 @@ List.iter(fun x->Printf.printf"%s " x)input;Printf.printf"\ninput\n";*)
 				 else if !estGlobale = false  && estDejaDecl = false then
 					  begin
 							listeDesInstGlobales := List.append !listeDesInstGlobales !listeDesInstCourantes;
-						   
+						    listeLocalStatic := List.append !listeLocalStatic !listeDesInstCourantes;
 							listeDesInstCourantes := listPred
 					  end ;
 
@@ -5881,7 +5882,7 @@ and onlyanalysedef def =
 				 else if !estGlobale = false  && estDejaDecl = false then
 					  begin
 							listeDesInstGlobales := List.append !listeDesInstGlobales !listeDesInstCourantes;
-							 
+							listeLocalStatic := List.append !listeLocalStatic !listeDesInstCourantes; 
 							listeDesInstCourantes := listPred
 					  end ;
 			()

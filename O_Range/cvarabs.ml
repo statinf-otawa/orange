@@ -3391,8 +3391,8 @@ let unaryTOconst = (*expressionEvalueeToExpression( calculer (EXP(e))  !infoaffi
 			let val1 = (calculer (EXP(e ))  !infoaffichNull [] 1 ) in
 			if !hasSETCALL = true || estDefExp val1 = false then	 (false,"") else isTrueConstant (expressionEvalueeToExpression val1)
 
-let estTrue myTest =  if  myTest = Boolean(true) then true else false
-let estFalse myTest = if  myTest = Boolean(false) then true else false
+let estTrue myTest =  if  myTest = Boolean(true) || myTest = ConstInt ("1")  || myTest = ConstFloat("1.0")|| myTest = RConstFloat(1.0) then true else false
+let estFalse myTest = if  myTest = Boolean(false) || myTest = ConstInt ("0")  || myTest = ConstFloat("0.0")|| myTest = RConstFloat(0.0) then true else false
 
 
 
