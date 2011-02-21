@@ -125,7 +125,7 @@ _DIST += $(2)
 _BINARY_DIST += $(1).cmxa $(1).a $(patsubst %.cmx,%.cmi,$$($(1)_CMX))
 
 $(1).cmxa: $$($(1)_CMX)
-	$$(OCAMLOPT) -a $$($(1)_LDFLAGS) $$(OCAMLOPT_LDFLAGS) -o $$@ $$($(1)_CMX) $$(OCAMLOPT_LIBS)
+	$$(OCAMLOPT) -a $$($(1)_LDFLAGS) -o $$@ $$($(1)_CMX) $$(OCAMLOPT_LIBS)
 
 $(if $(findstring no_install,$(3)),,$(call ocaml_install_lib,$(1),cmxa,$$($(1)_CMIX)))
 
