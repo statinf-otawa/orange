@@ -8,9 +8,13 @@ SOURCES = \
 OCAMLC_FLAGS += -g
 OCAMLC_LDFLAGS += -g
 
+ifdef NATIVE
+OPTIONS=native
+endif
+
 OCAML_INC += ../../frontc/frontc ../O_Range ../inst/lib/ ../graph
 OCAML_LIB += unix str ../../frontc/frontc/frontc ../O_Range/orange ../graph/resumeforgraph
 
-$(eval $(call ocaml_prog,orange,$(SOURCES)))
+$(eval $(call ocaml_prog,orange,$(SOURCES),$(OPTIONS)))
 
 include ../Makefile.tail

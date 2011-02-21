@@ -79,7 +79,7 @@ $(DATA_DIR):
 OCAMLC_CFLAGS += $(patsubst %,-I %,$(OCAMLC_INC) $(OCAML_INC))
 OCAMLOPT_CFLAGS += $(patsubst %,-I %,$(OCAMLOPT_INC) $(OCAML_INC))
 OCAMLC_LDFLAGS += $(patsubst %,%.cma,$(OCAMLC_LIB) $(OCAML_LIB))
-#OCAMLOPT_LDFLAGS += $(patsubst %,%.cmxa,$(OCAMLOPT_LIB) $(OCAML_LIB))
+OCAMLOPT_LDFLAGS += $(patsubst %,%.cmxa,$(OCAMLOPT_LIB) $(OCAML_LIB))
 
 %.cmi: %.mli
 	$(OCAMLC) $(OCAMLC_CFLAGS) -o $@ -c $<
