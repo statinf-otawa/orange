@@ -1190,7 +1190,9 @@ and getArrayAssignFromMem  x index  =
 and arrayAssignFilter var liste=
 List.filter (fun aSCourant -> match aSCourant with ASSIGN_SIMPLE (id, _)  |	ASSIGN_DOUBLE (id, _, _)  |ASSIGN_MEM (id, _, _)	->  (id = var)  ) liste
 
-
+and isBoolFalse val1 =
+if val1 = Boolean (false) || val1 = ConstInt ("0")  ||val1 = ConstFloat("0.0")||val1 = RConstFloat(0.0)
+								then  true else false 
 
 and  calculer expressionVA ia l sign =
 	match expressionVA with
@@ -1294,7 +1296,16 @@ and  calculer expressionVA ia l sign =
 						 	if estNoComp val2 then NOCOMP
 							else (val2)
 						else (val1)
-					else  NOCOMP
+					else  if op = AND then
+						  begin
+							if estNoComp val1  then
+						 		if estNoComp val2 then NOCOMP
+								else if isBoolFalse val2 then  Boolean (false) else NOCOMP
+							else if isBoolFalse val1 then Boolean (false) else NOCOMP
+                                  
+						  (*Printf.printf "voir cas du and\n"; NOCOMP*)
+						  end 
+						  else NOCOMP
 				else
 				begin
 (*
