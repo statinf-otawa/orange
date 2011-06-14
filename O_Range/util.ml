@@ -6,19 +6,28 @@ open Coutput
 open Rename
 open Printf
 let vDEBUG = ref false
-
+let  cSNPRT = ref true   (* pas d'analyse de domaine de pointeur dans util.ml de O_Range*)
+let hasCondListFile_name = ref false
 let (alreadyAffectedGlobales: string list ref) = ref []
 
 let (listEnumId: string list ref) = ref []
 
 let is_integer s =
 try ignore (int_of_string s); true with Failure _-> false
+let is_float s =
+try ignore (float_of_string s); true with Failure _-> false
+
 (* ABSTRATC STORE TYPE*)
 type expVA = EXP  of expression |	MULTIPLE
 type abstractStore =
 		ASSIGN_SIMPLE of string  * expVA
 	|	ASSIGN_DOUBLE of string * expVA * expVA
 	|   ASSIGN_MEM of string * expVA * expVA 
+(* added instruction for looking increasing variable of loop*)
+let (covvarAssign : expVA ref) = ref MULTIPLE
+let (covvarAfter : bool ref) = ref false
+let (covvarLoop : bool ref) = ref false
+
 
 
 let new_assign_simple id exp  = ASSIGN_SIMPLE(id, exp)
@@ -63,7 +72,8 @@ let new_instAPPELCOMP num instAffectIn nom instAffectSortie absStore s = APPEL(n
 
 let (alreadyDefFunction: (string * inst list)list ref) = ref []
 let (alreadyDefFunctionForPtr: (string * inst list)list ref) = ref []
-
+let (condAnnotated :  abstractStore list ref)  = ref []
+let condListFile_name  = ref ""
 
 let add_list_body   v =  
   alreadyDefFunction := v :: (!alreadyDefFunction)
@@ -241,7 +251,7 @@ match t with
 					  TYPEDEFTYPE (typ,_) ->(*Printf.printf "isStructAndGetItchanged"; *) isStructAndGetIt typ
 					|(* _->(false,t)*) STRUCTORUNION _ -> (true, t) (* no union type for the moment LAST REVOIR*)
 		 end
-		 else (Printf.printf "TYPEDEF_NAME\n"; (false, t))
+		 else ((*Printf.printf "TYPEDEF_NAME\n"; MERASA pa*) (false, t))
 	|  STRUCT_TYPE s ->   (true,t)
 
 
@@ -655,6 +665,31 @@ let suite = List.tl l in
 												(union  (listeDesVarsDeExpSeules   (expVaToExp e)) (listeDesVarsDeExpSeules   (expVaToExp i)))
 												u)
 
+let withoutIFCALLANDSOON l =
+List.filter(fun x->
+		if (String.length x > 5) then 
+		begin
+			let var = (String.sub x  0 5) in
+			let var4 = (String.sub x  0 4) in
+			let var3 = (String.sub x  0 3) in
+ 			if var = "call-"||  var3 = "ET-" ||  var3 = "EF-" ||  var3 = "IF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" ||  var4 = "TWH-"then false else true
+		end
+		else
+		begin
+				if (String.length x > 4) then
+				begin
+					let var4 = (String.sub x  0 4) in
+					let var3 = (String.sub x  0 3) in
+					if  var3 = "ET-" ||  var3 = "EF-" ||  var3 = "IF-" || var3 = "tN-" || var4 = "max-" || var4 = "tni-" ||  var4 = "TWH-"then false else true
+				end
+
+				else if (String.length x > 3) then 
+						if (String.sub x  0 3) = "ET-" || (String.sub x  0 3) = "EF-" || (String.sub x  0 3) = "IF-" || (String.sub x  0 3) = "tN-" then false else true else true
+				end
+)l	
+
+
+
 
 
 
@@ -676,14 +711,19 @@ begin
 								|_-> [id]  )
 
 					 	else [id] in
-						(assigned, listeDesVarsDeExpSeules   (expVaToExp exp) )
+						let listUsed = listeDesVarsDeExpSeules   (expVaToExp exp) in
+						(*if listUsed != [] then(Printf.printf "  LinB\n" ;List.iter (fun x-> Printf.printf "  %s\n" x) listUsed;Printf.printf "  END\n" );*)
+						(withoutIFCALLANDSOON assigned, withoutIFCALLANDSOON listUsed )
 					| TAB ( id, i, e,_,_)   |  MEMASSIGN ( id, i, e,_,_)->   
 						let assigned =
 							let fid = 	if  String.length id > 1 then 
 									if (String.sub id  0 1)="*" then  String.sub id 1 ((String.length id)-1) else id
 								else id  in 
 							if List.mem_assoc fid !listeAssosPtrNameType   then   ["*"^fid]  else  [id]  in
-						(assigned,   union  (listeDesVarsDeExpSeules  (expVaToExp e)) (listeDesVarsDeExpSeules  (expVaToExp i)))
+						let listUsed =withoutIFCALLANDSOON( listeDesVarsDeExpSeules   (expVaToExp e)) in
+						(*if listUsed != [] then( Printf.printf "  LinB\n" ; List.iter (fun x-> Printf.printf "  %s\n" x) listUsed;Printf.printf "  END\n") ;*)
+
+						(withoutIFCALLANDSOON assigned, union listUsed ( withoutIFCALLANDSOON( listeDesVarsDeExpSeules   (expVaToExp i))))
 					| IFVF ( _, i1, i2) 		-> 	
 						let (na1, nu1)= assignVarAndUsed  [i1] in
 						let (na2, nu2)= assignVarAndUsed  [i2] in
@@ -1118,6 +1158,27 @@ let rec remplacerValPar  var nouexp expr =
 	| EXPR_LINE (expr, _, _) ->
 			remplacerValPar   var nouexp  expr
 	| _ 						-> 	expr
+let rec replaceAllValByZeroBut v1  lv  expr =
+	match expr with
+	NOTHING 					-> NOTHING
+	| UNARY (op, exp) 			-> UNARY (op, replaceAllValByZeroBut v1  lv exp)
+	| BINARY (op, exp1, exp2) 	-> BINARY (op, replaceAllValByZeroBut v1  lv exp1, replaceAllValByZeroBut v1  lv exp2)
+	| QUESTION (exp1, exp2, exp3) ->QUESTION (replaceAllValByZeroBut v1  lv exp1, replaceAllValByZeroBut v1  lv exp2, replaceAllValByZeroBut v1  lv exp3)
+	| CALL (exp, args) 			->	CALL (exp, List.map(fun a-> replaceAllValByZeroBut v1  lv a)args)
+	| VARIABLE (s) 				-> if s = v1 then expr else if   List.mem s lv then (CONSTANT(CONST_INT("0")))  else expr
+	| INDEX (n,exp) 			->	INDEX (n, replaceAllValByZeroBut v1  lv exp);
+	| CAST (typ, exp) ->CAST (typ, replaceAllValByZeroBut v1   lv  exp)
+	| CONSTANT ( CONST_COMPOUND expsc)  -> CONSTANT ( CONST_COMPOUND ( List.map(fun a-> replaceAllValByZeroBut v1  lv a)expsc))
+	| COMMA exps 					->	(COMMA ( List.map (fun a -> replaceAllValByZeroBut v1  lv a) exps))
+	| MEMBEROF (ex, c) 			->    MEMBEROF (replaceAllValByZeroBut v1  lv ex,   c) 
+	| MEMBEROFPTR (ex, c) 		->	  MEMBEROFPTR (replaceAllValByZeroBut v1  lv ex,   c) 
+	| EXPR_SIZEOF exp -> EXPR_SIZEOF (replaceAllValByZeroBut v1  lv exp )
+	| EXPR_LINE (expr, _, _) ->
+		replaceAllValByZeroBut v1  lv  expr
+	| _ 						-> 	expr
+
+
+
 
 let rec remplacerExpPar0   nouexp expr =
 	if expr = nouexp then CONSTANT (CONST_INT "0")
@@ -1240,7 +1301,18 @@ match a with
 					| _->print_expression  (BINARY(ASSIGN,INDEX(VARIABLE(s),  VARIABLE("NODEF")),  VARIABLE("NODEF"))) 0)
 
 let afficherListeAS asL =space(); new_line() ;flush(); List.iter (fun a-> afficherAS a; space(); new_line() ;flush(); )asL
-
+let renameListeIF asL =  List.map (fun a-> match a with
+		ASSIGN_SIMPLE (x, e) 	 ->  
+			  	if (String.length x > 3) then  
+					if   (String.sub x  0 3) = "IF_"  then  
+					begin
+						let s1 =String.sub x 1 ((String.length x)-1) in
+						let s2 =String.sub s1 1 ((String.length s1)-1) in
+						ASSIGN_SIMPLE ("IF-"^(String.sub s2 1 ((String.length s2)-1)),e) 
+					end
+					else a 
+				else a
+		|	_ ->   a)asL
 
 
 let rec afficherLesAffectations listeAffect = List.iter (fun affect -> afficherUneAffect affect; flush();flush(); space(); new_line ()) listeAffect
@@ -1594,6 +1666,83 @@ and getVarPtrOrArrayDepAux exp  ptr=
 	|_->("",NOTHING, false)
 
 
+(* for covariance *)
+
+let rec addInstEachVarOfListAssign  listOfCovariantVar  instructiontoadd inst = (*return a new inst list where each assignment of var of listOfCovariantVar are completed by instructiontoadd *)
+
+ 
+		match inst with
+		| [] -> []
+		| n1::t1 ->
+	 
+		 	( match n1 with
+					VAR ( id, _,_,_) | TAB ( id, _, _,_,_)   |  MEMASSIGN ( id, _, _,_,_) ->	
+						if List.mem id listOfCovariantVar then 
+										 n1::(instructiontoadd::(addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd t1))
+					 
+				 		else n1::(addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd t1)
+					 
+					| IFVF ( a, i1, i2) 		-> 	
+						IFVF ( a, BEGIN (addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd  [i1]), 
+						 BEGIN (addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd [i2]))::
+						(addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd t1)
+					| IFV ( a, i1) 		-> IFV ( a,  BEGIN (addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd [i1])) ::(addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd t1)
+					| BEGIN (liste)		-> BEGIN (addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd liste)::(addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd t1)	
+					| FORV (a, b, c, d, e,f, i,j) ->FORV (a, b, c, d, e,f, BEGIN ( addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd [i]),j)::(addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd t1)
+						 
+					|_->n1::(addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd t1)
+					 
+)(*
+
+let rec addInstEachVarOfListAssign  listOfCovariantVar  instructiontoadd inst = (*return a new inst list where each assignment of var of listOfCovariantVar are completed by instructiontoadd *)
+
+ 
+		let (_, res) = addInstEachVarOfListAssignaux  listOfCovariantVar  instructiontoadd inst in res
+
+
+
+and addInstEachVarOfListAssignaux  listOfCovariantVar  instructiontoadd inst = (*return a new inst list where each assignment of var of listOfCovariantVar are completed by instructiontoadd *)
+
+ 
+		match inst with
+		| [] -> (false,[])
+		| n1::t1 ->
+	 		let (boolean, res) = addInstEachVarOfListAssignaux  listOfCovariantVar instructiontoadd t1 in
+		 	( match n1 with
+					VAR ( id, _,_,_) | TAB ( id, _, _,_,_)   |  MEMASSIGN ( id, _, _,_,_) ->	
+						if List.mem id listOfCovariantVar && boolean then 
+						 
+										(boolean, n1::(instructiontoadd::res))
+					 	
+				 		else (boolean, n1::res)
+					 
+					| IFVF ( a, i1, i2) 		-> 	
+						(false, IFVF ( a, BEGIN (addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd  [i1]), 
+						 BEGIN (addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd [i2]))::res)
+					| IFV ( a, i1) 		-> (false, IFV ( a,  BEGIN (addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd [i1])) ::res)
+					| BEGIN (liste)		-> (boolean, BEGIN (addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd liste)::res)
+					| FORV (a, b, c, d, e,f, i,j) ->(boolean, FORV (a, b, c, d, e,f, BEGIN ( addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd [i]),j)::res)
+						 
+					|_->(boolean, n1::res)
+					 
+)*)
+
+
+
+let rec   addAInstEachVarOfListAssign   listOfCovariantVar  instructiontoadd inst = (*return a new assignment list where each assignment of var of listOfCovariantVar are completed by instructiontoadd *)
+
+ 
+		match inst with
+		| [] -> []
+		| n1::t1 ->
+	 
+		 	( match n1 with
+					 ASSIGN_SIMPLE(id, _)|ASSIGN_DOUBLE(id, _, _)| ASSIGN_MEM (id, _, _) ->
+					if List.mem id listOfCovariantVar then 
+										 n1::(instructiontoadd::(addAInstEachVarOfListAssign  listOfCovariantVar instructiontoadd t1))
+					 
+				 		else n1::(addAInstEachVarOfListAssign  listOfCovariantVar instructiontoadd t1))
+ 
 
  
 

@@ -5,11 +5,14 @@
  *	Tool to compute loop bounds
  *)
 
+    (*cSNPRT false pas d'analyse de domaine de pointeur dans util.ml de O_Range*)
+
 open Printf
 
 open Frontc
 open Mergec
 open Calipso
+open Sortrec
 open ExtractinfoPtr
 open Cextraireboucle
 open Cvarabs
@@ -61,6 +64,8 @@ let banner =
 let args: Frontc.parsing_arg list ref = ref []
 
 (* input stuff *)
+
+
 let list_file_and_name: string list ref = ref []
 let add_file_and_name filename =
 	list_file_and_name := List.append !list_file_and_name [filename]
@@ -87,6 +92,7 @@ let calipso_rrec = ref false
 (* output stuff *)
 let out_file = ref ""
 let out_dir = ref "."
+let print_exp = ref false
 
 (* auto stuff *)
 let auto = ref false
@@ -105,7 +111,7 @@ let withoutGlobalAndStaticInit = ref false
 
 let opts = [
 
-	
+	(*if !hasCondListFile_name  then condListFile_name *)
 
 
 	(* Input options *)
@@ -115,9 +121,12 @@ let opts = [
 		"File with the list of function names to be processed.");
 	("--up", Arg.String (fun name -> Cextraireboucle.add_use_partial name; alreadyEvalFunctionAS := List.map (fun n ->  (n,Cextraireboucle.getAbsStoreFromComp n)  )!use_partial	;),
 		"Use partial result (rpo file) for this function.");
+	("--condIF",Arg.String (fun dir ->  hasCondListFile_name :=true;	 condListFile_name  := dir),
+		"Use annotation for if into file");
 	(* Mode options *)
 	("--auto", Arg.Set auto,
 		"Automated full analysis");
+	("--print_exp", Arg.Set print_exp, "print_expression of bounds or conditions");
 	("--allow-pessimism", Arg.Set allow_pessimism,
 		"Allow to automatically partialize even function that imply pessimism (faster)");
 	("-k", Arg.Set partial,
@@ -221,7 +230,7 @@ let rec getComps = function
 			TO.curassocnamesetList := [];
 			TO.listeInstNonexe := [];
 			TO.aslAux := [];
-			TO.listCaseFonction := []*)TO.isPartialisation := true;
+			TO.listCaseFonction := []*)TO.isPartialisation := true;TO.isPrint_Expression := true; 
 			listeASCourant := [];
 			(*Printf.printf "Longueur de l'arbre: avant %d.\n" (List.length !TO.docEvalue.TO.maListeEval);*)
 			let globales = !alreadyAffectedGlobales in
@@ -295,7 +304,7 @@ let analysePartielle file =
 	idAppel:=0;
 	nbImbrications := 0;
 	TO.enTETE :=  false;
-	TO.estNulEng :=  false;  TO.isPartialisation := true;
+	TO.estNulEng :=  false;  TO.isPartialisation := true; TO.isPrint_Expression := true; 
 	TO.estDansBoucle :=  false;getOnlyBoolAssignment := true;
 	analyse_defs file;getOnlyBoolAssignment := false; phaseinit := false;
 	printf "analyse_defs OK, maintenant lance evaluation des composants.\n";
@@ -327,6 +336,12 @@ let _ =
 	Cextraireboucle.sort_list_file_and_name !list_file_and_name;
 	
 	(* Check the number of anonymous parameters *)
+
+	if !hasCondListFile_name then
+	begin
+		condAnnotated := getAbsStoreFromComp !condListFile_name ;
+		(*afficherListeAS   !condAnnotated; *)
+	end;
 	if ((not !partial) && (not !onlyGraphe))
 		then (	(* full analysis mode *)
 		if (List.length !Cextraireboucle.names < 1)
@@ -402,7 +417,8 @@ let _ =
 					cfiles
 				)
 			else cfiles in
-		let chk_cfiles = (Mergec.check "mergec_rename__" cfiles)
+		let removedextern = (Mergec.removeDuplicatedExtern   cfiles) in
+		let chk_cfiles = (Mergec.check "mergec_rename__" removedextern)
 		in let merge_file = Mergec.merge chk_cfiles
 		in merge_file in
 	
@@ -411,7 +427,18 @@ let _ =
 		let merge_file = (getMergedFile a1) in
 		Rename.go (Frontc.trans_old_fun_defs merge_file) in
 
+		(* cons merge file *)
+		let out = open_out ".merge.cm" in
+		Cprint.print  out firstParse;
+		close_out out;
 		
+		(* get recursivity*)
+		(*let out = open_out ".rec_status" in
+		Sortrec.test out firstParse firstParse;
+		close_out out;*)
+
+ 
+
 		
 		if ((!partial) || (!auto)) then (
 			TO.initref stdout firstParse
@@ -430,6 +457,7 @@ let _ =
 			else Resumeforgraph.resume secondParse false
 	
 	else begin	(* Analysis mode *)
+		
 		if (!auto) (* automated full analysis *)
 		then begin
 				(* apply a partialization strategy *)
@@ -507,6 +535,7 @@ let _ =
 				and tl =(List.tl (!Cextraireboucle.names))
 				in Cextraireboucle.maj hd tl;
 				(*XO.initref stdout firstParse;*)
+				if !print_exp then XO.isPrint_Expression := true else XO.isPrint_Expression := false;
 				XO.notwithGlobalAndStaticInit := !withoutGlobalAndStaticInit;
 			 	XO.docEvalue :=  XO.new_documentEvalue  [] [];compEvalue := [];
 				listeAppels :=  [];
@@ -526,10 +555,16 @@ let _ =
 			end
 		else	(* full analysis *)
 			begin
+				if !print_exp then XO.isPrint_Expression := true else XO.isPrint_Expression := false; 
 				XO.notwithGlobalAndStaticInit := !withoutGlobalAndStaticInit;
-				Resumeforgraph.get_intervals secondParse;
+				(*Resumeforgraph.get_intervals secondParse;*)
 
-				let result = XO.printFile stdout secondParse (*true si pas Resumeforgraph.get_intervals secondParse;*) false  in
+				(*let result = XO.printFile stdout secondParse (*true si pas Resumeforgraph.get_intervals secondParse;*) (*false*) true  in*)
+				let result = 
+				if !cSNPRT then  
+					XO.printFile stdout secondParse (*true si pas Resumeforgraph.get_intervals secondParse;*) true  
+				else (	Resumeforgraph.get_intervals secondParse;
+					XO.printFile stdout secondParse (*true si pas Resumeforgraph.get_intervals secondParse;*) false ) in
 					if !out_file = ""
 						then print_string result
 					else

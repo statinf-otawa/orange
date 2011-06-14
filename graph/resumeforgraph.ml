@@ -1223,10 +1223,15 @@ let evalPtrEffectOnFunction name  =
 		 else
 		 begin
 			let f = AFContext.get  !myAF name in
+(*Printf.printf "\nevalAssigignVar apre evalPtrEffectOnFunction 1 %s\n" name;*)
 			let (na,_,_) = assignAfterAssign  assign [] [] false in
 
+(*Printf.printf "\nevalAssigignVar apre evalPtrEffectOnFunction 1 %s\n" name;*)
 			add_list_bodyForPtr   (name , na ) ;
-			evalPtrEffectOnFunctionBody name na f	
+(*Printf.printf "\nevalAssigignVar apre evalPtrEffectOnFunction add %s\n" name;*)
+			let res = evalPtrEffectOnFunctionBody name na f	in
+(*Printf.printf "\nevalAssigignVar apre evalPtrEffectOnFunction evalPtrEffectOnFunctionBody %s\n" name;*)
+			res
 		end   
 	end 
 
@@ -1238,7 +1243,12 @@ let evalAssigignVar name  =
 	begin
 		 let (_, info) = (rechercherFonctionParNom name doc) in
 		 let  assign =  if info.lesAffectations = [] then    get_fct_body name else info.lesAffectations in
-			assignVarAndUsed  assign  
+ 
+			let (la, listUsed) = assignVarAndUsed  assign  in
+(*Printf.printf "\nevalAssigignVar apre assignVarAndUsed 1 %s\n" name;
+if listUsed != [] then( Printf.printf "  LinB\n" ; List.iter (fun x-> Printf.printf "  %s\n" x) listUsed;Printf.printf "  END\n") ;
+if la != [] then( Printf.printf "  LinB\n" ; List.iter (fun x-> Printf.printf "  %s\n" x) la;Printf.printf "  END\n") ;*)
+(la, listUsed)
 		
 	end 
 
@@ -1280,6 +1290,7 @@ let rechercherFonctionParNom nom docu =
   (List.find (fun (_, f) ->  	let (_, _, name) = (f.declaration) in 
 							  let (s,_,_,_) = name in s = nom  )!docu.laListeDesFonctions)
 
+let deja =ref false
 
 let get_intervals secondParse =
 	getOnlyBoolAssignment := true;
@@ -1295,26 +1306,33 @@ let get_intervals secondParse =
  	callsListEvalp :=  [];
  	newcurrentcallslistptr :=  [];
 	(*intervalAnalysis doc; *)
-    evalCallListptr !callsList;
-(*List.iter(fun (id,_)->Printf.printf"tete %d \n" id)!callsListEvalLoop;*)
+ 	if !cSNPRT  then  
+	(   deja:=true;  
+		evalCallListptr !callsList; 
+	(*List.iter(fun (id,_)->Printf.printf"tete %d \n" id)!callsListEvalLoop;*)
 	setalreadyDefFunction "setalreadyDefFunction\n";
-    majCextraireDocFbody alreadyDefFunction
+    	majCextraireDocFbody alreadyDefFunction)
 
-let endForPartial s =
-getInfoFunctions doc;
-evalCallListptr !callsList;
-(*List.iter(fun (id,_)->Printf.printf"tete %d \n" id)!callsListEvalLoop;*)
-setalreadyDefFunction s;
-majCextraireDocFbody alreadyDefFunction
+let endForPartial s = 
+	if !cSNPRT = false || !deja  then ()
+	else
+
+	( deja:=true; getInfoFunctions doc; 
+	evalCallListptr !callsList;  
+	(*List.iter(fun (id,_)->Printf.printf"tete %d \n" id)!callsListEvalLoop;*)
+	setalreadyDefFunction s;
+	majCextraireDocFbody alreadyDefFunction )
 
 
 (* Retreive the strategy with all big functions partialized *)
 let get_all_big_strategy secondParse =
 	let _ = init secondParse in
-	evalCallListptr !callsList;
-(*List.iter(fun (id,_)->Printf.printf"local upper loop %d \n" id)!callsListEvalLoop;*)
-	setalreadyDefFunction "setalreadyDefFunction\n";
-    majCextraireDocFbody alreadyDefFunction;
+	if !cSNPRT  then  
+	( deja:=true; 
+	  evalCallListptr !callsList;  
+	  (*List.iter(fun (id,_)->Printf.printf"local upper loop %d \n" id)!callsListEvalLoop;*)
+	  setalreadyDefFunction "setalreadyDefFunction\n";
+    	  majCextraireDocFbody alreadyDefFunction); 
 
 	List.map (fun name ->
 		partial_computation name;
@@ -1326,10 +1344,12 @@ let get_all_big_strategy secondParse =
 (* Retreive the strategy with only functions without pessimism partialized *)
 let get_only_without_pessimism_strategy secondParse =
 	let _ = init secondParse in
-    evalCallListptr !callsList;
-(*List.iter(fun (id,_)->Printf.printf"tete %d \n" id)!callsListEvalLoop;*)
+ 	if !cSNPRT   then  
+	(  deja:=true;  
+	 evalCallListptr !callsList;  
+	(*List.iter(fun (id,_)->Printf.printf"tete %d \n" id)!callsListEvalLoop;*)
 	setalreadyDefFunction "setalreadyDefFunction\n";
-    majCextraireDocFbody alreadyDefFunction;
+    	majCextraireDocFbody alreadyDefFunction);
 
 	List.map (fun name ->
 		partial_computation name;

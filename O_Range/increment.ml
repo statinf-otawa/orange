@@ -385,7 +385,7 @@ and getInc var assign inst  asAs completList beforei=
 							end
 							else 
 							begin
-								(*Printf.printf"isIndirect DIVI\n";*) (isIndirect, INC(DIVI, inc),nvar, before) 
+								(*Printf.printf"isIndirect DIVI\n";*)(isIndirect, INC(DIVI, inc),nvar, before) 
 							end
 				end
 				else (false,NODEFINC,"others", before) 
@@ -494,16 +494,19 @@ match inc1 with
 							begin
 								let minFValue = getDefValue minValue in
 								let value  = getDefValue(calculer (EXP (getIncValue inc2)) !infoaffichNull  []  (-1)  ) in
+								let valueInc  = getDefValue(calculer (EXP (getIncValue inc1)) !infoaffichNull  []  (-1)  ) in
 								if value > 0.0 && minFValue > 0.0 then
 								begin isMultiInc := true;
 									let bound  = value *. minFValue -. minFValue in
-									if bound >= value then inc1 else NODEFINC
+(*Printf.printf "joinAlternate1 for %s bound = %f inc = %f \n"x bound (getDefValue(calculer (EXP (getIncValue inc2)) !infoaffichNull  []  1  ) );*)
+									if bound >= (*value*)valueInc then inc1 else NODEFINC
 								end 
 								else NODEFINC
 							end
 							|_->NODEFINC)
 	| INC(NEGATIV,v1) ->
-		 	(match inc2 with INC(NEGATIV,v2) ->isMultiInc := true; INC(NEGATIV,CALL (VARIABLE("MINIMUM") , (List.append [v1] [v2] )))
+(*Printf.printf "joinAlternate MAXI 1 \n";*)
+		 	(match inc2 with INC(NEGATIV,v2) ->isMultiInc := true; INC(NEGATIV,CALL (VARIABLE("MAXIMUM") , (List.append [v1] [v2] ))) (*MAXIMUM ou MINIMUM?*)
 							|_->NODEFINC)
 	| NOINC ->(*Printf.printf "joinAlternate for %s\n"x;*) ( match inc2 with NOINC -> NOINC |_->NODEFINC)
 	| NODEFINC -> NODEFINC
@@ -516,23 +519,23 @@ match inc1 with
 							begin isMultiInc := true;
 								let minFValue = getDefValue minValue in
 								let value  = getDefValue(calculer (EXP (getIncValue inc1)) !infoaffichNull  []  (-1)  ) in
+								let valueInc  = getDefValue(calculer (EXP (getIncValue inc2)) !infoaffichNull  []  (-1)  ) in
 								if value > 0.0 && minFValue > 0.0 then
 								begin
 									let bound  = value *. minFValue -. minFValue in
-(*
-Printf.printf "joinAlternate for %s bound = %f inc = %f \n"x bound (getDefValue(calculer (EXP (getIncValue inc2)) !infoaffichNull  []  1  ) );
+(*Printf.printf "joinAlternate for %s bound = %f inc = %f \n"x bound (getDefValue(calculer (EXP (getIncValue inc2)) !infoaffichNull  []  1  ) );
 print_intType (getIncType inc1);
 print_interval inter1 ;
 print_intType (getIncType inc2);
 print_interval inter2 ;*)
 
-									if bound >= value then inc2 else NODEFINC
+									if bound >= valueInc then inc2 else NODEFINC
 								end 
 								else NODEFINC
 							end
 							|_->NODEFINC)
-	| INC(DIVI,v1)->
-   			(match inc2 with INC(DIVI,v2) -> isMultiInc := true; INC(DIVI,CALL (VARIABLE("MINIMUM") , (List.append [v1] [v2] )))	
+	| INC(DIVI,v1)->(*Printf.printf "joinAlternate MAXI 2 \n";*)
+   			(match inc2 with INC(DIVI,v2) -> isMultiInc := true; INC(DIVI,CALL (VARIABLE("MAXIMUM") , (List.append [v1] [v2] )))	(*MAXIMUM ou MINIMUM?*)
 							|_-> NODEFINC)
 	|_->NODEFINC
 
@@ -757,6 +760,8 @@ let  used =
 									else x  in List.mem fid !alreadyAffectedGlobales )used in
 		let globalPtr = List.filter(fun x-> List.mem_assoc x !listeAssosPtrNameType  )global in
 		 if globalPtr != [] then true  else List.mem x global  
+
+ 
 
 
 and getLoopVarInc v inst =

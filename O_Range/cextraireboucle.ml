@@ -19,6 +19,7 @@ open Cvariables
 open Constante
 open Coutput
 open Increment
+open Covariance
 open Printf
 open Util
 open Rename
@@ -89,6 +90,8 @@ let aUneFctNotDEf = ref false
 	let listeDesInstCourantes = ref []
     let listeDesEnum = ref []
 	let listeDesInstGlobales = ref []
+
+	let listeLocalStatic = ref []
 	(*let alreadyAffectedGlobales = ref [] *)(* pas chez Clément*)
 	let listeAffectInit = ref []
 
@@ -1159,7 +1162,7 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 			| AND -> traiterANDCOND init var exp1 exp2 liste avant dans cte t  (BINARY(op,exp1, exp2)) lv l inst
 			| OR -> (NONMONOTONE , NOTHING, NOTHING, XOR, true, var ,BINARY(op,exp1, exp2))
 			| EQ ->  
-					let (isindirect,inc,_,_,isMultiInc) =  getLoopVarInc var inst in		
+					let (isindirect,inc,_,_,isMultiInc) =  getLoopVarIncOrCov var inst ne in		
 					if isMultiInc then isExactForm := false;
 					(*if isindirect then Printf.printf "EQ cas 2 indirect change\n";*)
 							(match  inc  with 
@@ -1172,7 +1175,7 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 
 							|_->traiterEQ init ne2  var ne)
 			
-			| NE -> let (isindirect,inc,_,_,isMultiInc) =  getLoopVarInc var inst in
+			| NE -> let (isindirect,inc,_,_,isMultiInc) =  getLoopVarIncOrCov var inst ne in
 					if isMultiInc then isExactForm := false;
 					(*if isindirect then Printf.printf "NE cas 2 indirect change\n";*)
 
@@ -1210,7 +1213,7 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 					| GE -> (CROISSANT, init ,ne1  , GE,false, var, ne) (*exp1 >= i, i in [ init , exp1 ] *)
 					| AND -> traiterANDCOND init var exp1 exp2 liste avant dans cte t (BINARY(op,exp1, exp2)) lv l inst
 					| OR -> (NONMONOTONE , NOTHING, NOTHING, XOR, true, var, BINARY(op,exp1, exp2))
-					| EQ -> let ((*isindirect,inc,var, before*)isindirect,inc,_,_,isMultiInc) =  getLoopVarInc var inst in
+					| EQ -> let ((*isindirect,inc,var, before*)isindirect,inc,_,_,isMultiInc) =  getLoopVarIncOrCov var inst ne in
 							if isMultiInc then isExactForm := false;
 				
 							(*if isindirect then Printf.printf "EQ cas 2 indirect change\n";*)
@@ -1225,7 +1228,7 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 							|_->traiterEQ init ne1 var ne)
 							
 							 
-					| NE ->  let (isindirect,inc,_,_,isMultiInc) =  getLoopVarInc var inst in
+					| NE ->  let (isindirect,inc,_,_,isMultiInc) =  getLoopVarIncOrCov var inst ne in
 							 if isMultiInc then isExactForm := false;
 					
 						   (* if isindirect then Printf.printf "NE cas 3 indirect change\n";*)
@@ -1673,7 +1676,7 @@ and isTabDependCond exp1 liste avant dans cte t c lv l inst =
 							if isOnlyVar then 
 							begin
 								let var = List.hd inter2 in	
-								let ((*isindirect,inc,var, before*)isindirect,_,_,_,isMultiInc) =  getLoopVarInc var inst in
+								let ((*isindirect,inc,var, before*)isindirect,_,_,_,isMultiInc) =  getLoopVarIncOrCov var inst NOTHING in
 
 								if isMultiInc then isExactForm := false;
 								if isindirect then expressionIncFor := NOTHING;
@@ -1706,7 +1709,7 @@ and isTabDependCond exp1 liste avant dans cte t c lv l inst =
 						opEstPlus:= true;	
 						 
 						(*Printf.printf"expression : \n"; print_expression affect 0; new_line();*)
-						let ((*isindirect,inc,var, before*)isindirect,_,_,_,isMultiInc) =  getLoopVarInc name inst in
+						let ((*isindirect,inc,var, before*)isindirect,_,_,_,isMultiInc) =  getLoopVarIncOrCov name inst NOTHING in
 (*BOOL pas pour le moment ???*)
 						if isindirect then  expressionIncFor := NOTHING;
 						if isMultiInc then isExactForm := false;
@@ -1759,7 +1762,7 @@ and setIndexWithSize lidx lsize liste avant dans cte t c lv l inst=
 		if isOnlyVar then 
 		begin
 			let var = List.hd inter2 in	
-			let ((*isindirect,inc,var, before*)isindirect,_,_,_,isMultiInc) =  getLoopVarInc var inst in
+			let ((*isindirect,inc,var, before*)isindirect,_,_,_,isMultiInc) =  getLoopVarIncOrCov var inst NOTHING in
 (*BOOL*)
 			if isMultiInc then isExactForm := false;
 			expressionIncFor := if isindirect then  NOTHING else !expressionIncFor ;
@@ -1803,7 +1806,8 @@ and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1
 			let v_1 =(evalexpression (Diff (val1, ConstInt("1")))) in
 			if estDefExp val1 then
 				if estStricPositif   v_1 then
-					( init, var, op,CALL (VARIABLE("pow"), List.append [BINARY(DIV, BINARY(SUB,exp1,b),a)] [BINARY(DIV,CONSTANT(CONST_FLOAT "1.0"),k)]), 
+					( init, var, op,CALL (VARIABLE("pow"), 
+						List.append [BINARY(DIV, BINARY(SUB,exp1,b),a)] [BINARY(DIV,CONSTANT(CONST_FLOAT "1.0"),k)]), 
 										  VARIABLE(var) ,liste, true ) (* we replace exp1 op a*pow(var, k)+b by pow((EXP1 -B)/A, 1/K) OP VAR *)
 				else 
 					if estNul  v_1 then ( init, var, op,exp1, exp2,liste, false ) 
@@ -1849,103 +1853,99 @@ and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1
 				 else  (VARIABLE(List.hd liste), (List.hd liste), op, exp1, exp2,  (List.tl liste), true)
 		in
 		if fin = false then 
-			(
-				if (List.length l) = 2 then
-				begin
-					(*Printf.printf "deux variables ou plus non const %d \n" (List.length l) ;*)
-					let ( isindirect1,inc1,vari1, before1,isMultiInc1) =  getLoopVarInc (List.hd l) inst in
-					let ( isindirect2,inc2,vari2, before2,isMultiInc2) =  getLoopVarInc (List.hd (List.tl l)) inst in
-
-
-					let (typeinc1, typeinc2)= (getIncType inc1,getIncType inc2) in
-				(*	Printf.printf "deux variables ou plus non const %s %s\n" vari1 vari2 ;
-	 				print_expression exp1 0; new_line();
- 					print_expression exp2 0; new_line();
-					print_intType (getIncType inc1); print_expression (getIncValue inc1) 0; new_line();
-					print_intType (getIncType inc2); print_expression (getIncValue inc2) 0; new_line();*)
-					let isLeft1 = List.mem (List.hd l) (listeDesVarsDeExpSeules exp1) in
-					let isLeft2 = List.mem (List.hd (List.tl l)) (listeDesVarsDeExpSeules exp1) in
-					let oppose =  (isLeft1 &&  isLeft2 = false) || (isLeft2 &&  isLeft1 = false) in
+		(
+			if (List.length l) = 2 then
+			begin
+				(*Printf.printf "deux variables ou plus non const %d \n" (List.length l) ;*)
+				let ( isindirect1,inc1,vari1, before1,isMultiInc1) =  getLoopVarIncOrCov (List.hd l) inst (BINARY(op,exp1, ne2) ) in
+				let ( isindirect2,inc2,vari2, before2,isMultiInc2) =  getLoopVarIncOrCov (List.hd (List.tl l)) inst (BINARY(op,exp1, ne2)) in
+				let (typeinc1, typeinc2)= (getIncType inc1,getIncType inc2) in
+					(*	Printf.printf "deux variables ou plus non const %s %s\n" vari1 vari2 ;
+		 				print_expression exp1 0; new_line();
+	 					print_expression exp2 0; new_line();
+						print_intType (getIncType inc1); print_expression (getIncValue inc1) 0; new_line();
+						print_intType (getIncType inc2); print_expression (getIncValue inc2) 0; new_line();*)
+				let isLeft1 = List.mem (List.hd l) (listeDesVarsDeExpSeules exp1) in
+				let isLeft2 = List.mem (List.hd (List.tl l)) (listeDesVarsDeExpSeules exp1) in
+				let oppose =  (isLeft1 &&  isLeft2 = false) || (isLeft2 &&  isLeft1 = false) in
 				
-					let isOK = control inc1 inc2 oppose isMultiInc1 isMultiInc2 (BINARY(SUB,exp2, exp1)) (List.hd l) (List.hd (List.tl l)) in
+				let isOK = control inc1 inc2 oppose isMultiInc1 isMultiInc2 (BINARY(SUB,exp2, exp1)) (List.hd l) (List.hd (List.tl l)) in
 					
-					
-					let value =
-						if oppose then 
-							if typeinc1 =POSITIV||typeinc1 =NEGATIV then
-							( calculer (EXP(BINARY(SUB,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1)
-							else calculer (EXP(BINARY(DIV,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1
-						else
-	  						if typeinc1 =POSITIV||typeinc1 =NEGATIV then
-								if isLeft1 then
-								begin
-									let newexp = ((remplacerValPar  (List.hd (List.tl l)) (getIncValue inc2) (remplacerValPar  (List.hd l) (getIncValue inc1) exp1))) in
+				let value =
+					if oppose then 
+						if typeinc1 =POSITIV||typeinc1 =NEGATIV then
+						( calculer (EXP(BINARY(SUB,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1)
+						else calculer (EXP(BINARY(DIV,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1
+					else
+	  					if typeinc1 =POSITIV||typeinc1 =NEGATIV then
+							if isLeft1 then
+							begin
+								let newexp =
+									remplacerValPar (List.hd (List.tl l)) (getIncValue inc2) (remplacerValPar (List.hd l) (getIncValue inc1) exp1) in
 									calculer (EXP(newexp))  !infoaffichNull [] 1
 
-								end
-								else
-								begin
-									let newexp = UNARY(MINUS,(remplacerValPar  (List.hd (List.tl l)) (getIncValue inc2) (remplacerValPar  (List.hd l) (getIncValue inc1) exp2))) in
-									calculer  (EXP(newexp))   !infoaffichNull [] 1
-								end
+							end
+							else
+							begin
+								let newexp =  UNARY(MINUS,
+									remplacerValPar (List.hd (List.tl l)) (getIncValue inc2) (remplacerValPar (List.hd l) (getIncValue inc1) exp2)) in
+								calculer  (EXP(newexp))   !infoaffichNull [] 1
+							end
 
-							else calculer (EXP(BINARY(DIV,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1 in
+						else calculer (EXP(BINARY(DIV,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1 in
 		 			(*Printf.printf " result inc : > %f\n"( getDefValue value);*)
-					if isOK &&(typeinc1 =POSITIV||typeinc1 =NEGATIV) &&  (typeinc2 =POSITIV||typeinc2 =NEGATIV) && isindirect1 = false && isindirect2 == false then
-					begin
-						let vardeux =  Printf.sprintf "%s-%s" (List.hd l) (List.hd (List.tl l))  in	 
-						let (stringinc,estNul,estPos, constval)=
-							match value with
-							 ConstInt (i)-> (i ,(int_of_string  i = 0),(int_of_string  i > 0),CONSTANT  (CONST_INT i))
-							| ConstFloat (i) ->(i, (float_of_string  i = 0.0),(float_of_string  i > 0.0),CONSTANT(CONST_FLOAT (i)) ) 
-							| RConstFloat (i) ->(Printf.sprintf "%g" i, (  i = 0.0),(  i > 0.0),CONSTANT(RCONST_FLOAT (i)) ) 
-							| _->("",true,false,CONSTANT  (CONST_INT "0")) in
-
+				if isOK &&(typeinc1 =POSITIV||typeinc1 =NEGATIV) && (typeinc2 =POSITIV||typeinc2 =NEGATIV) && isindirect1=false && isindirect2==false then
+				begin
+					let vardeux =  Printf.sprintf "%s-%s" (List.hd l) (List.hd (List.tl l))  in	 
+					let (stringinc,estNul,estPos, constval)=
+						match value with
+						 ConstInt (i)-> 
+							if  is_integer i then (i ,(int_of_string  i = 0),(int_of_string  i > 0),CONSTANT  (CONST_INT i)) 
+							else ("",true,false,CONSTANT  (CONST_INT "0"))
+						| ConstFloat (i) ->if  is_float i then (i, (float_of_string  i = 0.0),(float_of_string  i > 0.0),CONSTANT(CONST_FLOAT (i)) )
+							  else ("",true,false,CONSTANT  (CONST_INT "0"))
+						| RConstFloat (i) ->(Printf.sprintf "%g" i, (  i = 0.0),(  i > 0.0),CONSTANT(RCONST_FLOAT (i)) ) 
+						| _->("",true,false,CONSTANT  (CONST_INT "0")) in
 							if estPos then
 							begin
 								(*Printf.printf "deux variables ou plus non const %s %s %s  %s ++\n" vari1 vari2 vardeux stringinc ;*)
-									let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (ADD,VARIABLE(vardeux), constval))) ] in
-									let newdans =  List.append dans 
-														[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (ADD,VARIABLE(vardeux), constval)))]
+								let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (ADD,VARIABLE(vardeux), constval))) ] in
+								let newdans =  List.append dans 
+												[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (ADD,VARIABLE(vardeux), constval)))]	 in	
+								listADD := (VAR(vardeux, EXP(BINARY(SUB,exp1, exp2)),[],[]))::!listADD ;
+								listADDInc := List.append [VAR(vardeux, EXP(BINARY(ADD,VARIABLE(vardeux), constval)),[],[])] !listADDInc ;
+								let newavant =  List.append avant
+													[ASSIGN_SIMPLE(vardeux, EXP(BINARY(SUB,exp1, exp2)))]	 in	
 	
-														 in	
-									listADD := List.append [VAR(vardeux, EXP(BINARY(SUB,exp1, exp2)),[],[])] !listADD ;
-									listADDInc := List.append [VAR(vardeux, EXP(BINARY(ADD,VARIABLE(vardeux), constval)),[],[])] !listADDInc ;
-									let newavant =  List.append avant
-														[ASSIGN_SIMPLE(vardeux, EXP(BINARY(SUB,exp1, exp2)))]
-	
-														 in	
-	
-									rechercheConditionBinary (VARIABLE(vardeux))  vardeux op  (VARIABLE(vardeux)) (CONSTANT  (CONST_INT "0"))  [vardeux] newavant newdans estNul  t 
-											(BINARY(op,VARIABLE(vardeux),   CONSTANT(CONST_INT "0") )) lv (List.append [vardeux] l) newinst
+								rechercheConditionBinary (VARIABLE(vardeux))  vardeux op  (VARIABLE(vardeux)) (CONSTANT  (CONST_INT "0"))  [vardeux] newavant newdans estNul  t 
+									(BINARY(op,VARIABLE(vardeux),   CONSTANT(CONST_INT "0") )) lv (List.append [vardeux] l) newinst
 							end
 							else
 							begin
 								(*Printf.printf "deux variables ou plus non const %s %s %s  %s --\n" vari1 vari2 vardeux stringinc ;*)
 								let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (SUB,VARIABLE(vardeux), constval))) ] in
-									let newdans =  List.append dans 
-														[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (SUB,VARIABLE(vardeux), constval)))]
-	
+								let newdans =  List.append dans 
+												[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (SUB,VARIABLE(vardeux), constval)))]
+															 in	
+								listADD := (VAR(vardeux, EXP(BINARY(SUB,exp2, exp1)),[],[])):: !listADD ;
+								listADDInc := List.append [VAR(vardeux, EXP(BINARY(SUB,VARIABLE(vardeux), constval)),[],[])] !listADDInc ;
+								let newavant =  List.append avant
+													[ASSIGN_SIMPLE(vardeux, EXP(BINARY(SUB,exp2, exp1)))]
 														 in	
-									listADD := List.append [VAR(vardeux, EXP(BINARY(SUB,exp2, exp1)),[],[])] !listADD ;
-									listADDInc := List.append [VAR(vardeux, EXP(BINARY(SUB,VARIABLE(vardeux), constval)),[],[])] !listADDInc ;
-									let newavant =  List.append avant
-														[ASSIGN_SIMPLE(vardeux, EXP(BINARY(SUB,exp2, exp1)))]
-	
-														 in	
-	
-									rechercheConditionBinary (VARIABLE(vardeux))  vardeux op  (CONSTANT  (CONST_INT "0")) (VARIABLE(vardeux)) [vardeux] newavant newdans estNul  t 
+								rechercheConditionBinary (VARIABLE(vardeux))  vardeux op  (CONSTANT  (CONST_INT "0")) (VARIABLE(vardeux)) [vardeux] newavant newdans estNul  t 
 											(BINARY(op, CONSTANT(CONST_INT "0"),  VARIABLE(vardeux))) lv (List.append [vardeux] l) newinst
 							end
 
 					end 
-					else	if oppose && isOK &&(typeinc1 =MULTI) &&  (typeinc2 =DIVI) && isindirect1 = false && isindirect2 == false then
+					else	
+						if oppose && isOK &&(typeinc1 =MULTI) &&  (typeinc2 =DIVI) && isindirect1 = false && isindirect2 == false then
 						begin
 							let vardeux =  Printf.sprintf "%s-%s" (List.hd l) (List.hd (List.tl l))  in	 
 							let (stringinc,estNul,constval)=
 							match value with
-							 ConstInt (i)-> (i ,(int_of_string  i = 1),CONSTANT  (CONST_INT i))
-							| ConstFloat (i) ->(i, (float_of_string  i = 1.0),CONSTANT(CONST_FLOAT (i)) ) 
+							 ConstInt (i)-> if  is_integer i then (i ,(int_of_string  i = 1),CONSTANT  (CONST_INT i)) else ("",true,CONSTANT  (CONST_INT "1"))
+							| ConstFloat (i) ->if  is_float i then (i, (float_of_string  i = 1.0),CONSTANT(CONST_FLOAT (i)) ) 
+								else ("",true,CONSTANT  (CONST_INT "1"))
 							| RConstFloat (i) ->(Printf.sprintf "%g" i, (  i = 1.0),CONSTANT(RCONST_FLOAT (i)) ) 
 							| _->("",true,CONSTANT  (CONST_INT "1")) in
 
@@ -1956,7 +1956,9 @@ and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1
 												[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (DIV,VARIABLE(vardeux), constval)))]
 	
 												 in	
-							listADD := List.append [VAR(vardeux, EXP(BINARY(DIV,exp2, exp1)),[],[])] !listADD ;
+							listADD := (VAR(vardeux, EXP(BINARY(DIV,exp2, exp1)),[],[])):: !listADD ;
+							(* added instruction for looking increasing variable of loop*)
+
 							listADDInc := List.append [VAR(vardeux, EXP(BINARY(DIV,VARIABLE(vardeux), constval)),[],[])] !listADDInc ;
 							let newavant =  List.append avant
 												[ASSIGN_SIMPLE(vardeux, EXP(BINARY(DIV,exp2, exp1)))]
@@ -1968,37 +1970,133 @@ and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1
 
 						end 
 
-						else	if oppose && isOK && (typeinc1 =DIVI) &&  (typeinc2 =MULTI) && isindirect1 = false && isindirect2 == false then
-						begin
-							let vardeux =  Printf.sprintf "%s-%s" (List.hd l) (List.hd (List.tl l))  in	 
-							let (stringinc,estNul,constval)=
-							match value with
-							 ConstInt (i)-> (i ,(int_of_string  i = 1),CONSTANT  (CONST_INT i))
-							| ConstFloat (i) ->(i, (float_of_string  i = 1.0),CONSTANT(CONST_FLOAT (i)) ) 
-							| RConstFloat (i) ->( Printf.sprintf "%g" i, ( i = 1.0),CONSTANT(RCONST_FLOAT (i)) ) 
-							| _->("",true,CONSTANT  (CONST_INT "1")) in
+						else	
+							if oppose && isOK && (typeinc1 =DIVI) &&  (typeinc2 =MULTI) && isindirect1 = false && isindirect2 == false then
+							begin
+								let vardeux =  Printf.sprintf "%s-%s" (List.hd l) (List.hd (List.tl l))  in	 
+								let (stringinc,estNul,constval)=
+								match value with
+								 ConstInt (i)->if  is_integer i then (i ,(int_of_string  i = 1),CONSTANT  (CONST_INT i)) else ("",true,CONSTANT  (CONST_INT "1"))
+								| ConstFloat (i) ->if  is_float i then(i, (float_of_string  i = 1.0),CONSTANT(CONST_FLOAT (i)) ) 
+												   else ("",true,CONSTANT  (CONST_INT "1"))
+								| RConstFloat (i) ->( Printf.sprintf "%g" i, ( i = 1.0),CONSTANT(RCONST_FLOAT (i)) ) 
+								| _->("",true,CONSTANT  (CONST_INT "1")) in
 
-						(*Printf.printf "deux variables ou plus non const inc1 dive%s %s %s  \n" vari1 vari2 vardeux  ;*)
-							let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (MUL,VARIABLE(vardeux), constval))) ] in
-							let newdans =  List.append dans 
-												[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (MUL,VARIABLE(vardeux), constval)))]
+							(*Printf.printf "deux variables ou plus non const inc1 dive%s %s %s  \n" vari1 vari2 vardeux  ;*)
+								let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (MUL,VARIABLE(vardeux), constval))) ] in
+								let newdans =  List.append dans 
+													[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (MUL,VARIABLE(vardeux), constval)))]
 	
-												 in	
-							listADD := List.append [VAR(vardeux, EXP(BINARY(DIV,exp1, exp2)),[],[])] !listADD ;
-							listADDInc := List.append [VAR(vardeux, EXP(BINARY(MUL,VARIABLE(vardeux), constval)),[],[])] !listADDInc ;
-							let newavant =  List.append avant
-												[ASSIGN_SIMPLE(vardeux, EXP(BINARY(DIV,exp1, exp2)))]
+													 in	
+								listADD := (VAR(vardeux, EXP(BINARY(DIV,exp1, exp2)),[],[])):: !listADD ;
+								listADDInc := List.append [VAR(vardeux, EXP(BINARY(MUL,VARIABLE(vardeux), constval)),[],[])] !listADDInc ;
+								let newavant =  List.append avant
+													[ASSIGN_SIMPLE(vardeux, EXP(BINARY(DIV,exp1, exp2)))]
 	
-												 in	
+													 in	
 	
-							rechercheConditionBinary (VARIABLE(vardeux))  vardeux op  (VARIABLE(vardeux)) (CONSTANT  (CONST_INT "1"))  [vardeux] newavant newdans estNul t 
-									(BINARY(op,   VARIABLE(vardeux),CONSTANT(CONST_INT "1"))) lv (List.append [vardeux] l) newinst
+								rechercheConditionBinary (VARIABLE(vardeux))  vardeux op  (VARIABLE(vardeux)) (CONSTANT  (CONST_INT "1"))  [vardeux] newavant newdans estNul t 
+										(BINARY(op,   VARIABLE(vardeux),CONSTANT(CONST_INT "1"))) lv (List.append [vardeux] l) newinst
+							end 
+
+							else
+							begin (*COVARIANCE A COMPLETER*)
+								let (vardeux,lvc,cvas,incr,nop, nexp2)  = 
+								  (match op with
+									LT | LE ->  
+										let vardeux =  Printf.sprintf "COV-%s-%s" (List.hd l) (List.hd (List.tl l))  in	 
+										let lvc = vari1::[vari2] in
+										let assocVectorVar =getVector   (BINARY(SUB,exp2, exp1)) lvc  in 
+										let newinst = (*listOfCoupleVectorAddCoef*)
+												 addInstEachVarOfListAssign  lvc (new_instVar  vardeux  (EXP(BINARY (SUB,exp2, exp1))) ) inst    in 
+										
+										covvarAssign:=     EXP(BINARY (SUB,exp2, exp1)); 
+										covvarLoop :=  true;
+
+									
+										(*Printf.printf "G deux variables ou plus non const inc1 dive%s %s %s  \n" vari1 vari2 vardeux  ;
+										Printf.printf "vector  \n"   ;
+										List.iter(fun x-> Printf.printf "%s "   x)lvc;Printf.printf "coef  \n"   ;
+										List.iter(fun (v,x)-> Printf.printf " %s %f "   v x )assocVectorVar;Printf.printf "\nend vector  \n"   ;*)
+										let (indirect, inc,var, after,multiple,coef) = 
+											getcovariance  assocVectorVar  lvc  newinst newinst (BINARY(op, CONSTANT(CONST_INT "0"),  
+												VARIABLE(vardeux))) [] vardeux in
+										if coef = NOTHING then
+		 								(	covvarAfter :=  after; 
+											(vardeux, lvc,BINARY (SUB,exp2, exp1), inc,(if after then LT else op), VARIABLE(vardeux)))
+										else
+										(	covvarAfter :=  false;	(vardeux, lvc,BINARY(SUB,BINARY (SUB,exp2, exp1),coef), inc, op,
+											BINARY(ADD,VARIABLE(vardeux), coef)	)		)
 
 
+        						  | GT | GE -> 
 
-						end 
+										let vardeux =  Printf.sprintf "COV-%s-%s"  (List.hd (List.tl l)) (List.hd l) in	 
+										let lvc = vari1::[vari2] in
+										let assocVectorVar =getVector   (BINARY(SUB,exp1, exp2)) lvc  in 						 
+										let newinst1 =  addInstEachVarOfListAssign  lvc (new_instVar  vardeux  (EXP(BINARY (SUB,exp1, exp2))) ) inst    in (*listOfCoupleVectorAddCoef*)
+										covvarAssign:=     EXP(BINARY (SUB,exp1, exp2)); 
+ 										covvarLoop :=  true;
 
-					else (NONMONOTONE , NOTHING, NOTHING, XOR, true, var, BINARY(op,exp1, exp2))(* if exp1 != 0 we can do the same thing with MULTI...*)
+									
+										(*Printf.printf "L deux variables ou plus non const inc1 dive%s %s %s  \n" vari1 vari2 vardeux  ;
+										Printf.printf "vector  \n"   ;
+										List.iter(fun x-> Printf.printf "%s "   x)lvc;Printf.printf "coef  \n"   ;
+										List.iter(fun (v,x)-> Printf.printf " %s %f "   v x )assocVectorVar;Printf.printf "\nend vector  \n"   ;*)
+
+										let (indirect, inc,var, after,multiple, coef) =
+											getcovariance  assocVectorVar  lvc  newinst1 newinst1 (BINARY(op, CONSTANT(CONST_INT "0"),  
+														VARIABLE(vardeux))) [] vardeux in
+										if coef = NOTHING then
+		 								(	covvarAfter :=  after;
+											(vardeux, lvc,BINARY (SUB,exp1, exp2), inc, (if after then GT else op),(VARIABLE(vardeux))))
+										else
+										(   covvarAfter :=  false; (vardeux, lvc,BINARY(SUB,BINARY (SUB,exp1, exp2),coef), inc, op,
+											BINARY(ADD,VARIABLE(vardeux), coef)					)		
+										)
+
+									
+									|_-> ("", [],BINARY (SUB,exp2, exp1), NODEFINC,op,NOTHING )) in
+
+								covvarAssign:=     MULTIPLE; 
+								listADD := (VAR(vardeux, EXP(cvas),[],[])):: !listADD ;
+								let newavant =  List.append avant [ASSIGN_SIMPLE(vardeux, EXP(cvas))]  in	
+								(match incr with
+									NODEFINC ->Printf.printf " essayer avec div  \n"  ; ( NONMONOTONE , NOTHING, NOTHING, XOR, true, var,cvas)
+									|NOINC -> ( NONMONOTONE , NOTHING, NOTHING, XOR, true, var,cvas)
+									|INC(POSITIV,exp) | INC(NEGATIV,exp)->(*Printf.printf " ADD  \n"  ;*)
+
+										let (estNul,estPos, constval)= 
+											(match exp with CONSTANT(RCONST_FLOAT (i)) ->(  i = 0.0, i > 0.0,exp ) 
+															| _->(true,false,CONSTANT  (CONST_INT "0")) )in
+										listADDInc := List.append [VAR(vardeux, EXP(BINARY(ADD,VARIABLE(vardeux), constval)),[],[])] !listADDInc ;
+										let newinst = List.append inst [new_instVar  vardeux  (EXP(BINARY (ADD,VARIABLE(vardeux), constval))) ] in
+										let newdans=List.append dans [ASSIGN_SIMPLE(vardeux, EXP(BINARY (ADD,VARIABLE(vardeux), constval)))] in	
+										 
+										rechercheConditionBinary (VARIABLE(vardeux))  vardeux nop (CONSTANT (CONST_INT "0")) (VARIABLE(vardeux))
+													[vardeux] newavant newdans estNul  t 
+													(BINARY(nop, CONSTANT(CONST_INT "0"),  VARIABLE(vardeux))) lv (List.append [vardeux] l) newinst
+
+									|INC(MULTI,exp) | INC(DIVI,exp)->(*Printf.printf " MULTI  \n"  ;*)
+
+										let (estNul,constval)= match exp with  CONSTANT(RCONST_FLOAT (i)) ->(  ( i = 1.0),exp)  
+																	| _->(true,CONSTANT  (CONST_INT "1")) in
+
+										(*Printf.printf "deux variables ou plus non const inc1 dive%s %s %s  \n" vari1 vari2 vardeux  ;*)
+ 
+										let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (MUL,VARIABLE(vardeux), constval))) ] in
+										let newdans =  List.append dans  [ASSIGN_SIMPLE(vardeux, EXP(BINARY (MUL,VARIABLE(vardeux), constval)))] in	
+										 
+										listADDInc := List.append [VAR(vardeux, EXP(BINARY(MUL,VARIABLE(vardeux), constval)),[],[])] !listADDInc ;
+														 
+	
+										rechercheConditionBinary (VARIABLE(vardeux))  vardeux nop  (CONSTANT  (CONST_INT "0"))  nexp2
+										 [vardeux] newavant newdans estNul  t 
+													(BINARY(nop, CONSTANT(CONST_INT "0"),   nexp2)) lv (List.append [vardeux] l) newinst
+									|_->(*Printf.printf " OTHER  \n"  ;*)( NONMONOTONE , NOTHING, NOTHING, XOR, true, var,cvas)
+
+								)
+							end
 				end else (NONMONOTONE , NOTHING, NOTHING, XOR, true, var, BINARY(op,exp1, exp2)))			 
 		(*NONMONOTONE , NOTHING, NOTHING, XOR, true, var, BINARY(op,exp1, exp2))*)
 		else rechercheConditionBinary ninit nv nop ne1 ne2 nl avant dans cte t c lv l inst
@@ -2051,6 +2149,8 @@ begin
 
 		end
 end
+ 
+ 
 
 and traiterUn croissant  borneInf borneSup operateur multiple var  cond avant dans cte t inst=
 	let ninst =(* List.append inst !listADDInc *) (*inst*)  List.append inst !listADDInc in
@@ -2063,7 +2163,7 @@ and traiterUn croissant  borneInf borneSup operateur multiple var  cond avant da
 		end		
 		else 	( ADD, NONMONOTONE, true, var)   in
 
-	let (isindirect,inc,vari,before,isMultiInc) =  getLoopVarInc v ninst in
+	let (isindirect,inc,vari,before,isMultiInc) =  getLoopVarIncOrCov v ninst cond in
 	(*BOOL*)
 	
 	expressionIncFor := getIncValue inc;
@@ -2369,14 +2469,14 @@ let isNE = infoVar.operateur =NE in
 				(match typeBoucle with
 					"for" |"while"->
 						(match const with (*estExecutee*)
-							ConstInt(i) 	-> if (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "0")) else	 EXP(NOTHING) 		 	
-							|ConstFloat (f) -> 	if (float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "0")) else   EXP(NOTHING)
+							ConstInt(i) 	-> if   is_integer i && (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "0")) else	 EXP(NOTHING) 		 	
+							|ConstFloat (f) -> 	if is_float f && (float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "0")) else   EXP(NOTHING)
 							|RConstFloat (f) -> 	if (  f) = 0.0  then EXP(CONSTANT (CONST_INT "0")) else   EXP(NOTHING)
 							| _->		(*Printf.printf (" boucle for infinie\n");*)EXP(NOTHING))
 					|"dowhile"->
 						(match const with
-							ConstInt(i) -> 	if (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "1"))  else   EXP(NOTHING)
-							|ConstFloat (f) -> 	if (float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "1"))   else EXP(NOTHING)
+							ConstInt(i) -> 	if is_integer i && (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "1"))  else   EXP(NOTHING)
+							|ConstFloat (f) -> 	if is_float f && (float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "1"))   else EXP(NOTHING)
 							|RConstFloat (f) -> 	if ( f) = 0.0  then EXP(CONSTANT (CONST_INT "1"))   else EXP(NOTHING)
 							| _->				EXP(NOTHING))
 					|_-> EXP(NOTHING))
@@ -2386,18 +2486,18 @@ let isNE = infoVar.operateur =NE in
 					match typeBoucle with
 					"for" |"while"->
 						(match const with (*estExecutee*)
-						ConstInt(i) 	-> if (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "0"))
+						ConstInt(i) 	-> if is_integer i && (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "0"))
 										   else	 if   op = EQ then   EXP(CONSTANT (CONST_INT "1"))  else EXP(NOTHING)   
-						|ConstFloat (f) -> 	if (float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "0"))
+						|ConstFloat (f) -> 	if is_float f &&(float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "0"))
 											else  if  op = EQ then   EXP(CONSTANT (CONST_INT "1"))  else EXP(NOTHING)
 						|RConstFloat (f) -> 	if (  f) = 0.0  then EXP(CONSTANT (CONST_INT "0"))
 											else  if  op = EQ then   EXP(CONSTANT (CONST_INT "1"))  else EXP(NOTHING)
 						| _->		(*Printf.printf (" boucle for infinie\n");*)EXP(NOTHING))
 					|"dowhile"->
 					(match const with
-						ConstInt(i) -> 	if (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "1"))
+						ConstInt(i) -> 	if is_integer i && (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "1"))
 										  else if  op = EQ  then  EXP(CONSTANT (CONST_INT "2"))   else EXP(NOTHING)
-						|ConstFloat (f) -> 	if (float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "1"))
+						|ConstFloat (f) -> 	if is_float f &&(float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "1"))
 											else if  op = EQ then   EXP(CONSTANT (CONST_INT "2"))   else EXP(NOTHING)
 						|RConstFloat (f) -> 	if ( f) = 0.0  then EXP(CONSTANT (CONST_INT "1"))
 											else if  op = EQ then   EXP(CONSTANT (CONST_INT "2"))   else EXP(NOTHING)
@@ -2691,7 +2791,8 @@ match op with EQ|NE->true|_->false
 (*afficherLesAffectations inst;*)
 	let listeV = listeDesVarsDeExpSeules cond in
 	(*let listeV = listeDesVarsDeExpSeules init in*)
-	listADD := [];listADDInc := [];
+	listADD := [];listADDInc := [];covvarAssign:=   MULTIPLE;  covvarAfter :=  false;
+ 	covvarLoop :=  false;
 	
 	expressionIncFor:= NOTHING;
 	expressionDinitFor := VARIABLE(var);
@@ -2707,7 +2808,7 @@ match op with EQ|NE->true|_->false
 				  if  initialvar  = NOTHING then   VARIABLE(v)   else initialvar );
 
 			opEstPlus:= true;	
-			let ((*isindirect,inc,var, before*)isindirect,inc,vari, before,isMultiInc) =  getLoopVarInc v (List.append inst !listADDInc) in
+			let ((*isindirect,inc,var, before*)isindirect,inc,vari, before,isMultiInc) =  getLoopVarIncOrCov v (List.append inst !listADDInc) cond in
 			(match  inc  with 
 				NODEFINC -> 
 					if isEQoperator op then
@@ -2743,8 +2844,8 @@ match op with EQ|NE->true|_->false
 					end
 					else (false, v, t, false,typev,multi,op)
 				|_-> expressionIncFor := getIncValue inc ;
-					if isMultiInc then isExactForm := false;
-					if isindirect then 
+					if isMultiInc || !covvarLoop then isExactForm := false;
+					if isindirect || !covvarAfter then 
 					begin 
 						(*if before then Printf.printf "before\n" else Printf.printf "after\n";*)
 
@@ -2820,7 +2921,8 @@ match op with EQ|NE->true|_->false
 and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) var2 listLoopVar avant dans lvb vcond inst =
 	(*Printf.printf "\n\ntraiterConditionBoucleFor  analyseCompFor\n" ;*)
 
-	listADD := [];listADDInc := [];
+	listADD := [];listADDInc := [];covvarAssign:=   MULTIPLE;  covvarAfter :=  false;
+ 	covvarLoop :=  false;
  	let (op, typev,multi,v) = analyseCompFor    var  (VARIABLE(var)) cond listLoopVar  avant dans cte t var2 lvb inst in
 	let liste = listeDesVarsDeExpSeules  cond in
 	expressionIncFor:= NOTHING;
@@ -2834,7 +2936,7 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 				  if  initialvar  = NOTHING then   VARIABLE(v)   else initialvar );
 
 			opEstPlus:= true;	
-			let (isindirect,inc,var, before,isMultiInc) =  getLoopVarInc v (List.append inst !listADDInc) in
+			let (isindirect,inc,var, before,isMultiInc) =  getLoopVarIncOrCov v (List.append inst !listADDInc) cond in
 			(match  inc  with 
 				NODEFINC -> (*Printf.printf "NODEFINC\n";*)
 					if isEQoperator op then
@@ -2867,8 +2969,8 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 				|_->
 					(*Printf.printf "OTHER NODEF\n";*)
 					expressionIncFor := getIncValue inc ;
-					if isMultiInc then isExactForm := false;
-					if isindirect then 
+					if isMultiInc || !covvarLoop then isExactForm := false;
+					if isindirect || !covvarAfter then 
 					begin 
 						expressionDinitFor :=  
 							( 	let initialvar =expVaToExp(rechercheAffectVDsListeAS var avant) in 
@@ -4387,7 +4489,7 @@ and  analyse_expressionaux exp =
 																						listeDesInstCourantes := List.append !listeDesInstCourantes [ new_instVarAndPtr  id   (EXP(NOTHING))]
 																					else 
 																						listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instMem ("*"^id) (EXP(!nouvExp)) (EXP(NOTHING))]
-															|_->             Printf.printf "array expr not found\n"; print_expression exp1 0 ;flush();space() ;flush();space() ; ())
+															|_->             if !vDEBUG then (Printf.printf "array expr not found\n"; print_expression exp1 0 ;flush();space() ;flush();space() ); ())
 
 									else 
 									begin 	
@@ -4894,13 +4996,13 @@ List.iter(fun x->Printf.printf"%s " x)input;Printf.printf"\ninput\n";*)
 					let (isArray,dim) = 
 						(match tt with
 							ARRAY (t, dim) -> majAssosArrayIDsize id tt exp; (* because of rename it is ok*)
-								(match calculer  (EXP(dim)) !infoaffichNull  [] 1 with ConstInt(s)-> (true,(int_of_string  s)) |_->(true,0))
+								(match calculer  (EXP(dim)) !infoaffichNull  [] 1 with ConstInt(s)-> if  is_integer s then (true,(int_of_string  s)) else (true, 0) |_->(true,0))
 							|_ -> if isTypeDefTab then ( setAssosArrayType   id typeDefBaseType ; setAssosArrayIDsize id size;(false,0) ) 
 								  else
 								  begin
 										(match typ with
 											ARRAY (t, dim) ->   majAssosArrayIDsize id typ exp; (* because of rename it is ok*)
-												(match calculer  (EXP(dim)) !infoaffichNull  [] 1 with ConstInt(s)-> (true,(int_of_string  s)) |_->(true,0))
+												(match calculer  (EXP(dim)) !infoaffichNull  [] 1 with ConstInt(s)-> if  is_integer s then (true,(int_of_string  s)) else (true, 0) |_->(true,0))
 											|_ ->  (false,0)) 
 								  end
 						)
@@ -4928,7 +5030,7 @@ List.iter(fun x->Printf.printf"%s " x)input;Printf.printf"\ninput\n";*)
 				 else if !estGlobale = false  && estDejaDecl = false then
 					  begin
 							listeDesInstGlobales := List.append !listeDesInstGlobales !listeDesInstCourantes;
-						   
+						    listeLocalStatic := List.append !listeLocalStatic !listeDesInstCourantes;
 							listeDesInstCourantes := listPred
 					  end ;
 
@@ -5628,7 +5730,7 @@ begin
 		let nval = calculer  (EXP(exp)) !infoaffichNull  [] 1 in
 		let nextvat = 
 			match nval with 
-	 			ConstInt (i)-> (int_of_string  i) +1
+	 			ConstInt (i)-> if  is_integer i then  (int_of_string  i) +1 else (valeur+1) 
 			|_-> (valeur+1) in
 		
  
@@ -5757,13 +5859,13 @@ and onlyanalysedef def =
 					let (isArray,dim) = 
 						(match tt with
 							ARRAY (t, dim) -> majAssosArrayIDsize id tt exp; (* because of rename it is ok*)
-								(match calculer  (EXP(dim)) !infoaffichNull  [] 1 with ConstInt(s)-> (true,(int_of_string  s)) |_->(true,0))
+								(match calculer  (EXP(dim)) !infoaffichNull  [] 1 with ConstInt(s)-> if  is_integer s then (true,(int_of_string  s)) else (true,0) |_->(true,0))
 							|_ -> if isTypeDefTab then (setAssosArrayType   id typeDefBaseType ; setAssosArrayIDsize id size;(false,0) ) 
 								  else
 								  begin
 										(match typ with
 											ARRAY (t, dim) ->  majAssosArrayIDsize id typ exp; (* because of rename it is ok*)
-												(match calculer  (EXP(dim)) !infoaffichNull  [] 1 with ConstInt(s)-> (true,(int_of_string  s)) |_->(true,0))
+												(match calculer  (EXP(dim)) !infoaffichNull  [] 1 with ConstInt(s)-> if  is_integer s then (true,(int_of_string  s)) else (true,0)|_->(true,0))
 											|_ ->  (false,0)) 
 								  end
 						)
@@ -5782,7 +5884,7 @@ and onlyanalysedef def =
 				 else if !estGlobale = false  && estDejaDecl = false then
 					  begin
 							listeDesInstGlobales := List.append !listeDesInstGlobales !listeDesInstCourantes;
-							 
+							listeLocalStatic := List.append !listeLocalStatic !listeDesInstCourantes; 
 							listeDesInstCourantes := listPred
 					  end ;
 			()
