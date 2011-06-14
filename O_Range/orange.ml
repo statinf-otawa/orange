@@ -23,6 +23,7 @@ open Util
 open Cextraireboucle
 open TreeList
 
+let exp_VERBOSE = ref false
 module type LISTENER =
   sig
     type t
@@ -168,12 +169,29 @@ module MonList = struct
 
 	let max = (extractExp maxcount)  in
 	let esc s = Cxml.escape_attr s '"' in
-	let text = if max = "NOCOMP" && expinit != NOTHING then
+	let text = 
+
+			if ( !exp_VERBOSE =  true) then
+			begin
+				if max = "NOCOMP" && expinit != NOTHING then
   					sprintf "<loop loopId=\"%u\" line=\"%u\" source=\"%s\" exact=\"%b\" maxcount=\"%s\" totalcount=\"%s\" maxexpr=\"%s\" totalexpr=\"%s\" expinit=\"%s\">\n"
 		            loopID line source exact (extractExp maxcount) (extractExp totalcount) (esc maxexpStr) (esc totalexpStr) (esc initexpStr)
 				else
 					sprintf "<loop loopId=\"%u\" line=\"%u\" source=\"%s\" exact=\"%b\" maxcount=\"%s\" totalcount=\"%s\" maxexpr=\"%s\" totalexpr=\"%s\">\n"
-		            loopID line source exact (extractExp maxcount) (extractExp totalcount) (esc maxexpStr) (esc totalexpStr)  in
+		            loopID line source exact (extractExp maxcount) (extractExp totalcount) (esc maxexpStr) (esc totalexpStr)  
+			end 
+			else
+			begin
+				if max = "NOCOMP" && expinit != NOTHING then
+				  sprintf 
+					"<loop loopId=\"%u\" line=\"%u\" source=\"%s\" exact=\"%b\" maxcount=\"%s\" totalcount=\"%s\">\n"
+					loopID line source exact (extractExp maxcount) (extractExp totalcount) 
+				else
+				  sprintf "<loop loopId=\"%u\" line=\"%u\" source=\"%s\" exact=\"%b\" maxcount=\"%s\" totalcount=\"%s\">\n"
+									loopID line source exact (extractExp maxcount)  (extractExp totalcount)
+  
+			end
+			in
 	nbLigne := !nbLigne +1;
 	let resaux =
 		if !nbLigne>=50 then (nbLigne := 0; predListener := concat !predListener res;"") else res in
@@ -306,6 +324,7 @@ let notwithGlobalAndStaticInit =ref true
 let estDansBoucle = ref false
 let varDeBoucleBoucle = ref""
 let isPartialisation = ref false
+let isPrint_Expression = ref false
 
 (*type boucleEval idem fonction eval*)
 type evaluationType =
@@ -1662,22 +1681,40 @@ if ltrue = [] then begin (*Printf.printf " liste isexecuted vide pour true \n" ;
 else
 begin
 	(*Printf.printf "isExecutedTrue liste des variables true :\n"; List.iter (fun e-> Printf.printf "%s "e) ltrue;*)
-	if existeAffectationVarListe (List.hd ltrue) contexte then
-	begin
-		let affect = (applyStoreVA (rechercheAffectVDsListeAS  (List.hd ltrue) contexte) globales) in
-     (*Printf.printf "CALCUL affect true %s\n" (List.hd ltrue) ; print_expVA affect;flush(); space(); new_line();*)
-		let cond = calculer  affect !infoaffichNull  [] 1 in
-		if affiche && !isPartialisation = false && !trace then
-		begin
-				(*print_expTerm  cond; flush(); space();new_line();	*)
-		 	 	Printf.printf "%s=" (List.hd ltrue) ;	print_expTerm  cond;  space(); new_line() ;flush();
-		end;
-		(* print_expTerm  cond;flush(); space(); new_line();	*)
-		match cond with
-		  Boolean(false)  | ConstInt("0")-> (*Printf.printf " non execute %s" (List.hd ltrue);*)false
-		| Boolean(true)  | ConstInt("1")|_-> isExecutedTrue (List.tl ltrue) contexte affiche globales
-	end
-	else true
+			if !hasCondListFile_name && existeAffectationVarListe (List.hd ltrue) !condAnnotated then
+			begin
+ 
+				let affect = rechercheAffectVDsListeAS  (List.hd ltrue)   !condAnnotated in
+				let cond = calculer  affect !infoaffichNull  [] 1 in 
+				if affiche && !isPartialisation = false && !trace then
+				begin
+					Printf.printf "\n%s(expression) : \n" (List.hd ltrue) ;print_expVA affect;flush(); space(); new_line(); space(); new_line() ;flush();
+					Printf.printf "\n%s(value) :\n" (List.hd ltrue) ; print_expTerm  cond;  space(); new_line() ;flush(); space(); new_line() ;flush()
+				end;
+				
+				match cond with Boolean(false)  | ConstInt("0")-> false| Boolean(true)  | ConstInt("1")|_-> isExecutedTrue (List.tl ltrue) contexte affiche globales
+			end
+			else
+			begin
+				if existeAffectationVarListe (List.hd ltrue) contexte then
+				begin
+					let affect = (applyStoreVA (rechercheAffectVDsListeAS  (List.hd ltrue) contexte) globales) in
+				 (*Printf.printf "CALCUL affect true %s\n" (List.hd ltrue) ; print_expVA affect;flush(); space(); new_line();*)
+					let cond = calculer  affect !infoaffichNull  [] 1 in
+					if affiche && !isPartialisation = false && !trace then
+					begin
+							(*print_expTerm  cond; flush(); space();new_line();	*)
+							Printf.printf "\n%s(expression) : \n" (List.hd ltrue) ;
+							print_expVA affect;flush(); space(); new_line(); space(); new_line() ;flush();
+					 	 	Printf.printf "\n%s(value) :\n" (List.hd ltrue) ; print_expTerm  cond;  space(); new_line() ;flush(); space(); new_line() ;flush();
+					end;
+					(* print_expTerm  cond;flush(); space(); new_line();	*)
+					match cond with
+					  Boolean(false)  | ConstInt("0")-> (*Printf.printf " non execute %s" (List.hd ltrue);*)false
+					| Boolean(true)  | ConstInt("1")|_-> isExecutedTrue (List.tl ltrue) contexte affiche globales
+				end
+				else true
+			end
 
 end
 
@@ -1686,24 +1723,45 @@ if lfalse = [] then begin (*Printf.printf " liste isexecuted vide pour false \n"
 else
 begin
 (*Printf.printf "isExecutedFalse liste des variables false :\n"; List.iter (fun e-> Printf.printf "%s "e) lfalse;*)
-  if existeAffectationVarListe (List.hd lfalse) contexte then
-  begin
-(*Printf.printf "existe \n";*)
+			if !hasCondListFile_name && existeAffectationVarListe (List.hd lfalse) !condAnnotated then
+			begin
+ 
+				let affect = rechercheAffectVDsListeAS  (List.hd lfalse)   !condAnnotated in
+				let cond = calculer  affect !infoaffichNull  [] 1 in 
+				if affiche && !isPartialisation = false && !trace then
+						begin
+								(*print_expTerm  cond; flush(); space();new_line();	*)
+								Printf.printf "\n%s(expression) : \n" (List.hd lfalse);
+								print_expVA affect;flush(); space(); new_line(); space(); new_line() ;flush();
+						 	 	Printf.printf "\n%s(value) :\n" (List.hd lfalse) ; print_expTerm  cond;  space(); new_line() ;flush(); space(); new_line() ;flush();
+						end;
+				
+				match cond with
+						Boolean(true) | ConstInt("1")->  false
+					  | Boolean(false)  | ConstInt("0") |_-> isExecutedFalse (List.tl lfalse) contexte affiche globales
+			end
+			else
+			begin
 
-  let affect = (applyStoreVA (rechercheAffectVDsListeAS  (List.hd lfalse) contexte) globales) in
-  (*	Printf.printf "CALCUL affect false %s\n" (List.hd lfalse) ; print_expVA affect; flush(); space();new_line();print_expVA affect;flush(); space(); new_line();*)
-	  let cond = calculer   affect  !infoaffichNull  [] 1 in
-	  if affiche && !isPartialisation = false && !trace  then
-	  begin
-			  (*print_expTerm  cond; flush(); space();new_line(); space(); new_line() ;flush();	*)
+				  if existeAffectationVarListe (List.hd lfalse) contexte then
+				  begin
+				(*Printf.printf "existe \n";*)
 
-		 	  Printf.printf "%s" (List.hd lfalse) ;	print_expTerm  cond;  space(); new_line() ;flush();
-	  end;
-	  match cond with
-	    Boolean(true) | ConstInt("1")-> (*Printf.printf "isExecutedFalse non execute %s" (List.hd lfalse) ;*) false
-	  | Boolean(false)  | ConstInt("0") |_-> isExecutedFalse (List.tl lfalse) contexte affiche globales
-  end
-  else begin (*Printf.printf " liste affect non trouve sur n autre chemin\n" ;*) true end
+				  let affect = (applyStoreVA (rechercheAffectVDsListeAS  (List.hd lfalse) contexte) globales) in
+				  (*	Printf.printf "CALCUL affect false %s\n" (List.hd lfalse) ; print_expVA affect; flush(); space();new_line();print_expVA affect;flush(); space(); new_line();*)
+					  let cond = calculer   affect  !infoaffichNull  [] 1 in
+					  if affiche && !isPartialisation = false && !trace  then
+					  begin
+							  (*print_expTerm  cond; flush(); space();new_line(); space(); new_line() ;flush();	*)
+							  Printf.printf "%s(expression) : "  (List.hd lfalse) ; print_expVA affect; flush(); space();new_line();flush(); space(); new_line();flush(); space(); new_line();
+						 	  Printf.printf "\n%s(value) : \n" (List.hd lfalse) ;	print_expTerm  cond;  space(); new_line() ;flush();flush(); space(); new_line();
+					  end;
+					  match cond with
+						Boolean(true) | ConstInt("1")-> (*Printf.printf "isExecutedFalse non execute %s" (List.hd lfalse) ;*) false
+					  | Boolean(false)  | ConstInt("0") |_-> isExecutedFalse (List.tl lfalse) contexte affiche globales
+				  end
+				  else begin (*Printf.printf " liste affect non trouve sur n autre chemin\n" ;*) true end
+			end
 
 end
 
@@ -1714,11 +1772,11 @@ let isExecuted ltrue lfalse contexte appel globales affiche=
 	Printf.printf "isExecuted : traiterboucleinterne globales : \n"; afficherListeAS globales; Printf.printf "FIN CONTEXTE \n";*)
   let listeP = !listeASCourant in
   let res = (rond appel contexte) in
-  if affiche && !isPartialisation = false && !trace then
+ (* if affiche && !isPartialisation = false && !trace then
   begin
 	 if ltrue <> [] then ( Printf.printf "isExecuted : list of true conditions variables\n"; List.iter (fun e-> Printf.printf "%s "e) ltrue);
 	 if lfalse <> [] then (  Printf.printf "isExecuted : list of false conditions variables\n"; List.iter (fun e-> Printf.printf "%s "e) lfalse)
-  end;
+  end;*)
  (*afficherListeAS( res);new_line () ;*)
   let valeur = if ltrue = [] && lfalse = [] then true else (isExecutedTrue ltrue res affiche globales) && (isExecutedFalse lfalse res affiche globales) 	in
   listeASCourant := listeP;
@@ -3847,6 +3905,8 @@ let evaluerFonctionsDuDoc  doc=
 
 	  listeASCourant := [];
 	  globalesVar := !alreadyAffectedGlobales;
+
+	  
 (*Printf.printf"GLOBALE\n";
 List.iter(fun var->Printf.printf "%s 	"var)!globalesVar;*)
 (*Printf.printf"Dans evaluerFonction %s  \nLES AFFECTATIONS" !(!mainFonc);
@@ -4105,20 +4165,21 @@ end
 let evaluerOneFunctionOfDoc  doc evalFunction=
   if !doc.laListeDesFonctions <> [] then
   begin
-if existeFonctionParNom	!(!mainFonc) doc  = false then failwith "no entry point";
+	  if existeFonctionParNom	!(!mainFonc) doc  = false then failwith "no entry point";
 	  let (_, f) = (rechercherFonctionParNom !(!mainFonc) doc) in
 	  nb_loop :=  0;
-	  Printf.printf "nbAppels de %s = "evalFunction ; print_expression (consNBFonction !(!mainFonc) f  0 [] [] evalFunction) 0;flush(); space();
+	  Printf.printf "\nnbofCallof %s = \n"evalFunction ; print_expression (consNBFonction !(!mainFonc) f  0 [] [] evalFunction) 0;flush(); space();
+	  new_line();flush(); space();
 	  new_line()
   end
 
 
-let rec evaluerNbFunctionOfDoc  doc evalFunction=
+let rec evaluerNbFunctionOfDoc  doc evalFunction l2=
   match evalFunction with
   []-> new_line()
-  |e::l -> begin
-	   evaluerOneFunctionOfDoc doc !e ;
-	   evaluerNbFunctionOfDoc doc l; flush(); space();new_line()
+  |e::l -> begin trace:=true;
+	   if List.mem !e l2 =false then evaluerOneFunctionOfDoc doc !e ;
+	   evaluerNbFunctionOfDoc doc l (!e::l2); flush(); space();new_line()
 	   end
 
 
@@ -4130,6 +4191,7 @@ let initref (result : out_channel) (defs : file) =
   estDansBoucle :=  false;
   varDeBoucleBoucle := "";
   isPartialisation := false;
+  isPrint_Expression := false;
   analyse_defsPB defs(*;
   print_AssosIdLoopRef  !listLoopIdRef;
   print_listIdCallFunctionRef !listIdCallFunctionRef*)
@@ -4190,6 +4252,7 @@ let printFile (result : out_channel)  (defs2 : file) need_analyse_defs=
   ptrInterval :=   [];
   integerInterval :=   ["x"];
 
+  if ( !isPrint_Expression ) then exp_VERBOSE :=  true else exp_VERBOSE :=  false;
 
   if need_analyse_defs
   	then  analyse_defs defs2; (*step 1*)
@@ -4211,11 +4274,16 @@ print_AssosArrayIDsize !listAssosArrayIDsize;
   flush ();
 
 
-
+  if !evalFunction != [] then( evaluerNbFunctionOfDoc  doc  !evalFunction []; afficherFonctionsDuDoc doc;);
+ 	if !hasCondListFile_name then
+	begin
+		condAnnotated := renameListeIF (getAbsStoreFromComp !condListFile_name) ;
+		afficherListeAS   !condAnnotated; 
+	end;
 
  let result = (* afficherFonctionsDuDoc doc; Listener.null*)
 
-		 evaluerNbFunctionOfDoc  doc  !evalFunction;
+		 
 		  getOnlyBoolAssignment := false;
 		 listNotEQ := [];
 		  Printf.printf "\nEVALUATION BEGIN\n";

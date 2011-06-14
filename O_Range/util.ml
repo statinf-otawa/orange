@@ -7,7 +7,7 @@ open Rename
 open Printf
 let vDEBUG = ref false
 let  cSNPRT = ref true   (* pas d'analyse de domaine de pointeur dans util.ml de O_Range*)
-
+let hasCondListFile_name = ref false
 let (alreadyAffectedGlobales: string list ref) = ref []
 
 let (listEnumId: string list ref) = ref []
@@ -72,7 +72,8 @@ let new_instAPPELCOMP num instAffectIn nom instAffectSortie absStore s = APPEL(n
 
 let (alreadyDefFunction: (string * inst list)list ref) = ref []
 let (alreadyDefFunctionForPtr: (string * inst list)list ref) = ref []
-
+let (condAnnotated :  abstractStore list ref)  = ref []
+let condListFile_name  = ref ""
 
 let add_list_body   v =  
   alreadyDefFunction := v :: (!alreadyDefFunction)
@@ -1300,7 +1301,18 @@ match a with
 					| _->print_expression  (BINARY(ASSIGN,INDEX(VARIABLE(s),  VARIABLE("NODEF")),  VARIABLE("NODEF"))) 0)
 
 let afficherListeAS asL =space(); new_line() ;flush(); List.iter (fun a-> afficherAS a; space(); new_line() ;flush(); )asL
-
+let renameListeIF asL =  List.map (fun a-> match a with
+		ASSIGN_SIMPLE (x, e) 	 ->  
+			  	if (String.length x > 3) then  
+					if   (String.sub x  0 3) = "IF_"  then  
+					begin
+						let s1 =String.sub x 1 ((String.length x)-1) in
+						let s2 =String.sub s1 1 ((String.length s1)-1) in
+						ASSIGN_SIMPLE ("IF-"^(String.sub s2 1 ((String.length s2)-1)),e) 
+					end
+					else a 
+				else a
+		|	_ ->   a)asL
 
 
 let rec afficherLesAffectations listeAffect = List.iter (fun affect -> afficherUneAffect affect; flush();flush(); space(); new_line ()) listeAffect
@@ -1680,7 +1692,42 @@ let rec addInstEachVarOfListAssign  listOfCovariantVar  instructiontoadd inst = 
 						 
 					|_->n1::(addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd t1)
 					 
-)
+)(*
+
+let rec addInstEachVarOfListAssign  listOfCovariantVar  instructiontoadd inst = (*return a new inst list where each assignment of var of listOfCovariantVar are completed by instructiontoadd *)
+
+ 
+		let (_, res) = addInstEachVarOfListAssignaux  listOfCovariantVar  instructiontoadd inst in res
+
+
+
+and addInstEachVarOfListAssignaux  listOfCovariantVar  instructiontoadd inst = (*return a new inst list where each assignment of var of listOfCovariantVar are completed by instructiontoadd *)
+
+ 
+		match inst with
+		| [] -> (false,[])
+		| n1::t1 ->
+	 		let (boolean, res) = addInstEachVarOfListAssignaux  listOfCovariantVar instructiontoadd t1 in
+		 	( match n1 with
+					VAR ( id, _,_,_) | TAB ( id, _, _,_,_)   |  MEMASSIGN ( id, _, _,_,_) ->	
+						if List.mem id listOfCovariantVar && boolean then 
+						 
+										(boolean, n1::(instructiontoadd::res))
+					 	
+				 		else (boolean, n1::res)
+					 
+					| IFVF ( a, i1, i2) 		-> 	
+						(false, IFVF ( a, BEGIN (addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd  [i1]), 
+						 BEGIN (addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd [i2]))::res)
+					| IFV ( a, i1) 		-> (false, IFV ( a,  BEGIN (addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd [i1])) ::res)
+					| BEGIN (liste)		-> (boolean, BEGIN (addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd liste)::res)
+					| FORV (a, b, c, d, e,f, i,j) ->(boolean, FORV (a, b, c, d, e,f, BEGIN ( addInstEachVarOfListAssign  listOfCovariantVar instructiontoadd [i]),j)::res)
+						 
+					|_->(boolean, n1::res)
+					 
+)*)
+
+
 
 let rec   addAInstEachVarOfListAssign   listOfCovariantVar  instructiontoadd inst = (*return a new assignment list where each assignment of var of listOfCovariantVar are completed by instructiontoadd *)
 

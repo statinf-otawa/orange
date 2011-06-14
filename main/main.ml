@@ -64,6 +64,8 @@ let banner =
 let args: Frontc.parsing_arg list ref = ref []
 
 (* input stuff *)
+
+
 let list_file_and_name: string list ref = ref []
 let add_file_and_name filename =
 	list_file_and_name := List.append !list_file_and_name [filename]
@@ -90,6 +92,7 @@ let calipso_rrec = ref false
 (* output stuff *)
 let out_file = ref ""
 let out_dir = ref "."
+let print_exp = ref false
 
 (* auto stuff *)
 let auto = ref false
@@ -108,7 +111,7 @@ let withoutGlobalAndStaticInit = ref false
 
 let opts = [
 
-	
+	(*if !hasCondListFile_name  then condListFile_name *)
 
 
 	(* Input options *)
@@ -118,9 +121,12 @@ let opts = [
 		"File with the list of function names to be processed.");
 	("--up", Arg.String (fun name -> Cextraireboucle.add_use_partial name; alreadyEvalFunctionAS := List.map (fun n ->  (n,Cextraireboucle.getAbsStoreFromComp n)  )!use_partial	;),
 		"Use partial result (rpo file) for this function.");
+	("--condIF",Arg.String (fun dir ->  hasCondListFile_name :=true;	 condListFile_name  := dir),
+		"Use annotation for if into file");
 	(* Mode options *)
 	("--auto", Arg.Set auto,
 		"Automated full analysis");
+	("--print_exp", Arg.Set print_exp, "print_expression of bounds or conditions");
 	("--allow-pessimism", Arg.Set allow_pessimism,
 		"Allow to automatically partialize even function that imply pessimism (faster)");
 	("-k", Arg.Set partial,
@@ -224,7 +230,7 @@ let rec getComps = function
 			TO.curassocnamesetList := [];
 			TO.listeInstNonexe := [];
 			TO.aslAux := [];
-			TO.listCaseFonction := []*)TO.isPartialisation := true;
+			TO.listCaseFonction := []*)TO.isPartialisation := true;TO.isPrint_Expression := true; 
 			listeASCourant := [];
 			(*Printf.printf "Longueur de l'arbre: avant %d.\n" (List.length !TO.docEvalue.TO.maListeEval);*)
 			let globales = !alreadyAffectedGlobales in
@@ -298,7 +304,7 @@ let analysePartielle file =
 	idAppel:=0;
 	nbImbrications := 0;
 	TO.enTETE :=  false;
-	TO.estNulEng :=  false;  TO.isPartialisation := true;
+	TO.estNulEng :=  false;  TO.isPartialisation := true; TO.isPrint_Expression := true; 
 	TO.estDansBoucle :=  false;getOnlyBoolAssignment := true;
 	analyse_defs file;getOnlyBoolAssignment := false; phaseinit := false;
 	printf "analyse_defs OK, maintenant lance evaluation des composants.\n";
@@ -330,6 +336,12 @@ let _ =
 	Cextraireboucle.sort_list_file_and_name !list_file_and_name;
 	
 	(* Check the number of anonymous parameters *)
+
+	if !hasCondListFile_name then
+	begin
+		condAnnotated := getAbsStoreFromComp !condListFile_name ;
+		(*afficherListeAS   !condAnnotated; *)
+	end;
 	if ((not !partial) && (not !onlyGraphe))
 		then (	(* full analysis mode *)
 		if (List.length !Cextraireboucle.names < 1)
@@ -445,6 +457,7 @@ let _ =
 			else Resumeforgraph.resume secondParse false
 	
 	else begin	(* Analysis mode *)
+		
 		if (!auto) (* automated full analysis *)
 		then begin
 				(* apply a partialization strategy *)
@@ -522,6 +535,7 @@ let _ =
 				and tl =(List.tl (!Cextraireboucle.names))
 				in Cextraireboucle.maj hd tl;
 				(*XO.initref stdout firstParse;*)
+				if !print_exp then XO.isPrint_Expression := true else XO.isPrint_Expression := false;
 				XO.notwithGlobalAndStaticInit := !withoutGlobalAndStaticInit;
 			 	XO.docEvalue :=  XO.new_documentEvalue  [] [];compEvalue := [];
 				listeAppels :=  [];
@@ -541,6 +555,7 @@ let _ =
 			end
 		else	(* full analysis *)
 			begin
+				if !print_exp then XO.isPrint_Expression := true else XO.isPrint_Expression := false; 
 				XO.notwithGlobalAndStaticInit := !withoutGlobalAndStaticInit;
 				(*Resumeforgraph.get_intervals secondParse;*)
 

@@ -223,11 +223,11 @@ match exprEvaluee with
 	|  	Sum (f, g)  		-> 	let exp1 = expressionEvalueeToExpression f in
 								let exp2 = expressionEvalueeToExpression g in
 								if exp1 = NOTHING || exp2 = NOTHING then NOTHING else BINARY (ADD, exp1, exp2)
-	|  	Shl (f, g)  		-> 	let exp1 = expressionEvalueeToExpression f in
+	|  	Shr (f, g)  		-> 	let exp1 = expressionEvalueeToExpression f in
 								let exp2 = expressionEvalueeToExpression g in
 								if exp1 = NOTHING || exp2 = NOTHING then NOTHING
 								else BINARY (DIV, exp1,  CALL (VARIABLE("pow"), List.append [CONSTANT(CONST_INT("2"))] [exp2]))
-	|  	Shr (f, g)  		-> 	let exp1 = expressionEvalueeToExpression f in
+	|  	Shl (f, g)  		-> 	let exp1 = expressionEvalueeToExpression f in
 								let exp2 = expressionEvalueeToExpression g in
 								if exp1 = NOTHING || exp2 = NOTHING then NOTHING
 								else BINARY (MUL, exp1, CALL (VARIABLE("pow") , List.append [CONSTANT(CONST_INT("2"))] [exp2]))
@@ -1290,22 +1290,22 @@ and  calculer expressionVA ia l sign =
 
 			(*Printf.printf"var2\n "; print_expTerm val2;new_line();*)
 
-				if estNoComp val1 || estNoComp val2 || (multop && oksign = false )  then
+				if estNoComp val1 || estNoComp val2 || (multop && oksign = false )  then (
 					if op = OR then
 						if estNoComp val1  then
 						 	if estNoComp val2 then NOCOMP
 							else (val2)
 						else (val1)
 					else  if op = AND then
-						  begin
+						  begin  
 							if estNoComp val1  then
 						 		if estNoComp val2 then NOCOMP
-								else if isBoolFalse val2 then  Boolean (false) else NOCOMP
-							else if isBoolFalse val1 then Boolean (false) else NOCOMP
+								else (*if isBoolFalse val2 then  Boolean (false) else NOCOMP*)val2
+							else (* if isBoolFalse val1 then Boolean (false) else NOCOMP*) val1
                                   
 						  (*Printf.printf "voir cas du and\n"; NOCOMP*)
 						  end 
-						  else NOCOMP
+						  else NOCOMP )
 				else
 				begin
 (*
@@ -1412,6 +1412,7 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 							else Boolean (false)
 						else NOCOMP
 				| AND |OR ->
+ 
 					let (resb1,comp1) =
 						(	if val1 = Boolean(true) || val1 = ConstInt ("1")  || val1 = ConstFloat("1.0")|| val1 = RConstFloat(1.0)
 							then (true,true)
@@ -1427,13 +1428,11 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 (*estBoolOrVal*)
 					if comp1 = false && comp2 = false then begin (*Printf.printf " NOCOMP AND OR \n";*)NOCOMP end
 					else
-					begin
-						if op = OR then
-						begin
-								if comp1 = false  then Boolean(resb2 )
-								else if comp2 = false then Boolean(resb1) else  Boolean(resb1 || resb2)
-						end
-						else  if comp1 = false ||  comp2 = false then NOCOMP else   Boolean(resb1 && resb2)
+					begin 
+						if comp1 = false  then   Boolean(resb2 )
+						else if comp2 = false then Boolean(resb1) 
+							 else  if op = OR then  Boolean(resb1 || resb2)
+								   else   Boolean(resb1 && resb2)
 
 					end
 				| BAND	| BOR| XOR	| ASSIGN | ADD_ASSIGN
@@ -1996,9 +1995,9 @@ if !vDEBUG then Printf.printf"SYGMA simplifier dans affine\n";
 							else if (estVarDsExpEval var g = false) then (estAffine var f)  else false
 		| Puis (f, g) ->  	if (estVarDsExpEval var f = false) && (estVarDsExpEval var g = false) then true else false
 		| Quot (f, g)	->  if (estVarDsExpEval var g = false) then (estAffine var f)  else false
-		| Shr (f, g)  ->	if (estVarDsExpEval var f = false) then (estAffine var g)
+		| Shl (f, g)  ->	if (estVarDsExpEval var f = false) then (estAffine var g)
 							else if (estVarDsExpEval var g = false) then (estAffine var f) else false
-		| Shl (f, g)	->  if (estVarDsExpEval var g = false) then (estAffine var f)  else false
+		| Shr (f, g)	->  if (estVarDsExpEval var g = false) then (estAffine var f)  else false
 		| Mod (f, g)	->  if (estVarDsExpEval var g = false)then (estAffine var f)  else false
 		| ConstInt(_)| Boolean(_) | ConstFloat (_) | Var (_) -> 		true
 		| RConstFloat (_)  -> 		true
@@ -2012,6 +2011,66 @@ if !vDEBUG then Printf.printf"SYGMA simplifier dans affine\n";
  		| Eq1 (v)-> 		(estAffine var v)
   		| Maximum (f, g)  -> if (estVarDsExpEval var f = false) && (estVarDsExpEval var g = false) then true else false
   		| Minimum (f, g)  -> if (estVarDsExpEval var f = false) && (estVarDsExpEval var g = false) then true else false
+
+
+and getNumberOfTerms   exp    =
+	match exp with
+		 
+	 	| Sum (f, g) 	
+		| Diff (f, g) 	->  
+				(*match (f, g) with 
+					  (Quot (u, _), Quot (v, _))	->  (getNumberOfTerms f) + (getNumberOfTerms g)+2
+					| (_, Quot (v, _))	->(getNumberOfTerms f) + (getNumberOfTerms g)+1
+					| (Quot (u, _), _)	->(getNumberOfTerms f) + (getNumberOfTerms g)+1
+					| (_, _)	-> *)(getNumberOfTerms f) + (getNumberOfTerms g)
+		| Prod (f, g)  | Shl (f, g)	 ->  	 (getNumberOfTerms f) * (getNumberOfTerms g)
+		| Quot (f, _)| Shr (f, _)| Mod (f, _)	 	->  (getNumberOfTerms f)  	+1 
+		| PartieEntiereSup (e)  | PartieEntiereInf (e)->  (getNumberOfTerms e) (*revoir*)
+   	    | _-> 0
+
+and hasAConstantTermIntoDivExp   exp lv   = (* are there a term (x+cte)/k ? x into lv and k a loop contant*)
+	match exp with
+		 
+	 	| Sum (f, g) 	
+		| Diff (f, g) 	
+		| Prod (f, g)  | Shl (f, g)	 ->  	 (hasAConstantTermIntoDivExp    f lv) || (hasAConstantTermIntoDivExp g lv)
+		| Quot (f, g)| Shr (f, g)| Mod (f, g)	 	-> if estUn g = false then (hasNotNulConstantEtVar lv  f )  else 	  (hasAConstantTermIntoDivExp f lv)
+		| PartieEntiereSup (e)  | PartieEntiereInf (e)->  (hasAConstantTermIntoDivExp e lv) (*revoir*)
+		| _ -> 		false
+
+
+and hasNotNulConstantEtVar lv exp  =
+	match exp with
+	 	 Sum (f, g) 	
+		| Diff (f, g) 	 ->  ( hasNotNulConstantEtVar lv  f) || ( hasNotNulConstantEtVar lv   g) || (hasNotNulConstant lv f && haslvvar lv g) ||  (hasNotNulConstant lv g && haslvvar lv f)
+		| Prod (f, g) | Shl (f, g) ->     	 ( hasNotNulConstantEtVar lv   f) || ( hasNotNulConstantEtVar lv   g)
+		| Quot (f, g)| Shr (f, g)	| Mod (f, g)->   ( hasNotNulConstantEtVar lv  f)
+		| PartieEntiereSup (e) 
+	    | PartieEntiereInf (e)->   ( hasNotNulConstantEtVar lv   e) 
+   	    | _-> false 
+
+and hasNotNulConstant lv exp  =
+	match exp with
+		NOCOMP -> false
+	 	| Sum (f, g) 	
+		| Diff (f, g) 		  ->  ( hasNotNulConstant  lv   f) || ( hasNotNulConstant  lv   g)
+		| Quot (f, g)| Shr (f, g)| Mod (f, g)	 	-> hasNotNulConstant  lv  f	
+		| Prod (f, g) | Shl (f, g)	->  let res1 = if ( haslvvar lv f)  then ( hasNotNulConstant  lv   f) else false in
+										let res2 = if ( haslvvar lv g)  then ( hasNotNulConstant  lv   g) else false in
+										res1 || res2
+		| ConstInt(_)| Boolean(_) | ConstFloat (_)   	| RConstFloat (_)  -> 	if 	estNul exp = false then true else false
+	
+		| Var (x) -> 		if List.mem x lv = false then true else false
+		| _ -> true
+
+
+and haslvvar lv e  =
+	if intersection  lv   (listeDesVarsDeExpSeules   (expressionEvalueeToExpression e)) = [] then false else true
+	
+
+
+
+
 
 and remplacerVpM var max expre =
 if !vDEBUG then Printf.printf"SYGMA simplifier avant remplacerVpM\n";
@@ -2281,7 +2340,7 @@ and sensVariation var max expre ia =
 					| DECROISSANT->
 						if ( sensg = CONSTANTE) || (sensg =  CROISSANT) then  DECROISSANT   else NONMONOTONE
 				)
-			| Prod (f, g)| Shr (f, g) |  Puis (f, g)  ->
+			| Prod (f, g)| Shl (f, g) |  Puis (f, g)  ->
 				let sensf = sensVariation var max f ia in
 				let sensg =  sensVariation var max g ia in
 				(*Printf.printf "Prod sens f , g\n" ;printSens sensf; printSens sensg;*)
@@ -2309,7 +2368,7 @@ and sensVariation var max expre ia =
 								else  if (estNul g) then  CONSTANTE else CROISSANT
 							 else NONMONOTONE
 				)
-			| Quot (f, g)	|  Mod (f, g) 	|  Shl (f, g)->
+			| Quot (f, g)	|  Mod (f, g) 	|  Shr (f, g)->
 				let sensf = sensVariation var max f ia in
 				let sensg =  sensVariation var max g ia in
 (*Printf.printf "Quot sens f , g\n" ;printSens sensf; printSens sensg;*)
@@ -2422,7 +2481,7 @@ let res = (
 					evalexpression ( Diff  ( simplifierSYGMA var max f ia witheps exprea,  simplifierSYGMA var max g ia	witheps exprea))
 			end
 
-		| Prod (f, g)  | Shr (f, g) ->
+		| Prod (f, g)  | Shl (f, g) ->
 				if (estVarDsExpEval var f = false) then (* f constante*)
 				begin
 					 if (estVarDsExpEval var g = false) then
@@ -2458,7 +2517,7 @@ let res = (
 					if (estVarDsExpEval var f = false) then evalexpression(Prod (Sum(max,ConstInt("1")), expre))
 					else evalexpression(Mod (simplifierSYGMA var max f ia witheps exprea, g))
 				else  NOCOMP
-			| Quot (f, g)	|  Shl (f, g)->
+			| Quot (f, g)	|  Shr (f, g)->
 				if (estVarDsExpEval var g = false) then
 				begin
 					if (estVarDsExpEval var f = false) then  evalexpression(Prod (Sum(max,ConstInt("1")), expre))
@@ -2466,7 +2525,7 @@ let res = (
 					begin
 						let res = simplifierSYGMA var max f ia witheps exprea in
 						if expre = Quot (f, g) 	then	evalexpression(Quot (res , g))
-						else evalexpression(Shl (res , g))
+						else evalexpression(Shr (res , g))
 					end
 				end
 				else if (estVarDsExpEval var f = false) then
@@ -4709,6 +4768,38 @@ match lv with
 				end else []
 			end
 		else [] 
+
+
+let  getVectorAndNumberOfTerms   exp lv   =
+(*
+exp : an expression
+lv  : the list of variables of exp assigned into the loops body
+return :
+if ok a list of assos of (var1,k1), (var2,k2) ... where each k1 ... are coef of var 1 coefficients else [] *)
+match lv with
+[]->(0,[], false)
+|v1::lvn->
+ 
+ 
+	let newexp1 =  calculer (EXP(replaceAllValByZeroBut v1  lv  exp))  !infoaffichNull [] 1 in
+	(*let newexp1 =  calculer (EXP(remplacerValPar  v2 (CONSTANT(CONST_INT("0"))) exp))  !infoaffichNull [] 1 in*)
+	let nb =  getNumberOfTerms   newexp1  in
+
+	let hasconstant = hasAConstantTermIntoDivExp newexp1 lv in
+		if (estAffine v1 newexp1)   then 
+			begin 
+				let (a,b) = calculaetbAffineForne  v1 newexp1 in		
+				let var1 = evalexpression a  in
+
+				if  estDefExp var1 then
+				begin
+					let val1 = getDefValue var1 in
+
+					if   val1 > 0.0 then (nb,(v1,val1)::getVector   exp lvn , hasconstant )
+					else begin if ( val1=0.0) then  (nb, getVector   exp lvn, hasconstant)    else (nb,(v1,val1)::getVector   exp lvn, hasconstant)   end
+				end else (0,[], false)
+			end
+		else (0,[], false)
 
 
 

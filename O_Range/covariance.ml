@@ -24,7 +24,7 @@ open Increment
 
 type covCoef = SINGLE of float|MULTIP of float*float
 
-type increaseAG = CLASNOINC | CLASNODEF | ARITHGEO of covCoef*covCoef
+type increaseAG = CLASNOINC | CLASNODEF | ARITHGEO of covCoef*covCoef*float
 
 
 (* coef arithmetic*)
@@ -78,6 +78,12 @@ match c1 with
 	SINGLE f1  -> f1 = 0.0  
 	| MULTIP (f21, f22)  ->   f21 = 0.0 && f22 = 0.0 
 
+
+let getMin c1 = 
+match c1 with
+	SINGLE f1  -> f1  
+	| MULTIP (f21, _)  ->   f21 
+
 let issimpleCoefArithGeo q k interval x =
 match (q,k) with
 	(SINGLE a,SINGLE b)  -> 
@@ -85,7 +91,7 @@ match (q,k) with
 		else
 		begin
 			let (  croissant, decroissant) =  (  b > 0.0 && a > 1.0,  b < 0.0 && a < 1.0) in	
-
+Printf.printf "2 recherche   correction %f  \n"   b; 
 			(croissant || decroissant, b /. ( 1.0 -. a))
 		end
 	|_->  (false, 0.0)
@@ -346,6 +352,32 @@ else (false,0.0)
 
 *)
 
+ 
+
+
+
+let rec isassignedvarnextaux  listOfCovariantVar   inst = (*return a new inst list where each assignment of var of listOfCovariantVar are completed by instructiontoadd *)
+
+		match inst with
+		| [] -> false
+		| n1::t1 ->
+	 		let boolean = isassignedvarnextaux  listOfCovariantVar  t1 in
+		 	( match n1 with
+					VAR ( id, _,_,_) | TAB ( id, _, _,_,_)   |  MEMASSIGN ( id, _, _,_,_) ->	
+						if List.mem id listOfCovariantVar  then  true
+				 		else boolean
+					 
+					| IFVF ( _, _, _) 	 
+					| IFV ( _, _) 		-> 	if intersection  listOfCovariantVar ( assignVar [n1]) = []then boolean else false 
+					| BEGIN (liste)		-> boolean ||   isassignedvarnextaux  listOfCovariantVar  liste
+ 					|_->boolean 
+		)			 
+
+
+
+let   cardinal l = List.length l
+(*getNumberOfTerms   exp avec exp type estAffine*)
+
 (* il faut ajouter les cas de sortie*)
 let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interval previous var cond =  
  	match inst with
@@ -353,7 +385,7 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 		| firstInst::nextInst ->
 			match firstInst with
 				VAR (id, exp,_,_) ->  
-					 if  List.mem id listOfCovariantVar  then 
+					 if  List.mem id listOfCovariantVar (*&& (isassignedvarnextaux listOfCovariantVar nextInst =false)*) then 
 					 begin
 						beforeAffin := firstInst;
 						let instbefore = (List.append previous [firstInst] ) in
@@ -364,7 +396,12 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 						(*print_expression assign 0; new_line();	
 						(*Printf.printf "recherche  dans liste :\n" ;afficherListeAS las;new_line ();Printf.printf "fin s liste :\n" ;*)
 							Printf.printf " VAR  member\n"  ;	*)	
-					 	let assocVectorVar =getVector  assign listcovvar  in 
+					 	let ( nbterms ,assocVectorVar, hasconstant ) =getVectorAndNumberOfTerms  assign listcovvar  in 
+
+														
+						let correction = if hasconstant then ((cardinal listcovvar ) +1 ) * nbterms else (cardinal listcovvar )  * nbterms in
+						
+
 						(*  if ok a assocVectorVar is a list of assos of (var1,k1), (var2,k2) ...
 							 where each k1 ... are coef of var 1 coefficients else [] *)
 						let (ok,q1) = 	if assocVectorVar != [] then  getQofvector 	assocVectorVar 	vector true 0.0  else (true,0.0) in		
@@ -383,25 +420,43 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 								CLASNOINC -> 
 									if  q1= 0.0 then
 									begin  		
+
+
 										let ncond = calculer (EXP(remplacerValPar var (CONSTANT (RCONST_FLOAT k1)) cond)) !infoaffichNull [] (-1) in
 										let isExecutedV = (match ncond with Boolean(b)	->  if b = false then false  else true 
 															|_->if estDefExp ncond then if estNul ncond then false else true else true) in	
-										if isExecutedV = false then (true, ARITHGEO ( SINGLE q1,  SINGLE k1 ), after , true) 											else (false,CLASNODEF, [],false)
+										if isExecutedV = false then (true, ARITHGEO ( SINGLE q1,  SINGLE k1 , 0.0), after , true) else (false,CLASNODEF, [],false)
 									end
-									else (true, ARITHGEO ( SINGLE q1,  SINGLE k1 ), after , false)
+									else 
+									begin
+										let value = if    q1 < 1.0 then truncate (1.0 /. q1)    else 0 in
+
+										let coef = if value != 0 then  ((value - 1)* correction) / value else 0 in
+
+										(true, ARITHGEO ( SINGLE q1,  SINGLE k1 ,    float(coef )), after , false)
+										(*true, ARITHGEO ( SINGLE q1,  SINGLE k1 ), after , false*)
+
+
+									end
 								| CLASNODEF -> (false,CLASNODEF, [],false)
-								| ARITHGEO (q2, k2)->  (*q_{1} *q_{2} X + k_{10}*q_{2}+ k_{20}*)  
+								| ARITHGEO (q2, k2,corr2)->  (*q_{1} *q_{2} X + k_{10}*q_{2}+ k_{20}*)  
 									let q = mulcov (SINGLE q1) q2 in
 									let k = addcov (mulcov (SINGLE k1) q2) k2 in
+									 
+	
 									if  isConstantForm  (SINGLE q1) then
 									begin
 									(	match k with
 										SINGLE f  ->  
-											 	
+
+											let value = if      q1 < 1.0 then  truncate (1.0 /. q1)  else 0  in
+
+											let coef = if value != 0 then  ((value - 1)* correction) / value else 0 in
+											
 											let ncond=calculer(EXP(remplacerValPar var (CONSTANT (RCONST_FLOAT f)) cond)) !infoaffichNull [] (-1) in
 											let isExecutedV = (match ncond with Boolean(b)	->  if b = false then false  else true 
 																|_->if estDefExp ncond then if estNul ncond then false else true else true) in	
-											if isExecutedV = false then (true, ARITHGEO (  SINGLE q1,  k ), after , true)
+											if isExecutedV = false then (true, ARITHGEO (  SINGLE q1,  k, float(coef)), after , true)
 											else (false,CLASNODEF, [],false)
 										|_->(false,CLASNODEF, [],false)
 									)														 
@@ -410,17 +465,28 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 										 begin			
 											(match k2 with
 												SINGLE f  ->  
+													let min =  getMin q2 in 
+													let value = if      min < 1.0 then    truncate (1.0 /. min)   else 0  in
+													let coef = if value != 0 then  ((value - 1)* correction) / value else 0 in
 													 
 													let ncond = 
 														calculer (EXP(remplacerValPar var (CONSTANT(RCONST_FLOAT f)) cond)) !infoaffichNull [] (-1) in
 													let isExecutedV = (match ncond with Boolean(b)	->  if b = false then false  else true 
 																	|_->if estDefExp ncond then if estNul ncond then false else true else true) in	
-													if isExecutedV = false then (true, ARITHGEO (  q2,  k2 ), after , true)
+													if isExecutedV = false then (true, ARITHGEO (  q2,      k2,  float(coef)), after , true)
 													else (false,CLASNODEF, [],false)
 												|_->(false,CLASNODEF, [],false)
 											)				 
 										 end
- 										 else  (true, ARITHGEO (q, k),after, false ) (* arithmético géométrique*)
+ 										 else 
+										 begin
+											 let min =  getMin q in 
+											 	let value = if     min < 1.0 then  truncate (1.0 /. min)   else 0  in
+
+											 let coef = if value != 0 then  ((value - 1)* correction) / value else 0 in
+											 (true, ARITHGEO (q,  k, float(coef)),after, false ) (* arithmético géométrique*)
+
+										 end
 								)				  	
 								end							
 								else (false,CLASNODEF, [], false)
@@ -436,12 +502,14 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 				| BEGIN liste ->
 					(* attention on peut avoir non pas deux ensembles mais des cooef qui sont des set...*)
 					let (correct1, inc1,after,out1) = getIncOfInstListCOV  vector  listOfCovariantVar liste completList interval   previous var cond in
+
+
 					if correct1 then
 						(match inc1 with 
 							CLASNODEF -> (false,CLASNODEF, [], false)
 							|CLASNOINC->
 								getIncOfInstListCOV  vector  listOfCovariantVar nextInst completList interval  (List.append after [firstInst] ) var cond
-							|ARITHGEO (q1, k1)->
+							|ARITHGEO (q1, k1,corr1)->
 								let (correct, inc, a2,out2) = 
 									getIncOfInstListCOV vector listOfCovariantVar nextInst completList interval (List.append after [firstInst]) var cond in
 								(* en fait les instructions qui suivent la dernière affectation ??? voir*)
@@ -449,7 +517,7 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 									( match inc with
 										CLASNODEF -> (false,CLASNODEF, [], false)
 										|CLASNOINC->(correct1, inc1,List.append after [firstInst] ,out1) 
-										| ARITHGEO (q2, k2)-> (*q_{1} *q_{2} X + k_{10}*q_{2}+ k_{20}*) 
+										| ARITHGEO (q2, k2,corr2)-> (*q_{1} *q_{2} X + k_{10}*q_{2}+ k_{20}*) 
 											let q = mulcov  q1 q2 in
 											let k = addcov (mulcov  k1 q2) k2 in
 											if  isConstantForm   q1 then
@@ -460,7 +528,7 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 															calculer (EXP(remplacerValPar var (CONSTANT (RCONST_FLOAT f)) cond)) !infoaffichNull [] (-1) in
 														let isExecutedV = (match ncond with Boolean(b)	->  if b = false then false  else true 
 																		|_->if estDefExp ncond then if estNul ncond then false else true else true) in	
-														if isExecutedV = false then (true, ARITHGEO (   q1,  k ), after , true)
+														if isExecutedV = false then (true, ARITHGEO (   q1,  k , max corr1 corr2), after , true)
 														else (false,CLASNODEF, [],false)
 													|_->(false,CLASNODEF, [],false))
 															 
@@ -473,12 +541,12 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 															let ncond =  calculer (EXP(remplacerValPar  var (CONSTANT (RCONST_FLOAT f)) cond))  !infoaffichNull [] (-1) in
 															let isExecutedV = (match ncond with Boolean(b)	->  if b = false then false  else true 
 																		|_->if estDefExp ncond then if estNul ncond then false else true else true) in	
-															if isExecutedV = false then (true, ARITHGEO (  q2,  k2 ), after , true)
+															if isExecutedV = false then (true, ARITHGEO (  q2,  k2 ,max corr1 corr2), after , true)
 															else (false,CLASNODEF, [],false)
 														|_->(false,CLASNODEF, [],false))
 																	 
 													end
- 													else  (true, ARITHGEO (q, k),after, false )(* arithmético géométrique*)
+ 													else  (true, ARITHGEO (q, k,max corr1 corr2),after, false )(* arithmético géométrique*)
 											)
 										else (false,CLASNODEF, [], false))
 					else (false,CLASNODEF, [], false)
@@ -501,7 +569,7 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 								if inc2 = CLASNOINC  then 
 								 getIncOfInstListCOV vector listOfCovariantVar nextInst completList interval (List.append previous [firstInst]) var cond
 								else (* change only into one of the alternate*)(false,CLASNODEF, [], false)
-							| ARITHGEO (q1, k1)-> 		
+							| ARITHGEO (q1, k1,corr1)-> 		
 								 let (correct2, inc2, after2, out2) = 
 									getIncOfInstListCOV  vector  listOfCovariantVar  [i2] completList falseinterval   previous  var cond in
 								 if correct2 = false  then (false,CLASNODEF, [],false)
@@ -510,12 +578,12 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 								(
 									 match inc2 with
 										CLASNODEF |CLASNOINC(* change only into one of the alternate*)-> (false,CLASNODEF, [], false)
-										| ARITHGEO (q2, k2)->
+										| ARITHGEO (q2, k2,corr2)->
 											if (*q1 = q2 =1 :arithmetic form*) isArithmeticForm q1 q2 then  
 												if (* k_{10} * k_{20} >0 (the two functiosn are either strictly increasing or decreasing) *)
 													haveTheSameComportmentAri k1 k2
 												then (* the resulting increment may be lower estimated by (+, SET(k_{10}, k_{20})) *)
-													(true, ARITHGEO (  q2, compose k1 k2),  [IFVF (exp, BEGIN after, BEGIN after2)] ,false) 
+													(true, ARITHGEO (  q2, compose k1 k2,max corr1 corr2),  [IFVF (exp, BEGIN after, BEGIN after2)] ,false) 
 													(* arithmético géométrique*)
 												else   (false,CLASNODEF, [], false)  
 											else 
@@ -529,7 +597,7 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 															let isExecutedV = (match ncond with Boolean(b)	->  if b = false then false  else true 
 																	|_->if estDefExp ncond then if estNul ncond then false else true else true) in	
 															if isExecutedV = false then 
-																( 	(true, ARITHGEO (  q2,  k2),  [IFVF (exp, BEGIN after, BEGIN after2)] , true))
+																( 	(true, ARITHGEO (  q2,  k2,max corr1 corr2),  [IFVF (exp, BEGIN after, BEGIN after2)] , true))
 															else (false,CLASNODEF, [],false)
 														|_->  (false,CLASNODEF, [],false)
 													end
@@ -541,7 +609,7 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 															let isExecutedV = (match ncond with Boolean(b)	->  if b = false then false  else true 
 																	|_->if estDefExp ncond then if estNul ncond then false else true else true) in	
 															if isExecutedV = false then 
-																(true, ARITHGEO (  q1,  k1),  [IFVF (exp, BEGIN after, BEGIN after2)] , true)
+																(true, ARITHGEO (  q1,  k1,max corr1 corr2),  [IFVF (exp, BEGIN after, BEGIN after2)] , true)
 															else (false,CLASNODEF, [],false)
 														|_->  (false,CLASNODEF, [],false)
 													end
@@ -549,12 +617,12 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 												else 
 													if isGeometricForm k1 k2   then														   
 														if   haveTheSameComportmentGeo q1 q2 then (* ... (+, SET(k_{10}, k_{20})) arithmético géo *)
-															(true, ARITHGEO (  compose q1 q2,  k1),  [IFVF (exp, BEGIN after, BEGIN after2)] ,false)
+															(true, ARITHGEO (  compose q1 q2,  k1,max corr1 corr2),  [IFVF (exp, BEGIN after, BEGIN after2)] ,false)
 														else (false,CLASNODEF, [], false) 
 													else 	  
 														if    (sup q1 1.0 && sup q1 1.0 && sup k1 0.0 && sup k2 0.0) ||
 															(inf q1 1.0 && inf q1 1.0 && inf k1 0.0 && inf k2 0.0)
-														then (true, ARITHGEO (  compose q1 q2, compose k1 k2),  
+														then (true, ARITHGEO (  compose q1 q2, compose k1 k2,max corr1 corr2),  
 																	[IFVF (exp, BEGIN after, BEGIN after2)] ,false)
 														else (false,CLASNODEF, [], false)	
 														 
@@ -573,7 +641,7 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 							CLASNODEF -> (false,CLASNODEF, [], false)
 							|CLASNOINC->  getIncOfInstListCOV  vector  listOfCovariantVar nextInst completList interval  (List.append previous [firstInst] ) var cond
 										   
-							| ARITHGEO (q1, k1)->  (false,CLASNODEF, [], false)
+							| ARITHGEO (q1, k1,_)->  (false,CLASNODEF, [], false)
 						)
 
 (*les deux dernier FOR et CALL doivent être revus*)
@@ -638,7 +706,7 @@ and getcovariance  vector  listOfCovariantVar  inst completList cond previous x 
 							expressionIncFor :=NOTHING;
 							opEstPlus :=false;
 							(false,NOINC,x, false, true, NOTHING) 
-					| ARITHGEO (q1, k1)->  
+					| ARITHGEO (q1, k1,corr1)->  
 							if  isConstantForm q1 then 
 							begin
 								expressionIncFor :=NOTHING;
@@ -647,7 +715,8 @@ and getcovariance  vector  listOfCovariantVar  inst completList cond previous x 
 							end
 							else
 							begin
-								let (simpleCoefArithGeo, bsurUnMoina) = issimpleCoefArithGeo q1 k1 interval x in
+								let (simpleCoefArithGeo, bsurUnMoina) = issimpleCoefArithGeo q1 (addcov k1 (SINGLE(corr1))) interval x in
+
 								let (inc, var, cte)  = isArithmeticRes q1 k1 interval x in
 								opEstPlus := getIsAddInc inc;
 								expressionIncFor :=  getIncValue inc ;
@@ -655,13 +724,13 @@ and getcovariance  vector  listOfCovariantVar  inst completList cond previous x 
 								getOnlyBoolAssignment := pred;
 								if simpleCoefArithGeo then 
 								begin
-									(*Printf.printf "TRUE ARITHGEO  cte%f \n" bsurUnMoina ;		*)						  	
+									Printf.printf "TRUE ARITHGEO  cte%f \n" bsurUnMoina ;							  	
 									(out,inc,var, true , true, CONSTANT(RCONST_FLOAT bsurUnMoina))
 								end
 								else
 								begin 
-									 (*Printf.printf " ARITHGEO  cte%f \n" cte ;*)
-						 			(out,inc,var, (cte = 0.0) = false , true, NOTHING) 
+									 Printf.printf " ARITHGEO  cte%f \n" cte ;
+						 			if bsurUnMoina = 0.0 then ( out,inc,var, (cte = 0.0) = false , true, NOTHING) else (false,NODEFINC,x, false, true, NOTHING) 
 								end
 							end
 			

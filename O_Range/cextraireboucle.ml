@@ -90,6 +90,7 @@ let aUneFctNotDEf = ref false
 	let listeDesInstCourantes = ref []
     let listeDesEnum = ref []
 	let listeDesInstGlobales = ref []
+
 	let listeLocalStatic = ref []
 	(*let alreadyAffectedGlobales = ref [] *)(* pas chez Clément*)
 	let listeAffectInit = ref []
@@ -2061,7 +2062,8 @@ and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1
 								listADD := (VAR(vardeux, EXP(cvas),[],[])):: !listADD ;
 								let newavant =  List.append avant [ASSIGN_SIMPLE(vardeux, EXP(cvas))]  in	
 								(match incr with
-									NODEFINC|NOINC -> ( NONMONOTONE , NOTHING, NOTHING, XOR, true, var,cvas)
+									NODEFINC ->Printf.printf " essayer avec div  \n"  ; ( NONMONOTONE , NOTHING, NOTHING, XOR, true, var,cvas)
+									|NOINC -> ( NONMONOTONE , NOTHING, NOTHING, XOR, true, var,cvas)
 									|INC(POSITIV,exp) | INC(NEGATIV,exp)->(*Printf.printf " ADD  \n"  ;*)
 
 										let (estNul,estPos, constval)= 
