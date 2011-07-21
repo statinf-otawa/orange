@@ -113,17 +113,24 @@ let aUneFctNotDEf = ref false
 	type elementCorpsFonction =
 		IDBOUCLE of int * string list * string list *string*int(*  fic*line *)
 	|	IDAPPEL of int * expression *inst list (*input instrctions*)*string  * string list * string list *string*int(*  fic*line *)
-	|	IDIF of string * inst list * elementCorpsFonction list (*then*)* inst list* elementCorpsFonction list(*else*)* string list * string list
+	|	IDIF of string * inst list * elementCorpsFonction list (*then*)* inst list* elementCorpsFonction list(*else*)* string list * string list  *string*int(*  fic*line *)*expression
 	
 	type refAppel = string * int (* id fichier numline*)
 
 	
 	let listLoopIdRef = ref []
+	let listVarIFRef = ref []
 	let listIdCallFunctionRef =ref  []
 	let exitsAssosIdLoopRef id = List.mem_assoc id !listLoopIdRef
 	let setAssosIdLoopRef id refe = if exitsAssosIdLoopRef id = false then listLoopIdRef := List.append   [(id, refe)]   !listLoopIdRef
-
 	let getAssosIdLoopRef id = if exitsAssosIdLoopRef id then List.assoc id !listLoopIdRef else ("",0)
+	
+	
+    let exitsAssosIdIFRef id = List.mem_assoc id !listVarIFRef
+	let setAssosIdIFRef id refe =listVarIFRef := List.append   [(id, refe)]   !listVarIFRef
+	let getAssosIdIFRef id = if exitsAssosIdIFRef id then List.assoc id !listVarIFRef else ("",0)
+
+
 
 	let print_AssosIdLoopRef l=
 		List.iter (fun (a, (f,num)) -> Printf.printf "Loop %d fichier %s ligne %d \n" a f num) l 	
@@ -382,12 +389,17 @@ let new_variation i s inc d op b=
 	 
 
 
-
+(*last parameters of Call, Loop and If are list true and false expressiosn*)
 module TreeList = struct
   type tree = Doc of tree list
          | Function of (string * bool * bool * bool) * tree list (* function name, inloop, executed, extern *)
          | Call of (string * int * int * string * bool * bool * bool *expression*expression) * tree list (* function name, relative call ID, line num, source file, inlopo, executed, extern *)
          | Loop of (int * int * string * bool * expressionEvaluee * expressionEvaluee * expression * expression * expression * sens *expression *expression) * tree list (* loop id, line, source file, exact, max, toatl, exp max, exp total *)
+		| If of (string * int * string * bool * int * expression  * expression  *expression *expression) * tree list   (* if condition variable, line, source file, inloop, isexe=1 cond vrai =2 false =3 undifined, cond expression current, cond init,  (then and else) tree *)
+ 
+		| IfT of    ( bool) * tree list  (* then   tree + isexe *)
+		| IfF of   ( bool) * tree list  (* else   tree + isexe*)
+
 
  
   
@@ -400,6 +412,9 @@ module TreeList = struct
     |Function (x, children) -> Function (x, (node::children))
     |Call (x, children) -> Call (x, (node::children))
     |Loop (x, children) -> Loop (x, (node::children))
+	|If (x, children) -> If (x, (node::children))	
+	|IfT (x, children) -> IfT (x,  (node::children))		
+	|IfF (x,  children) -> IfF ( x, (node::children))		
     
   let onBegin = function
       (Doc [], [] ) as x -> x
@@ -434,12 +449,32 @@ module TreeList = struct
         let newCurrent = Call ((name, numCall, line, source, inloop, executed, extern,lt , lf ), []) in
 	(newCurrent, current::stack)   
 
+  let onIf res name  line source inloop executed condVa cond lt lf = match res  with
+      (current, stack) -> 
+        let newCurrent = If ((name, line, source, inloop, executed ,condVa, cond, lt , lf ), []) in
+	(newCurrent, current::stack)   
+
+  let onIfF res isexe= match res  with
+      (current, stack) -> 
+        let newCurrent = IfF (  (isexe), []) in
+	(newCurrent, current::stack) 
+
+  let onIfT res isexe= match res  with
+      (current, stack) -> 
+        let newCurrent = IfT ((isexe),  []) in
+	(newCurrent, current::stack) 
+
+
+
   let onFunctionEnd = function
       (current, item::stack) -> (addChild current item), stack
       |(_, []) -> raise TreeBuildException
         	
   let onReturn = onFunctionEnd
   let onLoopEnd = onFunctionEnd 
+  let onIfEnd = onFunctionEnd 
+  let onIfTEnd = onFunctionEnd 
+  let onIfFEnd = onFunctionEnd 
   
   let concat _ _ = failwith "pas supporte\n";
 
@@ -457,7 +492,7 @@ List.map (fun e ->
 	match e with
 			IDBOUCLE (_,_,_,_,_) -> e
 		|	IDAPPEL (i , expression, l,_,lt,lf,fic,lig) -> IDAPPEL (i , expression, l,var,lt,lf,fic,lig) 
-		|	IDIF (var,instthen, treethen,instelse, treeelse,lt,lf) ->IDIF (var,instthen, reecrireCAll var treethen,instelse, reecrireCAll var treeelse,lt,lf) 
+		|	IDIF (var,instthen, treethen,instelse, treeelse,lt,lf,fic,lig,e) ->IDIF (var,instthen, reecrireCAll var treethen,instelse, reecrireCAll var treeelse,lt,lf,fic,lig,e) 
 
 ) liste
 
@@ -2062,7 +2097,7 @@ and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1
 								listADD := (VAR(vardeux, EXP(cvas),[],[])):: !listADD ;
 								let newavant =  List.append avant [ASSIGN_SIMPLE(vardeux, EXP(cvas))]  in	
 								(match incr with
-									NODEFINC ->Printf.printf " essayer avec div  \n"  ; ( NONMONOTONE , NOTHING, NOTHING, XOR, true, var,cvas)
+									NODEFINC ->(*Printf.printf " essayer avec div  \n"  ; *)( NONMONOTONE , NOTHING, NOTHING, XOR, true, var,cvas)
 									|NOINC -> ( NONMONOTONE , NOTHING, NOTHING, XOR, true, var,cvas)
 									|INC(POSITIV,exp) | INC(NEGATIV,exp)->(*Printf.printf " ADD  \n"  ;*)
 
@@ -2700,7 +2735,13 @@ and  consRefstatement   stat =
 	| BLOCK (defs, stat) ->	 analyse_defsPB  defs ; if stat <> NOP then consRefstatement  stat ;()
 	| SEQUENCE (s1, s2) ->			
 		consRefstatement   s1; consRefstatement   s2;()											
-	| IF (exp, s1, s2) -> consRefexpression   exp ;	  consRefstatement  s1; consRefstatement  s2;()			
+	| IF (exp, s1, s2) -> consRefexpression   exp ;	 
+		idIf := !idIf + 1;
+		let varIfN =  Printf.sprintf "%s-%d" "IF" !idIf  in	 
+
+		let (fic, numl) = (!fileCour , !numLine) in
+		setAssosIdIFRef varIfN (fic , numl );	  consRefstatement  s1; consRefstatement  s2;
+	()			
 	| WHILE (exp, stat) ->  	(*analyse_expression  exp ;rien condition sans effet de bord*)	
 		idBoucle := !idBoucle +1;
 		let (num, fic, numl) = (!idBoucle,!fileCour , !numLine) in
@@ -3340,9 +3381,9 @@ print_statement  s2 ;*)
 					falseList := falseListPred;
 					(listeThen,bouavrai,listeElse,!listeBoucleOuAppelCourante)
 				end in	
-
+		let (fic,lig)=getAssosIdIFRef varIfN in			
 		listeBoucleOuAppelCourante	:= 
-			List.append  maListeDesBoucleOuAppelPred   [IDIF(varIfN , instthen,treethen, instelse,treeelse,trueListPred,falseListPred)]
+			List.append  maListeDesBoucleOuAppelPred   [IDIF(varIfN , instthen,treethen, instelse,treeelse,trueListPred,falseListPred,fic,lig,ne)]
 												
 	| WHILE (exp, stat) ->  	(*analyse_expression  exp ;rien condition sans effet de bord*)	
 		let prevPtrct = !myCurrentPtrContext in
@@ -4801,6 +4842,9 @@ and expBornesToListeAffect expBornes =
       	Doc subtree -> List.fold_left aux res subtree
   	| Function (x, subtree) ->  List.fold_left aux res subtree
   	| Call (x, subtree) -> List.fold_left aux res subtree
+ 	| If ((x ), subtree) ->List.fold_left aux res  subtree 
+	| IfF ((x ),subtree) ->List.fold_left aux res  subtree 
+    | IfT ((x ),subtree) ->List.fold_left aux res  subtree 
   	| Loop ((id, line, source, exact, max, total, expMax, expTotal, expinit, sens,et, ef), subtree) -> 
 	  (new_instVar (sprintf "max-%d" id) (EXP expMax))::(new_instVar (sprintf "total-%d" id) (EXP expTotal))::(List.fold_left aux res subtree)
 	in

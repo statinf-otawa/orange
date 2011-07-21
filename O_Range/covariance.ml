@@ -724,12 +724,12 @@ and getcovariance  vector  listOfCovariantVar  inst completList cond previous x 
 								getOnlyBoolAssignment := pred;
 								if simpleCoefArithGeo then 
 								begin
-									Printf.printf "TRUE ARITHGEO  cte%f \n" bsurUnMoina ;							  	
+								(*	Printf.printf "TRUE ARITHGEO  cte%f \n" bsurUnMoina ;		*)					  	
 									(out,inc,var, true , true, CONSTANT(RCONST_FLOAT bsurUnMoina))
 								end
 								else
 								begin 
-									 Printf.printf " ARITHGEO  cte%f \n" cte ;
+									 (*Printf.printf " ARITHGEO  cte%f \n" cte ;*)
 						 			if bsurUnMoina = 0.0 then ( out,inc,var, (cte = 0.0) = false , true, NOTHING) else (false,NODEFINC,x, false, true, NOTHING) 
 								end
 							end

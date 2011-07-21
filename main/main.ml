@@ -300,7 +300,7 @@ let rec getComps = function
 let analysePartielle file =
 	printf "Lance analyse_defs ...\n";
 	TO.numAppel := 0;
-	idBoucle := 0;
+	idBoucle := 0;	idIf := 0;
 	idAppel:=0;
 	nbImbrications := 0;
 	TO.enTETE :=  false;
@@ -489,7 +489,7 @@ let _ =
 								Cextraireboucle.sort_list_file_and_name [n];
 							) names;	
 								TO.numAppel := 0;
-								idBoucle := 0;
+								idBoucle := 0;	idIf := 0;
 								idAppel:=0;
 								nbImbrications := 0;
 								TO.enTETE :=  false;

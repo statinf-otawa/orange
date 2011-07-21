@@ -66,7 +66,14 @@ module type LISTENER =
 
     val onLoopEnd: t -> t
 
+	val onIfT: t -> bool->  t
+	val onIfF: t  -> bool-> t
+	val onIf: t -> string  -> int -> string -> bool -> int ->   Cabs.expression -> Cabs.expression -> Cabs.expression -> Cabs.expression-> t
+
     val onFunctionEnd: t -> t
+	val onIfEnd: t -> t
+	val onIfTEnd: t -> t
+	val onIfFEnd: t -> t
 
     val concat: t -> t -> t
   end;;
@@ -120,6 +127,80 @@ module MonList = struct
 	left ();
   	let newRes =(indent resaux)^text in
 	newRes
+
+let onIf res name line source inloop executed condVa cond lt lf =
+
+let condexpStr = string_from_expr (  condVa) in
+let condexpStrInit = string_from_expr (  cond) in
+ (*let t1 = sprintf "<conditional>\n" in
+ right ();
+ nbLigne := !nbLigne +1;
+ let resaux1 =
+		if !nbLigne>=50 then (nbLigne := 0; predListener := concat !predListener res;"") else res in
+ let t2 =(indent resaux1)^t1 in*)
+
+ let text =
+		if ( !exp_VERBOSE =  true) then
+			 sprintf"<conditional> <condition varcond=\"%s\" line=\"%u\" source=\"%s\" isexecuted=\"%b\" expcond=\"%s\" expcondinit=\"%s\"> </condition>\n"   name  line source  (executed!=4) condexpStr	condexpStrInit 
+		else
+ 			 sprintf "<conditional> <condition line=\"%u\" source=\"%s\" executed=\"%b\"> </condition>\n"  line source  (executed!=4) 				 
+		in
+	nbLigne := !nbLigne +1;
+	let resaux =
+		if !nbLigne>=50 then (nbLigne := 0; predListener := concat !predListener res;"") else res in
+  	let newRes =(indent resaux)^ text in   
+	right ();
+	newRes
+ 
+
+  let onIfEnd res =
+  	let text = "</conditional>\n" in
+	nbLigne := !nbLigne +1;
+	let resaux =
+		if !nbLigne>=50 then (nbLigne := 0; predListener := concat !predListener res;"") else res in
+	left ();
+  	let newRes =(indent resaux)^text in
+	newRes
+
+ let onIfF res isexe=
+	  	let text = sprintf "<case cond=\"0\" executed=\"%b\">\n" isexe  in
+		nbLigne := !nbLigne +1;
+		let resaux =
+			if !nbLigne>=50 then (nbLigne := 0; predListener := concat !predListener res;"") else res in
+	  	let newRes =(indent resaux)^text in
+ 
+		right ();
+		newRes
+
+  let onIfFEnd res =
+  	let text = "</case>\n"  in
+	nbLigne := !nbLigne +1;
+	let resaux =
+		if !nbLigne>=50 then (nbLigne := 0; predListener := concat !predListener res;"") else res in
+	left ();
+  	 
+  	let newRes =(indent resaux)^text in
+	newRes
+
+    let onIfT res isexe=
+	  	let text = sprintf "<case cond=\"1\"  executed=\"%b\">\n" isexe    in
+	
+		nbLigne := !nbLigne +1;
+		let resaux =
+			if !nbLigne>=50 then (nbLigne := 0; predListener := concat !predListener res;"") else res in
+	  	let newRes =(indent resaux)^text in
+	   
+		right ();
+		newRes
+
+  let onIfTEnd res =
+  	let text = "</case>\n" in
+	nbLigne := !nbLigne +1;
+	let resaux =
+		if !nbLigne>=50 then (nbLigne := 0; predListener := concat !predListener res;"") else res in
+	left ();
+   let newRes =(indent resaux)^text  in
+   newRes
 
   let onCall res name numCall line source inloop executed extern lt lf =
   	let text = sprintf "<call name=\"%s\" numcall=\"%u\" line=\"%u\" source=\"%s\" executed=\"%b\" extern=\"%b\">\n" name numCall line source executed extern  in
@@ -252,8 +333,15 @@ module PartialAdapter =
     let onEnd = Listener.onEnd
     let onFunction = Listener.onFunction
     let onFunctionEnd = Listener.onFunctionEnd
-    let onComponent res comp_tree name numCall line source inloop executed =
+	let onIfF = Listener.onIfF
+	let onIfT = Listener.onIfT
+	let onIf = Listener.onIf 
 
+
+    let onComponent res comp_tree name numCall line source inloop executed =
+	
+
+	
       let rec aux res = function
       	Doc subtree -> List.fold_left aux res subtree
   	(*| Function (x, subtree) ->  List.fold_left aux res subtree*)
@@ -271,6 +359,23 @@ module PartialAdapter =
 
 		let res = List.fold_left aux res (List.rev subtree) in
 		Listener.onReturn res
+|	If ((name, line, source, inloop, executed ,condVa, cond, lt , lf ), subtree) ->
+ 		let res = Listener.onIf res name  line source inloop executed condVa cond lt lf in
+ 
+		let res = List.fold_left aux res (List.rev subtree) in
+ 	 	Listener.onIfEnd res
+
+
+	| IfF ((isexe), subtree) ->
+		let res = Listener.onIfF res isexe  in
+		let res = List.fold_left aux res (List.rev subtree) in
+
+	  	Listener.onIfFEnd res  
+    | IfT ((isexe), subtree) ->
+		let res = Listener.onIfT res isexe in
+		let res = List.fold_left aux res (List.rev subtree) in
+		Listener.onIfTEnd res
+
   	| Loop ((id, line, source, exact, max, total, expMax, expTotal, expInit, sens,lt, lf ), subtree) ->
 (*Printf.printf "Try to eval loop call: %s %d\n" source line;*)
 
@@ -308,6 +413,9 @@ module PartialAdapter =
     let onReturn = Listener.onReturn
     let onLoop = Listener.onLoop
     let onLoopEnd = Listener.onLoopEnd
+	let onIfEnd = Listener.onIfEnd
+	let onIfFEnd = Listener.onIfFEnd
+	let onIfTEnd = Listener.onIfTEnd
 
   end;;
 
@@ -403,9 +511,12 @@ type nidEval =
 type elementEval =
 	  BOUCLEEVAL of nidEval * evaluationType *elementEval list *expression * expression
   |	APPELEVAL of evaluationType * expVA *elementEval list *expression * expression
+ |	IFEVAL of expression *elementEval list (*then list*) *elementEval list (*false list*)*expression * string(*file name *) *int(*num line*)*bool (*is into loop*)*int (*is executed false = not executed = true executed or undifined*)*string (*ifvarname*)*expression * expression(*list true, list false*)
 
 let new_elementEvalb nid n l et ef = BOUCLEEVAL(nid, n, l,et, ef)
 let new_elementEvala n e l et ef=	APPELEVAL (n,e,l,et, ef)
+let new_elementEvali e  subtT subtF e2 file line isinloop exectutioncase var e3 e4 =IFEVAL(e,  subtT, subtF, e2, file, line, isinloop, exectutioncase, var, e3, e4)
+
 let corpsEvalTMP = ref []
 let nouBoucleEval = ref []
 
@@ -646,7 +757,7 @@ and   endOfcontexte  affec  last new_contexte globales=
 	  (match List.hd last with
 	  IDBOUCLE (num, _,_,_,_) ->  (*Printf.printf"last loop %d\n" num;*)  nextInstructionsB num affec
 	  | IDAPPEL (numf,_,_,_, _,_,_,_) -> (* Printf.printf"last function  %d\n" numf;*)  nextInstructionsF numf affec
-	  | IDIF (var,_, _,_, _,_,_)  -> (*Printf.printf"last if  %s\n" var;*)  nextInstructionsI var affec)
+	  | IDIF (var,_, _,_, _,_,_,_,_,_)  -> (*Printf.printf"last if  %s\n" var;*)  nextInstructionsI var affec)
  	  in
 	  if fin = [] then new_contexte
 	  else
@@ -745,14 +856,6 @@ let existeFonctionParNom nom docu =
   (not (Cextraireboucle.is_in_use_partial nom)) &&
   (List.exists (fun (_, f) ->  let (_, _, name) = (f.declaration) in
 							  let (s,_,_,_) = name in s = nom  )!docu.laListeDesFonctions)
-
-let existeEvalParNom t  listeF= List.exists (fun e -> match e with
-											  BOUCLEEVAL  (n,ty,l,_,_) ->t = ty
-										  |	APPELEVAL (ty,e,l,_,_)  ->t = ty   )listeF
-
-let rechercherEvalParNom t listeF= List.find (fun e -> match e with
-											  BOUCLEEVAL  (n,ty,l,_,_) ->t = ty
-										  |	APPELEVAL (ty,e,l,_,_)  ->t = ty   )listeF
 
 
 let rec getIntoAffect nom idappel pred listeinst =
@@ -1200,6 +1303,7 @@ List.find
   match e with
     BOUCLEEVAL  (_,ty,_,_,_)->(match ty with TBOUCLE(ide, appele,_,_,_,_,_,_,_)-> idB = ide && appele = appel |_-> false)
   | APPELEVAL (ty,_,_,_,_)->(match ty with TFONCTION(nom, appele,_,_,_, _,_,_,_,_,_,_)-> nom = nomF && appele = appel|_->false)
+  |_->false
 )listeF
 
 let rec isExecutedNidEval id appel listeEval =
@@ -1551,9 +1655,7 @@ TBOUCLE(num, appel, _,_,_,_,_,ficaux,ligaux) ->
 	  if estDefExp !borneAux && estNul !borneAux then
 	  begin
 		  borneMaxAux:= (ConstInt("0"));
-		  setAssosBoucleIdMaxIfSupOldMax num (EVALEXP(ConstInt("0")));
-
-(*attention on peut avoir plusieurs fois la même variable de boucle donc ici on ajoute dans false on peut supprimer*)
+		  setAssosBoucleIdMaxIfSupOldMax num (EVALEXP(ConstInt("0"))); (*attention on peut avoir plusieurs fois la meme variable de boucle donc ici on ajoute dans false on peut supprimer*)
 		  estNulEng := true
 	  end
 	  else
@@ -1641,6 +1743,29 @@ and afficherUnAppelUML  exp  l tab numCall isExe isInLoop fichier ligne  lt lf (
 		  afficherInfoFonctionUML nomFonction l (tab ) numCall isExe isInLoop  fichier ligne  lt lf result
 	  | _-> Printf.printf "MULTIPLE\n" ; Listener.null
 
+
+
+(* if printer*)
+and afficherUnCallIfUML  variable expr listeT listeF e1 tab isExe isInloop fichier ligne   lt lf (result:Listener.t) : Listener.t =
+ 
+ 	let (isexet, isexee) = (match isExe with 1-> (true,false) | 2 -> (false, true)  |3-> (true, true)|_-> (false, false)) in
+
+(* only 1 the then branch is executed, only the else branch is executed, 3 we do not know the executed branch , neither the then or the else is executed*)
+  	let result = Listener.onIf result variable   ligne fichier  isInloop isExe  expr e1 lt lf in
+(*print THEN*)
+  let result = Listener.onIfT  result isexet in
+  let result = (afficherCorpsUML listeT (tab+5)  (result:Listener.t))  in
+  let result = Listener.onIfTEnd  (result:Listener.t) in
+
+(*print ELSE*)
+  let result = Listener.onIfF  (result:Listener.t) isexee in
+  let result = (afficherCorpsUML listeF (tab+5)  (result:Listener.t))  in
+  let result = Listener.onIfFEnd  (result:Listener.t) in 
+ 
+
+  Listener.onIfEnd result
+
+
 and afficherInfoFonctionUML nom corps  tab numCall isExe isInLoop fichier ligne  lt lf (result:Listener.t) : Listener.t  =
   let isExtern = (not (existeFonctionParNom	nom doc)) in
  (* let (fichier , ligne ) = getAssosIdCallFunctionRef numCall in*)
@@ -1672,6 +1797,9 @@ and afficherCorpsUML lboua  tab (result:Listener.t) : Listener.t =
 						  isExactEng := true;
 					end;
 				  afficherUnAppelUML  expr liste tab numCall isExe isInLoop fichier ligne  lt lf result
+			|	IFEVAL ( expr,listeT,listeF, e1, fichier,ligne,intoloop, isExe, variable,lt,lf)->
+				(*let c1 = calculer  expr    !infoaffichNull [] 1 in*) (*isin loop i do not know if i have to add this info*)
+				afficherUnCallIfUML variable expr listeT listeF e1 tab isExe intoloop fichier ligne  lt lf result
 		  )result lboua
 
 
@@ -1898,13 +2026,13 @@ let (rep, var,isvar,expression) = hasPtrArrayBoundCondition (EXP(finstanciedMax)
 let aslAux = ref []
 
 let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englobantcourant *)
-							  idEng (*id noeud englobant  où stopper *)
-							  id (*courant à  évaluer bi*)  tN
+							  idEng (*id noeud englobant  ou stopper *)
+							  id (*courant a evaluer bi*)  tN
 							  appel (*contexte appel pour le moment fonction puis doc *)
 							  listeEng typeE numAp max isExeE lt lf borne   sansP globales maxinit varLoop direction idpred lcond iscompo =
-  (* il faut evaluer le nombre total d'itération  de la boucle courante n*)
-  (*	Pour toutes les boucles bi englobantes de Bj à partir de la	boucle immédiatement englobante de Bj
-  jusqu'à la mère du nid faire*) (*donc en remonté de recursivité*)
+  (* il faut evaluer le nombre total d'iteration  de la boucle courante n*)
+  (*	Pour toutes les boucles bi englobantes de Bj a partir de la	boucle immediatement englobante de Bj
+  jusqu'a la mere du nid faire*) (*donc en remonte de recursivite*)
 
   let info = (getBoucleInfoB (nEC.infoNid.laBoucle)) in
   let nomE = info.identifiant  in
@@ -2778,7 +2906,7 @@ begin
 	let beginLoA =
 		(match first with
 			IDBOUCLE (_, _,_,_,_) | IDAPPEL (_,_,_,_, _,_,_,_)-> [first ]
-			|IDIF (_,_, treethen,_, treeelse,_,_) -> List.append (sansIfCorps treethen ) (sansIfCorps treeelse )
+			|IDIF (_,_, treethen,_, treeelse,_,_,_,_,_) -> List.append (sansIfCorps treethen ) (sansIfCorps treeelse )
 		) in
 	List.append beginLoA (sansIfCorps next)
 end
@@ -2788,7 +2916,7 @@ end
 
 
 let rec  evalCorpsFOB corps affectations contexte listeEng estexeEng lastLoopOrCall intoLoop globales=
-let ncorps = if intoLoop = false  then corps else sansIfCorps corps in
+let ncorps = if intoLoop = false  then corps else (*sansIfCorps*) corps in
   if ncorps <> [] then
   begin
 	  let (first,next) = ((List.hd ncorps),(List.tl ncorps)) in
@@ -2825,7 +2953,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 		  if !vDEBUG then Printf.printf "eval corps fonction nid %d non trouve\n" num	;
 		  (contexte, globale)
 	  end
-  |IDIF (var,instthen, treethen,instelse, treeelse,lt,lf) ->
+  |IDIF (var,instthen, treethen,instelse, treeelse,lt,lf,fic,lig,e) ->
 
 	 if !estDansBoucle = false then
 	 begin
@@ -2835,7 +2963,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 
 
 
-		let executedBranch =
+		let (executedBranch,affect, codeExe) =
 				if (existeAffectationVarListe var asL) || (existeAffectationVarListe var globale)  then
 				begin
 					let affect = if (existeAffectationVarListe var asL) then applyStoreVA(rechercheAffectVDsListeAS  var asL)globale
@@ -2843,26 +2971,32 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
  
 					let cond = calculer  affect !infoaffichNull  [] 1 in
 					(match cond with
-						  Boolean(true)  | ConstInt("1")->   1 (*then only excuted*)
-						| Boolean(false)  | ConstInt("0") ->  2(*else only excuted*)
-						|_->  3)(* ??? indifined branch is executed*)
+						  Boolean(true)  | ConstInt("1")->   (1,expVaToExp affect, 1) (*then only excuted*)
+						| Boolean(false)  | ConstInt("0") ->  (2,expVaToExp affect, 2)(*else only excuted*)
+						|_->  (3, expVaToExp affect,3))(* ??? indifined branch is executed*)
 				end
-				else  3 in
+				else ( 3,NOTHING,3) in
 		let isExcutedThen =  isExecutedIf && (executedBranch != 2) in
 		let isExcutedElse =  isExecutedIf && (executedBranch !=1 ) in
 
 		let listeInstNonexePred = !listeInstNonexe in
-		listeInstNonexe := [];
+		listeInstNonexe := []; 
+		 let corpsEvalTMPPred = !corpsEvalTMP in corpsEvalTMP := [];
 		let (ifthencontexte, lastthen,globalesThen) =  evalCorpsFOB treethen instthen asL listeEng isExcutedThen [] false globale in
 		let nonexethen = !listeInstNonexe in
 		listeInstNonexe := [];
+		let corpsEvalThen = !corpsEvalTMP  in corpsEvalTMP := []; 
 		let (ifelsecontexte, lastelse,globalesElse) =  evalCorpsFOB treeelse instelse asL listeEng isExcutedElse [] false globale in
 		let nonexelse = !listeInstNonexe in
 		listeInstNonexe := listeInstNonexePred;
-		(*let isIntoIf = !isExecutedOneTimeOrMore in*)
+		let corpsEvalElse = !corpsEvalTMP  in
 		let (nas, ng) =
 			if isExecutedIf = false then
 			begin
+				(*debut com *)let new_if = [new_elementEvali affect  corpsEvalThen corpsEvalElse e fic lig false 4 var  ( CONSTANT(CONST_INT("0"))) ( CONSTANT(CONST_INT("1")))] in
+ 				corpsEvalTMP := List.append corpsEvalTMPPred	 new_if;
+				docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append !docEvalue.maListeEval new_if);
+				(*fin comp*)
 				(* Printf.printf "IDIF %s is not executed\n" var	; *)myCurrentPtrContext:=prevPtrct;
 				(asL, globale)
 			end
@@ -2893,14 +3027,34 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 							(evalStore (		IFV (	EXP(VARIABLE(var)), BEGIN(nthen)	)		) asL globale prevPtrct, globale)
 						else 	(evalStore (		IFVF(   EXP(VARIABLE(var)), BEGIN(nthen), BEGIN(nelse))	) asL globale prevPtrct, globale)
 				)
-
 			end in
+ 
+			(*debut com*)let (vt, vf) =    creerVarTF lt lf asL [] in 
+			 let new_if = [new_elementEvali affect  corpsEvalThen corpsEvalElse e fic lig false codeExe var  vt vf] in
+			corpsEvalTMP := List.append corpsEvalTMPPred	 new_if;
+			docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append !docEvalue.maListeEval new_if);
+
+			(*fin comp*)
 			(*isExecutedOneTimeOrMore := isIntoIf;*)
 			(nas, ng)
 		 end
-		 else (contexte, globale)
-
-
+		 else 
+		 begin (* into loop body*)
+						(*debut com*)
+				 let corpsEvalTMPPred = !corpsEvalTMP in
+				  corpsEvalTMP := [];
+				let (_, _,_) =  evalCorpsFOB treethen instthen contexte listeEng true [] true globale in
+		 		let corpsEvalThen = !corpsEvalTMP  in
+		 		  corpsEvalTMP := [];
+				let (_, _,_) =  evalCorpsFOB treeelse instelse contexte listeEng true [] true globale in
+				 let corpsEvalElse = !corpsEvalTMP  in
+				let new_if = [new_elementEvali NOTHING  corpsEvalThen corpsEvalElse e fic lig true 3 var  ( CONSTANT(CONST_INT("1"))) ( CONSTANT(CONST_INT("0")))] in
+				corpsEvalTMP := List.append corpsEvalTMPPred	 new_if;
+						docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append !docEvalue.maListeEval new_if);
+						(*fin comp*)
+				(*Printf.printf"if dans boucle %s %s %d\n" var  fic lig ;*)
+			(contexte, globale)
+		end	 
   | IDAPPEL (numf,appel,listeInputInstruction,var, lt,lf,fic,lig) ->
 	  let numAppelPred = !numAppel in
 	  let nomFonction =	  (match appel with  CALL(exp,_)->(match exp with VARIABLE(nomFct)->nomFct|_-> "")|_->"") in
@@ -3275,6 +3429,9 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEn
    Doc subtree -> Doc (List.map evalAuxBoucle subtree)
   | Function (x, subtree) ->  Function (x, List.map evalAuxBoucle subtree)
   | Call (x, subtree) -> Call (x, List.map evalAuxBoucle subtree)
+  |If (x, subtree) -> If (x, List.map evalAuxBoucle subtree)	
+  |IfT (x, subtree) -> IfT (x,  List.map evalAuxBoucle subtree)
+  |IfF (x,  subtree) -> IfF ( x,List.map evalAuxBoucle subtree)	
   | Loop ((id, line, source, exact, max, total, expMax, expTotal,expinit, sens,lt,lf), subtree) ->
     idBoucle := (!idBoucle + 1);
     let expMax = mapVar absolutize expMax in
@@ -3321,6 +3478,49 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEn
 		let res = Call ((name, numCall, line, source, inloop, isexe, extern,elt,elf), List.map evalAuxPasBoucle subtree) in
 		isexeEnglobant:= isexeEnglobantPred;
 		res
+	|If (( name,  line, source, inloop, executed ,condVa, cond ,lt, lf ), subtree) -> 
+		let (elt,elf) = (applyStore (applyStore lt contexte ) globales,applyStore (applyStore lf contexte ) globales) in
+		let isexeEnglobantPred = !isexeEnglobant in
+
+
+
+
+
+		isexeEnglobant:= if (executed = 4) then false else isexeEnglobantPred &&  creerVarTFE elt elf;
+		let (isexe, valcond) = if !isexeEnglobant = false then (4 ,CONSTANT (CONST_INT "0")) else 
+					begin
+						let valcond =  (( applyStoreVA(applyStoreVA (EXP condVa) contexte)globales))   in
+						let resaux = calculer valcond  !infoaffichNull [] 1 in
+						if estDefExp resaux  then match resaux with Boolean(false)  | ConstInt("0")-> (2 ,expVaToExp valcond)| Boolean(true)  | ConstInt("1")->(1 ,expVaToExp valcond)|_-> (3 ,expVaToExp valcond)else  (3 ,expVaToExp valcond)
+					end in
+
+
+		 let res = 
+			if !isexeEnglobant = false then  If ((name, line, source, inloop, 4, (CONSTANT (CONST_INT "0")),cond ,elt,elf ), List.map evalAuxPasBoucle subtree) 
+			  else If ((name, line, source, inloop, isexe, valcond,cond  ,elt,elf ), List.map evalAuxPasBoucle subtree) 
+			 in
+		   
+	
+		isexeEnglobant:= isexeEnglobantPred;
+		res
+	|IfT (isexe, subtree) -> 
+
+		let isexeEnglobantPred = !isexeEnglobant in
+		(*isexeEnglobant:= isexeEnglobantPred && executed;*)
+		let isexe = !isexeEnglobant in
+	(*	if !isexeEnglobant then Printf.printf "ON A COMPOSE compo %s name EXECUTED \n"name  else Printf.printf "ON A COMPOSE l'appel %s name  NOT EXECUTED \n"name ;*)
+		let res =	IfT (isexe,  List.map evalAuxBoucle subtree)	in
+		isexeEnglobant:= isexeEnglobantPred;
+		res 
+	|IfF (isexe,  subtree) -> 
+
+		let isexeEnglobantPred = !isexeEnglobant in
+		(*isexeEnglobant:= isexeEnglobantPred && executed;*)
+		let isexe = !isexeEnglobant in
+	(*	if !isexeEnglobant then Printf.printf "ON A COMPOSE compo %s name EXECUTED \n"name  else Printf.printf "ON A COMPOSE l'appel %s name  NOT EXECUTED \n"name ;*)
+		let res =	IfF (isexe,  List.map evalAuxBoucle subtree)		in
+		isexeEnglobant:= isexeEnglobantPred;
+		res 
 
   | Loop ((id, line, source, exact, max, total, expMax, expTotal,expinit, sens,lt,lf), subtree) ->
     begin
@@ -3442,7 +3642,7 @@ and evaluerFonction id f contexte exp listeEng typeA estexeEng globales et ef pt
    let (corps, intoLoop,aff) =
 		( match typeA with
 					  TFONCTION(_,_,lesAff , _, _,_,_,_, _, intoLoop,_,_) ->
- 						if intoLoop = true then (sansIfCorps f.corps.boucleOuAppel, true,lesAff) else   (f.corps.boucleOuAppel, false,lesAff)
+ 						if intoLoop = true then ((*sansIfCorps*) f.corps.boucleOuAppel, true,lesAff) else   (f.corps.boucleOuAppel, false,lesAff)
 					 |_-> (f.corps.boucleOuAppel, false,[]) ) in
 
 (*Printf.printf"Dans evaluerFonction %s  \n"id;
@@ -3510,7 +3710,7 @@ if !vDEBUG then  Printf.printf "evalNid NID av eval nid de %d \n" (getBoucleIdB 
 
 	dernierAppelFct :=   !predDernierAppelFct;
 	let info = getBoucleInfoB nid.infoNid.laBoucle in
-	let mesBouclesOuAppel = sansIfCorps info.boucleOuAppelB in
+	let mesBouclesOuAppel = (*sansIfCorps*) info.boucleOuAppelB in
 	if !estDansBoucle = false then
 	begin
 		(*isExecutedOneTimeOrMoreList := [];*)
@@ -3779,7 +3979,7 @@ List.iter
 
 (*print_expVA (EXP(info.conditionI)); flush(); space(); new_line ();*)
 
-			  let corps = sansIfCorps info.boucleOuAppelB in
+			  let corps = (*sansIfCorps*) info.boucleOuAppelB in
 			  let typeEval = TBOUCLE ( (getBoucleIdB n.infoNid.laBoucle), !numAppel,
 				  (reecrireCallsInLoop n.varDeBoucleNid 	n.lesAffectationsBNid ),appel, isExeE, lt,lf,fic,lig) in
 			  dernierAppelFct := !predDernierAppelFct;
@@ -3828,7 +4028,7 @@ List.iter
 			  corpsEvalTMP := List.append corpsEvalTMPPred	[ new_b];
 
 			  varDeBoucleBoucle :=varDeBouclePred;()
-		  | IDAPPEL (_,_,_,_,_,_,_,_) 	 |IDIF (_,_, _,_, _,_,_)-> (*	Printf.printf"reecrire corps boucle appel ou\n";*)
+		  | IDAPPEL (_,_,_,_,_,_,_,_) 	 |IDIF (_,_, _,_, _,_,_,_,_,_)-> (*	Printf.printf"reecrire corps boucle appel ou\n";*)
 			  let _ =
 				  evalUneBoucleOuAppel c (reecrireCallsInLoop niddepart.varDeBoucleNid niddepart.lesAffectationsBNid )
 				  appel listeEng isExeE  [] globales in ()
@@ -3950,7 +4150,7 @@ match a with
 		  Printf.printf"end lOOP nid...%d \n"num;
 	  end
 	  else   Printf.printf "lOOP nid %d non trouve\n" num	;
-  |IDIF (var,_, treethen,_, treeelse,_,_)->
+  |IDIF (var,_, treethen,_, treeelse,_,_,_,_,_)->
 		Printf.printf"IF...%s \n"var;
 		afficherFonction treethen  (tab+3);
 		Printf.printf"IF...%s else\n"var ;
@@ -4025,7 +4225,7 @@ match elem with
 		  let mesBouclesOuAppel = info.boucleOuAppelB in
 		  consCaseCorpsFOB mesBouclesOuAppel  numCall
 	  end
-  |IDIF (_,_, treethen,_, treeelse,_,_)->
+  |IDIF (_,_, treethen,_, treeelse,_,_,_,_,_)->
 	consCaseCorpsFOB treethen  numCall;
 	consCaseCorpsFOB treeelse  numCall
 
@@ -4122,7 +4322,7 @@ match elem with
 		  else if estNoComp value = false &&  estUn value then prod else  BINARY(MUL,prod,other)
 	  end
 	  else begin  CONSTANT( CONST_INT "0") end
-   |IDIF (_,_, treethen,_, treeelse,_,_)->
+   |IDIF (_,_, treethen,_, treeelse,_,_,_,_,_)->
 	let nb1 = consNbCorpsFOB  treethen  numCall evalFunction in
 	let nb2 = consNbCorpsFOB  treeelse numCall evalFunction in
 	let res = CALL(VARIABLE("MAXIMUM"), List.append [nb1] [nb2]) in
@@ -4240,7 +4440,7 @@ let listnoteqLoop l = List.iter (fun  (fic,lig) -> Printf.eprintf "WARNING != co
 
 
 let printFile (result : out_channel)  (defs2 : file) need_analyse_defs=
-  idBoucle := 0;
+  idBoucle := 0;	idIf := 0;
   idAppel:=0;
   nbImbrications := 0;
   out := result;
