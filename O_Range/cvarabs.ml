@@ -433,6 +433,12 @@ let getDefValue exp =
 	| 	RConstFloat (f) 		->  f
 	|_-> 0.0
 
+let getIntVal exp =
+ match exp with 
+	ConstInt (i)->int_of_string i
+	| ConstFloat (i) -> int_of_float (float_of_string i)
+ | RConstFloat (i) ->   int_of_float i| _->0
+
 
 
 
@@ -699,7 +705,7 @@ let rec evalexpression  exp =
 					|ConstFloat (j)->  ConstInt(Printf.sprintf "%d" (nbdec lsr (int_of_string  j)))
 					(*|RConstFloat (j)->
 							ConstInt(Printf.sprintf "%d" (nbdec lsr (int_of_string  j)))*)
-					|Var(v) ->  if nbdec = 0 then ConstInt("0") else Quot (val1,Puis (ConstInt("2"), Var(v)) )
+					|Var(v) ->  if nbdec = 0 then ConstInt("0") else Quot (val1,evalexpression (Puis (ConstInt("2"), Var(v)) ))
 					|_->exp
 				end
 			|ConstFloat (i)->
@@ -708,7 +714,7 @@ let rec evalexpression  exp =
 					match val2 with
 					ConstInt(j) ->  ConstInt(Printf.sprintf "%d" (valeur1 lsr (int_of_string  j)))
 					|ConstFloat (j)->ConstInt(Printf.sprintf "%d" (valeur1 lsr (int_of_string  j)))
-					|Var(v) -> if valeur1 = 0 then ConstInt("0")  else  Quot (val1,Puis (ConstInt("2"), Var(v)) )
+					|Var(v) -> if valeur1 = 0 then ConstInt("0")  else  Quot (val1,evalexpression (Puis (ConstInt("2"), Var(v)) ))
 					|_->exp
 				end
 			|RConstFloat (i)->
@@ -717,16 +723,16 @@ let rec evalexpression  exp =
 					match val2 with
 					(*ConstInt(j) ->  ConstInt(Printf.sprintf "%d" (valeur1 lsr (int_of_string  j)))
 					|ConstFloat (j)->ConstInt(Printf.sprintf "%d" (valeur1 lsr (int_of_string  j)))*)
-					|Var(v) -> if valeur1 = 0.0 then ConstInt("0")  else  Quot (val1,Puis (ConstInt("2"), Var(v)) )
+					|Var(v) -> if valeur1 = 0.0 then ConstInt("0")  else  Quot (val1,evalexpression (Puis (ConstInt("2"), Var(v)) ))
 					|_->exp
 				end
 			|Var(v) ->
 				begin
 					match val2 with
-					ConstInt(j) -> let nbdec = (int_of_string  j) in  if nbdec = 0 then val1 else Shr(val1,val2)
-					|ConstFloat (j)-> let nbdec = (int_of_string  j) in  if nbdec = 0 then val1 else  Shr(val1,val2)
-					|RConstFloat (j)-> let nbdec = (  j) in  if nbdec = 0.0 then val1 else  Shr(val1,val2)
-					|Var(v) -> Quot (val1,Puis (ConstInt("2"), Var(v)) )
+					ConstInt(j) -> let nbdec = (int_of_string  j) in  if nbdec = 0 then val1 else Quot (val1,evalexpression (Puis (ConstInt("2"), val2) ))  
+					|ConstFloat (j)-> let nbdec = (int_of_string  j) in  if nbdec = 0 then val1 else  Quot (val1,evalexpression (Puis (ConstInt("2"), val2) ))  
+					|RConstFloat (j)-> let nbdec = (  j) in  if nbdec = 0.0 then val1 else  Quot (val1,evalexpression (Puis (ConstInt("2"), val2) )  )
+					|Var(v2) -> Quot (val1,evalexpression (Puis (ConstInt("2"), Var(v2)) ))
 					|_->exp
 				end
 			|_->exp
@@ -744,7 +750,7 @@ let rec evalexpression  exp =
 						match val2 with
 						ConstInt(j) ->      ConstInt(Printf.sprintf "%d"  ((int_of_string  i) lsl (int_of_string  j)))
 						|ConstFloat (j)->   ConstInt(Printf.sprintf "%d" ((int_of_string   i) lsl (int_of_string  j)))
-						|Var(v) -> if (int_of_string  i) = 0 then ConstInt("0") else Prod (val1,Puis (ConstInt("2"), Var(v)) )
+						|Var(v) -> if (int_of_string  i) = 0 then ConstInt("0") else Prod (val1,evalexpression (Puis (ConstInt("2"), Var(v)) ))
 						|_->exp
 					end
 				|ConstFloat (i)->
@@ -753,16 +759,16 @@ let rec evalexpression  exp =
 						match val2 with
 						ConstInt(j) ->  ConstInt(Printf.sprintf "%d" (valeur1 lsl (int_of_string  j)))
 						|ConstFloat (j)->  ConstInt(Printf.sprintf "%d" (valeur1 lsl (int_of_string  j)))
-						|Var(v) -> if valeur1 = 0 then ConstInt("0") else  Prod (val1,Puis (ConstInt("2"), Var(v)) )
+						|Var(v) -> if valeur1 = 0 then ConstInt("0") else  Prod (val1,evalexpression (Puis (ConstInt("2"), Var(v)) ))
 						|_->exp
 					end
 				|Var(v) ->
 					begin
 						match val2 with
-						ConstInt(j) -> 		let nbdec = (int_of_string  j) in  if nbdec = 0 then val1 else Prod (val1,Puis (ConstInt("2"), Var(v)) )
-						|ConstFloat (j)-> 	let nbdec = (int_of_string  j) in if nbdec = 0 then val1 else Prod (val1,Puis (ConstInt("2"), Var(v)) )
-						|RConstFloat (j)-> 	let nbdec = (  j) in if nbdec = 0.0 then val1 else Prod (val1,Puis (ConstInt("2"), Var(v)) )
-						|Var(v) ->  Prod (val1,Puis (ConstInt("2"), Var(v)) )
+						ConstInt(j) -> 		let nbdec = (int_of_string  j) in  if nbdec = 0 then val1 else Prod (val1,evalexpression (Puis (ConstInt("2"), val2 )))
+						|ConstFloat (j)-> 	let nbdec = (int_of_string  j) in if nbdec = 0 then val1 else Prod (val1,evalexpression (Puis (ConstInt("2"), val2 )))
+						|RConstFloat (j)-> 	let nbdec = (  j) in if nbdec = 0.0 then val1 else Prod (val1,evalexpression (Puis (ConstInt("2"), val2 )))
+						|Var(v2) ->  Prod (val1,evalexpression (Puis (ConstInt("2"), Var(v2)) ))
 						|_->exp
 					end
 				|_->exp
@@ -1357,7 +1363,7 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 							else 	if isOkval1 = false && isOkval2 then evalexpression (Mod (val11, val2))
 								else 	if isOkval2 = false && isOkval1 then evalexpression (Mod (val1, val22))
 										else evalexpression (Mod (val11, val22))
-				| SHL 	->  if 	isOKAll	then  evalexpression (Shl (val1, val2))
+				| SHL 	-> if 	isOKAll	then  evalexpression (Shl (val1, val2))
 							else 	if isOkval1 = false && isOkval2 then evalexpression (Shl (val11, val2))
 								else 	if isOkval2 = false && isOkval1 then evalexpression (Shl (val1, val22))
 										else evalexpression (Shl (val11, val22))

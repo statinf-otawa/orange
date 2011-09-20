@@ -91,7 +91,7 @@ match (q,k) with
 		else
 		begin
 			let (  croissant, decroissant) =  (  b > 0.0 && a > 1.0,  b < 0.0 && a < 1.0) in	
-Printf.printf "2 recherche   correction %f  \n"   b; 
+(*Printf.printf "2 recherche   correction %f  \n"   b; *)
 			(croissant || decroissant, b /. ( 1.0 -. a))
 		end
 	|_->  (false, 0.0)
@@ -378,6 +378,40 @@ let rec isassignedvarnextaux  listOfCovariantVar   inst = (*return a new inst li
 let   cardinal l = List.length l
 (*getNumberOfTerms   exp avec exp type estAffine*)
 
+
+(* we have a constant form this form may change on the way to the end of the loop test if this change leads to a quit the loop ? *)
+(*inputs :
+	 beforeInst : the instruction after the constant assignment, 
+	 nextInst : the instruction after the constant assignment, 
+	 var : the new loop variable
+	 cond : the loop condition
+	 covvarAssig: the covariant assigment 
+	 listcovvar: list of covariant variables
+	vector : initial coefficient vector for covariant variables*)
+let isConstantFormLeadingToQuitTheLoop     beforeInst nextInst  var  cond    covvarAssig listcovvar vector=
+	let las = evalStore (new_instBEGIN  (List.append beforeInst nextInst)) [] [] !myCurrentPtrContext in
+	let assign =expVaToExp( applyStoreVA covvarAssig las) in		
+	let ( nbterms ,assocVectorVar, hasconstant ) =getVectorAndNumberOfTerms  assign listcovvar  in 
+	let (ok,q1) = 	if assocVectorVar != [] then  getQofvector 	assocVectorVar 	vector true 0.0  else (true,0.0) in		
+	let k11 =  calculer (EXP(replaceAllValByZeroBut "--noOne"  listcovvar  assign))  !infoaffichNull [] (-1) in	
+	if ok =false || estDefExp k11 = false then false
+	else 
+	begin
+		let k1 = getDefValue k11 in   						
+		if  q1= 0.0 then
+		begin  		
+							let ncond = calculer (EXP(remplacerValPar var (CONSTANT (RCONST_FLOAT k1)) cond)) !infoaffichNull [] (-1) in
+							let isExecutedV = (match ncond with Boolean(b)	->  if b = false then false  else true 
+															|_->if estDefExp ncond then if estNul ncond then false else true else true) in	
+							if isExecutedV = false then true else false
+		end
+		else false
+	end
+
+
+
+
+
 (* il faut ajouter les cas de sortie*)
 let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interval previous var cond =  
  	match inst with
@@ -468,7 +502,7 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 													let min =  getMin q2 in 
 													let value = if      min < 1.0 then    truncate (1.0 /. min)   else 0  in
 													let coef = if value != 0 then  ((value - 1)* correction) / value else 0 in
-													 
+												
 													let ncond = 
 														calculer (EXP(remplacerValPar var (CONSTANT(RCONST_FLOAT f)) cond)) !infoaffichNull [] (-1) in
 													let isExecutedV = (match ncond with Boolean(b)	->  if b = false then false  else true 
@@ -566,7 +600,7 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 									getIncOfInstListCOV  vector  listOfCovariantVar  [i2] completList falseinterval   previous var cond in
 							if correct2 = false ||inc2 = CLASNODEF then (false,CLASNODEF, [], false)
 							else 
-								if inc2 = CLASNOINC  then 
+								if inc2 = CLASNOINC  then (* covariant var are neither assigned into true or false alternate = depend only on next instructions*)
 								 getIncOfInstListCOV vector listOfCovariantVar nextInst completList interval (List.append previous [firstInst]) var cond
 								else (* change only into one of the alternate*)(false,CLASNODEF, [], false)
 							| ARITHGEO (q1, k1,corr1)-> 		
@@ -589,26 +623,33 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 											else 
 												if  isConstantForm q1 ||  isConstantForm q2 (*q1 =0 or  q2 =0 :one is constant*) then
 												begin  
-													if  isConstantForm q1  then 
+													if  isConstantForm q1  then  	(* ici il faut en fait évaluer la valeur de la variable en sortie de boucle quand on  passe dans ce cas*) 
 													begin
 	 													match k1 with SINGLE kval ->
-															let ncond =  
+
+															let isOkExe =   isConstantFormLeadingToQuitTheLoop     (List.append previous [i1] ) nextInst  var  cond    !covvarAssign  listOfCovariantVar vector  in
+															(*let ncond =  
 																calculer (EXP(remplacerValPar var (CONSTANT (RCONST_FLOAT kval)) cond)) !infoaffichNull [] (-1) in
 															let isExecutedV = (match ncond with Boolean(b)	->  if b = false then false  else true 
 																	|_->if estDefExp ncond then if estNul ncond then false else true else true) in	
-															if isExecutedV = false then 
+														Printf.printf "TRUE ARITHGEO 1  bool1 %b bool2 %b \n" isOkExe isExecutedV;	
+															if isExecutedV = false then *)
+															if isOkExe then (*the constant leads to quit the loop *)
 																( 	(true, ARITHGEO (  q2,  k2,max corr1 corr2),  [IFVF (exp, BEGIN after, BEGIN after2)] , true))
 															else (false,CLASNODEF, [],false)
 														|_->  (false,CLASNODEF, [],false)
 													end
 													else 		(*isConstantForm q2 *)
 													begin
-														match k2 with SINGLE kval ->
-															let ncond =  
+														match k2 with SINGLE kval -> (* ici il faut en fait évaluer la valeur de la variable en sortie de boucle quand on  passe dans ce cas*) 
+															let isOkExe =   isConstantFormLeadingToQuitTheLoop       (List.append previous [i2] )  nextInst  var  cond    !covvarAssign listOfCovariantVar vector  in
+															(*let ncond =  
 																calculer (EXP(remplacerValPar var (CONSTANT (RCONST_FLOAT kval)) cond)) !infoaffichNull [] (-1) in
 															let isExecutedV = (match ncond with Boolean(b)	->  if b = false then false  else true 
 																	|_->if estDefExp ncond then if estNul ncond then false else true else true) in	
-															if isExecutedV = false then 
+																Printf.printf "TRUE ARITHGEO 2  bool1 %b bool2 %b \n" isOkExe isExecutedV;	
+															if isExecutedV = false then *)
+															if isOkExe then
 																(true, ARITHGEO (  q1,  k1,max corr1 corr2),  [IFVF (exp, BEGIN after, BEGIN after2)] , true)
 															else (false,CLASNODEF, [],false)
 														|_->  (false,CLASNODEF, [],false)
@@ -641,7 +682,7 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 							CLASNODEF -> (false,CLASNODEF, [], false)
 							|CLASNOINC->  getIncOfInstListCOV  vector  listOfCovariantVar nextInst completList interval  (List.append previous [firstInst] ) var cond
 										   
-							| ARITHGEO (q1, k1,_)->  (false,CLASNODEF, [], false)
+							| ARITHGEO (q1, k1,_)->  (false,CLASNODEF, [], false)(* if constant some times it can be analysed*)
 						)
 
 (*les deux dernier FOR et CALL doivent être revus*)

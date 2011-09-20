@@ -1128,9 +1128,25 @@ begin
 	else rechercheListeDesVarDeBoucle (List.tl listeVCond) aS
 end		
 
+ (* to be called with numberOfBits =0 at init intvalue>0 *)
+
+let rec  getMostSignifiantBit intvalue numberOfBits   =
+if intvalue = 0 or  intvalue = 1 then numberOfBits
+else getMostSignifiantBit (intvalue / 2) (numberOfBits+1)  
+ (* to be called with numberOfBits =-1 at init intvalue>0 *)
+
+let rec  getLessSignifiantBit intvalue numberOfBits =
+if intvalue = 0 then numberOfBits
+		else if intvalue mod 2 = 1 then numberOfBits + 1
+				else getLessSignifiantBit (intvalue/2) (numberOfBits + 1)
+(* is the value intvalue a two power and its power *)
+let  istwopower intvalue = 
+let power = getMostSignifiantBit intvalue 0 in
+if power  =  getLessSignifiantBit intvalue (-1) then (true,power) else (false ,power)
+
 
 let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans cte t c lv l inst=
-(*	Printf.printf "rechercheConditionBinary\n";	 print_expression (BINARY (op, exp1, exp2)) 0; new_line();*)
+	(*Printf.printf "rechercheConditionBinary\n";	 print_expression (BINARY (op, exp1, exp2)) 0; new_line();*)
 	let l2 =  (listeDesVarsDeExpSeules exp2) in
 	let inter2 =  intersection l2  l  in
 
@@ -1222,6 +1238,64 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 									(CROISSANT , NOTHING, NOTHING, NE, true, var, ne) else traiterNEQ init ne2  var ne true
 
 							|_->traiterNEQ init ne2  var ne false)
+			| BAND ->  
+					let (isindirect,inc,_,_,isMultiInc) =  getLoopVarIncOrCov var inst ne in
+					if isMultiInc then isExactForm := false;
+					let bound = getIntVal (calculer (EXP (exp2)) !infoaffichNull [] (-1))  in
+					let vardeux =  Printf.sprintf "BAND-%s" varinit   in	 
+					if bound > 0 then
+					begin
+						(match  inc  with 
+
+								INC(MULTI,ee) -> 
+									let maxbound =   getMostSignifiantBit bound 0  in
+									let (ispower, power) = istwopower (getIntVal (calculer (EXP (ee)) !infoaffichNull [] (-1))) in
+									if ispower then
+									begin
+										listADD := (VAR(vardeux,  EXP(CONSTANT  (CONST_INT "0")),[],[])):: !listADD ;
+										let newavant =  List.append avant [ASSIGN_SIMPLE(vardeux, EXP(CONSTANT  (CONST_INT "0")))]  in	
+										let constval = (CONSTANT (CONST_INT (Printf.sprintf "%d"  power)))	in								 
+										listADDInc := List.append [VAR(vardeux, EXP(BINARY(ADD,VARIABLE(vardeux), constval)),[],[])] !listADDInc ;
+										let newinst = List.append inst [new_instVar  vardeux  (EXP(BINARY (ADD,VARIABLE(vardeux), constval))) ] in
+										let newdans=List.append dans [ASSIGN_SIMPLE(vardeux, EXP(BINARY (ADD,VARIABLE(vardeux), constval)))] in	
+										isExactForm := false; 
+										rechercheConditionBinary  (VARIABLE(vardeux)) vardeux LE (VARIABLE(vardeux))  
+											(CONSTANT (CONST_INT (Printf.sprintf "%d"  maxbound)))  [vardeux]  newavant newdans cte t 
+											(BINARY(LE,  VARIABLE(vardeux),CONSTANT(CONST_INT (Printf.sprintf "%d"  maxbound) ) ))  lv (List.append [vardeux] l) newinst
+											  
+									end
+									else  (NONMONOTONE , NOTHING, NOTHING, XOR,true, var, BINARY(op,exp1, exp2))
+
+	(*rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans cte t c lv l inst=*)
+								| INC(DIVI,ee) ->
+									let minbound =   getLessSignifiantBit bound (-1)  in
+									let eeb = BINARY (DIV,CONSTANT((CONST_INT "1")), ee) in
+									let (ispower, power)  = istwopower (getIntVal (calculer (EXP (eeb)) !infoaffichNull [] (-1))) in 
+
+
+									if ispower then
+									begin (*REVOIR*)
+										listADD := (VAR(vardeux,  EXP(CONSTANT  (CONST_INT "0")),[],[])):: !listADD ;
+										let newavant =  List.append avant [ASSIGN_SIMPLE(vardeux, EXP(CONSTANT  (CONST_INT "0")))]  in		
+										let constval = (CONSTANT (CONST_INT (Printf.sprintf "%d"  power)))	in	
+										let numberOfBit = BINARY(SUB,
+																BINARY(MUL,VARIABLE("SIZEOF_Of_"  ^ var),CONSTANT (CONST_INT "8")),
+																CONSTANT (CONST_INT (Printf.sprintf "%d"  minbound)))  in											 
+										listADDInc := List.append [VAR(vardeux, EXP(BINARY(ADD,VARIABLE(vardeux), constval)),[],[])] !listADDInc ;
+										let newinst = List.append inst [new_instVar  vardeux  (EXP(BINARY (ADD,VARIABLE(vardeux), constval))) ] in
+										let newdans=List.append dans [ASSIGN_SIMPLE(vardeux, EXP(BINARY (ADD,VARIABLE(vardeux), constval)))] in	
+										 rechercheConditionBinary  (VARIABLE(vardeux)) vardeux LE (VARIABLE(vardeux))  
+											numberOfBit  [vardeux]  newavant newdans cte t 
+											(BINARY(LE,  VARIABLE(vardeux),numberOfBit ))  lv (List.append [vardeux] l) newinst  
+										(*NONMONOTONE , NOTHING, NOTHING, XOR,true, var, BINARY(op,exp1, exp2)*)
+
+ 											  
+									end
+									 else (NONMONOTONE , NOTHING, NOTHING, XOR,true, var, BINARY(op,exp1, exp2))
+								|_-> (NONMONOTONE , NOTHING, NOTHING, XOR,true, var, BINARY(op,exp1, exp2)))
+					end 
+					else 
+						(NONMONOTONE , NOTHING, NOTHING, XOR,true, var, BINARY(op,exp1, exp2))
 					
 			| _-> isExactForm := false;(*| BAND -> | XOR ->| BOR ->*) if !vDEBUG then Printf.printf   "\t error condition not implemented\n";
 					(NONMONOTONE , NOTHING, NOTHING, XOR,true, var, BINARY(op,exp1, exp2))
@@ -1277,12 +1351,73 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 
 							|_->traiterNEQ init ne1 var ne false)
 					
-						   
+					| BAND -> 
+						 
+						let (isindirect,inc,_,_,isMultiInc) =  getLoopVarIncOrCov var inst ne in
+						if isMultiInc then isExactForm := false;
+
+ 
+ 
+					let bound = getIntVal (calculer (EXP (exp1)) !infoaffichNull [] (-1))  in
+					let vardeux =  Printf.sprintf "BAND-%s" varinit   in	 
+					if bound > 0 then
+					begin
+						(match  inc  with 
+
+								INC(MULTI,ee) -> 
+									let maxbound =   getMostSignifiantBit bound 0  in
+									let (ispower, power) = istwopower (getIntVal (calculer (EXP (ee)) !infoaffichNull [] (-1))) in
+									if ispower then
+									begin
+										listADD := (VAR(vardeux,  EXP(CONSTANT  (CONST_INT "0")),[],[])):: !listADD ;
+										let newavant =  List.append avant [ASSIGN_SIMPLE(vardeux, EXP(CONSTANT  (CONST_INT "0")))]  in	
+										let constval = (CONSTANT (CONST_INT (Printf.sprintf "%d"  power)))	in								 
+										listADDInc := List.append [VAR(vardeux, EXP(BINARY(ADD,VARIABLE(vardeux), constval)),[],[])] !listADDInc ;
+										let newinst = List.append inst [new_instVar  vardeux  (EXP(BINARY (ADD,VARIABLE(vardeux), constval))) ] in
+										let newdans=List.append dans [ASSIGN_SIMPLE(vardeux, EXP(BINARY (ADD,VARIABLE(vardeux), constval)))] in	
+										isExactForm := false; 
+										rechercheConditionBinary  (VARIABLE(vardeux)) vardeux LE (VARIABLE(vardeux))  
+											(CONSTANT (CONST_INT (Printf.sprintf "%d"  maxbound)))  [vardeux]  newavant newdans cte t 
+											(BINARY(LE,  VARIABLE(vardeux),CONSTANT(CONST_INT (Printf.sprintf "%d"  maxbound) ) ))  lv (List.append [vardeux] l) newinst
+											  
+									end
+									else  (NONMONOTONE , NOTHING, NOTHING, XOR,true, var, BINARY(op,exp1, exp2))
+
+	(*rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans cte t c lv l inst=*)
+								| INC(DIVI,ee) ->
+									let minbound =   getLessSignifiantBit bound (-1)  in
+									let eeb = BINARY (DIV,CONSTANT((CONST_INT "1")), ee) in
+									let (ispower, power)  = istwopower (getIntVal (calculer (EXP (eeb)) !infoaffichNull [] (-1))) in 
+
+
+									if ispower then
+									begin (*REVOIR*)
+										listADD := (VAR(vardeux,  EXP(CONSTANT  (CONST_INT "0")),[],[])):: !listADD ;
+										let newavant =  List.append avant [ASSIGN_SIMPLE(vardeux, EXP(CONSTANT  (CONST_INT "0")))]  in		
+										let constval = (CONSTANT (CONST_INT (Printf.sprintf "%d"  power)))	in	
+										let numberOfBit = BINARY(SUB,
+																BINARY(MUL,VARIABLE("SIZEOF_Of_"  ^ var),CONSTANT (CONST_INT "8")),
+																CONSTANT (CONST_INT (Printf.sprintf "%d"  minbound)))  in											 
+										listADDInc := List.append [VAR(vardeux, EXP(BINARY(ADD,VARIABLE(vardeux), constval)),[],[])] !listADDInc ;
+										let newinst = List.append inst [new_instVar  vardeux  (EXP(BINARY (ADD,VARIABLE(vardeux), constval))) ] in
+										let newdans=List.append dans [ASSIGN_SIMPLE(vardeux, EXP(BINARY (ADD,VARIABLE(vardeux), constval)))] in	
+										 rechercheConditionBinary  (VARIABLE(vardeux)) vardeux LE (VARIABLE(vardeux))  
+											numberOfBit  [vardeux]  newavant newdans cte t 
+											(BINARY(LE,  VARIABLE(vardeux),numberOfBit ))  lv (List.append [vardeux] l) newinst  
+										(*NONMONOTONE , NOTHING, NOTHING, XOR,true, var, BINARY(op,exp1, exp2)*)
+
+ 											  
+									end
+									else (NONMONOTONE , NOTHING, NOTHING, XOR,true, var, BINARY(op,exp1, exp2))
+									|_-> (NONMONOTONE , NOTHING, NOTHING, XOR,true, var, BINARY(op,exp1, exp2)))
+					end 
+					else 
+						(NONMONOTONE , NOTHING, NOTHING, XOR,true, var, BINARY(op,exp1, exp2))   
 					| _-> isExactForm := false;(* | BAND -> | XOR ->| BOR ->*) if !vDEBUG then Printf.printf   "\terror condition not implemented\n";
 								(NONMONOTONE , NOTHING, NOTHING, XOR,true, var, BINARY(op,exp1, exp2))
 			end
 			else begin 
-						isExactForm := false;(*if !vDEBUG then Printf.printf   "\terror condition not implemented\n"; *)
+						isExactForm := false;(*if !vDEBUG then Printf.printf   "\terror condition not implemented\n"; *) Printf.printf   "\t error condition not implemented 3\n";
 						(NONMONOTONE , NOTHING, NOTHING, XOR, true, var,BINARY (op,exp1, exp2))
 				end
 		end
@@ -4168,12 +4303,16 @@ and  construireListesES listeDesES arg   =
 			[new_instVar 	(expressionToString  "" valeurParam 0) (EXP (VARIABLE(nom)))]
 		|_-> if !vDEBUG then 
 				Printf.printf "error lvalue is need (impossible because code OK)";[]*)
+
+and auxsimplifierValeur e =
+let e1 = simplifierValeur e in
+match e1 with CAST (t, ne) 		 -> ne|_->e1
 											
 and creerAFFECT op e e2 =
 
 let newaffect =
 	begin
-			let e1 = simplifierValeur e in
+			let e1 = auxsimplifierValeur e in
 			 match e1 with
 				VARIABLE n -> 
 					 [ new_instVarAndPtr n  (EXP(BINARY(op, VARIABLE(n), e2)))]
@@ -4280,6 +4419,7 @@ let newaffect =
 								
 							end else( Printf.printf "creerAFFECT struct expr not implemented strunt 2\n"; []);
 						(*( creerStructAffect e1 (*VARIABLE(id)*) id (List.tl lid) btype (EXP(BINARY(op, VARIABLE(n), e2))))]*)
+				| CAST (t, e) 		 ->  Printf.printf "creerAFFECT array expr not implemented 4 cast\n";[]
 
 				| _->	   Printf.printf "creerAFFECT array expr not implemented 4\n";[]
 		(*	|_-> print "array expr not implemented\n"*)

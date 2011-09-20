@@ -120,7 +120,7 @@ let rec rechercheInc var exp before=
 			if (estAffine var val1)   then 
 			begin
 				let (a,b) = calculaetbAffineForne var val1 in	
-				(*	Printf.printf"rechercheInc affine\n";*) 
+				(*	Printf.printf"rechercheInc affine\n";*)
 				let (expa, expb) = if estDefExp a = false  || estDefExp b = false  then
 									begin
 										(*getOnlyBoolAssignment := false;*)
