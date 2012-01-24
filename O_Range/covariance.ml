@@ -388,7 +388,7 @@ let   cardinal l = List.length l
 	 covvarAssig: the covariant assigment 
 	 listcovvar: list of covariant variables
 	vector : initial coefficient vector for covariant variables*)
-let isConstantFormLeadingToQuitTheLoop     beforeInst nextInst  var  cond    covvarAssig listcovvar vector=
+let isConstantFormLeadingToQuitTheLoop     beforeInst nextInst  var  cond    covvarAssig listcovvar vector  =
 	let las = evalStore (new_instBEGIN  (List.append beforeInst nextInst)) [] [] !myCurrentPtrContext in
 	let assign =expVaToExp( applyStoreVA covvarAssig las) in		
 	let ( nbterms ,assocVectorVar, hasconstant ) =getVectorAndNumberOfTerms  assign listcovvar  in 
@@ -405,15 +405,22 @@ let isConstantFormLeadingToQuitTheLoop     beforeInst nextInst  var  cond    cov
 															|_->if estDefExp ncond then if estNul ncond then false else true else true) in	
 							if isExecutedV = false then true else false
 		end
-		else false
+		else 
+			(* on peut aussi sortie à cause d'un boolean*)
+			false
 	end
 
 
 
 
 
+
+
+
+
+
 (* il faut ajouter les cas de sortie*)
-let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interval previous var cond =  
+let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interval previous var cond firstcond hasAndCond=  
  	match inst with
 		| [] -> (true,CLASNOINC,previous, false)(* return is ok, increment , list of instructions after last assignment of a listOfCovariantVar var, ifendoutput cf output because test of loop is false after*)
 		| firstInst::nextInst ->
@@ -446,7 +453,7 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 						begin
 							let k1 = getDefValue k11 in   	
 							let (correct, inc, after, isoutput) = 
-								getIncOfInstListCOV  vector  listOfCovariantVar nextInst completList interval  [] var cond in
+								getIncOfInstListCOV  vector  listOfCovariantVar nextInst completList interval  [] var cond firstcond hasAndCond in
 							
 							if correct  then
 							begin  
@@ -526,26 +533,26 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 								else (false,CLASNODEF, [], false)
 						end
 					end
-					else getIncOfInstListCOV  vector  listOfCovariantVar  nextInst completList interval (List.append previous [firstInst] ) var cond
+					else getIncOfInstListCOV  vector  listOfCovariantVar  nextInst completList interval (List.append previous [firstInst] ) var cond firstcond hasAndCond
 				| TAB (id, _, _,_,_) -> 
 					if  List.mem id listOfCovariantVar  then (false,CLASNODEF,  [], false) 
-					else  getIncOfInstListCOV  vector  listOfCovariantVar nextInst completList interval  (List.append previous [firstInst] ) var cond
+					else  getIncOfInstListCOV  vector  listOfCovariantVar nextInst completList interval  (List.append previous [firstInst] ) var cond firstcond hasAndCond
 				| MEMASSIGN (id, _, _,_,_) -> 
 					if  List.mem id listOfCovariantVar  then  (false,CLASNODEF,  [], false) 
-					else getIncOfInstListCOV  vector  listOfCovariantVar nextInst completList interval  (List.append previous [firstInst] ) var cond
+					else getIncOfInstListCOV  vector  listOfCovariantVar nextInst completList interval  (List.append previous [firstInst] ) var cond firstcond hasAndCond
 				| BEGIN liste ->
 					(* attention on peut avoir non pas deux ensembles mais des cooef qui sont des set...*)
-					let (correct1, inc1,after,out1) = getIncOfInstListCOV  vector  listOfCovariantVar liste completList interval   previous var cond in
+					let (correct1, inc1,after,out1) = getIncOfInstListCOV  vector  listOfCovariantVar liste completList interval   previous var cond firstcond hasAndCond in
 
 
 					if correct1 then
 						(match inc1 with 
 							CLASNODEF -> (false,CLASNODEF, [], false)
 							|CLASNOINC->
-								getIncOfInstListCOV  vector  listOfCovariantVar nextInst completList interval  (List.append after [firstInst] ) var cond
+								getIncOfInstListCOV  vector  listOfCovariantVar nextInst completList interval  (List.append after [firstInst] ) var cond firstcond hasAndCond
 							|ARITHGEO (q1, k1,corr1)->
 								let (correct, inc, a2,out2) = 
-									getIncOfInstListCOV vector listOfCovariantVar nextInst completList interval (List.append after [firstInst]) var cond in
+									getIncOfInstListCOV vector listOfCovariantVar nextInst completList interval (List.append after [firstInst]) var cond firstcond hasAndCond in
 								(* en fait les instructions qui suivent la dernière affectation ??? voir*)
 								if correct  then
 									( match inc with
@@ -590,28 +597,61 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 					let falseinterval = restictIntervalFromCond ( UNARY (NOT,(getCondition(expVaToExp  exp)))) var  interval in
  	
 					let (correct1, inc1,after,out1) = 
-						getIncOfInstListCOV  vector  listOfCovariantVar  [i1] completList trueinterval   previous var cond in
-					if correct1 = false  then  (false,CLASNODEF, [], false)
+						getIncOfInstListCOV  vector  listOfCovariantVar  [i1] completList trueinterval   previous var cond firstcond hasAndCond in
+
+(* when we have If instruction we can alse have boolean condition that leads to kit the loop*)
+(*let isOkExe =   quitBecauseOfBoolean     (List.append previous [i1] ) nextInst  firstcond  in hasAndCond*)
+					(*let isOkExe1 = quitBecauseOfBoolean  (List.append previous [i1]) nextInst cond hasAndCond in*)
+					if correct1 = false  then 
+					(	if hasAndCond then
+							getIncOfAND vector  listOfCovariantVar  i1 i2 completList falseinterval  nextInst firstInst interval previous  var cond firstcond hasAndCond 
+						else (false,CLASNODEF, [], false)
+					)
 					else
 					(	match inc1 with
-						CLASNODEF -> (false,CLASNODEF, [], false)
+						CLASNODEF -> 
+							(	if hasAndCond then
+									getIncOfAND vector  listOfCovariantVar  i1 i2 completList falseinterval  nextInst firstInst interval previous  var cond firstcond hasAndCond 
+								else (false,CLASNODEF, [], false)
+							)
+							 
 						|CLASNOINC-> 
-							let (correct2, inc2, after2,_) = 
-									getIncOfInstListCOV  vector  listOfCovariantVar  [i2] completList falseinterval   previous var cond in
-							if correct2 = false ||inc2 = CLASNODEF then (false,CLASNODEF, [], false)
-							else 
-								if inc2 = CLASNOINC  then (* covariant var are neither assigned into true or false alternate = depend only on next instructions*)
-								 getIncOfInstListCOV vector listOfCovariantVar nextInst completList interval (List.append previous [firstInst]) var cond
-								else (* change only into one of the alternate*)(false,CLASNODEF, [], false)
+							if hasAndCond then
+								getIncOfAND vector  listOfCovariantVar  i1 i2 completList falseinterval  nextInst firstInst interval previous  var cond firstcond hasAndCond 
+							else
+							begin
+								let (correct2, inc2, after2,_) = 
+									getIncOfInstListCOV  vector  listOfCovariantVar  [i2] completList falseinterval   previous var cond firstcond hasAndCond in
+								if correct2 = false then (false,CLASNODEF, [], false)
+								else 
+								( 
+									match inc2 with  CLASNODEF -> (false,CLASNODEF, [], false)
+									| CLASNOINC  -> (* covariant var are neither assigned into true or false alternate = depend only on next instructions*)
+									   getIncOfInstListCOV vector listOfCovariantVar nextInst completList interval (List.append previous [firstInst]) var cond firstcond hasAndCond
+									| ARITHGEO (q2, k2,corr2)-> (* change only into one of the alternate*)Printf.printf "TRUE ARITHGEO 0  quitBecauseOfBoolean \n" ;
+										let isOkExe1 = quitBecauseOfBoolean  (List.append previous [i1]) nextInst cond hasAndCond firstcond in
+										if isOkExe1  then (*the constant leads to quit the loop *)
+																	( 	(true, ARITHGEO (  q2,  k2, corr2),  [IFVF (exp, BEGIN after, BEGIN after2)] , true))
+										else (false,CLASNODEF, [],false)
+
+								  )
+							end
+
+								
 							| ARITHGEO (q1, k1,corr1)-> 		
 								 let (correct2, inc2, after2, out2) = 
-									getIncOfInstListCOV  vector  listOfCovariantVar  [i2] completList falseinterval   previous  var cond in
+									getIncOfInstListCOV  vector  listOfCovariantVar  [i2] completList falseinterval   previous  var cond firstcond hasAndCond in
 								 if correct2 = false  then (false,CLASNODEF, [],false)
 								 else 
 									(* j'ai un peu de pb avec le contenu de after je vais le considérer vide dans un premier temps c'est pessimiste*)
 								(
 									 match inc2 with
-										CLASNODEF |CLASNOINC(* change only into one of the alternate*)-> (false,CLASNODEF, [], false)
+										CLASNODEF -> (false,CLASNODEF, [], false)
+										|CLASNOINC(* change only into one of the alternate*)->  
+											let isOkExe1 = quitBecauseOfBoolean  (List.append previous [i2]) nextInst cond hasAndCond firstcond in
+											if isOkExe1  then (*the constant leads to quit the loop *)
+																( 	(true, ARITHGEO (  q1,  k1, corr1),  [IFVF (exp, BEGIN after, BEGIN after2)] , true))
+											else (false,CLASNODEF, [],false)
 										| ARITHGEO (q2, k2,corr2)->
 											if (*q1 = q2 =1 :arithmetic form*) isArithmeticForm q1 q2 then  
 												if (* k_{10} * k_{20} >0 (the two functiosn are either strictly increasing or decreasing) *)
@@ -621,13 +661,16 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 													(* arithmético géométrique*)
 												else   (false,CLASNODEF, [], false)  
 											else 
-												if  isConstantForm q1 ||  isConstantForm q2 (*q1 =0 or  q2 =0 :one is constant*) then
+											(
+												let isOkExe1 = quitBecauseOfBoolean  (List.append previous [i1]) nextInst cond hasAndCond firstcond in
+												let isOkExe2 = quitBecauseOfBoolean  (List.append previous [i2]) nextInst cond hasAndCond firstcond in
+												if  isConstantForm q1 || isOkExe1||  isConstantForm q2 || isOkExe2(*q1 =0 or  q2 =0 :one is constant*) then
 												begin  
 													if  isConstantForm q1  then  	(* ici il faut en fait évaluer la valeur de la variable en sortie de boucle quand on  passe dans ce cas*) 
 													begin
 	 													match k1 with SINGLE kval ->
 
-															let isOkExe =   isConstantFormLeadingToQuitTheLoop     (List.append previous [i1] ) nextInst  var  cond    !covvarAssign  listOfCovariantVar vector  in
+															let isOkExe =   isConstantFormLeadingToQuitTheLoop     (List.append previous [i1] ) nextInst  var  cond    !covvarAssign  listOfCovariantVar vector   in
 															(*let ncond =  
 																calculer (EXP(remplacerValPar var (CONSTANT (RCONST_FLOAT kval)) cond)) !infoaffichNull [] (-1) in
 															let isExecutedV = (match ncond with Boolean(b)	->  if b = false then false  else true 
@@ -639,21 +682,25 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 															else (false,CLASNODEF, [],false)
 														|_->  (false,CLASNODEF, [],false)
 													end
-													else 		(*isConstantForm q2 *)
-													begin
-														match k2 with SINGLE kval -> (* ici il faut en fait évaluer la valeur de la variable en sortie de boucle quand on  passe dans ce cas*) 
-															let isOkExe =   isConstantFormLeadingToQuitTheLoop       (List.append previous [i2] )  nextInst  var  cond    !covvarAssign listOfCovariantVar vector  in
-															(*let ncond =  
-																calculer (EXP(remplacerValPar var (CONSTANT (RCONST_FLOAT kval)) cond)) !infoaffichNull [] (-1) in
-															let isExecutedV = (match ncond with Boolean(b)	->  if b = false then false  else true 
-																	|_->if estDefExp ncond then if estNul ncond then false else true else true) in	
-																Printf.printf "TRUE ARITHGEO 2  bool1 %b bool2 %b \n" isOkExe isExecutedV;	
-															if isExecutedV = false then *)
-															if isOkExe then
-																(true, ARITHGEO (  q1,  k1,max corr1 corr2),  [IFVF (exp, BEGIN after, BEGIN after2)] , true)
-															else (false,CLASNODEF, [],false)
-														|_->  (false,CLASNODEF, [],false)
-													end
+													else 	
+														if   isOkExe1 then	( 	(true, ARITHGEO (  q2,  k2,max corr1 corr2),  [IFVF (exp, BEGIN after, BEGIN after2)] , true)) 
+														else (*isConstantForm q2 *)
+															if  isConstantForm q2  then 
+															begin
+																match k2 with SINGLE kval -> (* ici il faut en fait évaluer la valeur de la variable en sortie de boucle quand on  passe dans ce cas*) 
+																	let isOkExe =   isConstantFormLeadingToQuitTheLoop       (List.append previous [i2] )  nextInst  var  cond    !covvarAssign listOfCovariantVar vector    in
+																	(*let ncond =  
+																		calculer (EXP(remplacerValPar var (CONSTANT (RCONST_FLOAT kval)) cond)) !infoaffichNull [] (-1) in
+																	let isExecutedV = (match ncond with Boolean(b)	->  if b = false then false  else true 
+																			|_->if estDefExp ncond then if estNul ncond then false else true else true) in	
+																		Printf.printf "TRUE ARITHGEO 2  bool1 %b bool2 %b \n" isOkExe isExecutedV;	
+																	if isExecutedV = false then *)
+																	if isOkExe then
+																		(true, ARITHGEO (  q1,  k1,max corr1 corr2),  [IFVF (exp, BEGIN after, BEGIN after2)] , true)
+																	else (false,CLASNODEF, [],false)
+																|_->  (false,CLASNODEF, [],false)
+															end
+															else (true, ARITHGEO (  q1,  k1,max corr1 corr2),  [IFVF (exp, BEGIN after, BEGIN after2)] , true)
 												end
 												else 
 													if isGeometricForm k1 k2   then														   
@@ -668,19 +715,37 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 														else (false,CLASNODEF, [], false)	
 														 
 											))
-
+										)
 
 				| IFV ( exp, i1) ->  
 					let trueinterval = restictIntervalFromCond (getCondition(expVaToExp  exp)) var  interval in
 				 
 
-					let (correct1, inc1,_,_) = getIncOfInstListCOV  vector  listOfCovariantVar  [i1] completList trueinterval   previous  var cond in
+					let (correct1, inc1,_,_) = getIncOfInstListCOV  vector  listOfCovariantVar  [i1] completList trueinterval   previous  var cond firstcond hasAndCond in
 
-					if correct1 = false  then (false,CLASNODEF, [], false)
+					if correct1 = false  then 
+					(
+						if hasAndCond then
+						begin
+							let isOkExe1 = quitBecauseOfBoolean  (List.append previous [i1]) nextInst cond hasAndCond firstcond in
+							if isOkExe1 then
+		 						getIncOfInstListCOV  vector  listOfCovariantVar  nextInst completList interval (List.append previous [firstInst] ) var cond firstcond hasAndCond
+							else  (false,CLASNODEF, [], false)
+						end 
+						else (false,CLASNODEF, [], false)
+					)
 					else
 						(match inc1 with
-							CLASNODEF -> (false,CLASNODEF, [], false)
-							|CLASNOINC->  getIncOfInstListCOV  vector  listOfCovariantVar nextInst completList interval  (List.append previous [firstInst] ) var cond
+							CLASNODEF -> 			
+										if hasAndCond then
+										begin
+											let isOkExe1 = quitBecauseOfBoolean  (List.append previous [i1]) nextInst cond hasAndCond firstcond in
+											if isOkExe1 then
+						 						getIncOfInstListCOV  vector  listOfCovariantVar  nextInst completList interval (List.append previous [firstInst] ) var cond firstcond hasAndCond
+											else  (false,CLASNODEF, [], false)
+										end 
+										else (false,CLASNODEF, [], false)
+							|CLASNOINC->  getIncOfInstListCOV  vector  listOfCovariantVar nextInst completList interval  (List.append previous [firstInst] ) var cond firstcond hasAndCond
 										   
 							| ARITHGEO (q1, k1,_)->  (false,CLASNODEF, [], false)(* if constant some times it can be analysed*)
 						)
@@ -690,12 +755,12 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 
 				| FORV (num,id, _, _, _, _, body,_)->        
 					let nbItMin = if  existAssosExactLoopInit  num then getAssosExactLoopInit num  else 0 in
-					let (indirect1, inc1, var1, before1,incifexe) = (extractIncOfLoop var [body] id nbItMin (*nbItMin_{numLoop}*)completList) (List.append previous [firstInst] ) in
+					let (indirect1, inc1, var1, before1,incifexe) = (extractIncOfLoop var [body] id nbItMin (*nbItMin_{numLoop}*)completList) (List.append previous [firstInst] ) firstcond hasAndCond in
 				 
 					if incifexe =   NODEFINC then  (false,CLASNODEF, [], false)
 					else
 						if indirect1 = false && inc1 =  NOINC then 
-							 getIncOfInstListCOV  vector  listOfCovariantVar nextInst completList interval  (List.append previous [firstInst] )  var cond
+							 getIncOfInstListCOV  vector  listOfCovariantVar nextInst completList interval  (List.append previous [firstInst] )  var cond firstcond hasAndCond
 						else (false,CLASNODEF, [], false)
 
 
@@ -704,17 +769,30 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 					if inc1 =   NODEFINC then  (false,CLASNODEF, [], false)
 					else
 						if indirect1 = false && inc1 =   NOINC then   
-							 getIncOfInstListCOV  vector  listOfCovariantVar nextInst completList interval  (List.append previous [firstInst] ) var cond
-						else  (false,CLASNODEF, [], false)
+							 getIncOfInstListCOV  vector  listOfCovariantVar nextInst completList interval  (List.append previous [firstInst] ) var cond firstcond hasAndCond
+						else  (false,CLASNODEF, [], false) 
 		 
 
 (* covariance *)
  
 
+and  getIncOfAND vector  listOfCovariantVar  i1 i2 completList falseinterval  nextInst firstInst interval previous  var cond firstcond hasAndCond =
+		let isOkExe1 = quitBecauseOfBoolean  (List.append previous [i1]) nextInst cond hasAndCond firstcond in
+		if isOkExe1 then
+		begin
+			let (correct2, inc2, after2, out2) = 
+						getIncOfInstListCOV  vector  listOfCovariantVar  [i2] completList falseinterval   previous  var cond firstcond hasAndCond in
+			let isOkExe2 = quitBecauseOfBoolean  (List.append previous [i2]) nextInst cond hasAndCond firstcond in
+
+			if correct2 = false && isOkExe2 = false then (false,CLASNODEF, [], false)
+			else
+				if  isOkExe2 then getIncOfInstListCOV  vector  listOfCovariantVar  nextInst completList interval (List.append previous [firstInst] ) var cond firstcond hasAndCond
+				else (false,CLASNODEF, [], false)
+		end
+		else (false,CLASNODEF, [], false)
 
 
-
-and getcovariance  vector  listOfCovariantVar  inst completList cond previous x = (*return a new inst list where each assignment of var of listOfCovariantVar are completed by instructiontoadd *)
+and getcovariance  vector  listOfCovariantVar  inst completList cond previous x firstcond hasAndCond= (*return a new inst list where each assignment of var of listOfCovariantVar are completed by instructiontoadd *)
 
 		let pred = !getOnlyBoolAssignment in
  		getOnlyBoolAssignment := false;
@@ -733,7 +811,7 @@ and getcovariance  vector  listOfCovariantVar  inst completList cond previous x 
 		(
 
 				let interval  = restictIntervalFromCond cond x  (INTERVALLE(INFINI,INFINI)) in
-				let (ok, inc1,l, out ) = getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interval previous x cond in
+				let (ok, inc1,l, out ) = getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interval previous x cond firstcond hasAndCond in
 
 				if ok  then  
 				begin
@@ -794,10 +872,10 @@ getcovariance  vector  listOfCovariantVar  inst completList cond previous x =
 *)
 
 
-and getLoopVarIncOrCov v inst cond =
+and getLoopVarIncOrCov v inst firstcond hasAndCond =
 
 
-(*if !covvarAssign=MULTIPLE then *)  getLoopVarInc v inst (*else ...*)
+(*if !covvarAssign=MULTIPLE then *)  getLoopVarInc v inst (*else ...*)firstcond hasAndCond
 
 
 

@@ -104,6 +104,35 @@ NOTHING -> false
 | exp-> containtMINIMUMCALL exp
 
 
+let quitBecauseOfBoolean  beforeInst nextInst cond hasAndCond firstcond=
+(* Printf.printf "TRUE ARITHGEO dans 1  quitBecauseOfBoolean \n" ;*)
+	if hasAndCond = false then false
+	else
+	begin
+
+(* Printf.printf "TRUE ARITHGEO dans 2  quitBecauseOfBoolean \n" ;
+print_expression cond 0; space() ;flush() ;new_line(); flush();new_line(); 
+print_expression firstcond 0; space() ;flush() ;new_line(); flush();new_line(); *)
+		let las = evalStore (new_instBEGIN  (List.append beforeInst nextInst)) [] [] !myCurrentPtrContext in
+		let assign =expVaToExp( applyStoreVA (EXP cond) las) in	
+		let assign2 =expVaToExp( applyStoreVA (EXP firstcond) las) in	
+		let ncond =  calculer (EXP  assign)  !infoaffichNull [] (-1) in	
+		let ncond1 =  calculer (EXP   assign2)  !infoaffichNull [] (-1) in	
+		if   estNoComp ncond  && estNoComp ncond1   then false
+		else 
+		begin 
+			let isExecutedV = if   estNoComp ncond = false then (match ncond with Boolean(b)	->  if b = false then false  else true 
+																|_-> if estNul ncond then false else true ) else true in	
+
+			let isExecutedV2 = if   estNoComp ncond1 = false then (match ncond1 with Boolean(b)	->  if b = false then false  else true 
+																|_-> if estNul ncond1 then false else true )  else true in	
+			if isExecutedV = false || isExecutedV2 = false then  (  true) else   ( false) 
+			 
+		end	
+end
+
+
+
 let rec rechercheInc var exp before=
 	(*Printf.printf"rechercheInc\n"; 
 	print_expression exp 0;new_line(); flush();new_line(); flush();new_line(); flush();new_line(); flush();space();new_line(); flush();space();*)
@@ -541,7 +570,7 @@ print_interval inter2 ;*)
 
 
 
-and getIncOfInstList x iList completList interval previous=
+and getIncOfInstList x iList completList interval previous firstcond hasAndCond=
 (*Printf.printf "getIncOfInstList variable %s\n" x;
 afficherLesAffectations iList;*)
 	if iList = [] then (false,NOINC,x,false)
@@ -565,25 +594,25 @@ afficherLesAffectations iList;*)
 				else
 					if isindirect = false then
 					begin
-						let (indirect2, inc, var, before2) = getIncOfInstList x nextInst completList interval (List.append previous [firstInst] )in
+						let (indirect2, inc, var, before2) = getIncOfInstList x nextInst completList interval (List.append previous [firstInst] ) firstcond hasAndCond in
 						if indirect2 = false then (false, joinSequence x inc1  inc, x, false) else (true, inc, var, before2) 
 					end
 					else (true, inc1, v, before)
 
 			| TAB (id, _, _,_,_) -> 
 				if id = x then (false,NODEFINC,x,false) 
-				else  (*NOINC *)getIncOfInstList x nextInst completList   interval (List.append previous [firstInst] )
+				else  (*NOINC *)getIncOfInstList x nextInst completList   interval (List.append previous [firstInst] ) firstcond hasAndCond
 			| MEMASSIGN (id, _, _,_,_) -> 
 				if id = x then (false,NODEFINC,x,false) 
-				else  (*NOINC *)getIncOfInstList x nextInst completList  interval (List.append previous [firstInst] )
+				else  (*NOINC *)getIncOfInstList x nextInst completList  interval (List.append previous [firstInst] ) firstcond hasAndCond
 
 			| BEGIN liste ->
-				let (indirect1, inc1, var1, before1) = (getIncOfInstList x  liste completList interval (List.append previous [firstInst] )) in
+				let (indirect1, inc1, var1, before1) = (getIncOfInstList x  liste completList interval (List.append previous [firstInst] ) firstcond hasAndCond) in
 				if inc1 = NODEFINC then (indirect1,inc1, var1, before1)
 				else
 					if indirect1 = false then 
 					begin 
-						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList interval (List.append previous [firstInst] )) in
+						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList interval (List.append previous [firstInst] ) firstcond hasAndCond) in
 						if indirect2 = false then (false,joinSequence x inc1 inc2,x, false) else (true, inc2, var2, before2) 
 					end
 					else (true, inc1, var1,before1) 
@@ -592,19 +621,45 @@ afficherLesAffectations iList;*)
 
 				let trueinterval = restictIntervalFromCond (getCondition(expVaToExp  exp)) x  interval in
 				let falseinterval = restictIntervalFromCond ( UNARY (NOT,(getCondition(expVaToExp  exp)))) x  interval in
-				let (indirect1, inc1, var1, before1) = (getIncOfInstList x   [i1] completList trueinterval (List.append previous [firstInst] )) in
-				if inc1 = NODEFINC then (indirect1,inc1, var1, before1)
+				let (indirect1, inc1, var1, before1) = (getIncOfInstList x   [i1] completList trueinterval (List.append previous [firstInst] )firstcond hasAndCond) in
+
+				if inc1 = NODEFINC then 
+				begin
+					if hasAndCond  &&  indirect1 = false then
+					(		let (res, a,b,c,d) = getIncOfANDOne x  i1 i2 completList falseinterval  nextInst firstInst interval previous   firstcond hasAndCond   in
+							if res then ( a,b,c,d) else (indirect1, inc1, var1, before1))
+					else  (indirect1, inc1, var1, before1)
+
+				end
 				else
 					if indirect1 = false then 
 					begin 
-						let (indirect2, inc2, var2, before2) = (getIncOfInstList x [i2] completList falseinterval (List.append previous [firstInst] )) in
-						if inc2 = NODEFINC then (indirect2, inc2, var2, before2) 
+						let (indirect2, inc2, var2, before2) = (getIncOfInstList x [i2] completList falseinterval (List.append previous [firstInst] )firstcond hasAndCond) in
+						if inc2 = NODEFINC then 
+
+
+							if hasAndCond && indirect2 = false  then
+								begin
+									let isOkExe1 = quitBecauseOfBoolean  (List.append previous [i2]) nextInst firstcond hasAndCond firstcond in
+									if isOkExe1 then
+									begin
+				 						let (indirect3, inc3, var3, before3) = (getIncOfInstList x  nextInst completList interval(List.append previous [firstInst] ) firstcond hasAndCond) in
+										if indirect3 = false then  
+											(false,joinSequence x  inc1   inc3  ,x, false) 
+										else (true, inc3, var3, before3) 
+
+
+									end
+									else  (indirect2, inc2, var2, before2) 
+								end 
+
+							else	(indirect2, inc2, var2, before2) 
 						else
 							if indirect2 = false then 
 							begin
-								let (indirect3, inc3, var3, before3) = (getIncOfInstList x  nextInst completList interval(List.append previous [firstInst] ) ) in
+								let (indirect3, inc3, var3, before3) = (getIncOfInstList x  nextInst completList interval(List.append previous [firstInst] ) firstcond hasAndCond) in
 
-(*Printf.printf"joinSequence %s\n"x;*)
+(*if inc2 = NOINC || inc1 =NOINC then *)Printf.printf"joinSequence %s\n" x;
 								if indirect3 = false then  
 										(false,joinSequence x ( joinAlternate x inc1 inc2 trueinterval falseinterval)  inc3  ,x, false) 
 								else (true, inc3, var3, before3) 
@@ -617,13 +672,33 @@ afficherLesAffectations iList;*)
 			| IFV ( exp, i1) ->
 				let trueinterval = restictIntervalFromCond (getCondition(expVaToExp  exp)) x  interval in
 
-				let (indirect1, inc1, var1, before1) = (getIncOfInstList x   [i1] completList trueinterval (List.append previous [firstInst] )) in
-				if inc1 = NODEFINC then (indirect1,inc1, var1, before1)
+				let (indirect1, inc1, var1, before1) = (getIncOfInstList x   [i1] completList trueinterval (List.append previous [firstInst] )firstcond hasAndCond) in
+				if inc1 = NODEFINC then
+					if hasAndCond &&  indirect1 = false  then
+						begin
+							let isOkExe1 = quitBecauseOfBoolean  (List.append previous [i1]) nextInst firstcond hasAndCond firstcond in
+							if isOkExe1 then
+		 						(getIncOfInstList x nextInst completList interval (List.append previous [firstInst] )firstcond hasAndCond)  (*REVOIR*)
+							else  (indirect1,inc1, var1, before1)
+						end 
+
+					else	 (indirect1,inc1, var1, before1)
 				else
 					if indirect1 = false then 
 					begin 
-						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList interval (List.append previous [firstInst] ))  in
-						if indirect2 = false then   (false,joinSequence x ( joinAlternate x inc1 NOINC trueinterval trueinterval)  inc2  ,x, false)  else (true, inc2, var2, before2) 
+						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList interval (List.append previous [firstInst] )firstcond hasAndCond)  in
+
+						if hasAndCond &&  inc1 =NOINC   then
+						begin
+
+							let isOkExe1 = quitBecauseOfBoolean  (List.append previous [i1]) nextInst firstcond hasAndCond firstcond in
+							if isOkExe1 then
+		 						(getIncOfInstList x nextInst completList interval (List.append previous [firstInst] )firstcond hasAndCond)  (*REVOIR*)
+							else   if indirect2 = false then   (false,joinSequence x ( joinAlternate x inc1 NOINC trueinterval trueinterval)  inc2  ,x, false)  else (true, inc2, var2, before2) 
+
+							 
+						end
+						else if indirect2 = false then   (false,joinSequence x ( joinAlternate x inc1 NOINC trueinterval trueinterval)  inc2  ,x, false)  else (true, inc2, var2, before2) 
 					end
 					else (true, inc1, var1, before1) 
 
@@ -631,14 +706,14 @@ afficherLesAffectations iList;*)
 
 			| FORV (num,id, _, _, _, _, body,_)->
 				let nbItMin = if  existAssosExactLoopInit  num then getAssosExactLoopInit num  else 0 in
-				let (indirect1, inc1, var1, before1,incifexe) = (extractIncOfLoop x [body] id nbItMin (*nbItMin_{numLoop}*)completList) (List.append previous [firstInst] ) in
+				let (indirect1, inc1, var1, before1,incifexe) = (extractIncOfLoop x [body] id nbItMin (*nbItMin_{numLoop}*)completList) (List.append previous [firstInst] ) firstcond hasAndCond in
 				(*if nbItMin_{numLoop}=nbItMax_{numLoop} then joinSequence x (extractIncOfLoop x [body] id nbItMin_{numLoop} )(getIncOfInstList x [nextInst])
 				else*)
 				if incifexe = NODEFINC then (indirect1,inc1, var1, before1)
 				else
 					if indirect1 = false then 
 					begin 
-						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList interval (List.append previous [firstInst] ))  in
+						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList interval (List.append previous [firstInst] )firstcond hasAndCond)  in
 						if indirect2 = false then 
 						begin  
 							if incifexe = inc1 then
@@ -656,14 +731,35 @@ afficherLesAffectations iList;*)
 				else
 					if indirect1 = false then 
 					begin 
-						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList interval (List.append previous [firstInst] ))  in
+						let (indirect2, inc2, var2, before2) = (getIncOfInstList x nextInst completList interval (List.append previous [firstInst] )firstcond hasAndCond)  in
 						if indirect2 = false then   (false,joinSequence x inc1 inc2,x, false)  else (true, inc2, var2, before2) 
 					end
 					else (true, inc1, var1, before1) 
 	end
 
+and  getIncOfANDOne  x i1 i2 completList falseinterval  nextInst firstInst interval previous     firstcond hasAndCond  =
+		let isOkExe1 = quitBecauseOfBoolean  (List.append previous [i1]) nextInst firstcond hasAndCond firstcond in
+		if isOkExe1 then
+		begin
+			let (correct2, inc,_, _) = 
+						getIncOfInstList x [i2] completList falseinterval   previous   firstcond hasAndCond in
 
-and extractIncOfLoop x inst varL nbItL completList beforei=
+			let isOkExe2 = quitBecauseOfBoolean  (List.append previous [i2]) nextInst firstcond hasAndCond firstcond in
+
+			if correct2 = true || isOkExe2 = false then (false, false,  inc ,x, false)
+			else
+			begin
+					let (a,b,c,d) =	 getIncOfInstList x    nextInst completList interval (List.append previous [firstInst] ) firstcond hasAndCond in
+					(true, a,b,c,d)
+
+
+			end
+				 
+		end
+		else (false, false,  NODEFINC ,x, false)
+
+
+and extractIncOfLoop x inst varL nbItL completList beforei firstcond hasAndCond=
 	(*if nbItL = 0 then*)
 	begin
 		
@@ -673,7 +769,7 @@ and extractIncOfLoop x inst varL nbItL completList beforei=
 		let (isindirect,inc1,v, before,ifexe) = 
 			if List.mem x (assignVar inst) then
 			begin
-				let (isindirect,inc,var, before) = getIncOfInstList x inst inst (INTERVALLE(INFINI,INFINI)) [] in
+				let (isindirect,inc,var, before) = getIncOfInstList x inst inst (INTERVALLE(INFINI,INFINI)) [] firstcond hasAndCond in
 				(*let varBPUN = BINARY(SUB, VARIABLE varL, CONSTANT(CONST_INT("1"))) in
 			    isMultiInc := true;
 				let extinc = expVaToExp(applyStoreVA (rechercheAffectVDsListeAS x las)  	[ASSIGN_SIMPLE (varL, EXP(varBPUN))] )   in
@@ -764,16 +860,16 @@ let  used =
  
 
 
-and getLoopVarInc v inst =
+and getLoopVarInc v inst firstcond hasAndCond=
 		let pred = !getOnlyBoolAssignment in
  		getOnlyBoolAssignment := false;
 		setOnlyIncrement true;
 		isMultiInc := false;(*Printf.printf "getincrement %s \n "v;afficherLesAffectations inst;*)
-		let (isindirect,inc,var, before) = getIncOfInstList v inst inst (INTERVALLE(INFINI,INFINI)) [] in
+		let (isindirect,inc,var, before) = getIncOfInstList v inst inst (INTERVALLE(INFINI,INFINI)) [] firstcond hasAndCond in
 		getOnlyBoolAssignment := pred;
 
 if List.mem v !myChangeVar || List.mem var !myChangeVar then
-( Printf.printf "pb increment %s %s\n" v var;
+( (*Printf.printf "pb increment %s %s\n" v var;*)
 (*Printf.printf "\n\nAssigned  \n" ;			List.iter(fun x -> Printf.printf "%s" x)!myChangeVar ;
 Printf.printf "\nptr  \n" ;	LocalAPContext.print !myCurrentPtrContext;*)
 expressionIncFor :=NOTHING;

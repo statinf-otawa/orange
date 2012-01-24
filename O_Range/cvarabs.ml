@@ -1289,7 +1289,7 @@ and  calculer expressionVA ia l sign =
 				let oksign =  ((estPosVal22 = estPosVal2)||isOkval1) && ((estPosVal11 = estPosVal1(* || estNul val1 || estNul val11*))||isOkval2) in
 
 
-				if oksign = false && multop then Printf.printf "problème inversion de sign\n";
+			(*	if oksign = false && multop then Printf.printf "problème inversion de sign\n";*)
 				(val22,estPosVal22,val11,estPosVal11,oksign)
 			end
 			else  (val2, estPosVal2, val1, estPosVal1, true) in
@@ -1297,21 +1297,23 @@ and  calculer expressionVA ia l sign =
 			(*Printf.printf"var2\n "; print_expTerm val2;new_line();*)
 
 				if estNoComp val1 || estNoComp val2 || (multop && oksign = false )  then (
-					if op = OR then
-						if estNoComp val1  then
-						 	if estNoComp val2 then NOCOMP
-							else (val2)
-						else (val1)
-					else  if op = AND then
-						  begin  
+					if  estNoComp val1 && estNoComp val2 then NOCOMP  (* ? and ? => ? *)
+					else
+					(
+						if op = OR then
 							if estNoComp val1  then
-						 		if estNoComp val2 then NOCOMP
-								else (*if isBoolFalse val2 then  Boolean (false) else NOCOMP*)val2
-							else (* if isBoolFalse val1 then Boolean (false) else NOCOMP*) val1
-                                  
-						  (*Printf.printf "voir cas du and\n"; NOCOMP*)
-						  end 
-						  else NOCOMP )
+							 	 if isBoolFalse val2 = false then  Boolean (true) (* ? or true=> true*) else val1 (* ? or false => val1*)
+							else if isBoolFalse val1 = false then  Boolean (true) (* ? or true=> true*) else val2 (* val2 or false => val2*)
+						else  if op = AND then
+							  begin   
+								if estNoComp val1  then
+							 		if isBoolFalse val2 then  ( Boolean (false)) (* false and ? => false *) else  ( val1 )(* ? and true => val1*)
+								else  if isBoolFalse val1 then  Boolean (false) else ( val2)
+							  end 
+							  else NOCOMP
+		                              
+					)		
+				)  
 				else
 				begin
 (*
@@ -1417,7 +1419,7 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 							if estPositif (evalexpression (Diff (val1, val2 ))) then Boolean(true)
 							else Boolean (false)
 						else NOCOMP
-				| AND |OR ->
+				| AND   ->
  
 					let (resb1,comp1) =
 						(	if val1 = Boolean(true) || val1 = ConstInt ("1")  || val1 = ConstFloat("1.0")|| val1 = RConstFloat(1.0)
@@ -1432,14 +1434,38 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 								if val2 = Boolean (false) || val2 = ConstInt ("0")  ||val2 = ConstFloat("0.0")||val2 = RConstFloat(0.0)
 								then (false, true) else (true, false) )in
 (*estBoolOrVal*)
-					if comp1 = false && comp2 = false then begin (*Printf.printf " NOCOMP AND OR \n";*)NOCOMP end
+					if comp1 = false && comp2 = false then  NOCOMP  
 					else
 					begin 
-						if comp1 = false  then   Boolean(resb2 )
-						else if comp2 = false then Boolean(resb1) 
-							 else  if op = OR then  Boolean(resb1 || resb2)
-								   else   Boolean(resb1 && resb2)
+						if comp1 = false  then  if resb2 = false then  Boolean(false) else NOCOMP
+						else if comp2 = false then if resb1 = false then Boolean(false) else NOCOMP
+							   else  if resb1 == false || resb2 == false then Boolean false else Boolean(resb1 && resb2)
 
+					end
+
+	        |OR ->
+ 
+					let (resb1,comp1) =
+						(	if val1 = Boolean(true) || val1 = ConstInt ("1")  || val1 = ConstFloat("1.0")|| val1 = RConstFloat(1.0)
+							then (true,true)
+							else
+								if val1 = Boolean (false) || val1 = ConstInt ("0")  ||val1 = ConstFloat("0.0")||val1 = RConstFloat(0.0)
+								then (false, true) else (false, false) )in
+					let (resb2, comp2) =
+						(	if val2 = Boolean(true) || val2 = ConstInt ("1")   || val2 = ConstFloat("1.0")|| val2 = RConstFloat(1.0)
+							then (true,true)
+							else
+								if val2 = Boolean (false) || val2 = ConstInt ("0")  ||val2 = ConstFloat("0.0")||val2 = RConstFloat(0.0)
+								then (false, true) else (true, false) )in
+(*estBoolOrVal*)
+					
+					if comp1 = false && comp2 = false then  NOCOMP  
+					else
+					begin 
+						if comp1 = false  then  if resb2 = true then  Boolean(true) else NOCOMP
+						else if comp2 = false then if resb1 = true then Boolean(true) else NOCOMP
+							   else   (  if resb1 == true || resb2 == true then Boolean true else  Boolean(resb1 || resb2))
+								    
 					end
 				| BAND	| BOR| XOR	| ASSIGN | ADD_ASSIGN
 				| SUB_ASSIGN| MUL_ASSIGN| DIV_ASSIGN | MOD_ASSIGN | BAND_ASSIGN	|BOR_ASSIGN

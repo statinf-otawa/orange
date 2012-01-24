@@ -2475,7 +2475,7 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 
 					 traiterBouclesInternes nT  nT idEng id
 								tN appel listeEng typeE  numAp
-								max isExeE lt lf borne  false(* force additional treatment of upper loop outside the function *)  globales(* true = sans prod*) maxinit varLoop direction  idpred lcond iscompo
+								max isExeE lt lf borne  false  (* to exec the last path => false *) globales(* true = sans prod*) maxinit varLoop direction  idpred lcond iscompo
 				end
 		end
 	end
@@ -2802,7 +2802,7 @@ let rec traiterBouclesInternesComposant 	 	nT (*tete nid contenant bi*)  nEC (*n
 
 					 traiterBouclesInternes nT  nT idEng id
 								!resAuxTN appel listeEng typeE  numAp
-								!maxAuxTN isExeE lt lf borne  false (* force additional treatment of upper loop outside the function *) globales(* true = sans prod*) maxinit varLoop direction
+								!maxAuxTN isExeE lt lf borne  false (* to exec the last path => false *)globales(* true = sans prod*) maxinit varLoop direction
 					 idPred lcond true
 				end
 		end
