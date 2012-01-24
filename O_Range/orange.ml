@@ -2308,11 +2308,11 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 						MULTIPLE ->   MULTIPLE
 						| EXP(exp) ->
 							if estNothing nbEngl || estNothing (EXP(e)) then  EXP(NOTHING)
-							else
+							else (Printf.printf"MAX def\n";print_expression exp 0; space() ;flush() ;new_line(); flush();new_line(); print_expression e 0; space() ;flush() ;new_line(); flush();new_line(); 
 								EXP(CALL(VARIABLE("MAX") , (List.append (List.append
 			 						[VARIABLE (ii)]
 									[BINARY(SUB,	exp, (CONSTANT (CONST_INT "1")))])  [e])))
-									)
+									))
 					end
 				end
 				else recExptMax
@@ -2475,7 +2475,7 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 
 					 traiterBouclesInternes nT  nT idEng id
 								tN appel listeEng typeE  numAp
-								max isExeE lt lf borne  true globales(* true = sans prod*) maxinit varLoop direction  idpred lcond iscompo
+								max isExeE lt lf borne  false  (* to exec the last path => false *) globales(* true = sans prod*) maxinit varLoop direction  idpred lcond iscompo
 				end
 		end
 	end
@@ -2802,7 +2802,7 @@ let rec traiterBouclesInternesComposant 	 	nT (*tete nid contenant bi*)  nEC (*n
 
 					 traiterBouclesInternes nT  nT idEng id
 								!resAuxTN appel listeEng typeE  numAp
-								!maxAuxTN isExeE lt lf borne  true globales(* true = sans prod*) maxinit varLoop direction
+								!maxAuxTN isExeE lt lf borne  false (* to exec the last path => false *)globales(* true = sans prod*) maxinit varLoop direction
 					 idPred lcond true
 				end
 		end

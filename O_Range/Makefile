@@ -9,6 +9,7 @@ SOURCES = \
 	rename.ml\
 	util.ml\
 	extractinfoPtr.ml\
+	absClassProperty.ml\
 	cvarabs.ml \
 	interval.ml \
 	increment.ml\
