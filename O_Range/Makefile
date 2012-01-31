@@ -9,13 +9,14 @@ SOURCES = \
 	rename.ml\
 	util.ml\
 	extractinfoPtr.ml\
-	absClassProperty.ml\
 	cvarabs.ml \
 	interval.ml \
 	increment.ml\
     covariance.ml \
 	cextraireboucle.ml\
 	orange.ml 
+
+# absClassProperty.ml\
 	
 OCAMLC_CFLAGS += -g
 OCAMLC_LDFLAGS += -g
