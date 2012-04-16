@@ -604,20 +604,20 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 					(*let isOkExe1 = quitBecauseOfBoolean  (List.append previous [i1]) nextInst cond hasAndCond in*)
 					if correct1 = false  then 
 					(	if hasAndCond then
-							getIncOfAND vector  listOfCovariantVar  i1 i2 completList falseinterval  nextInst firstInst interval previous  var cond firstcond hasAndCond 
+							getIncOfAND vector  listOfCovariantVar  i1 i2 completList falseinterval  nextInst firstInst interval previous  var cond firstcond hasAndCond  after exp
 						else (false,CLASNODEF, [], false)
 					)
 					else
 					(	match inc1 with
 						CLASNODEF -> 
 							(	if hasAndCond then
-									getIncOfAND vector  listOfCovariantVar  i1 i2 completList falseinterval  nextInst firstInst interval previous  var cond firstcond hasAndCond 
+									getIncOfAND vector  listOfCovariantVar  i1 i2 completList falseinterval  nextInst firstInst interval previous  var cond firstcond hasAndCond after exp
 								else (false,CLASNODEF, [], false)
 							)
 							 
 						|CLASNOINC-> 
 							if hasAndCond then
-								getIncOfAND vector  listOfCovariantVar  i1 i2 completList falseinterval  nextInst firstInst interval previous  var cond firstcond hasAndCond 
+								getIncOfAND vector  listOfCovariantVar  i1 i2 completList falseinterval  nextInst firstInst interval previous  var cond firstcond hasAndCond after exp
 							else
 							begin
 								let (correct2, inc2, after2,_) = 
@@ -628,7 +628,7 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 									match inc2 with  CLASNODEF -> (false,CLASNODEF, [], false)
 									| CLASNOINC  -> (* covariant var are neither assigned into true or false alternate = depend only on next instructions*)
 									   getIncOfInstListCOV vector listOfCovariantVar nextInst completList interval (List.append previous [firstInst]) var cond firstcond hasAndCond
-									| ARITHGEO (q2, k2,corr2)-> (* change only into one of the alternate*)Printf.printf "TRUE ARITHGEO 0  quitBecauseOfBoolean \n" ;
+									| ARITHGEO (q2, k2,corr2)-> (* change only into one of the alternate Printf.printf "TRUE ARITHGEO 0  quitBecauseOfBoolean \n" ;*)
 										let isOkExe1 = quitBecauseOfBoolean  (List.append previous [i1]) nextInst cond hasAndCond firstcond in
 										if isOkExe1  then (*the constant leads to quit the loop *)
 																	( 	(true, ARITHGEO (  q2,  k2, corr2),  [IFVF (exp, BEGIN after, BEGIN after2)] , true))
@@ -776,7 +776,7 @@ let rec getIncOfInstListCOV  vector  listOfCovariantVar  inst completList interv
 (* covariance *)
  
 
-and  getIncOfAND vector  listOfCovariantVar  i1 i2 completList falseinterval  nextInst firstInst interval previous  var cond firstcond hasAndCond =
+and  getIncOfAND vector  listOfCovariantVar  i1 i2 completList falseinterval  nextInst firstInst interval previous  var cond firstcond hasAndCond after exp=
 		let isOkExe1 = quitBecauseOfBoolean  (List.append previous [i1]) nextInst cond hasAndCond firstcond in
 		if isOkExe1 then
 		begin
@@ -787,9 +787,15 @@ and  getIncOfAND vector  listOfCovariantVar  i1 i2 completList falseinterval  ne
 			if correct2 = false && isOkExe2 = false then (false,CLASNODEF, [], false)
 			else
 				if  isOkExe2 then getIncOfInstListCOV  vector  listOfCovariantVar  nextInst completList interval (List.append previous [firstInst] ) var cond firstcond hasAndCond
-				else (false,CLASNODEF, [], false)
+				else 
+					if correct2 then (	(true, inc2,  [IFVF (exp, BEGIN after, BEGIN after2)] , true))
+				 	else (false,CLASNODEF, [], false)
 		end
 		else (false,CLASNODEF, [], false)
+
+(*if isOkExe1  then (*the constant leads to quit the loop *)
+																( 	(true, inc2,  [IFVF (exp, BEGIN after, BEGIN after2)] , true))
+											else (false,CLASNODEF, [],false)*)
 
 
 and getcovariance  vector  listOfCovariantVar  inst completList cond previous x firstcond hasAndCond= (*return a new inst list where each assignment of var of listOfCovariantVar are completed by instructiontoadd *)
@@ -801,7 +807,7 @@ and getcovariance  vector  listOfCovariantVar  inst completList cond previous x 
 
 		if intersection listOfCovariantVar !myChangeVar != [] then
 		( 
-			Printf.printf "pb increment Covariance\n" ;
+			 
 			expressionIncFor :=NOTHING;
 			opEstPlus :=false;
 			(false,NODEFINC,x, false, true, NOTHING) 

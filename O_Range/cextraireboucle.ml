@@ -2087,7 +2087,7 @@ Printf.printf "Inside  recherchePow %s var\n" var ; Printf.printf "deux variable
 						| _->("",true,false,CONSTANT  (CONST_INT "0")) in
 							if estPos then
 							begin
-								Printf.printf "deux variables ou plus non const %s %s %s  %s ++\n" vari1 vari2 vardeux stringinc ;
+								(*Printf.printf "deux variables ou plus non const %s %s %s  %s ++\n" vari1 vari2 vardeux stringinc ;*)
 								let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (ADD,VARIABLE(vardeux), constval))) ] in
 								let newdans =  List.append dans 
 												[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (ADD,VARIABLE(vardeux), constval)))]	 in	

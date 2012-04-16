@@ -58,9 +58,16 @@ let banner =
 	"\torange [options] -k -- [--no-control-reduction] [functions...|--funlist listfile] [--outdir dir]\n" ^
 	"Call graph generation:\n" ^
 	"\torange [options] -g files... [functions...|--funlist listfile] [--outdir dir]\n" ^
-	"\torange [options] -g -- [functions...|--funlist listfile] [--outdir dir]\n"
+	"\torange [options] -g -- [functions...|--funlist listfile] [--outdir dir]\n"^
+	"Recurcivity detection with frontc produce an .rec_status file containing for each function its recursivity status:\n"^
+	"\torange [options] --frec files... [functions...|--funlist listfile] [--outdir dir]\n" ^
+	"\torange [options] --frec -- [functions...|--funlist listfile] [--outdir dir]\n"
 
-
+(* ^
+	Recurcivity application class : (0: no recursivity, 1: only single recursivity (that may be change into loop by calypso using --crec option), 2:others cases\n^
+	\torange [options] --gfrec files... [functions...|--funlist listfile] \n ^
+	\torange [options] --gfrec -- [functions...|--funlist listfile] \n
+*)
 let args: Frontc.parsing_arg list ref = ref []
 
 (* input stuff *)
@@ -88,6 +95,7 @@ let get_fun_list filename =
 (* preprocessing stuff *)
 let run_calipso = ref false
 let calipso_rrec = ref false
+let frontc_frec = ref false
 
 (* output stuff *)
 let out_file = ref ""
@@ -149,9 +157,11 @@ let opts = [
 	(*"--pp", Arg.Unit (fun _ -> args := (Frontc.LINE_RECORD true)::!args; calipso_rrec := true; run_calipso := true;args := USE_CPP :: !args ),
 		"Preprocess the input files.");
 	("-l", Arg.Unit (fun _ ->args := (Frontc.LINE_RECORD true)::!args; calipso_rrec := true; run_calipso := true;),
-		"Generate #line directive.");*)
-	("--crec", Arg.Unit (fun _ -> args := (Frontc.LINE_RECORD true)::!args; calipso_rrec := false; run_calipso := true;args := USE_CPP :: !args ),
-		"Remove simple recursions using Calipso.");
+		"Generate #line directive."); 
+	"--crec", Arg.Unit (fun _ -> args := (Frontc.LINE_RECORD true)::!args; calipso_rrec := false; run_calipso := true;args := USE_CPP :: !args ),
+		"Remove simple recursions using Calipso.");*)
+	("--frec", Arg.Unit (fun _ -> args := (Frontc.LINE_RECORD true)::!args; frontc_frec := true;run_calipso := false; args := USE_CPP :: !args ),
+		"Control if it has some recursive function and if the function are all simple recurcivity function (see orange doc)");
 	("--no-control-reduction", Arg.Unit (fun _ -> args := (Frontc.LINE_RECORD true)::!args;  run_calipso := false; args := USE_CPP :: !args),
 		"No Process input files using Calipso.");
 
@@ -409,7 +419,7 @@ let _ =
 					Calipso.RemoveContinue;
 					Calipso.RemoveReturn;
 					Calipso.RemoveSwitch(Reduce.RAW);
-				] @ (if (!calipso_rrec)
+				] @ (if (!calipso_rrec && !frontc_frec = false)
 					then [Calipso.RemoveRecursive]
 					else []
 				) in (List.map
@@ -433,9 +443,23 @@ let _ =
 		close_out out;
 		
 		(* get recursivity*)
-		(*let out = open_out ".rec_status" in
-		Sortrec.test out firstParse firstParse;
-		close_out out;*)
+		if (!frontc_frec) then
+		begin
+			let out = open_out ".rec_status" in
+			Sortrec.test out firstParse firstParse;
+			let outputstatut =(Sortrec.applicationRecursivityClass firstParse firstParse) in
+	 
+
+			let strToP = 
+				if outputstatut = 0 then Printf.sprintf "Application is : not recursive\n" 
+				else if outputstatut = 1 then Printf.sprintf "Application containts only simple recursivity\n" 
+					 else 	Printf.sprintf "Application containts complex recursivity\n" in
+			output_string  out strToP;
+			close_out out;
+		end
+		else
+		begin
+		(* *)
 
  
 
@@ -572,7 +596,9 @@ let _ =
 						output_string out result;
 						close_out out
 			end
+		end
 	end;
 	
 	(* Close the output if needed *)
 	if close then close_out output
+
