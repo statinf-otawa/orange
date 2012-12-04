@@ -598,7 +598,7 @@ and get_baseinittype typ =
 	| VOID ->    "void"
 	| CHAR sign ->   ((get_sign sign) ^ "char")
 	| INT (size, sign) ->   ((get_sign sign) ^ (get_size size) ^ "int")
-	| BITFIELD (sign, _) ->   ((get_sign sign) ^ "int")
+	| BITFIELD (t, _) ->   get_baseinittype t
 	| FLOAT size ->   ((if size then "long " else "") ^ "float")
 	| DOUBLE size ->   ((if size then "long " else "") ^ "double")
 	| NAMED_TYPE id ->		"type_mamed_" ^ id
@@ -2087,7 +2087,7 @@ Printf.printf "Inside  recherchePow %s var\n" var ; Printf.printf "deux variable
 						| _->("",true,false,CONSTANT  (CONST_INT "0")) in
 							if estPos then
 							begin
-								Printf.printf "deux variables ou plus non const %s %s %s  %s ++\n" vari1 vari2 vardeux stringinc ;
+								(*Printf.printf "deux variables ou plus non const %s %s %s  %s ++\n" vari1 vari2 vardeux stringinc ;*)
 								let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (ADD,VARIABLE(vardeux), constval))) ] in
 								let newdans =  List.append dans 
 												[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (ADD,VARIABLE(vardeux), constval)))]	 in	
@@ -2351,8 +2351,8 @@ and traiterUn croissant  borneInf borneSup operateur multiple var  cond avant da
 	 	if !opEstPlus = false && (isDivInc !expressionIncFor)  && typevar = DECROISSANT then 
 			(!initialisation,!borne, BINARY (DIV, CONSTANT  (CONST_INT "1"), !expressionIncFor)) 
 		 else
-				if !opEstPlus && typevar = DECROISSANT then  (!initialisation,!borne, !expressionIncFor)  
-		 		else  (!borne,!initialisation,!expressionIncFor) in
+				(*if !opEstPlus && typevar = DECROISSANT then  (!initialisation,!borne, !expressionIncFor)  
+		 		else *) (!borne,!initialisation,!expressionIncFor) in
 
 	
 	if isMultiInc then isExactForm := false;
@@ -2365,12 +2365,12 @@ and traiterUn croissant  borneInf borneSup operateur multiple var  cond avant da
 			(match  inc  with 
 				NODEFINC ->   (* 1+*)
 				(NOTHING,NOTHING, false,NOTHING)
-			|_->	(*print_expression borneInf 0; space() ;flush() ;new_line(); flush();new_line(); *)
-(*Printf.printf"traiterUn v = %s vari = %s\n" v vari;
+			|_->	(*print_expression borneInf 0; space() ;flush() ;new_line(); flush();new_line(); 
+Printf.printf"traiterUn v = %s vari = %s\n" v vari;
 print_expression inf 0; space() ;flush() ;new_line(); flush();new_line(); 
 	print_expression sup 0; space() ;flush() ;new_line(); flush();new_line(); 
-print_expression incr 0; space() ;flush() ;new_line(); flush();new_line();
-			*)
+print_expression incr 0; space() ;flush() ;new_line(); flush();new_line();*)
+			
 
 	let infoVar =   new_variation borneInf borneSup  incr typevar  operateur false in
 
@@ -2378,9 +2378,9 @@ print_expression incr 0; space() ;flush() ;new_line(); flush();new_line();
 
 	let nb = expVaToExp (getNombreIt sup (typevar=CONSTANTE||cte) t cond multiple [] (getIsAddInc inc)  infoVar v []) in
 	let borne = (getBorneBoucleFor t nb inf incr (getIsAddInc inc) isindirect) in
-(*Printf.printf"traiterUn v = %s vari = %s\n" v vari;
-print_expression nb 0; space() ;flush() ;new_line(); flush();new_line(); 
-	print_expression borne 0; space() ;flush() ;new_line(); flush();new_line(); *)
+(*Printf.printf"traiterUn  inf v = %s vari = %s\n" v vari;print_expression inf 0; space() ;flush() ;new_line(); flush();new_line(); 
+Printf.printf"traiterUn nb v = %s vari = %s\n" v vari;print_expression nb 0; space() ;flush() ;new_line(); flush();new_line(); 
+Printf.printf"traiterUn borne v = %s vari = %s\n" v vari;	print_expression borne 0; space() ;flush() ;new_line(); flush();new_line(); *)
 
 	(nb, incr, false,borne))
 
@@ -2456,7 +2456,7 @@ print_expression bSup 0; space() ;flush() ;new_line(); flush();new_line(); *)
 				begin
 					if  nb2 = NOTHING || oper2 = NE then 
 					begin expressionIncFor := inc1;  isExactForm := false;(crois1, bInf1, bSup1, oper1,mult1, v1, BINARY(AND, cd1,cd2 )) end
-					else((*Printf.printf"construireCondition diff\n";*) (	CROISSANT, CONSTANT (CONST_INT "0"), (*CONSTANT (CONST_INT "1")*)
+					else( (	CROISSANT, CONSTANT (CONST_INT "0"), (*CONSTANT (CONST_INT "1")*)
 							BINARY (SUB, CALL (VARIABLE("MINIMUM") , List.append [ b1] [b2] ), CONSTANT (CONST_INT "1")),
 							  LT,mult2, lv, BINARY(AND, cd1,cd2)))
 				end

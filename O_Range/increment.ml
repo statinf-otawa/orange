@@ -659,7 +659,7 @@ afficherLesAffectations iList;*)
 							begin
 								let (indirect3, inc3, var3, before3) = (getIncOfInstList x  nextInst completList interval(List.append previous [firstInst] ) firstcond hasAndCond) in
 
-(*if inc2 = NOINC || inc1 =NOINC then *)Printf.printf"joinSequence %s\n" x;
+(*if inc2 = NOINC || inc1 =NOINC then Printf.printf"joinSequence %s\n" x;*)
 								if indirect3 = false then  
 										(false,joinSequence x ( joinAlternate x inc1 inc2 trueinterval falseinterval)  inc3  ,x, false) 
 								else (true, inc3, var3, before3) 

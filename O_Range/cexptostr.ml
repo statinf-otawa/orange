@@ -136,7 +136,7 @@ let new_line _ =
 		| VOID -> 						expP^ "void"
 		| CHAR sign -> 					expP^ ((get_sign sign) ^ "char")
 		| INT (size, sign) -> 			expP^ ((get_sign sign) ^ (get_size size) ^ "int")
-		| BITFIELD (sign, _) -> 		expP^ ((get_sign sign) ^ "int")
+		| BITFIELD (t, _) -> 			base_typeToString expP t
 		| FLOAT size -> 				expP^ ((if size then "long " else "") ^ "float")
 		| DOUBLE size -> 				expP^ ((if size then "long " else "") ^ "double")
 		| NAMED_TYPE id -> 				expP^ id
