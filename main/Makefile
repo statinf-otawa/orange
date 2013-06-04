@@ -9,7 +9,10 @@ OCAMLC_FLAGS += -g
 OCAMLC_LDFLAGS += -g
 
 ifdef NATIVE
-OPTIONS=native
+OPTIONS += native
+endif
+ifdef CUSTOM
+OPTIONS += custom
 endif
 
 OCAML_INC += ../../frontc/frontc ../O_Range ../inst/lib/ ../graph
