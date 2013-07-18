@@ -1245,11 +1245,11 @@ and  calculer expressionVA ia l sign =
 			let (unique, var) =  if listeDesVar = [] then (false,"") else if List.tl listeDesVar = [] then (true, List.hd listeDesVar) else (false,"") in
 
 
-			if !vDEBUG then
+			(*if !vDEBUG then
 			begin
 				Printf.printf"binary\n";print_expression exp1 0;new_line ()	;
 				print_expression exp2 0;new_line ()
-			end;
+			end;*)
 			let haspre = !hasSETCALL in
 
 			hasSETCALL := false;
@@ -1715,7 +1715,7 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 				end
 				|VARIABLE("MAX") ->
 				begin
-					if !vDEBUG then Printf.printf"MAX\n";
+					if !vDEBUG then Printf.printf"MAX 0 \n";
 				 	let varexp = ( List.hd args )in
 				 	let suite = List.tl args in
 					match varexp with
@@ -1736,7 +1736,7 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 							begin
 								if !vDEBUG then
 								begin
-									Printf.printf"MAX simplifier\n";
+									Printf.printf"MAX 1 simplifier \n";
 									Printf.printf"MAX pour %s = O..\n" var;
 									print_expTerm max; new_line ();Printf.printf" ( " ;
 									print_expression (List.hd (List.tl suite) ) 0;new_line ();
@@ -1744,7 +1744,7 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 								end;
 								if estDefExp max && estNul max then
 								begin
-									(*Printf.printf "remplacer max\n"	;*)
+									if !vDEBUG then Printf.printf"MAX 2 \n"; (*Printf.printf "remplacer max\n"	;*)
 									calculer  (EXP (remplacerValPar0 var (List.hd (List.tl suite)) )) 	ia l sign
 								end
 								else
@@ -1752,10 +1752,11 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 									let expE = (calculer  (EXP(expToMax))ia l 1) in
 									if estNoComp expE  then
 									begin
+										if !vDEBUG then Printf.printf"MAX 21 \n";
 										let (has, e1, e2 )= hasMinimum   (List.hd (List.tl suite)) in
 										if has then
 										begin
-											(*Printf.printf "h&s minimum\n";*)
+											if !vDEBUG then Printf.printf"MAX 3 \n";
 											let terme1 = 	calculer(EXP( CALL (VARIABLE("MAX"),List.append  [VARIABLE (var)]
 															(List.append [List.hd suite]
 															[replaceMinimum (List.hd (List.tl suite)) 1	])) )) ia l 1  in
@@ -1768,7 +1769,7 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 												CALL(VARIABLE("MINIMUM") ,  List.append  [expressionEvalueeToExpression terme1]
 												[expressionEvalueeToExpression terme2 ] ))) ia l 1
 										end else
-										begin
+										begin if !vDEBUG then Printf.printf"MAX 4 \n";
 											let borneMaxSupposee =
 												calculer  (EXP (
 													(remplacerValPar  var (expressionEvalueeToExpression max) (List.hd (List.tl suite)) ) )) ia l sign  in
@@ -1784,7 +1785,7 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 
 									end
 									else
-									begin
+									begin if !vDEBUG then Printf.printf"MAX 5 \n";
 										let val1 = simplifierMax var max expE ia has (calculer  (EXP(expAvec))ia l 1)  in
 										(*Printf.printf"calcul MAX pour %s =\n" var;
 										print_expression expAvec 0;
@@ -2018,7 +2019,7 @@ match expre with
 		| Minimum (f, g)  -> (estVarDsExpEval var f) || (estVarDsExpEval var g)
 
 and estAffine var expre =
-if !vDEBUG then Printf.printf"SYGMA simplifier dans affine\n";
+(*if !vDEBUG then Printf.printf"SYGMA simplifier dans affine\n";*)
 	match expre with
 		NOCOMP -> false
 	 	| Sum (f, g) 	->  (estAffine var f) && (estAffine var g)
@@ -2105,7 +2106,7 @@ and haslvvar lv e  =
 
 
 and remplacerVpM var max expre =
-if !vDEBUG then Printf.printf"SYGMA simplifier avant remplacerVpM\n";
+(*if !vDEBUG then Printf.printf"SYGMA simplifier avant remplacerVpM\n";*)
 	match expre with
 		  ConstInt(_)->evalexpression(Prod (expre,Sum(max, ConstInt("1"))))
 		| ConstFloat (_)->evalexpression(Prod (expre, Sum(max, ConstInt("1")) ))
@@ -2841,7 +2842,7 @@ else simpli
 (*simpli*)
 
 and simplifierMax var max expre ia witheps exprea=
-	if !vDEBUG then
+	 if !vDEBUG then 
 	begin
 		Printf.printf "Max simplifier avant affine var %s \n" var;
 		print_expTerm max; new_line ();
@@ -2857,44 +2858,30 @@ begin
   begin
 	if ((estAffine var expre) && (estVarDsExpEval var max = false))  then
 	begin
-		(*Printf.printf"MAX simplifier dans simplifier affine\n"; *)
+		 
 		let borneMaxSupposee = calculer  (EXP (expressionEvalueeToExpression  (remplacerVpM  var max expre)))  !infoaffichNull  [] 1 in
 		let borneInfSupposee = calculer  (EXP (expressionEvalueeToExpression  (remplacerVpM  var (ConstInt("0")) expre))) !infoaffichNull  [] 1 in
 
 		let borneMaxSupposee1 = calculer  (EXP (expressionEvalueeToExpression  (remplacerVpM  var max exprea)))  !infoaffichNull  [] 1 in
 		let borneInfSupposee1 = calculer  (EXP (expressionEvalueeToExpression  (remplacerVpM  var (ConstInt("0")) exprea))) !infoaffichNull  [] 1 in
-
-	(*begin
-					Printf.printf"MAX simplifier non affine max expre max suppose min suppose\n";
-					print_expTerm max; new_line ();Printf.printf"\n";
-					print_expTerm expre; new_line ();Printf.printf"\n";
-					print_expTerm borneMaxSupposee; new_line ();Printf.printf"\n";
-					print_expTerm borneInfSupposee; new_line ();Printf.printf"\n";
-print_expTerm borneMaxSupposee1; new_line ();Printf.printf"\n";
-					print_expTerm borneInfSupposee1; new_line ();Printf.printf"\n";
-
-				end;*)
-
-
-
+	 
 	if  estDefExp borneMaxSupposee && estDefExp borneInfSupposee then
 	begin
 		let sensVariReel  =
 		  (if estPositif borneMaxSupposee && estPositif borneInfSupposee then
-		  	estPositif (evalexpression (Diff( evalexpression borneMaxSupposee, borneInfSupposee)))
+		  	 (  estPositif (evalexpression (Diff( evalexpression borneMaxSupposee, borneInfSupposee))))
 			else
-				if estPositif borneMaxSupposee && (estPositif borneInfSupposee =false) then true
+				if estPositif borneMaxSupposee && (estPositif borneInfSupposee =false) then  true
 			 	else
 					if (estPositif borneMaxSupposee =false) && (estPositif borneInfSupposee)
-					then false
-					else
-						estPositif ( evalexpression (Diff( evalexpression borneMaxSupposee, borneInfSupposee))) = false
+					then (  false)
+					else ( estPositif ( evalexpression (Diff( evalexpression borneMaxSupposee, borneInfSupposee))) = false)
 			) in
 
 		if (estPositif borneMaxSupposee1 = false) && (estPositif borneInfSupposee1 =false) then
 		begin
-			(*Printf.printf"MAXCAS1\n";*)
-			if estDefExp borneMaxSupposee1 = true then 	ConstInt("0") else NOCOMP
+			 
+			if estDefExp borneMaxSupposee1 = true then (if !vDEBUG then Printf.printf"MAX 6 \n"; 	ConstInt("0")) else NOCOMP
 		end
 		else
 		begin
@@ -2906,9 +2893,10 @@ print_expTerm borneMaxSupposee1; new_line ();Printf.printf"\n";
 						else  evalexpression (Quot ( Diff( ConstInt("0"),var2 ), convFloat)))in
 	(*-b/a*)
 
+
 			let mbSuraInf =  evalexpression (PartieEntiereSup ( evalexpression (Diff (mbSura,ConstInt("1"))))) in
 			let mbSuraSup =  evalexpression (PartieEntiereInf ( evalexpression (Sum (mbSura,ConstInt("1"))))) in
-
+ 
 			let bmaximum =
 					(
 						if  (estDefExp var1 && estDefExp var2) then
@@ -2919,40 +2907,40 @@ print_expTerm borneMaxSupposee1; new_line ();Printf.printf"\n";
 									begin
 										if (sensVariReel = true ) then
 										begin
-											(*Printf.printf "a positif croissant\n";*)
+											 
 											let maxMoinsMbSura=evalexpression(Diff( evalexpression max, mbSuraInf)) in
 											if estDefExp maxMoinsMbSura then
 												if  getDefValue maxMoinsMbSura > 0.0 then
-												begin (*Printf.printf"eval2\n";*)
+												begin  
 													let res =
 													calculer  (EXP (expressionEvalueeToExpression  (remplacerVal var max exprea) )) !infoaffichNull  [] 1 in
 												(*	print_expTerm res; new_line ();Printf.printf"\n"; *)
 													res
 												end
-												else  begin (*Printf.printf"MAXCAS2\n";  *)ConstInt("0")  end
+												else  begin  (if !vDEBUG then Printf.printf"MAX 7 \n"; ConstInt("0"))  end
 											else NOCOMP
 										end
 										else
 										begin
-											(*Printf.printf "a positif decroissant\n";*)
+											 
 											let maxMoinsMbSura=evalexpression (Diff( evalexpression max, mbSuraSup)) in
 											if estDefExp maxMoinsMbSura then
 												if estPositif maxMoinsMbSura then
 												begin
-													(*Printf.printf "cas 2 decroissant \n";*)
+													 
 													let maximum = maxi mbSuraSup  (ConstInt("0"))  in
 													if estNul maximum   then
-													begin (*Printf.printf"eval3\n";*)
+													begin (*VOIR ICI*)
 														calculer  (EXP (expressionEvalueeToExpression  (remplacerVal var (ConstInt("0")) exprea) ))
 														!infoaffichNull  [] 1
 													end
 													else
-													begin (*Printf.printf"eval4\n";*)
+													begin   
 														calculer  (EXP (expressionEvalueeToExpression  ( remplacerVal  var  mbSuraSup exprea)  ))
 																		!infoaffichNull  [] 1
 													end
 												end
-												else  begin  (*Printf.printf"MAXCAS3\n"; *)ConstInt("0") end
+												else  begin   (if !vDEBUG then Printf.printf"MAX 8 \n"; ConstInt("0") ) end
 											else NOCOMP
 										end
 
@@ -2962,27 +2950,26 @@ print_expTerm borneMaxSupposee1; new_line ();Printf.printf"\n";
 										if (sensVariReel = true )then
 										begin
 											if estDefExp mbSuraSup then
-												if  getDefValue mbSuraInf > 0.0  then
+												if  getDefValue mbSuraInf >= 0.0  then
 												begin
-													(*Printf.printf"eval5\n";*)
-
+												  
 													calculer  (EXP (expressionEvalueeToExpression  (remplacerVal var (ConstInt("0")) exprea) ))
 													!infoaffichNull  [] 1
 												end
-												else begin  (*Printf.printf"MAXCAS4\n";*) ConstInt("0") end
+												else begin    (if !vDEBUG then Printf.printf"MAX 9 \n"; ConstInt("0") ) end
 											else NOCOMP
 										end
 										else
 										begin
 											if estDefExp mbSuraInf then
 												if getDefValue mbSuraInf <= 0.0 then (*revoir*)
-												begin
-													(*Printf.printf"eval6\n";*)ConstInt("0")
+												begin if !vDEBUG then Printf.printf"MAX 10 \n";
+													 ConstInt("0")
 													 (*calculer  (EXP (expressionEvalueeToExpression  (remplacerVal var (ConstInt("0")) exprea) ))
 !infoaffichNull  [] 1 *)
 
 												end
-												else begin (* Printf.printf "cas 4\n";*) (* ConstInt("0")*)
+												else begin  (* ConstInt("0")*)
 													 let maximum = (*Quot ( ConstFloat("1.0")  ,  Diff	 ( ConstInt("0"),var1 ))*)( ConstInt("0"))in
  													calculer  (EXP (expressionEvalueeToExpression  (remplacerVal var maximum exprea) ))
 													!infoaffichNull  [] 1						end
@@ -2991,8 +2978,8 @@ print_expTerm borneMaxSupposee1; new_line ();Printf.printf"\n";
 									end
 							end else NOCOMP
 						) in
-				(*Printf.printf "maximum5\n" ; print_expTerm bmaximum; new_line (); Printf.printf "maximum\n";*)
-		if estDefExp bmaximum  then if estPositif bmaximum then bmaximum else  begin (* Printf.printf"MAXCAS5\n";*) ConstInt("0") end
+				 
+		if estDefExp bmaximum  then if estPositif bmaximum then bmaximum else  begin  (if !vDEBUG then Printf.printf"MAX 11 \n"; ConstInt("0"))  end
 		else NOCOMP
 	end
 end (*estDef*)
@@ -3016,19 +3003,13 @@ end (*estDef*)
 				let borneInfSupposee = calculer  (EXP (expressionEvalueeToExpression  (remplacerVal  var (ConstInt("0")) exprea) )) !infoaffichNull  [] 1 in
 
 				(*if estMONOTONBE var max expr then*)
-				if !vDEBUG then
-				begin
-					Printf.printf"MAX simplifier non affine max expre max suppose min suppose\n";
-					print_expTerm max; new_line ();Printf.printf"\n";
-					print_expTerm expre; new_line ();Printf.printf"\n";
-					print_expTerm borneMaxSupposee; new_line ();Printf.printf"\n";
-					print_expTerm borneInfSupposee; new_line ();Printf.printf"\n";
-				end;
+				(*if !vDEBUG then*)
+ 
 				let maximum = maxi borneMaxSupposee  borneInfSupposee  in
 	(*Printf.printf"maximum6\n"; *)
 	(*print_expTerm maximum; new_line ();Printf.printf"\n"; *)
 				if estDefExp maximum  then
-					if estPositif maximum  then maximum  else begin (* Printf.printf"MAXCAS6\n"; *) ConstInt("0") end
+					if estPositif maximum  then maximum  else begin if !vDEBUG then Printf.printf"MAX 12 \n"; ConstInt("0") end
 				else NOCOMP
 				end
 				else begin (*Printf.printf "non monotone\n";*) NOCOMP end
@@ -7016,13 +6997,15 @@ Printf.printf "remplacerToutesAffect res\n" ;*)
 end
 
 let applyif exp a =
-(*Printf.printf "applyif \n";*)
+ 
 if a =[] || exp = MULTIPLE then exp
 else
 begin
 	let varOfExp1 = listeDesVarsDeExpSeules (expVaToExp exp) in
 	let na = List.filter (fun ass -> match ass with ASSIGN_SIMPLE (id, _)  |	ASSIGN_DOUBLE (id, _, _)  |ASSIGN_MEM (id, _, _)	->
 					 if List.mem id  varOfExp1 && listVARMAXSYG id (expVaToExp exp) then false else true  ) a in
+        (*if !vDEBUG then ( Printf.printf "recherche  dans liste na :\n" ;afficherListeAS na;new_line ();Printf.printf "fin s liste : na\n";);*)
+
 	applyStoreVA exp na
 end
 

@@ -1539,7 +1539,7 @@ TBOUCLE(num, appel, _,_,_,_,_,_,_) ->
 		  if iAmExact   then   ASSIGN_SIMPLE (myVar, EXP(nb))
 		  else
 		  begin
-			  if  estDefExp myMaxIt && (estNul myMaxIt) 	 then
+			  if  estDefExp myMaxIt &&  (*estNul myMaxIt= false*) getDefValue myMaxIt > 0.0 	 then
 			  begin
 					if (not (estNothing (EXP nb))) then
 						ASSIGN_SIMPLE (myVar,  EXP(CALL (VARIABLE("SET") ,  List.append [CONSTANT (CONST_INT "-1")] [nb] )) )
@@ -1557,7 +1557,7 @@ TBOUCLE(num, appel, _,_,_,_,_,_,_) ->
 let rec afficherNidUML nnE  liste tab  fichier ligne lt lf(result:Listener.t) : Listener.t =
 match nnE.idBoucleN with
 TBOUCLE(num, appel, _,_,_,_,_,ficaux,ligaux) ->
-
+(*Printf.printf "\n\n\nAFFICHE boucle %d\n"num;*)
   	let estNulEngPred = !estNulEng in
   	let exactEng = !isExactEng in
   	let borneEng = !valeurEng in
@@ -1573,6 +1573,8 @@ TBOUCLE(num, appel, _,_,_,_,_,ficaux,ligaux) ->
 	curassocnamesetList := [];
 	if estDefExp c1 = false then
 	begin
+
+
 		let varOfExp = listeDesVarsDeExpSeules (expVaToExp nm) in
 		 List.iter(fun n ->
 					if getNbIt n (expVaToExp nm) > 1 then
@@ -1592,8 +1594,8 @@ TBOUCLE(num, appel, _,_,_,_,_,ficaux,ligaux) ->
 				)varOfExp
   end;
 
-  let new_expmax =  if !curassocnamesetList = []  then
-						applyif nm !listeVBDEP
+  let new_expmax =  if !curassocnamesetList = []  then (
+						 applyif nm !listeVBDEP)
 					else
 					begin
 						let (_, a1, a2) =List.hd !curassocnamesetList in
@@ -1602,7 +1604,7 @@ TBOUCLE(num, appel, _,_,_,_,_,ficaux,ligaux) ->
 
 					end
 					in
-
+ 
 	hasSETCALL:=false;
   	let (expmax1, reseval) =(
 
@@ -1612,8 +1614,9 @@ TBOUCLE(num, appel, _,_,_,_,_,ficaux,ligaux) ->
   let myMaxIt = if estNulEngPred =false then  expmax1 else  ConstInt("0") in
 
   let ne =  nnE.expressionBorneToutesIt  in
-  let new_exptt =(* (applyStoreVA ne !listeVB) in (* expression total apres propagation*)*)applyif ne !listeVBDEP in
-
+ 
+  let new_exptt =(* (applyStoreVA ne !listeVB) in (* expression total apres propagation*)*) applyif ne !listeVBDEP in
+ 
 
   let c2 = calculer  nnE.expressionBorneToutesIt   nia [] 1 in
   let exptt1 =
@@ -1636,7 +1639,7 @@ TBOUCLE(num, appel, _,_,_,_,_,ficaux,ligaux) ->
 	  end
 	  else
 	  begin
-		  borneAux := (if estDefExp myMaxIt && (estNul myMaxIt= false) then
+		  borneAux := (if estDefExp myMaxIt &&  (*estNul myMaxIt= false*) getDefValue myMaxIt > 0.0 then
 					  begin
 
 						  let prod = evalexpression (Prod (borneEng, myMaxIt)) in
@@ -1681,6 +1684,8 @@ TBOUCLE(num, appel, _,_,_,_,_,ficaux,ligaux) ->
 						  end
 		  end
 	  end;
+
+
 
 
 	  valeurEng := !borneAux;
@@ -1730,6 +1735,7 @@ TBOUCLE(num, appel, _,_,_,_,_,ficaux,ligaux) ->
 	  isExactEng := exactEng;
 	  estNulEng := estNulEngPred;
 	  valeurEng := borneEng;
+(*Printf.printf "\n\n\nFIN AFFICHE boucle %d \n"num;*)
 	  result
   | _-> Listener.null
 
