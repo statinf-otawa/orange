@@ -333,7 +333,7 @@ let rec areTheSAme s1 s2 =
 (* the same ptr in the same order *)
 	let rec joinSet s1 s2 =  
 		match s1 with
-		| [] -> []
+		| [] -> [](*[]s2*)
 	    | (name, cs1)::ns1 ->
 			 match s2 with
 				| [] -> s1
@@ -350,7 +350,7 @@ let rec areTheSAme s1 s2 =
 (* the same ptr in the same order *)
 	let rec joinSetSubSet s1 s2 = 
 	 	match s1 with
-		| [] -> []
+		| [] ->[](* []s2*)
 	    | (name, cs1)::ns1 ->
 			if mem s2 name then (name, get s2 name)::(joinSetSubSet  ns1  s2) else  (name, cs1)::(joinSetSubSet  ns1  s2)
 			  
@@ -688,7 +688,7 @@ let majPtrvarAssign id exp beforePtr into add=
 
 
 let  new_instVarAndPtr id exp  =
-		myCurrentPtrContext := majPtrvarAssign id exp !myCurrentPtrContext !intoLoopCurrent false;
+		myCurrentPtrContext := majPtrvarAssign id exp !myCurrentPtrContext !intoLoopCurrent (*false*) true;
 		 VAR(id, (if !isIntoSwithch = false then exp else EXP(NOTHING)), [], [])
 
 let hasChangePTRInto = ref false  
@@ -702,10 +702,10 @@ let rec fixPointPtr  assign beforePtr     =
 	let res = (LocalAPContext.joinSet fc   beforePtr ) in
 	let isChange = !hasChangePTRInto && (LocalAPContext.areTheSAme res beforePtr) = false in
 
-	(*	LocalAPContext.print res;ame 
+ LocalAPContext.print res; 
 		LocalAPContext.print beforePtr ;
 if (res = beforePtr)=false  then  Printf.printf "Current   change\n";
-if !hasChangePTRInto then  Printf.printf "Inner   change\n";*)
+if !hasChangePTRInto then  Printf.printf "Inner   change\n"; 
 
 	if isChange then    fixPointPtr  assign res  ;
 	hasChangePTRInto:= false; 
