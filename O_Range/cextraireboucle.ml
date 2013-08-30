@@ -598,7 +598,7 @@ and get_baseinittype typ =
 	| VOID ->    "void"
 	| CHAR sign ->   ((get_sign sign) ^ "char")
 	| INT (size, sign) ->   ((get_sign sign) ^ (get_size size) ^ "int")
-	| BITFIELD (t, _) ->   (*get_baseinittype t*)  ((get_sign t)  ^ "int")
+	| BITFIELD (t, _) ->   ((get_baseinittype t)  (*(get_sign t)*)  ^ "int")	(* !! TO CHECK !! *)
 	| FLOAT size ->   ((if size then "long " else "") ^ "float")
 	| DOUBLE size ->   ((if size then "long " else "") ^ "double")
 	| NAMED_TYPE id ->		"type_mamed_" ^ id
