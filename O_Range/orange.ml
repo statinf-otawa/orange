@@ -1,4 +1,6 @@
-(* orange -- eval loop bound and eval flowfact
+(* orange -- eval loop bound and eval flowfact. Corresponds to step 2. 
+Functions are duplicated because of the treatment of partialisation.
+
 **
 ** Project:	O_Range
 ** File:	orange.ml

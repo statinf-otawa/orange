@@ -1,4 +1,4 @@
-(* cextraireboucle -- use Frontc CAML change loop to normelized loop, construct instructions to eval abstract store, construct flowfact
+(** cextraireboucle -- uses Frontc CAML in order to change loop to normelized loop, constructs meta-instructions to eval abstract store, construct flowfact. Corresponds to step 1 of oRange.
 **
 ** Project:	O_Range
 ** File:	cextraireboucle.ml

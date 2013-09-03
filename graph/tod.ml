@@ -1,4 +1,4 @@
-(** ToD allow to build and manage .dot graphs.
+(** ToD allow to build and manage .dot graphs (printing). 
 	
 	ToD stands for "something To Dot".
 	

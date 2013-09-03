@@ -1,8 +1,4 @@
-open Cabs
-open Frontc
-
-let version = "interval.ml Marianne de Michiel"
-(* rename -- use Frontc CAML  a variable name must be used only once -> rename
+(* interval -- use Frontc CAML  Tools and computation of intervals used to resolve increment value. 
 **
 ** Project:	O_Range
 ** File:	interval.ml
@@ -10,6 +6,11 @@ let version = "interval.ml Marianne de Michiel"
 ** Date:	2009
 ** Author:	Marianne de Michiel
 *)
+
+open Cabs
+open Frontc
+
+let version = "interval.ml Marianne de Michiel"
 
 open Cprint
 open Cexptostr

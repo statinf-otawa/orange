@@ -1,6 +1,6 @@
 (* a variable name must be used only once -> rename
 printf call must be replace...*)
-(* rename -- use Frontc CAML  a variable name must be used only once -> rename
+(* rename -- use Frontc CAML  a variable name must be used only once -> rename. Considers statics. 
 **
 ** Project:	O_Range
 ** File:	rename.ml

@@ -1,4 +1,4 @@
-(* 
+(** constante -  To be precise. Not sure it is used... 
 **
 ** Project: 			Frontc
 ** File: 			constante.ml

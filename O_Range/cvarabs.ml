@@ -1,5 +1,5 @@
-
-(* cvarabs -- use Frontc CAML  abstract store evaluation and evaluation of expression
+(** cvarabs -- use Frontc CAML  Abstract interpretation and evaluation of expression.
+Suggestion: share into two programs the abstract store evaluation and the expression evaluation. 
 *
 ** Project:	O_Range
 ** File:	cvarabs.ml

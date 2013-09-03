@@ -1,4 +1,4 @@
-(* resumeforgraph -- dot file for graph drawing
+(* resumeforgraph -- dot file for graph drawing. Is used to know what to partialise. 
 **
 ** Project:	O_Range
 ** File:	resumeforgraph.ml

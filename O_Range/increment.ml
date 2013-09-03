@@ -1,8 +1,4 @@
-open Cabs
-open Frontc
-
-let version = "increment.ml Marianne de Michiel"
-(* rename -- use Frontc CAML  a variable name must be used only once -> rename
+(* increment -- use Frontc CAML. Computes informations needed for loop normalisation (except covariance). Example: variation of induction variable, multiple increment...
 **
 ** Project:	O_Range
 ** File:	increment.ml
@@ -10,6 +6,10 @@ let version = "increment.ml Marianne de Michiel"
 ** Date:	11.7.2008
 ** Author:	Marianne de Michiel
 *)
+open Cabs
+open Frontc
+
+let version = "increment.ml Marianne de Michiel"
 
 open Cprint
 open Cexptostr

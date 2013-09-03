@@ -1,4 +1,3 @@
-
 (* cvariable -- use Frontc CAML  set of variable of cabs expression union , inter, inclus of variable set
 **
 ** Project:	O_Range

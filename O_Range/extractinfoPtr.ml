@@ -1,4 +1,8 @@
- 
+(** extractinfoPtr - Extracts information in order to treat pointers. Search of domain (restriction, unknown...). Domain analysis on pointers. 
+Strong hypthesis: when pointer domain is unknown, if the pointed variable is modifyed, only global, static variables having the same "type" of the pointer variable are set to top.
+Domain can be: - completely defined (pointed variable known), - subset of domain (several pointed variables are possible), - unknown 
+
+*) 
 open Cabs
 open Cvariables
  

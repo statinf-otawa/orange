@@ -1,8 +1,4 @@
-open Cabs
-open Frontc
-
-let version = "covariance.ml Marianne de Michiel"
-(* rename -- use Frontc CAML  a variable name must be used only once -> rename
+(* covariance -- use Frontc CAML. Retrieve information for loop normalisation in case of covariance (called with increment.ml)
 **
 ** Project:	O_Range
 ** File:	covariance.ml
@@ -10,6 +6,11 @@ let version = "covariance.ml Marianne de Michiel"
 ** Date:	 
 ** Author:	Marianne de Michiel
 *)
+
+open Cabs
+open Frontc
+
+let version = "covariance.ml Marianne de Michiel"
 
 open Cprint
 open Cexptostr
