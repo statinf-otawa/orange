@@ -2923,6 +2923,23 @@ end
  let isexeEnglobant = ref true
 
 
+(* ANNOTATION *)
+type ifAnnotation = TAKETHEN | TAKEELSE | TAKEANY 
+(* ANNOTATION For IF-n variable store in var look for annotation *)
+let hasIFAnnotation var = !hasCondListFile_name && existeAffectationVarListe var !condAnnotated 
+
+(* ANNOTATION When it exists an annotation the return 3 no valid annotation, 1 the then branch is executed, 2 the else branch is executed*)
+
+let getIFAnnotation var =
+				let affect = rechercheAffectVDsListeAS  var  !condAnnotated in
+				let cond = calculer  affect !infoaffichNull  [] 1 in 
+				match cond with Boolean(false)  | ConstInt("0")-> TAKEELSE | Boolean(true)  | ConstInt("1")-> TAKETHEN |_-> TAKEANY
+(* ANNOTATION *)
+let ifAnnotationToInt annot =
+ match annot with  TAKETHEN ->1 | TAKEELSE ->2 | TAKEANY ->3
+
+
+
 let rec  evalCorpsFOB corps affectations contexte listeEng estexeEng lastLoopOrCall intoLoop globales=
 let ncorps = if intoLoop = false  then corps else (*sansIfCorps*) corps in
   if ncorps <> [] then
@@ -2939,6 +2956,9 @@ let ncorps = if intoLoop = false  then corps else (*sansIfCorps*) corps in
 	  else (new_cont,  [first], new_globale)
   end
   else begin (contexte, [], globales) end
+
+
+
 
 
 
@@ -2968,24 +2988,26 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 		let asL =  (jusquaIaux affectations   var contexte lastLoopOrCall globale) in
 		let prevPtrct = !myCurrentPtrContextAux in
 		let isExecutedIf =    estexeEng&&isExecuted lt lf asL [] [] true in
-
-
-
-		let (executedBranch,affect, codeExe) =
+		let annotRes = if hasIFAnnotation var then   getIFAnnotation var else TAKEANY in
+		let (executedBranch,affect) =
 				if (existeAffectationVarListe var asL) || (existeAffectationVarListe var globale)  then
 				begin
 					let affect = if (existeAffectationVarListe var asL) then applyStoreVA(rechercheAffectVDsListeAS  var asL)globale
 						else rechercheAffectVDsListeAS  var globale in
- 
-					let cond = calculer  affect !infoaffichNull  [] 1 in
-					(match cond with
-						  Boolean(true)  | ConstInt("1")->   (1,expVaToExp affect, 1) (*then only excuted*)
-						| Boolean(false)  | ConstInt("0") ->  (2,expVaToExp affect, 2)(*else only excuted*)
-						|_->  (3, expVaToExp affect,3))(* ??? indifined branch is executed*)
+ 					if annotRes = TAKEANY then (
+						let cond = calculer  affect !infoaffichNull  [] 1 in
+						(match cond with
+							  Boolean(true)  | ConstInt("1")->   (TAKETHEN,expVaToExp affect) (*then only excuted*)
+							| Boolean(false)  | ConstInt("0") ->  (TAKEELSE,expVaToExp affect)(*else only excuted*)
+							|_->  (TAKEANY, expVaToExp affect))(* ??? indifined branch is executed*)
+					)
+					else (annotRes, expVaToExp affect)
 				end
-				else ( 3,NOTHING,3) in
-		let isExcutedThen =  isExecutedIf && (executedBranch != 2) in
-		let isExcutedElse =  isExecutedIf && (executedBranch !=1 ) in
+				else ( annotRes,NOTHING) in
+
+
+		let isExcutedThen =  isExecutedIf && (executedBranch != TAKEELSE) in
+		let isExcutedElse =  isExecutedIf && (executedBranch != TAKETHEN ) in
 
 		let listeInstNonexePred = !listeInstNonexe in
 		listeInstNonexe := []; 
@@ -3011,17 +3033,17 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 			else
 			begin
 				(match executedBranch with
-					 1 ->
+					 TAKETHEN ->
 							let  fc = (localPtrAnalyse [new_instBEGIN (instthen)]  prevPtrct   !estDansBoucle false) in
 							let res = endOfcontexte instthen  lastthen  ifthencontexte globalesThen, globalesThen in
 							myCurrentPtrContext:=(LocalAPContext.joinSet fc prevPtrct );  res
 						   (*Printf.printf "IDIF %s then\n" var; *)
-					| 2  ->
+					| TAKEELSE  ->
 							let  fc = (localPtrAnalyse [new_instBEGIN (instelse)]  prevPtrct   !estDansBoucle false) in
 							let res = endOfcontexte instelse  lastelse  ifelsecontexte globalesElse, globalesElse in
 							myCurrentPtrContext:=(LocalAPContext.joinSet fc prevPtrct );    res
 							(* Printf.printf "IDIF %s else \n" var	; *)
-					|_->  (*Printf.printf "IDIF %s is executed then ou else ??\n" var	; *)
+					|TAKEANY ->  (*Printf.printf "IDIF %s is executed then ou else ??\n" var	; *)
 						(*isExecutedOneTimeOrMore:= false;*)
 					  	let nthen = reecrireCorpsNonExe  instthen nonexethen !numAppel in
 						let nelse = reecrireCorpsNonExe  instelse nonexelse !numAppel in
@@ -3038,7 +3060,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 			end in
  
 			(*debut com*)let (vt, vf) =    creerVarTF lt lf asL [] in 
-			 let new_if = [new_elementEvali affect  corpsEvalThen corpsEvalElse e fic lig false codeExe var  vt vf] in
+			 let new_if = [new_elementEvali affect  corpsEvalThen corpsEvalElse e fic lig false (ifAnnotationToInt executedBranch) var  vt vf] in
 			corpsEvalTMP := List.append corpsEvalTMPPred	 new_if;
 			docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append !docEvalue.maListeEval new_if);
 

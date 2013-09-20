@@ -428,9 +428,10 @@ let _ =
 				)
 			else cfiles in
 		let removedextern = (Mergec.removeDuplicatedExtern   cfiles) in
-		let chk_cfiles = (Mergec.check "mergec_rename__" removedextern)
-		in let merge_file = Mergec.merge chk_cfiles
-		in merge_file in
+		let chk_cfiles = (Mergec.check "mergec_rename__" removedextern) in
+                let merge_file = Mergec.merge chk_cfiles in
+            		if Sortrec.hasRecursivity merge_file merge_file then failwith "Recursivity within the application. Orange cannot be applied.";
+                merge_file in
 	
 	(* First parse *)
 	let firstParse =
