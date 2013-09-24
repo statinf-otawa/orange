@@ -304,19 +304,19 @@ let rec print_expTerm	exprEvaluee =
 	    | 	PartieEntiereInf (e)	-> 	Printf.printf "PartieEntiereInf ("; print_expTerm e; Printf.printf ")"
 		| 	Log (e)					-> 	Printf.printf "Log ("; print_expTerm e; Printf.printf ")"
    		| 	Sygma (var,min,max,e)	-> Printf.printf " NOCOMP" ;
-										if !vDEBUG then
+									(*	if !vDEBUG then
 										begin
 											Printf.printf "SYGMA pour %s = " var ;print_expTerm min;
 											Printf.printf "à " ; print_expTerm max;
 											Printf.printf " (" ;print_expTerm e; Printf.printf ")"
-										end
+										end*)
    		| 	Max (var,min,max,e)		->  Printf.printf " NOCOMP" ;
-									if !vDEBUG then
+									(*if !vDEBUG then
 									begin
 										Printf.printf "SYGMA pour %s = " var ;print_expTerm min;
 										Printf.printf "à " ; print_expTerm max;
 										Printf.printf " (" ;print_expTerm e; Printf.printf ")"
-									end
+									end*)
 		| 	Eq1 (e1)-> 			Printf.printf " Val TEST " ;
 								print_expTerm e1; Printf.printf " else  "
 		|  Maximum (f, g)  	-> 	Printf.printf " maximum( " ;	print_expTerm f;Printf.printf ", " ;
@@ -1478,8 +1478,8 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 			(match exp with
 				VARIABLE("partieEntiereInf") ->
 					if !vDEBUG then
-					begin Printf.printf"\ncalcul partieEntiereInf expression\n";
-						print_expression (List.hd args) 0;		new_line ()
+					begin Printf.eprintf"\ncalcul partieEntiereInf expression\n";
+						(*print_expression (List.hd args) 0;		new_line ()*)
 					end;
 					let val1 =  (calculer (EXP(List.hd args)) ia l sign)in
 					let listeDesVar = listeDesVarsDeExpSeules  (List.hd args) in
@@ -1661,12 +1661,12 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 						begin
 							if !vDEBUG then
 							begin
-								Printf.printf"SYGMA simplifier\n";
-								Printf.printf"SYGMA pour %s =\n" var;
-								Printf.printf"SYGMA pour %s expression simplifier\n" var;
-								Printf.printf "evalexpression max\n";
-								print_expTerm max; new_line ();
-								print_expression (List.hd (List.tl suite) ) 0;new_line ();
+								Printf.eprintf"SYGMA simplifier\n";
+								Printf.eprintf"SYGMA pour %s =\n" var;
+								Printf.eprintf"SYGMA pour %s expression simplifier\n" var;
+								Printf.eprintf "evalexpression max\n";
+								(*print_expTerm max; new_line ();
+								print_expression (List.hd (List.tl suite) ) 0;new_line ();*)
 							end;
 
 					    	let listvar = listeDesVarsDeExpSeules (List.hd (List.tl suite)) in
@@ -1736,15 +1736,15 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 							begin
 								if !vDEBUG then
 								begin
-									Printf.printf"MAX 1 simplifier \n";
-									Printf.printf"MAX pour %s = O..\n" var;
-									print_expTerm max; new_line ();Printf.printf" ( " ;
-									print_expression (List.hd (List.tl suite) ) 0;new_line ();
-									Printf.printf" ) " ;
+									Printf.eprintf"MAX 1 simplifier \n";
+									Printf.eprintf"MAX pour %s = O..\n" var;
+									(*print_expTerm max; new_line ();Printf.printf" ( " ;
+									print_expression (List.hd (List.tl suite) ) 0;new_line ();*)
+									Printf.eprintf" ) " ;
 								end;
 								if estDefExp max && estNul max then
 								begin
-									if !vDEBUG then Printf.printf"MAX 2 \n"; (*Printf.printf "remplacer max\n"	;*)
+									if !vDEBUG then Printf.eprintf"MAX 2 \n"; (*Printf.printf "remplacer max\n"	;*)
 									calculer  (EXP (remplacerValPar0 var (List.hd (List.tl suite)) )) 	ia l sign
 								end
 								else
@@ -1752,11 +1752,11 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 									let expE = (calculer  (EXP(expToMax))ia l 1) in
 									if estNoComp expE  then
 									begin
-										if !vDEBUG then Printf.printf"MAX 21 \n";
+										if !vDEBUG then Printf.eprintf"MAX 21 \n";
 										let (has, e1, e2 )= hasMinimum   (List.hd (List.tl suite)) in
 										if has then
 										begin
-											if !vDEBUG then Printf.printf"MAX 3 \n";
+											if !vDEBUG then Printf.eprintf"MAX 3 \n";
 											let terme1 = 	calculer(EXP( CALL (VARIABLE("MAX"),List.append  [VARIABLE (var)]
 															(List.append [List.hd suite]
 															[replaceMinimum (List.hd (List.tl suite)) 1	])) )) ia l 1  in
@@ -1769,7 +1769,7 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 												CALL(VARIABLE("MINIMUM") ,  List.append  [expressionEvalueeToExpression terme1]
 												[expressionEvalueeToExpression terme2 ] ))) ia l 1
 										end else
-										begin if !vDEBUG then Printf.printf"MAX 4 \n";
+										begin if !vDEBUG then Printf.eprintf"MAX 4 \n";
 											let borneMaxSupposee =
 												calculer  (EXP (
 													(remplacerValPar  var (expressionEvalueeToExpression max) (List.hd (List.tl suite)) ) )) ia l sign  in
@@ -1785,7 +1785,7 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 
 									end
 									else
-									begin if !vDEBUG then Printf.printf"MAX 5 \n";
+									begin if !vDEBUG then Printf.eprintf"MAX 5 \n";
 										let val1 = simplifierMax var max expE ia has (calculer  (EXP(expAvec))ia l 1)  in
 										(*Printf.printf"calcul MAX pour %s =\n" var;
 										print_expression expAvec 0;
@@ -2670,11 +2670,11 @@ and invaq1 v = if v = ConstInt("0") then ConstInt("1") else if v = ConstInt("1")
 and simplifieraa var max expre ia witheps exprea =
 	if !vDEBUG then
 	begin
-		Printf.printf "SYGMA simplifier avant affine\n";
-		print_expTerm max; new_line ();Printf.printf"\n";
-		print_expTerm expre; new_line ();Printf.printf"\n";
+		Printf.eprintf "SYGMA simplifier avant affine\n";
+		(*print_expTerm max; new_line ();Printf.printf"\n";
+		print_expTerm expre; new_line ();Printf.printf"\n";*)
 	end;
-	if !vDEBUG then Printf.printf"SYGMA simplifier dans simplifier\n";
+	if !vDEBUG then Printf.eprintf"SYGMA simplifier dans simplifier\n";
 if estDefExp max = false then NOCOMP
 else
 if estNul max then  calculer  (EXP (expressionEvalueeToExpression  (remplacerVpM  var (ConstInt("0")) exprea) ))  !infoaffichNull  [] 1
@@ -2822,7 +2822,7 @@ begin
 				calculer  (EXP (expressionEvalueeToExpression (Prod (expre,Sum(max, ConstInt("1"))))))!infoaffichNull  [] 1
 			else
 			begin
-				if !vDEBUG then Printf.printf"SYGMA simplifier non affine !!!\n";
+				if !vDEBUG then Printf.eprintf"SYGMA simplifier non affine !!!\n";
 			(*	 traiterGeometrique var expre max ia *)
 				evalProd var max expre ia witheps exprea
 			end
@@ -2844,10 +2844,10 @@ else simpli
 and simplifierMax var max expre ia witheps exprea=
 	 if !vDEBUG then 
 	begin
-		Printf.printf "Max simplifier avant affine var %s \n" var;
-		print_expTerm max; new_line ();
+		Printf.eprintf "Max simplifier avant affine var %s \n" var;
+		(*print_expTerm max; new_line ();
 		print_expTerm expre; new_line ();
-		print_expTerm exprea; new_line ();
+		print_expTerm exprea; new_line ();*)
 	end;
 
 if ((estVarDsExpEval var expre = false) && (estVarDsExpEval var max = false))  then expre
@@ -2881,7 +2881,7 @@ begin
 		if (estPositif borneMaxSupposee1 = false) && (estPositif borneInfSupposee1 =false) then
 		begin
 			 
-			if estDefExp borneMaxSupposee1 = true then (if !vDEBUG then Printf.printf"MAX 6 \n"; 	ConstInt("0")) else NOCOMP
+			if estDefExp borneMaxSupposee1 = true then (if !vDEBUG then Printf.eprintf"MAX 6 \n"; 	ConstInt("0")) else NOCOMP
 		end
 		else
 		begin
@@ -2917,7 +2917,7 @@ begin
 												(*	print_expTerm res; new_line ();Printf.printf"\n"; *)
 													res
 												end
-												else  begin  (if !vDEBUG then Printf.printf"MAX 7 \n"; ConstInt("0"))  end
+												else  begin  (if !vDEBUG then Printf.eprintf"MAX 7 \n"; ConstInt("0"))  end
 											else NOCOMP
 										end
 										else
@@ -2940,7 +2940,7 @@ begin
 																		!infoaffichNull  [] 1
 													end
 												end
-												else  begin   (if !vDEBUG then Printf.printf"MAX 8 \n"; ConstInt("0") ) end
+												else  begin   (if !vDEBUG then Printf.eprintf"MAX 8 \n"; ConstInt("0") ) end
 											else NOCOMP
 										end
 
@@ -2956,14 +2956,14 @@ begin
 													calculer  (EXP (expressionEvalueeToExpression  (remplacerVal var (ConstInt("0")) exprea) ))
 													!infoaffichNull  [] 1
 												end
-												else begin    (if !vDEBUG then Printf.printf"MAX 9 \n"; ConstInt("0") ) end
+												else begin    (if !vDEBUG then Printf.eprintf"MAX 9 \n"; ConstInt("0") ) end
 											else NOCOMP
 										end
 										else
 										begin
 											if estDefExp mbSuraInf then
 												if getDefValue mbSuraInf <= 0.0 then (*revoir*)
-												begin if !vDEBUG then Printf.printf"MAX 10 \n";
+												begin if !vDEBUG then Printf.eprintf"MAX 10 \n";
 													 ConstInt("0")
 													 (*calculer  (EXP (expressionEvalueeToExpression  (remplacerVal var (ConstInt("0")) exprea) ))
 !infoaffichNull  [] 1 *)
@@ -2979,7 +2979,7 @@ begin
 							end else NOCOMP
 						) in
 				 
-		if estDefExp bmaximum  then if estPositif bmaximum then bmaximum else  begin  (if !vDEBUG then Printf.printf"MAX 11 \n"; ConstInt("0"))  end
+		if estDefExp bmaximum  then if estPositif bmaximum then bmaximum else  begin  (if !vDEBUG then Printf.eprintf"MAX 11 \n"; ConstInt("0"))  end
 		else NOCOMP
 	end
 end (*estDef*)
@@ -2989,7 +2989,7 @@ end (*estDef*)
 	begin
 		if  ((estVarDsExpEval var expre = false) && (estVarDsExpEval var max) )then
 		begin
-			if !vDEBUG then Printf.printf"MAX simplifier borne depend\n";
+			if !vDEBUG then Printf.eprintf"MAX simplifier borne depend\n";
 				calculer  (EXP (expressionEvalueeToExpression  (exprea))) !infoaffichNull  [] 1
 		end
 		else
@@ -3009,7 +3009,7 @@ end (*estDef*)
 	(*Printf.printf"maximum6\n"; *)
 	(*print_expTerm maximum; new_line ();Printf.printf"\n"; *)
 				if estDefExp maximum  then
-					if estPositif maximum  then maximum  else begin if !vDEBUG then Printf.printf"MAX 12 \n"; ConstInt("0") end
+					if estPositif maximum  then maximum  else begin if !vDEBUG then Printf.eprintf"MAX 12 \n"; ConstInt("0") end
 				else NOCOMP
 				end
 				else begin (*Printf.printf "non monotone\n";*) NOCOMP end
@@ -3095,14 +3095,14 @@ let suite = List.tl l in
 	|	ASSIGN_DOUBLE (s,e1, e2) ->
 			if s = v (*and il faut évaluer les 2 expression index = e1*) then
 			begin
-				if !vDEBUG then begin	Printf.printf "tableau avec index à terminer\n";(* afficherAS a *) end;
+				if !vDEBUG then begin	Printf.eprintf "tableau avec index à terminer\n";(* afficherAS a *) end;
 				e2
 			end
 			else  rechercheAffectVDsListeAS v (*index*) suite
 	| ASSIGN_MEM (s, e1, e2)	->
 			if s = v (*and il faut évaluer les 2 expression index = e1*) then
 			begin
-				if !vDEBUG then begin	Printf.printf "tableau avec index à terminer\n";(* afficherAS a *) end;
+				if !vDEBUG then begin	Printf.eprintf "tableau avec index à terminer\n";(* afficherAS a *) end;
 				e2
 			end
 			else  rechercheAffectVDsListeAS v (*index*) suite

@@ -2049,7 +2049,7 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
  if !vDEBUG then
   begin
 
-	  Printf.printf "1 traiterBouclesInternes num %d nom eng %d ou stopper %d sa eng %d tete nid %d ispred %d\n" id	nomE idEng saBENG (getBoucleIdB nT.infoNid.laBoucle) idpred ;
+	  Printf.eprintf "1 traiterBouclesInternes num %d nom eng %d ou stopper %d sa eng %d tete nid %d ispred %d\n" id	nomE idEng saBENG (getBoucleIdB nT.infoNid.laBoucle) idpred ;
 
 	  (* afficheNidEval !docEvalue.maListeNidEval; *)
   (*	Printf.printf "FIN NID ENG COURANT \n"*)
@@ -2072,12 +2072,12 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 	  aslAux := [];
 	  if !vDEBUG then
 	  begin
-		  Printf.printf "2 traiterBouclesInternes num %d nom eng %d \n"  id nomE ;
-		  (*afficherNid nEC;*) Printf.printf "FIN NID ENG COURANT \n";
+		  Printf.eprintf "2 traiterBouclesInternes num %d nom eng %d \n"  id nomE ;
+		  (*afficherNid nEC;*) Printf.eprintf "FIN NID ENG COURANT \n";
 
-		  if lt <> [] then begin Printf.printf "IF true :\n"; List.iter (fun e-> Printf.printf "%s "e) lt end;
+		  if lt <> [] then begin Printf.eprintf "IF true :\n"; List.iter (fun e-> Printf.eprintf "%s "e) lt end;
 
-		  if lf <> [] then begin Printf.printf "IF false :\n"; List.iter (fun e-> Printf.printf "%s "e) lf end
+		  if lf <> [] then begin Printf.eprintf "IF false :\n"; List.iter (fun e-> Printf.eprintf "%s "e) lf end
 	  end;
 	  (*Soit VDij l'ensemble des variables modifiées par Bi dont dépend la borne TN *)
 	  let tni = rechercheNbTotalIti nomE numAp !docEvalue.maListeNidEval in
@@ -2226,7 +2226,7 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 				(* idenpendant*)
 				if estIndependantTN then
 				begin
-					if !vDEBUG then  Printf.printf "intersection vide\n";
+					if !vDEBUG then  Printf.eprintf "intersection vide\n";
 					(* si les deux contiennent une même variable max * max ici ou dans evaluation ???*)
 					 (match nbEngl with
 						MULTIPLE->(*Printf.printf"borne  multiple\n";*)  MULTIPLE
@@ -2250,7 +2250,7 @@ let rec traiterBouclesInternes 	nT (*tete nid contenant bi*)  nEC (*noeud englob
 					(*remplacerVar tN vD vij;*)
 					(* avant il faut modifiee lesAs mais uniquement pour les variables*)
 					(*let lesAs = (if vdij <> [ii] then majAs lesAs vdij ii else lesAs) in*)
-					if !vDEBUG then Printf.printf("!!!Depend de la boucle englobante sans var \n");
+					if !vDEBUG then Printf.eprintf("!!!Depend de la boucle englobante sans var \n");
 					match nbEngl with
 					MULTIPLE -> (*Printf.printf"borne  multiple 2\n";*)MULTIPLE;
 					| EXP(exptni) ->
@@ -2501,7 +2501,7 @@ let rec traiterBouclesInternesComposant 	 	nT (*tete nid contenant bi*)  nEC (*n
   if !vDEBUG then
   begin
 
-	  Printf.printf "1 traiterBouclesInternes num %d nom eng %d ou stopper %d sa eng %d tete nid %d\n" id	nomE idEng saBENG (getBoucleIdB nT.infoNid.laBoucle);
+	  Printf.eprintf "1 traiterBouclesInternes num %d nom eng %d ou stopper %d sa eng %d tete nid %d\n" id	nomE idEng saBENG (getBoucleIdB nT.infoNid.laBoucle);
 	  (* afficheNidEval !docEvalue.maListeNidEval; *)
   (*	Printf.printf "FIN NID ENG COURANT \n"*)
   end;
@@ -2978,7 +2978,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 	  end
 	  else
 	  begin
-		  if !vDEBUG then Printf.printf "eval corps fonction nid %d non trouve\n" num	;
+		  if !vDEBUG then Printf.eprintf "eval corps fonction nid %d non trouve\n" num	;
 		  (contexte, globale)
 	  end
   |IDIF (var,instthen, treethen,instelse, treeelse,lt,lf,fic,lig,e) ->
@@ -3088,7 +3088,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
   | IDAPPEL (numf,appel,listeInputInstruction,var, lt,lf,fic,lig) ->
 	  let numAppelPred = !numAppel in
 	  let nomFonction =	  (match appel with  CALL(exp,_)->(match exp with VARIABLE(nomFct)->nomFct|_-> "")|_->"") in
-	  if !vDEBUG then Printf.printf "evalUneBoucleOuAppel Eval appel FONCTION %s: num appel %d \n" nomFonction numf;
+	  if !vDEBUG then Printf.eprintf "evalUneBoucleOuAppel Eval appel FONCTION %s: num appel %d \n" nomFonction numf;
 	  let dansBoucle = !estDansBoucle in
 	  let asf = (jusquaFaux affectations numf  contexte lastLoopOrCall globale) in
 
@@ -3176,7 +3176,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 					let (_, func) = (rechercherFonctionParNom nomFonction doc) in
 					let affec = if dansBoucle = false then  func.lesAffectations
 							  	else reecrireCallsInLoop !varDeBoucleBoucle func.lesAffectations  in
-				  	if !vDEBUG then Printf.printf "evalUneBoucleOuAppel FIN Eval appel FONCTION %s:\n ENTREES :\n" nomFonction ;
+				  	if !vDEBUG then Printf.eprintf "evalUneBoucleOuAppel FIN Eval appel FONCTION %s:\n ENTREES :\n" nomFonction ;
 				  	let typeE =  TFONCTION(nomFonction,!numAppel,affec , entrees, asLAppel,lappel,lt,lf,
 						  			isExecutedCall  , dansBoucle,fic,lig) in
 				  	let (new_contexte,last, globalesAA) =
@@ -3736,7 +3736,7 @@ and completevaluerFonction id f contexte exp listeEng typeA estexeEng globales e
 
 
 and evalNid nid  appel (*appelée pour une mere de nid*) listeEng lt lf estexeEng globales fic lig=
-if !vDEBUG then  Printf.printf "evalNid NID av eval nid de %d \n" (getBoucleIdB nid.infoNid.laBoucle)	;
+if !vDEBUG then  Printf.eprintf "evalNid NID av eval nid de %d \n" (getBoucleIdB nid.infoNid.laBoucle)	;
 
 	dernierAppelFct :=   !predDernierAppelFct;
 	let info = getBoucleInfoB nid.infoNid.laBoucle in
@@ -3750,7 +3750,7 @@ if !vDEBUG then  Printf.printf "evalNid NID av eval nid de %d \n" (getBoucleIdB 
 
 
 		let aSC =    appel in
-		if !vDEBUG then Printf.printf "evalNid contexte  boucle: \n";
+		if !vDEBUG then Printf.eprintf "evalNid contexte  boucle: \n";
 	(*	afficherListeAS aSC;flush(); space(); new_line();
 Printf.printf "evalNid contexte  boucle: tete\n";
 		Printf.printf "FIN CONTEXTE globale \n";*)
@@ -3759,7 +3759,7 @@ Printf.printf "evalNid contexte  boucle: tete\n";
 		if lf <> [] then begin Printf.printf "liste des variables IF false :\n"; List.iter (fun e-> Printf.printf "%s "e) lf end;*)
 		let listeInstNonexePred = !listeInstNonexe in
 		listeInstNonexe :=[];
-		if !vDEBUG then Printf.printf "NID av eval nid de %d pas dans autre boucle\n" (getBoucleIdB nid.infoNid.laBoucle)	;
+		if !vDEBUG then Printf.eprintf "NID av eval nid de %d pas dans autre boucle\n" (getBoucleIdB nid.infoNid.laBoucle)	;
 
 		let (vt, vf) =    creerVarTF lt lf appel []   in
 
@@ -3791,8 +3791,8 @@ Printf.printf "evalNid contexte  boucle: tete\n";
 					(reecrireCallsInLoop nid.varDeBoucleNid 	nid.lesAffectationsBNid ),aSC, isExe,[],[],fic , lig) in
 		if !vDEBUG then
 		begin
-				 Printf.printf "evalNid contexte  boucle: %d\n" (getBoucleIdB nid.infoNid.laBoucle);
-				afficherListeAS aSC;flush(); space(); new_line()
+				 Printf.eprintf "evalNid contexte  boucle: %d\n" (getBoucleIdB nid.infoNid.laBoucle);
+				(*afficherListeAS aSC;flush(); space(); new_line()*)
 		end;
 		let nouNidEval =
 			new_nidEval
@@ -3802,7 +3802,7 @@ Printf.printf "evalNid contexte  boucle: tete\n";
 					 nb   isExe false 0
 		 in
 		docEvalue :=  new_documentEvalue  (List.append [ nouNidEval] !docEvalue.maListeNidEval) !docEvalue.maListeEval;
-		if !vDEBUG then Printf.printf "av evaluerSN de %d dans nid tete appel %d\nNEW NID EVAL\n" (getBoucleIdB nid.infoNid.laBoucle)	!numAppel;
+		if !vDEBUG then Printf.eprintf "av evaluerSN de %d dans nid tete appel %d\nNEW NID EVAL\n" (getBoucleIdB nid.infoNid.laBoucle)	!numAppel;
 		(*ignore (afficherNidUML nouNidEval  [] 1 Listener.null);*)
 
 		isExecutedOneTimeOrMoreList := [];
@@ -3828,7 +3828,7 @@ Printf.printf "evalNid contexte  boucle: tete\n";
 		(*let listeSauf =*)evaluerSN   nid	nid	aSC mesBouclesOuAppel  (List.append  [typeEval] listeEng) isExe borne nid globales;
 					(*	resaux in*)
 		isExecutedOneTimeOrMore :=previsExecutedOneTimeOrMore;
-		if !vDEBUG then  Printf.printf "ap evaluerSN de %d dans nid tete appel %d\n"  (getBoucleIdB nid.infoNid.laBoucle) !numAppel;
+		if !vDEBUG then  Printf.eprintf "ap evaluerSN de %d dans nid tete appel %d\n"  (getBoucleIdB nid.infoNid.laBoucle) !numAppel;
 
 		typeNidTeteCourant :=tetePred;
 		let corpsEvalPourB = !corpsEvalTMP  in
@@ -3839,7 +3839,7 @@ Printf.printf "evalNid contexte  boucle: tete\n";
 
 		corpsEvalTMP := List.append corpsEvalTMPPred	 new_b;
 		docEvalue := new_documentEvalue !docEvalue.maListeNidEval (List.append	!docEvalue.maListeEval   new_b);
-		if !vDEBUG then Printf.printf "ajout dans liste corpsEval %d\n"  (getBoucleIdB nid.infoNid.laBoucle);
+		if !vDEBUG then Printf.eprintf "ajout dans liste corpsEval %d\n"  (getBoucleIdB nid.infoNid.laBoucle);
 
 		varDeBoucleBoucle :=varDeBouclePred;
 		estDansBoucle := false;
@@ -3941,13 +3941,13 @@ afficherUneAffect (new_instBEGIN ni); Printf.printf "evalSIDA fin\n";(* c'est bi
 				  let corpsEvalTMPPred = !corpsEvalTMP in
 				  corpsEvalTMP := [];
 (*Printf.printf "NEW NID EVAL\n";*)
-				  if !vDEBUG then Printf.printf "evalNid av evaluerSN de %d dans nid tete %d appel %d\n" (getBoucleIdB nid.infoNid.laBoucle)
+				  if !vDEBUG then Printf.eprintf "evalNid av evaluerSN de %d dans nid tete %d appel %d\n" (getBoucleIdB nid.infoNid.laBoucle)
 						  (getBoucleIdB nidTETE.infoNid.laBoucle) !numAppel;
 
 				  let previsExecutedOneTimeOrMore = !isExecutedOneTimeOrMore in
 				  evaluerSN   nidTETE	nid	courcont mesBouclesOuAppel (List.append  [typeEval] listeEng) isExeE borne nid globales;
 				  isExecutedOneTimeOrMore :=previsExecutedOneTimeOrMore;
-				  if !vDEBUG then   Printf.printf "ap evaluerSN de %d dans nid tete appel %d\n"
+				  if !vDEBUG then   Printf.eprintf "ap evaluerSN de %d dans nid tete appel %d\n"
 						  (getBoucleIdB nid.infoNid.laBoucle)	!numAppel;
 				  let corpsEvalPourB = !corpsEvalTMP  in
 				  let (vt, vf) =    creerVarTF lt lf [] []   in
@@ -3963,13 +3963,13 @@ afficherUneAffect (new_instBEGIN ni); Printf.printf "evalSIDA fin\n";(* c'est bi
 			  end
 			  else
 				  begin
-					  if !vDEBUG then Printf.printf "pb pas de nid pour boucle %d :\n" numTete;
+					  if !vDEBUG then Printf.eprintf "pb pas de nid pour boucle %d :\n" numTete;
 					  appel
 				  end
 		  end
 		  else
 		  begin
-			  if !vDEBUG then Printf.printf "pb pas de nid pour boucle %d :\n" numBouclePred;
+			  if !vDEBUG then Printf.eprintf "pb pas de nid pour boucle %d :\n" numBouclePred;
 			  appel
 		  end
 	  end
@@ -3987,7 +3987,7 @@ List.iter
   (fun  c ->
 	  match c with
 		  IDBOUCLE (num,lt,lf,fic,lig) ->
-			  if !vDEBUG then Printf.printf "NID av sous nid de %d  dans autre boucle\n" num;
+			  if !vDEBUG then Printf.eprintf "NID av sous nid de %d  dans autre boucle\n" num;
 			  (*if isExeE then Printf.printf"evaluerSN isExeE = vrai\n" else Printf.printf"evaluerSN isExeE = false\n" ;*)
 (*Printf.printf "evaluerSN contexte dans eval sous nid: \n";
 				  afficherListeAS appel;
@@ -3996,7 +3996,7 @@ List.iter
 
 			  let ((*listeId*)_,_,n) = rechercheTriplet num niddepart.listeTripletNid in
 			  if !vDEBUG then
-				  Printf.printf "1 evaluerSN nid %d nid depart %d  nid tete %d\n" num  (getBoucleIdB niddepart.infoNid.laBoucle)
+				  Printf.eprintf "1 evaluerSN nid %d nid depart %d  nid tete %d\n" num  (getBoucleIdB niddepart.infoNid.laBoucle)
 				  (getBoucleIdB nid.infoNid.laBoucle);
 			  let varDeBouclePred = !varDeBoucleBoucle in
 			  varDeBoucleBoucle :=n.varDeBoucleNid;
@@ -4032,10 +4032,10 @@ List.iter
 				  num (getBoucleIdB nid.infoNid.laBoucle);*)
 			  if !vDEBUG then
 			  begin
-				  Printf.printf "av eval sous nid de %d\n" (getBoucleIdB n.infoNid.laBoucle)	;
-				  Printf.printf "CORPS boucles %d:\n"  (getBoucleIdB n.infoNid.laBoucle);
+				  Printf.eprintf "av eval sous nid de %d\n" (getBoucleIdB n.infoNid.laBoucle)	;
+				  Printf.eprintf "CORPS boucles %d:\n"  (getBoucleIdB n.infoNid.laBoucle);
 				  (*afficherElementCorpsFonction corps ;	*)
-				  Printf.printf "av eval sous nid de FIN%d\n"  (getBoucleIdB n.infoNid.laBoucle)	;
+				  Printf.eprintf "av eval sous nid de FIN%d\n"  (getBoucleIdB n.infoNid.laBoucle)	;
 				  (*Printf.printf "contexte dans eval sous nid: \n";
 				  afficherListeAS appel;
 				  Printf.printf "FIN CONTEXTE \n"*)
@@ -4046,7 +4046,7 @@ List.iter
 
 			  isExecutedOneTimeOrMore := previsExecutedOneTimeOrMore;
 			   if !vDEBUG then
-				  Printf.printf "AP EVALUERSN ajout sousnid de %d = %d
+				  Printf.eprintf "AP EVALUERSN ajout sousnid de %d = %d
 				  dans liste des boucle de %d\n" (getBoucleIdB n.infoNid.laBoucle)
 				  num (getBoucleIdB nid.infoNid.laBoucle);
 				  (*	if lt <> [] then begin Printf.printf "liste des variables IF true :\n";

@@ -321,7 +321,7 @@ let suite = List.tl l in
 	|	ASSIGN_DOUBLE (s,e1, e2) -> 	
 			if s = v (*and il faut évaluer les 2 expression index = e1*) then 
 			begin
-				if !vDEBUG then begin	Printf.printf "tableau avec index à terminer\n";(* afficherAS a *) end; 
+				if !vDEBUG then begin	Printf.eprintf "tableau avec index à terminer\n";(* afficherAS a *) end; 
 				(expVaToExp(e2), isbefore) 
 			end
 			else  if s = var then rechercheAffectVDsListeASAndWhere v var suite true
@@ -329,7 +329,7 @@ let suite = List.tl l in
 	|	ASSIGN_MEM (s,e1, e2) -> 	
 			if s = v (*and il faut évaluer les 2 expression index = e1*) then 
 			begin
-				if !vDEBUG then begin	Printf.printf "tableau avec index à terminer\n";(* afficherAS a *) end; 
+				if !vDEBUG then begin	Printf.eprintf "tableau avec index à terminer\n";(* afficherAS a *) end; 
 				(expVaToExp(e2), isbefore) 
 			end
 			else  if s = var then rechercheAffectVDsListeASAndWhere v var suite true
@@ -380,7 +380,7 @@ and getIndirectIncrease var exp inst  asAs completList =
 					(* more than one dependancy on can be before the other after... to see*)
 				|_->
 					if !vDEBUG then 
-						Printf.printf "depend d'une expression contenant une autre variable est pas de cette variable seule non encore traité\n";
+						Printf.eprintf "depend d'une expression contenant une autre variable est pas de cette variable seule non encore traité\n";
 					(NOTHING, true,true,false,"other")
 	 	
 and getInc var assign inst  asAs completList beforei=

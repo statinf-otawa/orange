@@ -61,7 +61,9 @@ let banner =
 	"\torange [options] -g -- [functions...|--funlist listfile] [--outdir dir]\n"^
 	"Recurcivity detection with frontc produce an .rec_status file containing for each function its recursivity status:\n"^
 	"\torange [options] --frec files... [functions...|--funlist listfile] [--outdir dir]\n" ^
-	"\torange [options] --frec -- [functions...|--funlist listfile] [--outdir dir]\n"
+	"\torange [options] --frec -- [functions...|--funlist listfile] [--outdir dir]\n"^
+	"Call for debug info:\n" ^
+	"\torange [options] --debug"
 
 (* ^
 	Recurcivity application class : (0: no recursivity, 1: only single recursivity (that may be change into loop by calypso using --crec option), 2:others cases\n^
@@ -147,6 +149,8 @@ let opts = [
 		"Output directory for partial results (rpo files) or graphs (dot files).");
 	("--without-gobal-initial",  Arg.Set withoutGlobalAndStaticInit  ,
 		"Without initial global and static values");
+    ("--debug",  Arg.Set Util.vDEBUG  ,
+		"Print on stderr debug information");
 
 	(* graph   *)
 	("-g", Arg.Unit (fun _ ->args := (Frontc.LINE_RECORD true)::!args; calipso_rrec := true; run_calipso := true;args := USE_CPP :: !args;onlyGraphe := true),

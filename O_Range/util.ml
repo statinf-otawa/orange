@@ -547,14 +547,14 @@ let suite = List.tl l in
 	|	ASSIGN_DOUBLE (s,e1, e2) -> 	
 			if s = v (*and il faut évaluer les 2 expression index = e1*) then 
 			begin
-				if !vDEBUG then begin	Printf.printf "tableau avec index à terminer\n";(* afficherAS a *) end; 
+				if !vDEBUG then begin	Printf.eprintf "tableau avec index à terminer\n";(* afficherAS a *) end; 
 				e2
 			end
 			else  rechercheAffectVDsListeAS v (*index*) suite
 	| ASSIGN_MEM (s, e1, e2)	-> 
 			if s = v (*and il faut évaluer les 2 expression index = e1*) then 
 			begin
-				if !vDEBUG then begin	Printf.printf "tableau avec index à terminer\n";(* afficherAS a *) end; 
+				if !vDEBUG then begin	Printf.eprintf "tableau avec index à terminer\n";(* afficherAS a *) end; 
 				e2
 			end
 			else  rechercheAffectVDsListeAS v (*index*) suite
@@ -1124,7 +1124,7 @@ else			let x =  (List.hd lid) in
 				begin
 					let var4 = (String.sub x  0 4) in
 					if  var4 = "call"   then 
-					begin if !vDEBUG then Printf.printf "non traite champ struct depuis appel de fonction";true end else false
+					begin if !vDEBUG then Printf.eprintf "non traite champ struct depuis appel de fonction";true end else false
 				end 
 				else false
 

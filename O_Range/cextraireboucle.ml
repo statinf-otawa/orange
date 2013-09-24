@@ -598,7 +598,7 @@ and get_baseinittype typ =
 	| VOID ->    "void"
 	| CHAR sign ->   ((get_sign sign) ^ "char")
 	| INT (size, sign) ->   ((get_sign sign) ^ (get_size size) ^ "int")
-	| BITFIELD (t, _) ->   ((get_baseinittype t)  (*(get_sign t)*)  ^ "int")	(* !! TO CHECK !! *)
+	| BITFIELD (t, _) ->   ((*get_baseinittype t*)  (get_sign t)  ^ "int")	(* !! TO CHECK !! *)
 	| FLOAT size ->   ((if size then "long " else "") ^ "float")
 	| DOUBLE size ->   ((if size then "long " else "") ^ "double")
 	| NAMED_TYPE id ->		"type_mamed_" ^ id
@@ -634,7 +634,7 @@ and get_baseinittype typ =
 
 	
 	let 	rec creerListeParamES (pars : single_name list) =
-		if pars = [] then begin if !vDEBUG then Printf.printf"aucun param \n";()end
+		if pars = [] then begin if !vDEBUG then Printf.eprintf"aucun param \n";()end
 		else
 		begin	(*	Printf.printf"parameters creerListeParamES\n";*)
 			let courant = List.hd pars in
@@ -675,10 +675,10 @@ and get_baseinittype typ =
 		match base with
 		 PROTO (_, pars, ell) -> 	(*Printf.printf "creerListeES PROTO\n";*)
 				creerListeParamES pars ; 
-				if ell then if !vDEBUG then Printf.printf "to implement";()
+				if ell then if !vDEBUG then Printf.eprintf "to implement";()
 		| OLD_PROTO (_, _, ell)(*(typ, pars, ell)*) ->  
-				if !vDEBUG then Printf.printf "OLD PROTO to implement";
-				if ell then if !vDEBUG then Printf.printf "to implement";
+				if !vDEBUG then Printf.eprintf "OLD PROTO to implement";
+				if ell then if !vDEBUG then Printf.eprintf "to implement";
 				()
 		| _ -> ()
 
@@ -1297,7 +1297,7 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 					else 
 						(NONMONOTONE , NOTHING, NOTHING, BAND,true, var, BINARY(op,exp1, exp2))
 					
-			| _-> isExactForm := false;(*| BAND -> | XOR ->| BOR ->*) if !vDEBUG then Printf.printf   "\t error condition not implemented\n";
+			| _-> isExactForm := false;(*| BAND -> | XOR ->| BOR ->*) if !vDEBUG then Printf.eprintf   "\t error condition not implemented\n";
 					(NONMONOTONE , NOTHING, NOTHING, nop,true, var, BINARY(op,exp1, exp2))
 		end
 		else
@@ -1413,7 +1413,7 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 					end 
 					else 
 						(NONMONOTONE , NOTHING, NOTHING, op,true, var, BINARY(op,exp1, exp2))   
-					| _-> isExactForm := false;(* | BAND -> | op ->| BOR ->*) if !vDEBUG then Printf.printf   "\terror condition not implemented\n";
+					| _-> isExactForm := false;(* | BAND -> | op ->| BOR ->*) if !vDEBUG then Printf.eprintf   "\terror condition not implemented\n";
 								(NONMONOTONE , NOTHING, NOTHING, op,true, var, BINARY(op,exp1, exp2))
 			end
 			else begin 
@@ -3284,28 +3284,28 @@ let eval listeInst saufId idEng=
 let rec relierAux num 	varDeBoucle listeTraitee listeAtraiter listeDesFils=	
 	if (listeAtraiter = []) then 	
 	begin 
-		if !vDEBUG then Printf.printf "relierAux :no next into nid %d \n" num ;
+		if !vDEBUG then Printf.eprintf "relierAux :no next into nid %d \n" num ;
 	end
 	else
 	begin
 		let n = List.hd listeAtraiter in
 		let suite = List.tl listeAtraiter in	
 		if !vDEBUG 
-			then Printf.printf "relierAux :next  into nid %d \n" num		;	
+			then Printf.eprintf "relierAux :next  into nid %d \n" num		;	
 		(* recherche des boucles sous moi*)
 		
 		let idTeteSousNid = (getBoucleInfoB(n.infoNid.laBoucle)).identifiant	in
 		(* se sont tous ceux de la liste qui sont dans la pile *)
 		if !vDEBUG then 
 		begin
-			Printf.printf "relierAux :next %d into nid %d\n" idTeteSousNid num;	
-			Printf.printf "num eng %d num courant%d\n"
+			Printf.eprintf "relierAux :next %d into nid %d\n" idTeteSousNid num;	
+			Printf.eprintf "num eng %d num courant%d\n"
 				(getBoucleInfoB(n.infoNid.laBoucle)).nomEnglobante	 num
 		end;
 		(*if (List.mem idTeteSousNid listeDesFils) then*)
 		if (getBoucleInfoB(n.infoNid.laBoucle)).nomEnglobante	= num then
 		begin (* n est imbriqué sous num*)
-			if !vDEBUG then Printf.printf "n imbrique sous num relierAux :à %d  fils  %d\n" idTeteSousNid num;	
+			if !vDEBUG then Printf.eprintf "n imbrique sous num relierAux :à %d  fils  %d\n" idTeteSousNid num;	
 			let listeAux = (extraireListeSousBoucle n.listeTripletNid) in
 			let _ =eval !listeDesInstCourantes 	idTeteSousNid num in
 			
@@ -3318,7 +3318,7 @@ let rec relierAux num 	varDeBoucle listeTraitee listeAtraiter listeDesFils=
 		end								
 		else (* se sont des noeuds de même niveau d'imbrication *)
 		begin
-			if !vDEBUG then  Printf.printf "relierAux:pas fils nid %d %d\n" num		idTeteSousNid;	
+			if !vDEBUG then  Printf.eprintf "relierAux:pas fils nid %d %d\n" num		idTeteSousNid;	
 				(*listeTraitee = ( List.append [n] listeTraitee)	;ERREUR A290*)
 				relierAux num varDeBoucle (List.append [n] listeTraitee) suite listeDesFils		;
 				listeNoeudCourant	:=	( List.append  [n] !listeNoeudCourant )
@@ -3329,7 +3329,7 @@ let 	relierLesNoeudsEnglobesAuNoeudCourant num varDeBoucle listeNC listeBouclesI
 		let listeRes = [] in 
 		listeTripletNidCourantPred := !listeTripletNidCourant;
 		listeTripletNidCourant := [];	
-		if !vDEBUG then Printf.printf "DANS RELIER APPEL A RELIER AUX\n";
+		if !vDEBUG then Printf.eprintf "DANS RELIER APPEL A RELIER AUX\n";
 		listeNoeudCourant := [];
 		relierAux num 	varDeBoucle listeRes listeNC listeBouclesImbriquees ;
 		noeudCourant := new_NidDeBoucle  cond	(rechercheAssosBoucleBorne num)  varDeBoucle !listeDesInstCourantes !listeTripletNidCourant ;
@@ -3692,15 +3692,15 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 								 (EXP( nb)) (new_instBEGIN (lesInstDeLaBoucle )) ppc];
 																										
 		let res = majABB []	!doc.laListeDesAssosBoucleBorne 	numBoucle !listeDesInstCourantes in
-		if !vDEBUG then  Printf.printf "\n\nAnalyse statement : noeud traité : %d varDEBOUCLE %s \n\n "  numBoucle varBoucleIfN;
+		if !vDEBUG then  Printf.eprintf "\n\nAnalyse statement : noeud traité : %d varDEBOUCLE %s \n\n "  numBoucle varBoucleIfN;
 		if (!listeBouclesImbriquees = []) then 	(*  test ne contient pas de boucle *)
 		begin
-			if !vDEBUG then  	Printf.printf "\n\nAnalyse statement : la boucle %d ne contient pas de boucle \n" numBoucle;
+			if !vDEBUG then  	Printf.eprintf "\n\nAnalyse statement : la boucle %d ne contient pas de boucle \n" numBoucle;
 			noeudCourant :=(new_NidDeBoucle ne(*exp*)  (rechercheAssosBoucleBorne numBoucle) varBoucleIfN  (*lesInst*)!listeDesInstCourantes []) 	
 		end
 		else 
 		begin
-			if !vDEBUG then Printf.printf "\nAnalyse statement : la boucle %d contient boucles appel relierLesNoeudsEnglobesAuNoeudCourant\n" numBoucle;
+			if !vDEBUG then Printf.eprintf "\nAnalyse statement : la boucle %d contient boucles appel relierLesNoeudsEnglobesAuNoeudCourant\n" numBoucle;
 			(* attention on peut avoir X sous noeuds et donc 1 liste de noeuds et pas un seul*)
 			relierLesNoeudsEnglobesAuNoeudCourant 	numBoucle varBoucleIfN !listeNoeudCourant !listeBouclesImbriquees exp
 		end;									
@@ -3870,15 +3870,15 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 									(new_instBEGIN (lesInstDeLaBoucle )) ppc];				
 		
 		let res = majABB []	!doc.laListeDesAssosBoucleBorne 	numBoucle (*lesInst*)!listeDesInstCourantes in
-		if !vDEBUG then Printf.printf "\n\nAnalyse statement : noeud traité : %d varDEBOUCLE %s \n\n " numBoucle varBoucleIfN;
+		if !vDEBUG then Printf.eprintf "\n\nAnalyse statement : noeud traité : %d varDEBOUCLE %s \n\n " numBoucle varBoucleIfN;
 		if (!listeBouclesImbriquees = []) then 	(*  test ne contient pas de boucle *)
 		begin
-			if !vDEBUG then Printf.printf "\n\nAnalyse statement : la boucle %d ne contient pas de boucle \n" numBoucle;
+			if !vDEBUG then Printf.eprintf "\n\nAnalyse statement : la boucle %d ne contient pas de boucle \n" numBoucle;
 			noeudCourant :=(new_NidDeBoucle ne(*exp*) (rechercheAssosBoucleBorne numBoucle)  varBoucleIfN !listeDesInstCourantes []) 
 		end
 		else 
 		begin
-			if !vDEBUG then Printf.printf "\nAnalyse statement : la boucle %d contient boucles appel relierLesNoeudsEnglobesAuNoeudCourant\n" numBoucle;
+			if !vDEBUG then Printf.eprintf "\nAnalyse statement : la boucle %d contient boucles appel relierLesNoeudsEnglobesAuNoeudCourant\n" numBoucle;
 			(* attention on peut avoir X sous noeuds et donc 1 liste de noeuds et pas un seul*)
 			relierLesNoeudsEnglobesAuNoeudCourant numBoucle varBoucleIfN !listeNoeudCourant !listeBouclesImbriquees
 			exp
@@ -4050,15 +4050,15 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 					
 																		
 		let res = majABB []	!doc.laListeDesAssosBoucleBorne 	num  !listeDesInstCourantes in
-		if !vDEBUG then Printf.printf "\n\nAnalyse statement : noeud traité : %d varDEBOUCLE %s \n\n " num varBoucleIfN;
+		if !vDEBUG then Printf.eprintf "\n\nAnalyse statement : noeud traité : %d varDEBOUCLE %s \n\n " num varBoucleIfN;
 		if (!listeBouclesImbriquees = []) then 	(*  test ne contient pas de boucle *)
 		begin
-			if !vDEBUG then  Printf.printf "\n\nAnalyse statement : la boucle %d ne contient pas de boucle \n" num;
+			if !vDEBUG then  Printf.eprintf "\n\nAnalyse statement : la boucle %d ne contient pas de boucle \n" num;
 			noeudCourant :=(new_NidDeBoucle exp2 (rechercheAssosBoucleBorne num)  varBoucleIfN  !listeDesInstCourantes []) 								
 		end
 		else 
 		begin
-			if !vDEBUG then Printf.printf "\n\nAnalyse statement : la boucle %d contient des boucles appel relierLesNoeudsEnglobesAuNoeudCourant\n" num;
+			if !vDEBUG then Printf.eprintf "\n\nAnalyse statement : la boucle %d contient des boucles appel relierLesNoeudsEnglobesAuNoeudCourant\n" num;
 			(* attention on peut avoir X sous noeuds et donc 1 liste de noeuds et pas un seul*)
 			relierLesNoeudsEnglobesAuNoeudCourant num varBoucleIfN !listeNoeudCourant !listeBouclesImbriquees exp2
 		end;									
@@ -4593,7 +4593,7 @@ and  analyse_expressionaux exp =
 						| _->
 								nouvExp := exp)
 				|_ -> 		
-					if !vDEBUG then( Printf.printf "not implemented\n";print_expression e 0; new_line(); );
+					if !vDEBUG then( Printf.eprintf "not implemented\n";(*print_expression e 0; *)new_line(); );
 				    analyse_expressionaux e;	 let ne = !nouvExp in  nouvExp := UNARY (op, ne) 
 			);
 	| BINARY (op, exp11, exp2) -> let exp1 = simplifierValeur exp11 in
@@ -4625,9 +4625,9 @@ and  analyse_expressionaux exp =
 											List.append !listeDesInstCourantes 
 														[new_instTab ("*"^v) (EXP(i))	(EXP(ne))]
 					 
-									|  _->	 if !vDEBUG then  Printf.printf "array expr not implemented\n" ;
+									|  _->	 if !vDEBUG then  Printf.eprintf "array expr not implemented\n" ;
 								)
-								| _->  if !vDEBUG then  Printf.printf "array expr not implemented\n" 
+								| _->  if !vDEBUG then  Printf.eprintf "array expr not implemented\n" 
 							)
 						| MEMBEROF (_ , _) 	-> listeDesInstCourantes := List.append !listeDesInstCourantes  (treatStruct exp1 exp2 i t false)	
 				 		| MEMBEROFPTR (_ , _) 	->	listeDesInstCourantes := List.append !listeDesInstCourantes  (treatStruct exp1 exp2 i t true)
@@ -4663,7 +4663,7 @@ and  analyse_expressionaux exp =
 											analyse_expressionaux (BINARY (op, INDEX (VARIABLE(tab),index), exp2)) 
 								end else analyse_expressionaux (BINARY (op, INDEX (VARIABLE(tab),NOTHING), NOTHING))
 							end
-						| _->	 if !vDEBUG then( (*print_expression exp1 0 ; flush();space() ;flush();space() ; *)Printf.printf "array expr not implemented\n" 	)
+						| _->	 if !vDEBUG then( (*print_expression exp1 0 ; flush();space() ;flush();space() ; *)Printf.eprintf "array expr not implemented\n" 	)
 					)
 				| UNARY (opr,e) -> 
 					(*let p = !listeNextExp in*)
@@ -4685,7 +4685,7 @@ and  analyse_expressionaux exp =
 									(match expaux with
 									 VARIABLE v -> analyse_expressionaux exp2;	 let ne = !nouvExp in   
 										listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instVarAndPtr v 	(EXP(ne))]
-								     |_->if !vDEBUG then Printf.printf "array expr not implemented\n" )
+								     |_->if !vDEBUG then Printf.eprintf "array expr not implemented\n" )
 								|_->   
 									analyse_expressionaux exp2;	 let ne = !nouvExp in    
 									let (v,expres, isstruct) = getVarPtrOrArrayDep  exp1 in
@@ -4700,7 +4700,7 @@ and  analyse_expressionaux exp =
 											else 
 												listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instMem ("*"^id) (EXP(!nouvExp)) (EXP(NOTHING))]
 									|_->    if !vDEBUG then 
-										(Printf.printf "array expr not found\n"; print_expression exp1 0 ;flush();space() ;flush();space() ); ())
+										(Printf.eprintf "array expr not found\n"; (*print_expression exp1 0 ;flush();space() ;flush();*)space() ); ())
 
 									else 
 									begin 	
@@ -4714,7 +4714,7 @@ and  analyse_expressionaux exp =
 									
 							)
 
-							|  _->	 if !vDEBUG then Printf.printf "array expr not implemented\n" 	 )
+							|  _->	 if !vDEBUG then Printf.eprintf "array expr not implemented\n" 	 )
 						
 				 (*  *)
 				 | MEMBEROF (e , t) 		->		
@@ -4765,7 +4765,7 @@ and  analyse_expressionaux exp =
 							listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect];
 						end;
 
-				 |_-> if !vDEBUG then Printf.printf "array expr not implemented\n" 		 
+				 |_-> if !vDEBUG then Printf.eprintf "array expr not implemented\n" 		 
 			); 
 			
 			| ADD_ASSIGN	->analyse_expressionaux exp2;	 let ne = !nouvExp in analyse_expressionaux (BINARY (ASSIGN, exp1 ,BINARY (ADD,exp1, ne))) ;  nouvExp:=BINARY (op, exp1, ne) 
@@ -5513,7 +5513,7 @@ and  onlyAexpressionaux exp =
 
 						nouvExp :=exp)
 	
-				| _->  if !vDEBUG then  Printf.printf "array expr with tab nam no variable name  not implemented\n" ;
+				| _->  if !vDEBUG then  Printf.eprintf "array expr with tab nam no variable name  not implemented\n" ;
 						onlyAexpression e;	nouvExp := UNARY (op, !nouvExp)
 			)
 
@@ -5547,9 +5547,9 @@ and  onlyAexpressionaux exp =
 											List.append !listeDesInstCourantes 
 														[new_instTab ("*"^v) (EXP(i))	(EXP(ne))]
 					 
-									|  _->	 if !vDEBUG then  Printf.printf "array expr not implemented\n" ;
+									|  _->	 if !vDEBUG then  Printf.eprintf "array expr not implemented\n" ;
 								)
-								| _->  if !vDEBUG then  Printf.printf "array expr not implemented\n" 
+								| _->  if !vDEBUG then  Printf.eprintf "array expr not implemented\n" 
 							)
 						| MEMBEROF (_ , _) 	-> listeDesInstCourantes := List.append !listeDesInstCourantes  (treatStruct exp1 exp2 i t false)
 				 		| MEMBEROFPTR (_ , _) 	->	listeDesInstCourantes := List.append !listeDesInstCourantes  (treatStruct exp1 exp2 i t true)
@@ -5585,7 +5585,7 @@ and  onlyAexpressionaux exp =
 											onlyAexpressionaux (BINARY (op, INDEX (VARIABLE(tab),index), exp2)) 
 								end else onlyAexpressionaux (BINARY (op, INDEX (VARIABLE(tab),NOTHING), NOTHING))
 							end
-						| _->	 if !vDEBUG then( print_expression exp1 0 ; flush();space() ;flush();space() ; Printf.printf "array expr not implemented\n" 	)
+						| _->	 if !vDEBUG then((* print_expression exp1 0 ; flush();space() ;flush();space() ;*) Printf.eprintf "array expr not implemented\n" 	)
 					)
 				| UNARY (opr,e) -> 
 					(*let p = !listeNextExp in*)
@@ -5607,7 +5607,7 @@ and  onlyAexpressionaux exp =
 									(match expaux with
 									 VARIABLE v -> onlyAexpressionaux exp2;	 let ne = !nouvExp in   
 										listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instVarAndPtr v 	(EXP(ne))]
-								     |_->if !vDEBUG then Printf.printf "array expr not implemented\n" )
+								     |_->if !vDEBUG then Printf.eprintf "array expr not implemented\n" )
 								|_->   
 									onlyAexpressionaux exp2;	 let ne = !nouvExp in    
 									let (v,expres, isstruct) = getVarPtrOrArrayDep  exp1 in
@@ -5633,7 +5633,7 @@ and  onlyAexpressionaux exp =
 									
 							)
 
-							|  _->	 if !vDEBUG then Printf.printf "array expr not implemented\n" 	 )
+							|  _->	 if !vDEBUG then Printf.eprintf "array expr not implemented\n" 	 )
 						
 				 (*  *)
 				 | MEMBEROF (e , t) 		->		
@@ -5684,7 +5684,7 @@ and  onlyAexpressionaux exp =
 							listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect];
 						end;
 
-				 |_-> if !vDEBUG then Printf.printf "array expr not implemented\n" 		 
+				 |_-> if !vDEBUG then Printf.eprintf "array expr not implemented\n" 		 
 			); 
 			
 			| ADD_ASSIGN	->onlyAexpressionaux exp2;	 let ne = !nouvExp in onlyAexpressionaux (BINARY (ASSIGN, exp1 ,BINARY (ADD,exp1, ne))) ;  nouvExp:=BINARY (op, exp1, ne) 
