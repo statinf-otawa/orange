@@ -409,7 +409,7 @@ let _ =
 		let cfiles = (List.map
 			(fun filename ->
 				match (Frontc.parse (FROM_FILE(filename) :: args)) with
-					| PARSING_ERROR -> []
+					| PARSING_ERROR -> failwith ("Frontc Failled to load "^filename);
 					| PARSING_OK(defs) -> defs
 			)
 			!Cextraireboucle.files

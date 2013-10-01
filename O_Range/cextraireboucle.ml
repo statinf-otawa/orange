@@ -598,7 +598,7 @@ and get_baseinittype typ =
 	| VOID ->    "void"
 	| CHAR sign ->   ((get_sign sign) ^ "char")
 	| INT (size, sign) ->   ((get_sign sign) ^ (get_size size) ^ "int")
-	| BITFIELD (t, _) ->   ((*get_baseinittype t*)  (get_sign t)  ^ "int")	(* !! TO CHECK !! *)
+	| BITFIELD (t, _) ->  ( (get_baseinittype t)  (*get_sign t*)  ^ "int")	(* !! TO CHECK !! BE CAREFULL WHITH FRONTC VERSION*)
 	| FLOAT size ->   ((if size then "long " else "") ^ "float")
 	| DOUBLE size ->   ((if size then "long " else "") ^ "double")
 	| NAMED_TYPE id ->		"type_mamed_" ^ id
@@ -3348,7 +3348,7 @@ let rec hasMultiOuputInst stat =
 	| IF (exp, s1, s2) ->hasMultiOuputExp  exp ||hasMultiOuputInst s1 || hasMultiOuputInst s2
 	| WHILE (e, stat) | DOWHILE (e, stat)->hasMultiOuputExp  e ||hasMultiOuputInst stat
 	| FOR (exp1, exp2, exp3, stat) -> hasMultiOuputExp  exp1 || hasMultiOuputExp  exp2 ||hasMultiOuputExp  exp3 ||hasMultiOuputInst stat
-	| BREAK | CONTINUE | RETURN _| GOTO _  | ASM _ | GNU_ASM (_, _, _, _)->true
+	| BREAK | CONTINUE | RETURN _| GOTO _  | ASM _ | GNU_ASM (_, _, _, _)| GNU_ASM_VOLATILE(_, _, _, _)->true
 
 and hasMultiOuputExp exp =
 	match exp with
