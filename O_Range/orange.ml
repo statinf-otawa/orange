@@ -132,8 +132,8 @@ module MonList = struct
 
 let onIf res name line source inloop executed condVa cond lt lf =
 
-let condexpStr = string_from_expr (  condVa) in
-let condexpStrInit = string_from_expr (  cond) in
+let condexpStr = (*string_from_expr*)pcdata_from_expr (  condVa) in
+let condexpStrInit = (*string_from_expr*)pcdata_from_expr  (  cond) in
  (*let t1 = sprintf "<conditional>\n" in
  right ();
  nbLigne := !nbLigne +1;
@@ -246,9 +246,9 @@ let condexpStrInit = string_from_expr (  cond) in
 	  |(RConstFloat(valeur)) -> Printf.sprintf "%g" valeur
 	  | _ -> "NOCOMP"
 	  in
-	let maxexpStr = string_from_expr (remplacerNOTHINGPar maxexp) in
-	let totalexpStr = string_from_expr (remplacerNOTHINGPar totalexp) in
-	let initexpStr = string_from_expr (remplacerNOTHINGPar expinit) in
+	let maxexpStr = (*string_from_expr*)pcdata_from_expr  (remplacerNOTHINGPar maxexp) in
+	let totalexpStr = (*string_from_expr*)pcdata_from_expr  (remplacerNOTHINGPar totalexp) in
+	let initexpStr = (*string_from_expr*)pcdata_from_expr  (remplacerNOTHINGPar expinit) in
 
 	let max = (extractExp maxcount)  in
 	let esc s = Cxml.escape_attr s '"' in

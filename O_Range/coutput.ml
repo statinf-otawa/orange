@@ -12,6 +12,61 @@ open Cabs
 open Cprint
 let version = "Coutput"
 
+
+
+
+
+(** Module for converting strings to Xml PCDATA. *)
+
+(** Converts a character to the corresponding entity (if any).
+    The initial '&' and final ';' are not part of the result.
+    Eg. '<' -> Some "lt". *)
+let pcdata_from_char = function
+  | '&' -> Some "amp"
+  | '<' -> Some "lt"
+  | '>' -> Some "gt"
+  | '\'' -> Some "apos"
+  | '"' -> Some "quot"
+  | _ -> None
+
+(** Convert a string to Xml pcdata.
+    This means that the Xml reserved characters have been changed to the corresponding Xml entity.
+    Eg. "<a>" -> "&lt;a&gt;". *)
+let pcdata_from_string s =
+  let s_length = String.length s in
+  let buf = Buffer.create 1 in
+  let upto = ref 0 in
+  (* Invariant: all characters of indices up to !upto excluded
+     have been treated and transfered to the buffer buf. *)
+  let copy_upto new_upto =
+    Buffer.add_substring buf s !upto (new_upto - !upto);
+    upto := new_upto in
+  let copy_entity ent =
+    Buffer.add_char buf '&';
+    Buffer.add_string buf ent;
+    Buffer.add_char buf ';';
+    incr upto in
+  (* Traversal of the string. *)
+  for i = 0 to s_length - 1
+  do
+    match pcdata_from_char (String.get s i) with
+    | Some entity ->
+      begin
+	copy_upto i;
+	copy_entity entity
+      end
+    | None -> ()
+  done;
+  if !upto = 0 then s (* Optimization: no entities were met. *)
+  else
+    begin
+      copy_upto s_length;
+      Buffer.contents buf
+    end
+
+
+
+
 let string_from_expr = 
      let rec aux currentPrio e =
 	  let (str, prio) = get_operator e in
@@ -72,3 +127,13 @@ let string_from_expr =
 	 in if (prio < currentPrio) then "("^result^")" else result
 		
       in (aux 0 )
+
+
+
+
+let pcdata_from_expr e =
+	pcdata_from_string (string_from_expr e)
+
+
+
+
