@@ -145,7 +145,7 @@ let opts = [
 		"Output flow facts to the given file.");
 	("--outdir", Arg.String (fun dir -> out_dir := dir; Cextraireboucle.set_out_dir dir;),
 		"Output directory for partial results (rpo files) or graphs (dot files).");
-	("--without-gobal-initial",  Arg.Set withoutGlobalAndStaticInit  ,
+	("--without-global-initial",  Arg.Set withoutGlobalAndStaticInit  ,
 		"Without initial global and static values");
 
 	(* graph   *)
