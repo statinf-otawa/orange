@@ -2892,8 +2892,16 @@ and analyse_defPB def =
 
 and getStatementLine stat =
 match stat with
-	| STAT_LINE (stat, file, line) -> Some(line, file)
+	| STAT_LINE (st, file, line) -> 
+			(match st with
+				| BLOCK (_, statement)
+				| STAT_LINE (statement,_,_) ->	getStatementLine statement
+				|_-> Some (line , file)
+			)
+	| BLOCK (_, statement) ->	getStatementLine statement
 	| _ ->			None
+
+	
 
 and  consRefstatement   stat =
 	match stat with
