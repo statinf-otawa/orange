@@ -108,12 +108,12 @@ let aUneFctNotDEf = ref false
 	let borne = ref NOTHING
 	let increment = ref NOTHING
 	let initialisation = ref NOTHING
-	
+	type oAdress = (int *string)option
 	type listeDesIdDeBoucle = int list
 	type elementCorpsFonction =
 		IDBOUCLE of int * string list * string list *string*int(*  fic*line *)
 	|	IDAPPEL of int * expression *inst list (*input instrctions*)*string  * string list * string list *string*int(*  fic*line *)
-	|	IDIF of string * inst list * elementCorpsFonction list (*then*)* inst list* elementCorpsFonction list(*else*)* string list * string list  *string*int(*  fic*line *)*expression
+	|	IDIF of string * inst list * elementCorpsFonction list (*then*)*  inst list* elementCorpsFonction list(*else*)* string list * string list  *string*int(*  fic*line *)*oAdress *oAdress *expression 
 	
 	type refAppel = string * int (* id fichier numline*)
 
@@ -128,7 +128,7 @@ let aUneFctNotDEf = ref false
 	
     let exitsAssosIdIFRef id = List.mem_assoc id !listVarIFRef
 	let setAssosIdIFRef id refe =listVarIFRef := List.append   [(id, refe)]   !listVarIFRef
-	let getAssosIdIFRef id = if exitsAssosIdIFRef id then List.assoc id !listVarIFRef else ("",0)
+	let getAssosIdIFRef id = if exitsAssosIdIFRef id then (*let (file, line, _,_) =*) List.assoc id !listVarIFRef (*in (file, line)*) else ("",0, None, None)
 
 
 
@@ -397,8 +397,8 @@ module TreeList = struct
          | Loop of (int * int * string * bool * expressionEvaluee * expressionEvaluee * expression * expression * expression * sens *expression *expression) * tree list (* loop id, line, source file, exact, max, toatl, exp max, exp total *)
 		| If of (string * int * string * bool * int * expression  * expression  *expression *expression) * tree list   (* if condition variable, line, source file, inloop, isexe=1 cond vrai =2 false =3 undifined, cond expression current, cond init,  (then and else) tree *)
  
-		| IfT of    ( bool) * tree list  (* then   tree + isexe *)
-		| IfF of   ( bool) * tree list  (* else   tree + isexe*)
+		| IfT of    ( bool * oAdress) * tree list  (* then   tree + isexe *)
+		| IfF of   ( bool * oAdress) * tree list  (* else   tree + isexe*)
 
 
  
@@ -454,14 +454,14 @@ module TreeList = struct
         let newCurrent = If ((name, line, source, inloop, executed ,condVa, cond, lt , lf ), []) in
 	(newCurrent, current::stack)   
 
-  let onIfF res isexe= match res  with
+  let onIfF res isexe ad= match res  with
       (current, stack) -> 
-        let newCurrent = IfF (  (isexe), []) in
+        let newCurrent = IfF (  (isexe, ad), []) in
 	(newCurrent, current::stack) 
 
-  let onIfT res isexe= match res  with
+  let onIfT res isexe ad= match res  with
       (current, stack) -> 
-        let newCurrent = IfT ((isexe),  []) in
+        let newCurrent = IfT ((isexe,ad),  []) in
 	(newCurrent, current::stack) 
 
 
@@ -492,7 +492,7 @@ List.map (fun e ->
 	match e with
 			IDBOUCLE (_,_,_,_,_) -> e
 		|	IDAPPEL (i , expression, l,_,lt,lf,fic,lig) -> IDAPPEL (i , expression, l,var,lt,lf,fic,lig) 
-		|	IDIF (var,instthen, treethen,instelse, treeelse,lt,lf,fic,lig,e) ->IDIF (var,instthen, reecrireCAll var treethen,instelse, reecrireCAll var treeelse,lt,lf,fic,lig,e) 
+		|	IDIF (var,instthen, treethen,instelse, treeelse,lt,lf,fic,lig,infthen, infelse, e) ->IDIF (var,instthen, reecrireCAll var treethen,instelse, reecrireCAll var treeelse,lt,lf,fic,lig,infthen, infelse,e) 
 
 ) liste
 
@@ -2889,6 +2889,12 @@ and analyse_defPB def =
 				typeDefList (*baseT*)typ names []  ;()	
 		| ONLYTYPEDEF n -> 	(* Definition of lonely "struct", "union" or "enum". *)   (*get_name_group n ;*)()	
 
+
+and getStatementLine stat =
+match stat with
+	| STAT_LINE (stat, file, line) -> Some(line, file)
+	| _ ->			None
+
 and  consRefstatement   stat =
 	match stat with
 	 COMPUTATION exp ->		consRefexpression  exp ;()
@@ -2900,7 +2906,9 @@ and  consRefstatement   stat =
 		let varIfN =  Printf.sprintf "%s-%d" "IF" !idIf  in	 
 
 		let (fic, numl) = (!fileCour , !numLine) in
-		setAssosIdIFRef varIfN (fic , numl );	  consRefstatement  s1; consRefstatement  s2;
+		setAssosIdIFRef varIfN (fic , numl, getStatementLine s1, getStatementLine s2 );	  
+
+		consRefstatement  s1; consRefstatement  s2;
 	()			
 	| WHILE (exp, stat) ->  	(*analyse_expression  exp ;rien condition sans effet de bord*)	
 		idBoucle := !idBoucle +1;
@@ -3541,9 +3549,9 @@ print_statement  s2 ;*)
 					falseList := falseListPred;
 					(listeThen,bouavrai,listeElse,!listeBoucleOuAppelCourante)
 				end in	
-		let (fic,lig)=getAssosIdIFRef varIfN in			
+		let (fic,lig, infothen, infoelse)=getAssosIdIFRef varIfN in			
 		listeBoucleOuAppelCourante	:= 
-			List.append  maListeDesBoucleOuAppelPred   [IDIF(varIfN , instthen,treethen, instelse,treeelse,trueListPred,falseListPred,fic,lig,ne)]
+			List.append  maListeDesBoucleOuAppelPred   [IDIF(varIfN , instthen,treethen, instelse,treeelse,trueListPred,falseListPred,fic,lig, infothen, infoelse,ne)]
 												
 	| WHILE (exp, stat) ->  	(*analyse_expression  exp ;rien condition sans effet de bord*)	
 		let prevPtrct = !myCurrentPtrContext in
