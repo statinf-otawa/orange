@@ -2350,9 +2350,9 @@ and traiterUn croissant  borneInf borneSup operateur multiple var  cond avant da
 	let (sup, inf, incr) = 
 	 	if !opEstPlus = false && (isDivInc !expressionIncFor)  && typevar = DECROISSANT then 
 			(!initialisation,!borne, BINARY (DIV, CONSTANT  (CONST_INT "1"), !expressionIncFor)) 
-		 else
-				if !opEstPlus && typevar = DECROISSANT then  (!initialisation,!borne, !expressionIncFor)  
-		 		else  (!borne,!initialisation,!expressionIncFor) in
+		 else  (* cextraireboucle. ml function traiterUn line 2354 change  28/04/14 to resolve indeterminise.c pb to control with no regretion tests ...*)
+				(*if !opEstPlus && typevar = DECROISSANT then  (!initialisation , !borne, !expressionIncFor) 
+		 		else *) (!borne,!initialisation,!expressionIncFor) in
 
 	
 	if isMultiInc then isExactForm := false;
@@ -2369,8 +2369,8 @@ and traiterUn croissant  borneInf borneSup operateur multiple var  cond avant da
 (*Printf.printf"traiterUn v = %s vari = %s\n" v vari;
 print_expression inf 0; space() ;flush() ;new_line(); flush();new_line(); 
 	print_expression sup 0; space() ;flush() ;new_line(); flush();new_line(); 
-print_expression incr 0; space() ;flush() ;new_line(); flush();new_line();
-			*)
+print_expression incr 0; space() ;flush() ;new_line(); flush();new_line();*)
+			
 
 	let infoVar =   new_variation borneInf borneSup  incr typevar  operateur false in
 
@@ -2449,14 +2449,14 @@ print_expression bSup 0; space() ;flush() ;new_line(); flush();new_line(); *)
 								   else *)(crois2, bInf2, bSup2, oper2,mult2, v2, BINARY(AND, cd1,cd2))
 				end
 			else
-			begin (*Printf.printf"construireCondition diff\n";*)
+			begin 
 				if  nb1 = NOTHING || oper1 = NE then 
 				begin isExactForm := false; (crois2, bInf2, bSup2, oper2,mult2, v2, BINARY(AND, cd1,cd2)) end
 				else
 				begin
 					if  nb2 = NOTHING || oper2 = NE then 
 					begin expressionIncFor := inc1;  isExactForm := false;(crois1, bInf1, bSup1, oper1,mult1, v1, BINARY(AND, cd1,cd2 )) end
-					else((*Printf.printf"construireCondition diff\n";*) (	CROISSANT, CONSTANT (CONST_INT "0"), (*CONSTANT (CONST_INT "1")*)
+					else(  (	CROISSANT, CONSTANT (CONST_INT "0"), (*CONSTANT (CONST_INT "1")*)
 							BINARY (SUB, CALL (VARIABLE("MINIMUM") , List.append [ b1] [b2] ), CONSTANT (CONST_INT "1")),
 							  LT,mult2, lv, BINARY(AND, cd1,cd2)))
 				end
@@ -2645,7 +2645,7 @@ let isNE = infoVar.operateur =NE in
 
 	let isExecutedV = (match const with Boolean(b)	->  if b = false then false  else true 
 										|_->if estDefExp const then if estNul const then false else true else true) in	
-	(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var;*) (*print_expTerm const; new_line ();*)
+	(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var; print_expTerm const; new_line ();*)
 	(*if isExecutedV  then Printf.printf "isexecuted \n" else Printf.printf "is not executed \n" ;Printf.printf "FIN...\n";*)
 	(*let isConstructVar = if (String.length var > 4) then begin if (String.sub var  0 4) = "bIt-" then  true else   false end else false in*)
  
@@ -2718,11 +2718,11 @@ let isNE = infoVar.operateur =NE in
 					(*let bi = applyStoreVA(applyStoreVA   (EXP ( infoVar.borneInf)) appel)globales in*)
 					let bu = applyStoreVA(applyStoreVA   (EXP ( une )) appel)globales in
 					(*print_expVA bs; new_line();*)
-(*if sensinc  = NEG then
-				begin Printf.printf "getNombreIt recherche de affect : \n";print_expression  une 0; space() ;flush() ;new_line(); flush();new_line(); end;*)
-					(*Printf.printf "getNombreIt recherche de affect : \n";
+(*            if sensinc  = NEG then
+				begin Printf.printf "getNombreIt recherche de affect : \n";print_expression  une 0; space() ;flush() ;new_line(); flush();new_line(); end;
+					Printf.printf "getNombreIt recherche de affect : \n";
 					print_expression infoVar.borneSup 0; space() ;flush() ;new_line(); flush();new_line(); 
-					print_expression infoVar.borneInf 0; space() ;flush() ;new_line(); flush();new_line(); 
+					print_expression inzfoVar.borneInf 0; space() ;flush() ;new_line(); flush();new_line(); 
 					 
 					print_expression infoVar.increment 0; space() ;flush() ;new_line(); flush();new_line(); 
 					print_expression  une 0; space() ;flush() ;new_line(); flush();new_line(); 
@@ -3437,7 +3437,7 @@ let rec analyseSwitchStatement stat vtest listestat=
 	 BLOCK (defs, stat) ->				analyseSwitchStatement stat vtest listestat;()
 	| SEQUENCE (s1, s2) ->	
 		analyseSwitchStatement   s1 vtest listestat;
-		analyseSwitchStatement    s2 vtest listestat;Printf.printf "sequence\n"; (*print_statement s1;print_statement s2;*)()
+		analyseSwitchStatement    s2 vtest listestat; (*print_statement s1;print_statement s2;*)()
 	| CASE (e, cs) ->													
 									isFindCase := false;
 									let nl = listeCasestatbegin  e listestat false in
@@ -4205,7 +4205,7 @@ and  construireListesES listeDesES arg   =
 							
 						| MEMBEROF (_, _) | MEMBEROFPTR (_, _) ->
 							let lid =	getInitVarFromStruct e  in
-							let id = if lid != [] then List.hd lid else (Printf.printf "not id 3876\n"; "noid") in
+							let id = if lid != [] then List.hd lid else (Printf.eprintf "not id 3876\n"; "noid") in
 
 							let (btype, isdeftype) = 
 								if List.mem_assoc id !listAssocIdType then (getBaseType (List.assoc id !listAssocIdType), true) 
@@ -4274,7 +4274,7 @@ and  construireListesES listeDesES arg   =
 			 
 			| MEMBEROFPTR (_, _) ->	
 				let lid =	getInitVarFromStruct valeurParam  in
-				let id = if lid != [] then List.hd lid else (Printf.printf "not id 3876\n"; "noid") in
+				let id = if lid != [] then List.hd lid else (Printf.eprintf "not id 3876\n"; "noid") in
 				let (btype, isdeftype) = 
 						if List.mem_assoc id !listAssocIdType then (getBaseType (List.assoc id !listAssocIdType), true) 
 						else 
@@ -4401,14 +4401,14 @@ let newaffect =
 										[new_instMem  ("*"^v) (EXP(VARIABLE(v))) (EXP(BINARY(op, e1, e2)))]
 									 |_->   
 											let (v,expres, isstruct) = getVarPtrOrArrayDep  e1 in
-											if v = "" then ( Printf.printf "creerAFFECT array expr not implemented 2\n" ;[])
+											if v = "" then ( Printf.eprintf "creerAFFECT array expr not implemented 2\n" ;[])
 											else     [new_instMem ("*"^v) (EXP(e1)) (EXP(BINARY(op, e1, e2)))]		 
 									)
 							| _-> 
 							 
 								let (v,expres, isstruct) = getVarPtrOrArrayDep  e1 in
 									
-									if v = "" then (Printf.printf "creerAFFECT array expr not implemented 3\n";[])
+									if v = "" then (Printf.eprintf "creerAFFECT array expr not implemented 3\n";[])
 									else 
 									begin 	
 										let newe = remplacerExpPar0   expres e in
@@ -4424,7 +4424,7 @@ let newaffect =
 					)
 				| MEMBEROF (e , t) 		->	 
 							let lid =	getInitVarFromStruct e1  in
-							let id = if lid != [] then List.hd lid else (Printf.printf "not id 3876\n"; "noid") in
+							let id = if lid != [] then List.hd lid else (Printf.eprintf "not id 3876\n"; "noid") in
 							let (btype, isdeftype) = 
 										if List.mem_assoc id !listAssocIdType then (getBaseType (List.assoc id !listAssocIdType), true) 
 										else 
@@ -4438,10 +4438,10 @@ let newaffect =
 								let ne = consCommaExp (VARIABLE(id)) btype [id] lid (BINARY(op, e1, e2)) false NOTHING in
 								[new_instVarAndPtr id (EXP(ne) )]
 								
-							end else ( Printf.printf "creerAFFECT struct expr not implemented strunt 1\n"; []);	 
+							end else ( Printf.eprintf "creerAFFECT struct expr not implemented strunt 1\n"; []);	 
 				| MEMBEROFPTR (e , t) 	->	 
 							let lid =	getInitVarFromStruct e1  in
-							let id = if lid != [] then List.hd lid else (Printf.printf "not id 3876\n"; "noid") in
+							let id = if lid != [] then List.hd lid else (Printf.eprintf "not id 3876\n"; "noid") in
 							let (btype, isdeftype) = 
 										if List.mem_assoc id !listAssocIdType then (getBaseType (List.assoc id !listAssocIdType), true) 
 										else 
@@ -4458,11 +4458,11 @@ let newaffect =
 													  else  new_instVarAndPtr id (EXP(ne) ) in  
 								[newaff]
 								
-							end else( Printf.printf "creerAFFECT struct expr not implemented strunt 2\n"; []);
+							end else( Printf.eprintf "creerAFFECT struct expr not implemented strunt 2\n"; []);
 						(*( creerStructAffect e1 (*VARIABLE(id)*) id (List.tl lid) btype (EXP(BINARY(op, VARIABLE(n), e2))))]*)
-				| CAST (t, e) 		 ->  Printf.printf "creerAFFECT array expr not implemented 4 cast\n";[]
+				| CAST (t, e) 		 ->  Printf.eprintf "creerAFFECT array expr not implemented 4 cast\n";[]
 
-				| _->	   Printf.printf "creerAFFECT array expr not implemented 4\n";[]
+				| _->	   Printf.eprintf "creerAFFECT array expr not implemented 4\n";[]
 		(*	|_-> print "array expr not implemented\n"*)
 end in
 (*afficherLesAffectations newaffect;	flush();space() ;flush();space() ; new_line (); *)
@@ -4514,7 +4514,7 @@ listeDesInstCourantes := List.append !listeDesInstCourantes !listeNextExp
 
 and treatStruct exp1 exp2 i t isStruct =
 	let lid =	getInitVarFromStruct exp1  in
-	let id = if lid != [] then List.hd lid else (Printf.printf "not id 3876\n"; "noid") in
+	let id = if lid != [] then List.hd lid else (Printf.eprintf "not id 3876\n"; "noid") in
 	let rid = if isStruct then ("*"^id) else id in
 	let (btype, isdeftype) = 
 		if List.mem_assoc id !listAssocIdType then (getBaseType (List.assoc id !listAssocIdType), true) 
@@ -4527,8 +4527,8 @@ and treatStruct exp1 exp2 i t isStruct =
 		let nee =
 			if isTruecteArg then
 			begin 
-				let tid = if lid != [] then List.hd (List.rev lid) else (Printf.printf "not id 3876\n"; "noid") in
-				(*print_expression exp1 0 ; flush();space() ;flush();space() ;  Printf.printf "array of array expr not implemented %s\n" id ;*)
+				let tid = if lid != [] then List.hd (List.rev lid) else (Printf.eprintf "not id 3876\n"; "noid") in
+				(*print_expression exp1 0 ; flush();space() ;flush();space() ;  Printf.eprintf "array of array expr not implemented %s\n" id ;*)
 				if (List.mem_assoc tid !listAssosTypeDefArrayIDsize) then (*ajouter une option pour struct détaillé*)
 				begin
 					let size = getAssosTypeDefArrayIDsize tid in
@@ -4653,7 +4653,7 @@ and  analyse_expressionaux exp =
 							begin
 								let (tab,lidx) = analyseArrayIntostruct exp1 [] in 
 								let lid =	getInitVarFromStruct tab  in
-								let id = if lid != [] then List.hd (List.rev lid) else (Printf.printf "not id 3876\n"; "noid") in
+								let id = if lid != [] then List.hd (List.rev lid) else (Printf.eprintf "not id 3876\n"; "noid") in
 								(*print_expression exp1 0 ; flush();space() ;flush();space() ;  Printf.printf "array of array expr not implemented %s\n" id ;*)
 								if (List.mem_assoc id !listAssosTypeDefArrayIDsize) then
 								begin
@@ -4709,7 +4709,7 @@ and  analyse_expressionaux exp =
 									if v = "" then 	 
 									(match e with MEMBEROF (ex, c)  | MEMBEROFPTR (ex, c) 		
 										->	let lid =	getInitVarFromStruct e  in		
-											let id = if lid != [] then List.hd lid else (Printf.printf "not id 3876\n"; "noid") in
+											let id = if lid != [] then List.hd lid else (Printf.eprintf "not id 3876\n"; "noid") in
 				
 											if isstruct = false then
 												listeDesInstCourantes := List.append !listeDesInstCourantes [ new_instVarAndPtr  id   (EXP(NOTHING))]
@@ -4721,7 +4721,7 @@ and  analyse_expressionaux exp =
 									else 
 									begin 	
 										let newe = remplacerExpPar0   expres e in
-									     print_expression newe 0 ; flush();space() ;flush();space() ; 
+									    (* print_expression newe 0 ; flush();space() ;flush();space() ; *)
 										 if isstruct = false then
 											listeDesInstCourantes := List.append !listeDesInstCourantes [new_instTab v (EXP(newe))	(EXP(ne))]
 										else 
@@ -4756,7 +4756,7 @@ and  analyse_expressionaux exp =
 						end;		
 				 | MEMBEROFPTR (e , t) 	->		
 						let lid =	getInitVarFromStruct exp1  in
-						let id = if lid != [] then List.hd lid else (Printf.printf "not id 3876\n"; "noid") in
+						let id = if lid != [] then List.hd lid else (Printf.eprintf "not id 3876\n"; "noid") in
 						let (btype, isdeftype) = 
 								if List.mem_assoc id !listAssocIdType then (getBaseType (List.assoc id !listAssocIdType), true) 
 								else 
@@ -5575,7 +5575,7 @@ and  onlyAexpressionaux exp =
 							begin
 								let (tab,lidx) = analyseArrayIntostruct exp1 [] in 
 								let lid =	getInitVarFromStruct tab  in
-								let id = if lid != [] then List.hd (List.rev lid) else (Printf.printf "not id 3876\n"; "noid") in
+								let id = if lid != [] then List.hd (List.rev lid) else (Printf.eprintf "not id 3876\n"; "noid") in
 								(*print_expression exp1 0 ; flush();space() ;flush();space() ;  Printf.printf "array of array expr not implemented %s\n" id ;*)
 								if (List.mem_assoc id !listAssosTypeDefArrayIDsize) then
 								begin
@@ -5629,18 +5629,18 @@ and  onlyAexpressionaux exp =
 									let (v,expres, isstruct) = getVarPtrOrArrayDep  exp1 in
 									
 									if v = "" then 	 (match e with MEMBEROF (ex, c)  | MEMBEROFPTR (ex, c) 		->		let lid =	getInitVarFromStruct e  in		
-																														let id = if lid != [] then List.hd lid else (Printf.printf "not id 3876\n"; "noid") in
+																														let id = if lid != [] then List.hd lid else (Printf.eprintf "not id 3876\n"; "noid") in
 				
 																				if isstruct = false then
 																						listeDesInstCourantes := List.append !listeDesInstCourantes [ new_instVarAndPtr  id   (EXP(NOTHING))]
 																					else 
 																						listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instMem ("*"^id) (EXP(!nouvExp)) (EXP(NOTHING))]
-																|_->             Printf.printf "array expr not found\n"; print_expression exp1 0 ;flush();space() ;flush();space() ; ())
+																|_->            (* Printf.printf "array expr not found\n"; print_expression exp1 0 ;flush();space() ;flush();space() ;*) ())
 
 									else 
 									begin 	
 										let newe = remplacerExpPar0   expres e in
-									     print_expression newe 0 ; flush();space() ;flush();space() ; 
+									     (*print_expression newe 0 ; flush();space() ;flush();space() ; *)
 										 if isstruct = false then
 											listeDesInstCourantes := List.append !listeDesInstCourantes [new_instTab v (EXP(newe))	(EXP(ne))]
 										else 
@@ -5654,7 +5654,7 @@ and  onlyAexpressionaux exp =
 				 (*  *)
 				 | MEMBEROF (e , t) 		->		
 						let lid =	getInitVarFromStruct exp1  in
-						let id = if lid != [] then List.hd lid else (Printf.printf "not id 3876\n"; "noid") in
+						let id = if lid != [] then List.hd lid else (Printf.eprintf "not id 3876\n"; "noid") in
 						let (btype, isdeftype) = 
 								if List.mem_assoc id !listAssocIdType then (getBaseType (List.assoc id !listAssocIdType), true) 
 								else 
@@ -5675,7 +5675,7 @@ and  onlyAexpressionaux exp =
 						end;		
 				 | MEMBEROFPTR (e , t) 	->		
 						let lid =	getInitVarFromStruct exp1  in
-						let id = if lid != [] then List.hd lid else (Printf.printf "not id 3876\n"; "noid") in
+						let id = if lid != [] then List.hd lid else (Printf.eprintf "not id 3876\n"; "noid") in
 						let (btype, isdeftype) = 
 								if List.mem_assoc id !listAssocIdType then (getBaseType (List.assoc id !listAssocIdType), true) 
 								else 

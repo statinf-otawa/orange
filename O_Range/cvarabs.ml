@@ -448,7 +448,8 @@ let rec evalexpression  exp =
 	NOCOMP -> NOCOMP
 	|  ConstInt (_) |  ConstFloat (_)  ->  exp
 	|  RConstFloat (_) ->  exp
-	|  Var (_)| Boolean(_) 	-> exp
+	|  Var (v) -> if v = "EPSILONINT" then ConstInt("1") else exp
+	|  Boolean(_) 	-> exp
 	|  Sum (f, g)  ->
 		let val1 = evalexpression f in
 		let val2 = evalexpression g in
@@ -939,15 +940,16 @@ Printf.printf " PartieEntiereSup %f %d %f %f %f\\n"  0.00001 (truncate 0.00001 )
 		let val1 = evalexpression f in
 		let val2 = evalexpression g in
 		if estNoComp val1 || estNoComp val2 then NOCOMP
-		else  if estDefExp val1  &&  estDefExp val2 then maxi val1 val2
-			 else NOCOMP
+		else    maxi val1 val2
+			 
 
 	|  Minimum (f, g)  	->
 		let val1 = evalexpression f in
 		let val2 = evalexpression g in
 		if estNoComp val1  &&  estNoComp val2 then NOCOMP
 		else if estDefExp val1  &&  estDefExp val2 then mini val1 val2
-			 else((*Printf.printf "minimum"*) (*if  estDefExp val1 then val1 else val2*)NOCOMP)
+			 else( NOCOMP)
+
 and mini v1 v2 = if estDefExp v1 && estDefExp v2 then if estPositif (evalexpression (Diff( v1, v2))) then v2 else v1 else NOCOMP
 and maxi v1 v2 = if estDefExp v1 && estDefExp v2 then if estPositif (evalexpression (Diff( v1, v2))) then v1 else v2 else NOCOMP
 
@@ -979,7 +981,7 @@ let rec reecrireSygma var expO =
 		| CALL (exp, args) ->
 			begin
 				match exp with
-					VARIABLE("SYGMA") -> Printf.printf "reecrireSygma :"	;
+					VARIABLE("SYGMA") -> 
 						(*print_expression expO 0; new_line();*)
 						let varexp = List.hd args in
 					 	let suite = List.tl args in
@@ -1199,6 +1201,17 @@ List.filter (fun aSCourant -> match aSCourant with ASSIGN_SIMPLE (id, _)  |	ASSI
 and isBoolFalse val1 =
 if val1 = Boolean (false) || val1 = ConstInt ("0")  ||val1 = ConstFloat("0.0")||val1 = RConstFloat(0.0)
 								then  true else false 
+  
+and replaceEPSINT li ia l sign  =
+	let v1 = evalexpression (calculer (EXP (li)) ia l sign)in
+	let listeDesVar = listeDesVarsDeExpSeules  li  in
+	if estNoComp v1 then
+		if  List.mem "EPSILONINT" listeDesVar = false then
+						 NOCOMP 
+		else  
+	   		evalexpression (calculer (EXP(remplacerValPar  "EPSILONINT" (CONSTANT (CONST_INT "1")) li) ) ia l sign)
+    else v1
+
 
 and  calculer expressionVA ia l sign =
 	match expressionVA with
@@ -1586,24 +1599,29 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 						if estNoComp val2   then  NOCOMP else evalexpression (Puis  (val1, val2))
 					end
 				|VARIABLE("MAXIMUM") ->
-					let val1 = evalexpression (calculer (EXP(List.hd args)) ia l sign)in
+					let val1 =  replaceEPSINT (List.hd args) ia l sign in
 					if estNoComp val1  then
-					begin (*Printf.printf"NO COMP partieEntiereSup\n";	*)NOCOMP end
+					 NOCOMP  
 					else
 					begin
-						let suite = List.tl args in
-						let val2 = (calculer (EXP(List.hd suite )) ia l sign)in
-						if estNoComp val2   then  NOCOMP
-						else evalexpression (Maximum  (val1, val2))
-					end
+							let suite = List.tl args in
+							let val2 = replaceEPSINT (List.hd suite ) ia l sign in
+							
+							if estNoComp val2   then    NOCOMP 
+								
+							else evalexpression (Maximum  (val1, val2))
+						end
 				|VARIABLE("MINIMUM") ->
-					let val1 = evalexpression (calculer (EXP(List.hd args)) ia l sign) in
+					
+					let val1 = replaceEPSINT (List.hd args) ia l sign in
+
+ 
 					if estNoComp val1  then
-					begin (*Printf.printf"NO COMP partieEntiereSup\n";	*)NOCOMP end
+					begin  NOCOMP end
 					else
 					begin
 						let suite = List.tl args in
-						let val2 = (calculer (EXP(List.hd suite )) ia l sign)in
+						let val2 = replaceEPSINT (List.hd suite )  ia l sign in
 
 						if estNoComp val2   then   NOCOMP
 						else evalexpression (Minimum  (val1, val2))
@@ -3967,7 +3985,7 @@ Printf.printf "index   OK 2\n" ;
 				end
 				else ( (*Printf.printf "variable source cas else %s\n"(List.hd lid);*) e )
 
-	| _	-> (*if !vDEBUG then*) Printf.printf "struct et gnu body non traités pour le moment \n";
+	| _	-> if !vDEBUG then Printf.printf "struct et gnu body non traités pour le moment \n";
 			boolAS:= true;
 			(NOTHING)
 

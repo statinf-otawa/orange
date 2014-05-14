@@ -3522,7 +3522,7 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEn
 		let (elt,elf) = (applyStore (applyStore lt contexte ) globales,applyStore (applyStore lf contexte ) globales) in
 		let isexeEnglobantPred = !isexeEnglobant in
 
-
+(* SEE MAJ DE ISEXECUTED ENGLOBANT POUR PROPAG ISEXE IF*)
 
 
 

@@ -1,4 +1,4 @@
-(** util - Tools for printing, for search
+(** util - Tools for printing, for search, cast
 
 *)
 
