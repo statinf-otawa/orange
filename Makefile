@@ -1,7 +1,7 @@
 include ./Makefile.head
 
 ifdef NATIVE
-export NATIVE=1
+export PROG_FLAGS=native
 endif
 
 SUBDIRS = O_Range graph main

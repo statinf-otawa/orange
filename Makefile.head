@@ -1,6 +1,9 @@
 all: _all
 
+.PRECIOUS: %.cmi
+
 # identify the OS
+ifndef OS
 UNAME := $(shell uname -o)
 OS = unix
 EXE=
@@ -9,6 +12,11 @@ OS = linux
 endif
 ifeq ($(UNAME), Msys)
 OS = mingw
+endif
+endif
+
+# apply OS options
+ifeq ($(OS),mingw)
 export CC = gcc
 EXE=.exe
 endif
@@ -50,7 +58,7 @@ OCAMLLEX = ocamllex
 OCAMLC_FLAGS =
 OCAMLOPT_FLAGS =
 OCAMLC_FLAGS =
-OCAMLC_LDFLAGS = -cc "g++"
+OCAMLC_LDFLAGS =
 OCAMLCOPT_LDFLAGS =
 OCAML_LDFLAGS =
 OCAMLC_LIBS =
