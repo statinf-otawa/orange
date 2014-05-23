@@ -3155,8 +3155,10 @@ else
 
 
 
-let ro var liste =
-   List.find  (fun aSCourant -> match aSCourant with ASSIGN_SIMPLE (id, _)  |ASSIGN_DOUBLE (id, _, _)  |ASSIGN_MEM (id, _, _)-> id = var ) liste
+let ro var liste = 
+	try 
+   		List.find  (fun aSCourant -> match aSCourant with ASSIGN_SIMPLE (id, _)  |ASSIGN_DOUBLE (id, _, _)  |ASSIGN_MEM (id, _, _)-> id = var ) liste
+	with Not_found ->failwith (  "WARNING !!! "^var^"  not assigned") 
 
 let rofilter var liste =
 		List.filter
@@ -5111,13 +5113,8 @@ let res =
 	if ( existeAffectationVarListe x a1) then
 	begin
 		let ro1 = ro x a1 in
-
-
 		if ( existeAffectationVarListe x a2)  then
 		begin
-
-
-
 			let (r,_) = rondListe a1 ( ro x a2 ) in
 			let ro2 = if r= [] then ro1 else  List.hd r in
 
@@ -5141,10 +5138,15 @@ let res =
 	end
 	else
 	begin
+		let  ro2 = 
+		    if (existeAffectationVarListe x a2) then
+			begin
+				 let (r,_) = rondListe a1 (ro x a2)  in
+				  List.hd r
+			end
+		    else (  ASSIGN_SIMPLE (x, MULTIPLE)) in
 
-
-		let (r,_) = rondListe a1 (ro x a2) in
-		let ro2 = List.hd r in
+		
 		if ( List.mem x listeT) then ro2 (* existe car dans au moins un] des deux ensembles*)
 		else
 		begin
@@ -5203,6 +5205,7 @@ let rec pauxEm a1 a2 l listeT=
 if l = [] then [] else
 begin
 	let x = (List.hd l) in
+
 	let na =absMoinsTEm x a1 a2 listeT in
 	let isChanged = if ( existeAffectationVarListe x a2)  then
 						if na = ro x a2 then  false
@@ -5217,7 +5220,18 @@ begin
 	end
 end
 
-let produitEm a1 a2 listeT =  pauxEm a1 a2 (rechercheLesVar a2  (rechercheLesVar a1 [])) listeT
+let produitEm a1 a2 listeT =  
+let listeVar = (rechercheLesVar a2  (rechercheLesVar a1 []))  in
+ (*List.iter (fun x -> 
+			Printf.printf " %s "x; 
+			if   (existeAffectationVarListe x a1) then Printf.printf " Dans a1 "; 
+			if   (existeAffectationVarListe x a2) then Printf.printf " Dans a2\n "; 
+            else Printf.printf "  \n "; 
+ ) listeVar;*)
+
+
+
+pauxEm a1 a2 listeVar listeT
 
 
 

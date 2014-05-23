@@ -706,12 +706,12 @@ let rec fixPointPtr  assign beforePtr     =
 	let res = (LocalAPContext.joinSet fc   beforePtr ) in
 	let isChange = !hasChangePTRInto && (LocalAPContext.areTheSAme res beforePtr) = false in
 
- LocalAPContext.print res; 
-		LocalAPContext.print beforePtr ;
-if (res = beforePtr)=false  then  Printf.printf "Current   change\n";
-if !hasChangePTRInto then  Printf.printf "Inner   change\n"; 
-
-	if isChange then    fixPointPtr  assign res  ;
+ (*LocalAPContext.print res; 
+		LocalAPContext.print beforePtr ;*)
+(*if (res = beforePtr)=false  then  Printf.printf "Current   change\n";*)
+(*if !hasChangePTRInto then  Printf.printf "Inner   change\n"; *)
+ 
+	if isChange then   (Printf.printf "Inner   change\n";fixPointPtr  assign res  ;)
 	hasChangePTRInto:= false; 
 
 
