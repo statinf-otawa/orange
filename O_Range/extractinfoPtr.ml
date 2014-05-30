@@ -711,7 +711,7 @@ let rec fixPointPtr  assign beforePtr     =
 (*if (res = beforePtr)=false  then  Printf.printf "Current   change\n";*)
 (*if !hasChangePTRInto then  Printf.printf "Inner   change\n"; *)
  
-	if isChange then   (Printf.printf "Inner   change\n";fixPointPtr  assign res  ;)
+	if isChange then   fixPointPtr  assign res  ;
 	hasChangePTRInto:= false; 
 
 
