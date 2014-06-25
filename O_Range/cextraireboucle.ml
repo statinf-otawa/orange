@@ -937,7 +937,10 @@ begin
 
 		 end) in	
 		let exp = (CALL	(VARIABLE("partieEntiereInf"), [(BINARY (ADD, expBorne, (CONSTANT (CONST_INT "1")))) ])) in
-		if afterindirect then 	BINARY	(ADD, exp, (CONSTANT (CONST_INT "1")))	else exp	
+		let res = if afterindirect then 	BINARY	(ADD, exp, (CONSTANT (CONST_INT "1")))	else exp	in
+ 
+		if typeB = "dowhile"  || typeB = "do"  then  (CALL	 (VARIABLE("MAXIMUM") ,  (List.append [res] [(CONSTANT (CONST_INT "1"))]))) else res
+
 end
 
 let analyseInc infoVar appel typeopPlusouMUL contexte =
@@ -3879,7 +3882,7 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 
 
 		(*if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*)
-		let (nb,_) =  traiterConditionBoucle "do" numBoucle deg ne(*exp*) idBoucleEngPred  varDeB constante  varBoucleIfN lVB las asna listeVDeBoucle  (VARIABLE(varIfN)) na in 
+		let (nb,_) =  traiterConditionBoucle "dowhile" numBoucle deg ne(*exp*) idBoucleEngPred  varDeB constante  varBoucleIfN lVB las asna listeVDeBoucle  (VARIABLE(varIfN)) na in 
 		let ppc = if idBoucleEngPred = 0 then !myChangeUpperLoopPtr else !myChangePtr in
 	(*Printf.printf "\n\nAnalyse statement : la boucle %d   ap\n" numBoucle;*)
 		listeDesInstCourantes :=  [new_instFOR numBoucle varBoucleIfN (EXP(NOTHING)) (EXP(ne(*exp*))) (EXP(NOTHING)) (EXP( nb)) 

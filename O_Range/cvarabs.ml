@@ -5108,10 +5108,19 @@ let  produit a1 a2  =
 (*Printf.printf "produit\n";*)
  paux a1 a2 (rechercheLesVar a2  (rechercheLesVar a1 []))
 
-let absMoinsTEm x a1 a2 listeT=
+let absMoinsTEm nx a1 a2 listeT=
+let (isASSIGNBYPTRPtr, x1) =
+					if  String.length nx > 1 then 
+					 if (String.sub nx  0 1)="*" then  (true, String.sub nx 1 ((String.length nx)-1) ) else (false, nx) 
+				else  (false, nx) in
+
+
+let isPtr = if isASSIGNBYPTRPtr then  if ( existeAffectationVarListe nx a1) || (existeAffectationVarListe nx a2)   then false else true else false in
+let x = if isPtr then x1 else nx in
+(* Printf.printf "MULTIPLE %s dans absMoinsTEm %s\n" x nx;*)
 let res =
-	if ( existeAffectationVarListe x a1) then
-	begin
+	if ( isPtr == false && existeAffectationVarListe x a1) then
+	begin  (*Printf.printf "MULTIPLE %s dans absMoinsTEm %s 1 ...\n" x nx;*)
 		let ro1 = ro x a1 in
 		if ( existeAffectationVarListe x a2)  then
 		begin
@@ -5137,17 +5146,24 @@ let res =
 		else (* rien pour x dans a2 on garde ce qu'il y a dans a1 *) ro1
 	end
 	else
-	begin
+	begin (*Printf.printf "MULTIPLE %s dans absMoinsTEm %s 2 ...\n" x nx;*)
 		let  ro2 = 
-		    if (existeAffectationVarListe x a2) then
+		    if (isPtr == false && existeAffectationVarListe x a2) then
 			begin
-				 let (r,_) = rondListe a1 (ro x a2)  in
+
+(*Printf.printf "MULTIPLE %s dans absMoinsTEm %s 2.1 ...\n" x nx;*)
+				let temp = (ro x a2) in
+(*Printf.printf "MULTIPLE %s dans absMoinsTEm %s 2.2 ...\n" x nx;*)
+
+
+				 let (r,_) = rondListe a1 temp in
+(*Printf.printf "MULTIPLE %s dans absMoinsTEm %s 2.3 ...\n" x nx;*)
 				  List.hd r
 			end
-		    else (  ASSIGN_SIMPLE (x, MULTIPLE)) in
+		    else  ( (*Printf.printf "MULTIPLE %s dans absMoinsTEm %s 3 ...\n" x nx;*) ASSIGN_MEM(nx, MULTIPLE, MULTIPLE))   in
 
 		
-		if ( List.mem x listeT) then ro2 (* existe car dans au moins un] des deux ensembles*)
+		if (isPtr == true || List.mem x listeT) then ((*Printf.printf "MULTIPLE %s dans absMoinsTEm %s 4 ...\n" x nx;*) ro2 ) (* existe car dans au moins un] des deux ensembles*)
 		else
 		begin
 			let resb =
@@ -5161,7 +5177,7 @@ let res =
 				else if (String.length x > 3) then 
 						if (String.sub x  0 3) = "ET-" || (String.sub x  0 3) = "EF-" || (String.sub x  0 3) = "IF-" || (String.sub x  0 3) = "tN-" then true else false else false in
 		 
-			
+			(*Printf.printf "MULTIPLE %s dans absMoinsTEm %s 5 ...\n" x nx;*)
 
 			if resb then ro2
 			else
@@ -5205,19 +5221,34 @@ let rec pauxEm a1 a2 l listeT=
 if l = [] then [] else
 begin
 	let x = (List.hd l) in
+ (*EN DEBBUG let (isASSIGNBYPTRPtr, x1) =
+					if  String.length nx > 1 then 
+					 if (String.sub nx  0 1)="*" then  (true, String.sub nx 1 ((String.length nx)-1) ) else (false, nx) 
+				else  (false, nx) in *)
+ 
 
+
+(*Printf.printf " pauxEm 1 "; *)
 	let na =absMoinsTEm x a1 a2 listeT in
+	
+
+
+(*Printf.printf " pauxEm 2 ";*) 
 	let isChanged = if ( existeAffectationVarListe x a2)  then
 						if na = ro x a2 then  false
 						else  true
 				else  true
 			in
-
-	if isChanged = false then List.append  [na] (pauxEm a1 a2 (List.tl l) listeT)
+(*Printf.printf " pauxEm 3 "; *)
+let res =
+	if isChanged = false  then  (pauxEm a1 a2 (List.tl l) listeT)
 	else
-	begin
-		List.append  [na] ( pauxEm (rond a1 [na]) a2 (List.tl l) listeT)
-	end
+	begin 
+		( pauxEm (*(rond a1 [na]) A RERMETTRE SUREMENT*) a1 a2 (List.tl l) listeT)
+	end in
+
+(*Printf.printf " pauxEm 4";*)
+if List.mem na res then res else List.append  [na] res
 end
 
 let produitEm a1 a2 listeT =  
@@ -5630,12 +5661,16 @@ print_expVA myCond; new_line();*)
 
 					 let listeELSE = (rechercheLesVar resF []) in
 					 let inter = intersection listeELSE  listeIF in
-
+(*Printf.printf "EvalStore if then else IF res test indefini 1\n";*)
 					  let resA = produit resT resF 	  in
+(*Printf.printf "EvalStore if then else IF res test indefini 2 \n";*)
 					  let ptrNe = LocalAPContext.joinSet   fc ec in
 					  myCurrentPtrContext:=ptrNe;
-					 produitEm a resA inter	(*produit a resA*)
+(*Printf.printf "EvalStore if then else IF res test indefini 3 \n";*)
+					let res =  produitEm a resA inter	(*produit a resA*) in
+(*Printf.printf "EvalStore if then else IF res test indefini 4\n";*)
 							(*	afficherListeAS !listeASCourant;*)
+					res
 				end
 			end
 		end
