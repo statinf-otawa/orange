@@ -4442,7 +4442,7 @@ let newaffect =
 								[new_instVarAndPtr id (EXP(ne) )]
 								
 							end else ( Printf.eprintf "creerAFFECT struct expr not implemented strunt 1\n"; []);	 
-				| MEMBEROFPTR (e , t) 	->	 
+				| MEMBEROFPTR (e , t) 	->	 Printf.eprintf "creerAFFECT struct expr not implemented strunt 1\n";
 							let lid =	getInitVarFromStruct e1  in
 							let id = if lid != [] then List.hd lid else (Printf.eprintf "not id 3876\n"; "noid") in
 							let (btype, isdeftype) = 
@@ -4524,6 +4524,8 @@ and treatStruct exp1 exp2 i t isStruct =
 		else 
 			if List.mem_assoc id !listeAssosPtrNameType then (getBaseType (List.assoc id !listeAssosPtrNameType), true) 
 			else (INT_TYPE, false) in
+
+	analyse_expressionaux exp1;	 let ne1 = !nouvExp in  
 	if lid != [] then 
 	begin
 		let (isTruecteArg, _) =isTrueConstant i in
@@ -4531,7 +4533,7 @@ and treatStruct exp1 exp2 i t isStruct =
 			if isTruecteArg then
 			begin 
 				let tid = if lid != [] then List.hd (List.rev lid) else (Printf.eprintf "not id 3876\n"; "noid") in
-				(*print_expression exp1 0 ; flush();space() ;flush();space() ;  Printf.eprintf "array of array expr not implemented %s\n" id ;*)
+				print_expression exp1 0 ; flush();space() ;flush();space() ;  Printf.eprintf "array of array expr not implemented %s\n" id ;
 				if (List.mem_assoc tid !listAssosTypeDefArrayIDsize) then (*ajouter une option pour struct détaillé*)
 				begin
 					let size = getAssosTypeDefArrayIDsize tid in
@@ -4553,14 +4555,11 @@ and treatStruct exp1 exp2 i t isStruct =
 			else consCommaExp (VARIABLE(id)) btype [id] lid NOTHING false NOTHING 
 		in
 
-		let newaffect =   if  List.mem_assoc id !listeAssosPtrNameType then new_instMem  (rid) (EXP(VARIABLE(id))) (EXP(nee)) 
+	 
+
+		let newaffect =   if  List.mem_assoc id !listeAssosPtrNameType then new_instMem  (rid) (EXP(ne1)) (EXP(nee)) 
 											  else  new_instVarAndPtr id (EXP(nee) ) in  
-
-
-		(*if id = "c" then
-			(Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression exp2 0 ; flush();space() ; flush();space() ;
-			Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression nee 0 ; flush();space() ;new_line(); );*)
-		(*let newaffect =   (*new_instVar rid (EXP(nee) ) in*) new_instMem  (rid) (EXP(VARIABLE(id))) (EXP(nee)) in*)
+ 
 							
 		  [newaffect];
 	end else []
@@ -4772,14 +4771,17 @@ and  analyse_expressionaux exp =
 
 							(*if List.mem_assoc id !listeAssosPtrNameType then Printf.printf "MEMBEROFPTR varDefList id %s pointeur :\n"id
 							else Printf.printf "MEMBEROFPTR varDefList id %s  SINGLE :\n"id; *)
+							analyse_expressionaux exp1;	 let ne1 = !nouvExp in  
 							analyse_expressionaux exp2;	 let ne = !nouvExp in  
 							(*Printf.printf "varDefList id %s type :\n"id;  new_line();*)
 							let nee = consCommaExp (VARIABLE(id)) btype [id] lid ne false NOTHING  in
-							(*if id = "os_thread" then
-							(print_expression exp 0 ; flush();space() ;Printf.printf "MEMBEROFPTR varDefList id %s type :\n"id;  new_line();print_expression exp2 0 ; flush();space() ; print_expression ne 0 ; flush();space() ;
-							Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression nee 0 ; flush();space() ;new_line(); );*)
-							 
-							let newaffect =   if  List.mem_assoc id !listeAssosPtrNameType then new_instMem  (rid) (EXP(VARIABLE(id))) (EXP(nee)) 
+							(*if id = "os_thread" then*)
+							(*print_expression exp1 0 ; flush();space() ;Printf.printf "MEMBEROFPTR varDefList id %s type :\n"id;  new_line();print_expression exp2 0 ; flush();space() ; print_expression ne 0 ; flush();space() ;
+							Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression nee 0 ; flush();space() ;new_line(); *)
+							(*listeDesInstCourantes := List.append !listeDesInstCourantes  (treatStruct exp1 exp2 EXP(CONSTANT("0")) id true) *)
+
+
+							let newaffect =   if  List.mem_assoc id !listeAssosPtrNameType then new_instMem  (rid) (*EXP(VARIABLE(id))*) (EXP(ne1)) (EXP(nee)) 
 											  else  new_instVarAndPtr id (EXP(nee) ) in  
 							listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect];
 						end;
@@ -5689,8 +5691,8 @@ and  onlyAexpressionaux exp =
 						begin
 							let rid = ("*"^id) in
 
-							(*if List.mem_assoc id !listeAssosPtrNameType then Printf.printf "MEMBEROFPTR varDefList id %s pointeur :\n"id
-							else Printf.printf "MEMBEROFPTR varDefList id %s  SINGLE :\n"id; *)
+	
+							onlyAexpressionaux exp1;	 let ne1 = !nouvExp in  
 							onlyAexpressionaux exp2;	 let ne = !nouvExp in  
 							(*Printf.printf "varDefList id %s type :\n"id;  new_line();*)
 							let nee = consCommaExp (VARIABLE(id)) btype [id] lid ne false NOTHING  in
@@ -5698,7 +5700,7 @@ and  onlyAexpressionaux exp =
 							(print_expression exp 0 ; flush();space() ;Printf.printf "MEMBEROFPTR varDefList id %s type :\n"id;  new_line();print_expression exp2 0 ; flush();space() ; print_expression ne 0 ; flush();space() ;
 							Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression nee 0 ; flush();space() ;new_line(); );*)
 							 
-							let newaffect =   if  List.mem_assoc id !listeAssosPtrNameType then new_instMem  (rid) (EXP(VARIABLE(id))) (EXP(nee)) 
+							let newaffect =   if  List.mem_assoc id !listeAssosPtrNameType then new_instMem  (rid) (*EXP(VARIABLE(id))*) (EXP(ne1)) (EXP(nee)) 
 											  else  new_instVarAndPtr id (EXP(nee) ) in  
 							listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect];
 						end;

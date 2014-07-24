@@ -440,16 +440,21 @@ let _ =
 	(* First parse *)
 	let firstParse =
 		let merge_file = (getMergedFile a1) in
-		Rename.go (Frontc.trans_old_fun_defs merge_file) in
+		Rename.go (Frontc.trans_old_fun_defs merge_file) 
+	in
 
-		(* cons merge file *)
-		let out = open_out ".merge.cm" in
-		Cprint.print  out firstParse;
-		close_out out;
+	(* cons merge file *)
+
+	printf ".merge.cm ...\n";
+	let out = open_out ".merge.cm" in
+
+	printf "..nombre de définitions %u entrees, affichage: \n"(List.length(firstParse));
+	Cprint.print  out firstParse;
+	close_out out;
 		
 		(* get recursivity*)
-		if (!frontc_frec) then
-		begin
+	if (!frontc_frec) then
+	begin
 			let out = open_out ".rec_status" in
 			Sortrec.test out firstParse firstParse;
 			let outputstatut =(Sortrec.applicationRecursivityClass firstParse firstParse) in
@@ -459,21 +464,22 @@ let _ =
 				if outputstatut = 0 then Printf.sprintf "Application is : not recursive\n" 
 				else if outputstatut = 1 then Printf.sprintf "Application containts only simple recursivity\n" 
 					 else 	Printf.sprintf "Application containts complex recursivity\n" in
+
 			output_string  out strToP;
 			close_out out;
-		end
-		else
-		begin
+	end
+	else
+	begin
 		(* *)
-
- 
-
-		
+	
 		if ((!partial) || (!auto)) then (
 			TO.initref stdout firstParse
 		) else (
 			XO.initref stdout firstParse
 		);
+
+
+
 	
 	(* Second parse *)
 	let secondParse =

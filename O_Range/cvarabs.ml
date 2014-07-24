@@ -1096,6 +1096,7 @@ let rec consArrayFromPtrExp exp arrayName =
 			let varOfExp2 = (listeDesVarsDeExpSeules exp2) in
 			if List.mem arrayName varOfExp1 = false then
 			begin
+ 
 				let (resexp2, hasArray) = consArrayFromPtrExp exp2 arrayName in
 				if hasArray then
 					  if resexp2 = NOTHING then ( exp1, true) else ( BINARY(op, exp1, resexp2), true)
@@ -1106,7 +1107,7 @@ let rec consArrayFromPtrExp exp arrayName =
 			begin
 
 				if List.mem arrayName varOfExp2 = false then
-				begin
+				begin  
 					let (resexp1, hasArray) = consArrayFromPtrExp exp1 arrayName in
 					if hasArray then
 						  if resexp1 = NOTHING then (exp2, true) else ( BINARY(op, resexp1, exp2), true)
@@ -1122,7 +1123,7 @@ let rec consArrayFromPtrExp exp arrayName =
 									if (String.sub name  0 4) = "bIt-" then  (exp, false) else (NOTHING, false)
 								 else (NOTHING, false)		(* sinon pb si ptr=tab+k ; k=k+1; *ptr=... donc pour le moment que constante*)
 		| INDEX (_,_)->
-			(*Printf.printf"actuellement  non traitée index\n";*)(* actuellement  non traitée *)
+				 (* actuellement  non traitée *)
 
 			let (tab,lidx) = analyseArray valsi []  in
 			if (List.mem_assoc tab !listAssosArrayIDsize) then
@@ -1133,11 +1134,11 @@ let rec consArrayFromPtrExp exp arrayName =
 					(match size with
 						NOSIZE -> (NOTHING, false)
 						| SARRAY (_) ->
-
+Printf.printf " consArrayFromPtrExp index \n";
 						consArrayFromPtrExp (BINARY (ADD,  VARIABLE(tab),List.hd lidx)) arrayName
 
 
-						| MSARRAY (lsize) -> let index = prodListSizeIndex lsize lidx in
+						| MSARRAY (lsize) -> let index = prodListSizeIndex lsize lidx in Printf.printf " consArrayFromPtrExp index 222\n";
 											 	consArrayFromPtrExp (BINARY (ADD,  VARIABLE(tab),index)) arrayName ) in(* (NOTHING, false)in*)
 					(*print_expression VARIABLE(tab)) 0;  print_expression res 0;
 					if isok then Printf.printf "OK\n";*)
@@ -1150,9 +1151,18 @@ let rec consArrayFromPtrExp exp arrayName =
 			end
 
 		| CAST (typ, e) -> consArrayFromPtrExp e arrayName
+	 
+							  
+		| MEMBEROFPTR (e , t) 	->	
+
+ 
 
 
-		|_ ->(*Printf.printf"actuellement  non traitée\n";*)(* actuellement  non traitée *)(NOTHING, false)
+(NOTHING, false)
+
+(* actuellement  non traitée (NOTHING, false)*)
+
+		|_ ->  (* actuellement  non traitée *)(NOTHING, false)
 
 
 
@@ -1160,38 +1170,54 @@ and getArrayAssign  x index assign =
 		(*	Printf.printf "variable *%s " ptr_name; afficherAS ro2x; flush(); new_line(); *)
 		(*Printf.printf "variable %s " x ;
 		Printf.printf "<- \n" ;	print_expression (expVaToExp assign)  0; new_line(); flush() ;space(); flush(); new_line(); flush();*)
-		let (tab1,_, _) =getArrayNameOfexp (expVaToExp index) in
-
-		if tab1 != "" then
+		let (t,_, _) =getArrayNameOfexp (expVaToExp index) in
+		let tab1 = if t = "" then if  existAssosArrayIDsize x then x else "" else t in
+(*Printf.printf "getArrayAssign:tableau tab trouve tab aaa%saa ptr %s \n" tab1 x;*)
+		if tab1 = "" then
 		begin
 		(*	Printf.printf "tableau tab trouve tab %s ptr %s \n" tab1 x;*)
+			 (new_assign_mem x index assign ,false,"", MULTIPLE)
+		end
+		else
+		begin
+			(*Printf.printf "getArrayAssign:tableau tab trouve tab %s ptr %s \n" tab1 x;*)
 
 			let (indexexp , isok) = consArrayFromPtrExp (expVaToExp index )  tab1 in
-			if isok then
-			begin
+			if (*isok*) indexexp != NOTHING  then
+			begin (* Printf.printf "III tableau tab trouve tab %s ptr %s \n" tab1 x;*)
 				(*let resindex = expressionEvalueeToExpression( calculer (EXP(indexexp))  !infoaffichNull [] 1) in*)
 				(*print_expression  (INDEX(VARIABLE(tab1), resindex)) 0; new_line(); flush() ;space(); flush(); new_line(); flush();
 				Printf.printf "<- \n" ;print_expression (expVaToExp assign) 0; new_line(); flush() ;space flush; new_line(); flush();*)
 
 				(new_assign_double tab1 (EXP(indexexp)) assign,true,tab1, (EXP(indexexp)))
-			end (*A*)else (new_assign_mem x index assign ,false,"", MULTIPLE)
+			end (*A*)
+			else 
+			begin  (*Printf.printf "IIIIII tableau tab trouve tab %s ptr %s \n" tab1 x;
+				print_expression  (INDEX(VARIABLE(tab1), (expVaToExp index ))) 0; new_line(); flush() ;space(); flush(); new_line(); flush();*)
+				(*if then
+				else *)(new_assign_mem x index assign ,false,"", MULTIPLE)
+		    end
 		end
-		else
-		begin
-			(*Printf.printf "tableau tab trouve tab %s ptr %s \n" tab1 x;*)
-			 (new_assign_mem x index assign ,false,"", MULTIPLE)
-		end
+		 
+		
 
 
 and getArrayAssignFromMem  x index  =
 		let (tab1,_, _) =getArrayNameOfexp (expVaToExp index) in
-		if tab1 != "" then
-		begin
-
+		if tab1 = "" then  (x, index  ,false)
+		else begin
+	(*Printf.printf "getArrayAssignFromMem : tableau  trouve  %s ptr %s \n" tab1 x;*)
 			let (indexexp , isok) = consArrayFromPtrExp (expVaToExp index )  tab1 in
-			if indexexp != NOTHING then (tab1, (EXP(indexexp)) ,true) else (tab1, MULTIPLE , true)
+
+				(*let ne = remplacerPtrParTab  x (INDEX(VARIABLE(tab1),  (CONSTANT(CONST_INT("0")))  ))  (expVaToExp index)  in
+				print_expression ne 0; new_line(); flush() ;space(); flush(); new_line(); flush();
+				print_expression  (INDEX(VARIABLE(tab1),  (CONSTANT(CONST_INT("0")))  ))  0; new_line(); flush() ;space(); flush(); new_line(); flush();
+				print_expression   indexexp 0; new_line(); flush() ;space(); flush(); new_line(); flush();*)
+			if indexexp != NOTHING then (tab1, (EXP(indexexp)) ,true) else 
+
+				(tab1, MULTIPLE , true)
 		end
-		else  (x, index  ,false)
+		 
 
 
 
@@ -1887,7 +1913,7 @@ if id = var&& eqindex e i then true
 else
 begin
 	let (tab1,_, _) =getArrayNameOfexp (expVaToExp e) in
-
+Printf.printf "eqmemindex:tableau tab trouve tab %s ptr %s \n" tab1 id;
 	let (index , _) = consArrayFromPtrExp (expVaToExp e )  tab1 in
 
 	if tab1 = "" then false else tab1 = var && eqindex (EXP index) i (* the same var and the same index *)
@@ -2001,12 +2027,12 @@ and get_base_typeEPS  ntyp =
 
 
 and eqindex i j =
-if i = j then begin (*Printf.printf " index egaux \n" ;*) true end else
+if i = j then begin  true end else
 begin
 	let i1 = calculer i !infoaffichNull [] 1 in
 	let ii1 = calculer j !infoaffichNull  [] 1 in
 	if estNoComp i1 || estNoComp ii1 then false (*en fait en ne peut pas répondre*)
-	else if  estNul (evalexpression (Diff (i1, ii1 ))) then  begin (*Printf.printf " index egaux \n" ;*) true end  else false
+	else if  estNul (evalexpression (Diff (i1, ii1 ))) then  begin true end  else false
 end
 
 and calculer_simple expVA = calculer expVA CROISSANT [] 1
@@ -3120,7 +3146,7 @@ let suite = List.tl l in
 	| ASSIGN_MEM (s, e1, e2)	->
 			if s = v (*and il faut évaluer les 2 expression index = e1*) then
 			begin
-				if !vDEBUG then begin	Printf.eprintf "tableau avec index à terminer\n";(* afficherAS a *) end;
+				(*if !vDEBUG then*) begin	Printf.eprintf "tableau avec index à terminer\n";(* afficherAS a *) end;
 				e2
 			end
 			else  rechercheAffectVDsListeAS v (*index*) suite
@@ -3299,6 +3325,8 @@ begin
 end
 
 let existeAffectationVarIndexListe var l i=
+ 
+ 
     List.exists (fun aS ->  match aS with ASSIGN_SIMPLE (id, _) ->  false |ASSIGN_DOUBLE (id, index, _) -> (id = var) && eqindex index i|ASSIGN_MEM (id, e, _)	->
 					eqmemindex id var i e) l
 
@@ -3343,7 +3371,7 @@ let rec traiterChampOfstructAux lid valeur id btype e a=
 										|_-> begin (*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas 1 %s\n" id;     *)
 										remplacerValPar  id  ( UNARY (op, ex)) e end
 									)
-								| MEMOF -> (*Printf.printf "traiterChampOfstruct *assign id : %s\n" id; *)
+								| MEMOF -> Printf.printf "traiterChampOfstruct *assign id : %s\n" id; 
 									let (value,trouve, direct) =
 										if existeAffectationVarListe id a  then
 											(expVaToExp (rechercheAffectVDsListeAS (id) a ), true, true)
@@ -3361,8 +3389,8 @@ let rec traiterChampOfstructAux lid valeur id btype e a=
 												else (e, false, false) in
 									if trouve  then
 									begin
-										(*	Printf.printf "traiterChampOfstruct *assign id : %s TROUVE\n" id; print_expression value 0; new_line() ;
-											if direct then Printf.printf "  TROUVE direct\n"  else Printf.printf "  TROUVE indirect\n" ; *)
+										(*	Printf.printf "traiterChampOfstruct *assign id : %s TROUVE\n" id; print_expression value 0; new_line() ;*)
+											(*if direct then Printf.printf "  TROUVE direct\n"  else Printf.printf "  TROUVE indirect\n" ; *)
 											match value with
 											 CONSTANT cst ->
 												(match cst with
@@ -3375,12 +3403,12 @@ let rec traiterChampOfstructAux lid valeur id btype e a=
 														(na)
 													|_->  if direct then remplacerValPar  id  ( UNARY (op, ex)) e else remplacerValPar  id  value e
 												)
-											|_-> begin (*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas 1 %s\n" id;   *)
+											|_-> begin(*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas 1 %s\n" id;   *)
 													remplacerValPar  id  ( UNARY (op, ex)) e end
 
 									 end
 									else remplacerValPar  id  ( UNARY (op, ex)) e
-								|_-> begin (*Printf.printf "traiterChampOfstruct MEMBEROFPTR cas 2 %s\n" id;   *)  e end
+								|_-> begin (*Printf.printf "traiterChampOfstruct MEMBEROFPTR cas 2 %s\n" id;  *)  e end
 							)(*voir autres cas*)
 
 						| VARIABLE (varn) ->  if id = varn then e else remplacerValPar  id  (VARIABLE (varn)) e
@@ -3392,7 +3420,7 @@ let rec traiterChampOfstructAux lid valeur id btype e a=
 								Printf.printf "traiterChampOfstruct MEMBEROFPTR SET %s  changed set 2\n" id ; print_expression na2 0; new_line() ; ;
 								Printf.printf "traiterChampOfstruct MEMBEROFPTR SET %s  \n" id ;*)
 								na2
-						|INDEX(_,_)->
+						|INDEX(_,_)-> (*Printf.printf "traiterChampOfstruct MEMBEROFPTR INDEX\n" ;*)
 								let (t,i, isOk) =  getArrayAssignFromMem id (EXP(assignedValue)) in
 
 
@@ -3404,53 +3432,126 @@ let rec traiterChampOfstructAux lid valeur id btype e a=
 									let  ro2avant = (roindex t a i)  in
 
 									(match  ro2avant with
-									ASSIGN_MEM (_, _, EXP(ee))|ASSIGN_DOUBLE (_, _, EXP(ee)) |ASSIGN_SIMPLE (_,  EXP(ee))->
+									ASSIGN_MEM (_, _, EXP(ee))|ASSIGN_DOUBLE (_, _, EXP(ee)) |ASSIGN_SIMPLE (_,  EXP(ee))->(*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas 3.1 %s OK\n" t;*)
 												traiterChampOfstructAux lid  ee id btype e a
 									|_-> remplacerValPar  id  assignedValue e)
 
 
 						 		end
 
- 								else ((*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas 3 %s non traité %s\n" id t; *)remplacerValPar  id  assignedValue e 	)
-						|_->	(*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas 3 %s non traité\n" id;*)(* print_expression assignedValue 0;*) 	remplacerValPar  id  assignedValue e
+ 								else ((*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas 3 %s non traité %s\n" id t;*) remplacerValPar  id  assignedValue e 	)
+						|_->	(*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas 4 %s non traité\n" id;*)(* print_expression assignedValue 0;*) 	remplacerValPar  id  assignedValue e
 				)
 
 
 let traiterChampOfstruct id a e idsaufetoile lid isptr=
-
-(*		| MEMOF -> ("*", 13)
-		| ADDROF -> ("&", 13)*)
-(*Printf.printf "traiterChampOfstruct MEMBEROFPTR   id %s sauf* %s\n" id idsaufetoile;print_expression e 0; new_line(); new_line() ;flush();space();*)
-let (btype, isdeftype) =
-			if List.mem_assoc idsaufetoile !listAssocIdType then (getBaseType (List.assoc idsaufetoile !listAssocIdType), true)
-			else
-				if List.mem_assoc idsaufetoile !listeAssosPtrNameType then (getBaseType (List.assoc idsaufetoile !listeAssosPtrNameType), true)
-				else (INT_TYPE, false)
-in
+	let (btype, isdeftype) =
+				if List.mem_assoc idsaufetoile !listAssocIdType then (getBaseType (List.assoc idsaufetoile !listAssocIdType), true)
+				else
+					if List.mem_assoc idsaufetoile !listeAssosPtrNameType then (getBaseType (List.assoc idsaufetoile !listeAssosPtrNameType), true)
+					else (INT_TYPE, false)
+	in
 	if isdeftype then
 	begin
 		 let (hasAssign,gid) =
-			(*	if isptr then	*)
 					if (existeAffectationVarListe ("*"^id) a ) then
 						(true, ("*"^id) )
 					else if (existeAffectationVarListe id a ) then (true,id) else (false,"")
-				(*else 	if (existeAffectationVarListe id a ) then (true,id) else (false,"") *)
+			 
 				in
-(*if (existeAffectationVarIndexListe x a1 index) then
-			begin (* affectation de x(i) dans les deux cas *)
-					match  (roindex x a1 index)  with *)
+
+				(* Printf.printf "traiterChampOfstruct MEMBEROFPTR   existe %s %s %s\n" gid id idsaufetoile; *)
+
+
 
 		if hasAssign then
 		begin
-			(*Printf.printf "traiterChampOfstruct MEMBEROFPTR   existe \n" ;print_expression e 0; new_line(); new_line() ;flush();space();*)
+			(*Printf.printf "traiterChampOfstruct MEMBEROFPTR   existe %s\n" gid;*)
 			let assignedid =  (ro gid a) in
 			(match assignedid with
-				ASSIGN_SIMPLE (id, EXP(valeur)) ->  traiterChampOfstructAux lid valeur id btype e a
+				ASSIGN_SIMPLE (id, EXP(valeur)) -> 
+						let (tab1,_, _) =getArrayNameOfexp ( valeur) in
+						if tab1 = "" then traiterChampOfstructAux lid valeur id btype e a
+						else 
+						begin
+							(*Printf.printf "getArrayAssign:tableau tab trouve tab %s ptr %s \n" tab1 id;*)
+							 
+							let (indexexp , isok) = consArrayFromPtrExp  valeur   tab1 in
+							if  (*isok*) indexexp != NOTHING then 
+							begin
+
+ 
+
+
+							 	let nres =     (remplacerValPar  id valeur    e)   in
+
+ 
+								let nlid =	getInitVarFromStruct nres  in
+ 
+								if nlid != [] && (isCallVarStruct nlid = false )then
+								begin
+									 
+ 
+									if  (existeAffectationVarIndexListe tab1 a (EXP indexexp)) then
+									begin
+										 
+										let na =
+											(match  (roindex tab1 a (EXP indexexp))  with
+											ASSIGN_MEM (_, _, EXP(ee))|ASSIGN_DOUBLE (_, _, EXP(ee)) |ASSIGN_SIMPLE (_,  EXP(ee))->
+											(*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas 3.1 %s OK\n" tab1;*)
+											(*	print_expression ( ee) 0;new_line() ; new_line() ;flush();space();new_line() ;flush();space();*)
+													  traiterChampOfstructAux (List.append [tab1] nlid)  ee  tab1 btype e a 
+											|_-> traiterChampOfstructAux (List.append [tab1] lid) valeur tab1 btype e a) in
+										(*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas TAB->a %s non traité %s\n" id tab1;*) (*traiterChampOfstructAux lid va id btype e a*) na
+									 end
+									else  traiterChampOfstructAux (List.append [tab1] lid) valeur id btype e a
+									end else  traiterChampOfstructAux lid valeur id btype e a
+								end else  traiterChampOfstructAux lid valeur id btype e a
+						end
+
+(*Printf.printf "traiterChampOfstruct MEMBEROFPTR   cas simple%s non traité %s iiii %s\n" id gid tab1;  traiterChampOfstructAux lid valeur id btype e a
+						end*)
 				| ASSIGN_DOUBLE (id,_,EXP(va)) ->
 						(*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas TAB.a %s non traité %s\n" id gid;*) (* boolAS:= true; (NOTHING)*)
 								traiterChampOfstructAux lid va id btype e a
 
-				| ASSIGN_MEM (id, index, EXP(va))->traiterChampOfstructAux lid va id btype e a
+				| ASSIGN_MEM (id, index, EXP(va))-> (*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas TAB->a %s non traité %s 9999 %s 555 \n" id gid idsaufetoile;*) 
+					let (value,trouve) =
+							if existeAffectationVarListe idsaufetoile a  then
+									(expVaToExp (rechercheAffectVDsListeAS (idsaufetoile) a ), true)
+							else  (e, false) in
+(*print_expression (expVaToExp index) 0;new_line() ; new_line() ;flush();space();new_line() ;flush();space();
+print_expression va 0;new_line() ; new_line() ;flush();space();new_line() ;flush();space();
+
+
+Printf.printf "recherche %s dans liste :\n"  idsaufetoile;afficherListeAS a;new_line ();Printf.printf "fin s liste :\n" ;*)
+
+									 
+					if trouve then 
+					begin
+						let (tab1,_, _) =getArrayNameOfexp ( value) in
+						(*Printf.printf "traiterChampOfstruct getArrayAssign:tableau tab trouve tab aaa%saa ptr %s \n" tab1 id;*)
+						if tab1 = "" then traiterChampOfstructAux lid va id btype e a
+						else
+						begin
+							(*Printf.printf "getArrayAssign:tableau tab trouve tab %s ptr %s \n" tab1 id;*)
+							let ni = remplacerPtrParTab  id value (expVaToExp index) in
+							let (indexexp , isok) = consArrayFromPtrExp  ni   tab1 in
+							if  (*isok*) indexexp != NOTHING then 
+							begin
+								let nres =  remplacerValPar  id (INDEX(VARIABLE(tab1),(remplacerValPar  id (CONSTANT(CONST_INT("0")))  indexexp)))  e  in
+								let nlid =	getInitVarFromStruct nres  in
+								if nlid != [] && (isCallVarStruct nlid = false )then
+								begin
+									let npid =  (List.hd nlid) in
+									(*Printf.printf "single tab of champ of fin %s %s\n" id npid  ;*)
+									let na = traiterChampOfstructAux nlid va npid btype e a in
+								(*	Printf.printf "traiterChampOfstruct MEMBEROFPTRcas TAB->a %s non traité %s\n" id npid; *)(*traiterChampOfstructAux lid va id btype e a*) na
+								end else  traiterChampOfstructAux lid va id btype e a
+							end else  traiterChampOfstructAux lid va id btype e a
+						end
+					end  else  traiterChampOfstructAux lid va id btype e a
+
 				| _->(*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas 4 %s non traité %s\n" id gid; *) boolAS:= true;NOTHING
 
 			)
@@ -3503,7 +3604,7 @@ let rec applyStore e a =
 match e with
 	NOTHING  -> NOTHING
 	| VARIABLE name ->
-
+(*Printf.printf " expression applystore  name\n"; *)
 		if (existeAffectationVarListe name a ) then
 		begin
 			let newassign = (ro name a) in
@@ -3561,9 +3662,16 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 (*print_expression  (exp1e) 0; space();  flush() ; new_line();flush();*)
 
 						let (tab1,_, _) =getArrayNameOfexp  exp1e  in
-						if tab1 != "" then
-						begin
+						if tab1 = "" then
 
+						begin
+(* Printf.printf "les as rofilter array 2\n" ;*)
+							(match exp1 with
+							 UNARY (ADDROF, next) ->  (*Printf.printf "les as rofilter*&\n" ;*)  applyStore next a
+							 |_->	(match exp1e with 	 UNARY (ADDROF, next) ->    applyStore next a  |_->  UNARY (op, exp1e  ) ))
+						end
+						else begin
+	(*Printf.printf " expression applystore tableau \n";*)
 							let (indexexp , isok) = consArrayFromPtrExp ( exp1  )  tab1 in
 							if  (*isok*) indexexp != NOTHING then 
 
@@ -3628,13 +3736,7 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 
 							end
 						end
-						else
-						begin
-(* Printf.printf "les as rofilter array 2\n" ;*)
-							(match exp1 with
-							 UNARY (ADDROF, next) ->  (*Printf.printf "les as rofilter*&\n" ;*)  applyStore next a
-							 |_->	(match exp1e with 	 UNARY (ADDROF, next) ->    applyStore next a  |_->  UNARY (op, exp1e  ) ))
-						end
+						
 					)
 
 			|ADDROF->    	(match exp1 with  UNARY (MEMOF, next) ->    applyStore next a   |_->
@@ -3765,8 +3867,15 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 
 			| _->
 				let (tab1,lidx1) =analyseArray e [] in
-				if tab1 != "" then
+				if tab1 = "" then
+
 				begin
+
+					 (* Printf.printf "tab inot trouve but tab existe \n" ; print_expression (INDEX (applyStore exp a, applyStore idx a)) 0;new_line(); flush() ;space(); flush(); new_line(); flush();*)
+						INDEX (applyStore exp a, applyStore idx a)
+				end
+				else 
+				begin(* Printf.printf " expression applystore tableau  5555 \n";*)
 					let (indexexp , isok) = consArrayFromPtrExp ( e )  tab1 in
 
 						if  (*isok = false*) indexexp = NOTHING then
@@ -3797,8 +3906,8 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 								else
 									if existeAffectationVarListe tab1 a ||	existeAffectationVarListe ("*"^tab1) a 	 then
 									begin
-										(* Printf.printf "tab inot trouve but tab existe %s\n" tab1;
-										 List.iter (fun i -> print_expression i 0; space();)lidx1;*)
+										(* Printf.printf "tab inot trouve but tab existe %s\n" tab1;*)
+										(* List.iter (fun i -> print_expression i 0; space();)lidx1;*)
 
 										(*afficherListeAS a; *)
 										let size = getAssosArrayIDsize tab1 in
@@ -3828,121 +3937,8 @@ print_expression (INDEX (applyStore (VARIABLE(tab1)) a, applyStore indexexp a)) 
 						(*end*)
 					end
 				end
-				else
-				begin
-
-					 (* Printf.printf "tab inot trouve but tab existe \n" ; print_expression (INDEX (applyStore exp a, applyStore idx a)) 0;new_line(); flush() ;space(); flush(); new_line(); flush();*)
-						INDEX (applyStore exp a, applyStore idx a)
-				end
+				
 		)
-
-
-
-
-
-
-
-
-
-
-
-
-(*	Printf.printf " expression applystore index\n";print_expression    e 0;new_line(); flush() ;space(); flush(); new_line(); flush();
-		let index = (applyStore idx a) in
-
-
-		let (tab0,lidx0) = analyseArray e []  in
-		let exptab = applyStore (VARIABLE(tab0)) a in
-		let (tab1,lidx) = if tab0 = "" then
-							(tab0,
-									List.map (fun x -> applyStore x a) lidx0)
-						  else
-							((match exptab with VARIABLE(n)-> n |_-> tab0),
-								 List.map (fun x -> applyStore x a) lidx0) in
-		if tab1 != "" then
-		begin
-Printf.printf "index   OK1\n" ;
-			let (indexexp , isok) = consArrayFromPtrExp ( e )  tab1 in
-			let id =applyStore 		indexexp a in
-			if  (*isok = false*) id != NOTHING &&  (existeAffectationVarIndexListe tab1 a (EXP(id)))	then
-			begin Printf.printf "index   OK\n" ;
-					let absl = roindex  tab1 a (EXP(id))	 in
-					( match absl with
-							ASSIGN_SIMPLE(_,EXP(exp2))|ASSIGN_MEM(_,_,EXP(exp2))|ASSIGN_DOUBLE  (_, _, EXP(exp2))-> (* Printf.printf " trouve =\n";*)
-						(*print_expression exp2 0; new_line ();flush(); space();  new_line ();*)exp2 (*je ne suis pas sure d'avoir bien interpete l'algo *)
-							| 	_-> INDEX (VARIABLE(tab1) , id)  )
-			end
-			else
-			begin
-Printf.printf "index   OK 2\n" ;
-					let size = getAssosArrayIDsize tab1 in
-					(	match size with
-							NOSIZE ->      Printf.printf "index   OK 3\n" ;(*boolAS:= true;NOTHING *)INDEX (applyStore exp a, index)
-							| SARRAY (v) ->
-								if lidx != [] && List.tl lidx = [] && (existeAffectationVarIndexListe tab1 a (EXP(List.hd lidx)))	 then
-								begin
-	 								let absl = roindex  tab1 a  (EXP(List.hd lidx))	 in
-									( match absl with
-											ASSIGN_SIMPLE(_,EXP(exp2))|ASSIGN_MEM(_,_,EXP(exp2))|ASSIGN_DOUBLE(_, _,EXP(exp2))->  exp2
-											| 	_-> INDEX ( VARIABLE(tab1),  List.hd lidx) )
-								end
-								else
-								begin
-									let arrayas = arrayAssignFilter tab1 a in															 										let (alldedined, min, max) = alldefinedtabMinMax tab1 0 (v-1) arrayas in
-									if alldedined then
-										CALL (	VARIABLE("SET") ,  List.append [expressionEvalueeToExpression min] [expressionEvalueeToExpression max])
-									else INDEX ( VARIABLE(tab1),  List.hd lidx)
-								end
-
-							| MSARRAY (lsize) ->  (*INDEX (applyStore exp a, index) *)
-								if lidx != [] && List.tl lidx = [] && (existeAffectationVarIndexListe tab1 a (EXP(List.hd lidx)))	 then
-								begin
-									let absl = roindex  tab1 a  (EXP(List.hd lidx)) in
-									( match absl with
-											ASSIGN_SIMPLE(_,EXP(exp2))|ASSIGN_MEM(_,_,EXP(exp2))|ASSIGN_DOUBLE(_, _,EXP(exp2))->  exp2
-											| 	_-> INDEX ( applyStore exp a,  index ))
-								end
-								else
-								begin
-									let ri = prodListSizeIndex lsize lidx in Printf.printf "index   OK 2\n" ;
-									if existeAffectationVarIndexListe tab1 a (EXP( ri)) then
-									begin Printf.printf "index   OK4\n" ;
-										let absl = roindex  tab1 a  (EXP( ri)) in
-										( match absl with
-												ASSIGN_SIMPLE(_,EXP(exp2))|ASSIGN_MEM(_,_,EXP(exp2))|ASSIGN_DOUBLE(_, _,EXP(exp2))->  exp2
-												| 	_-> INDEX ( VARIABLE(tab1),  ri) )
-									end
-									else INDEX ( applyStore exp a,  index )
-								end
-						)
-				end
-			end (* fin tab trouvé*)
-			else
-				(match exp with
-				| CONSTANT (CONST_COMPOUND expsc) ->
-					let indexx = (calculer (EXP( index )) !infoaffichNull  [] 1 )in
-					if estDefExp indexx  then
-					begin
-
-						let val1 = int_of_float(getDefValue indexx) in
-
-						let geti = (getIndexValueOfTab val1 expsc) in
-						let resaux = applyStore geti a in
-						if resaux = VARIABLE ("--NOINIT--") then INDEX (applyStore exp a, index) else resaux
-
-					end
-					else  INDEX (applyStore exp a, index)
-				| _-> Printf.printf "index   OK autre \n" ; INDEX (applyStore exp a, index)
-				)*)
-
-
-
-
-
-
-
-
-
 
 
 
@@ -3956,9 +3952,7 @@ Printf.printf "index   OK 2\n" ;
 												(String.sub fid 1 ((String.length fid)-1) ,fid)
 											else (fid ,fid )
 									else (fid ,fid ) in
-(*print_expression    e 0;new_line(); flush() ;space(); flush(); new_line(); flush();
 
-						Printf.printf "single tab of champ of fin %s %s\n" id pid  ;*)
 
 					let na = traiterChampOfstruct pid a e id lid false in
 					if na = VARIABLE ("--NOINIT--") then e else na
@@ -3967,7 +3961,20 @@ Printf.printf "index   OK 2\n" ;
 				end
 				else ( (*Printf.printf "variable source cas else %s\n"(List.hd lid);*) e )
 
-	 | MEMBEROFPTR (ex, c) 		->	(*Printf.printf "applystore MEMBEROFPTR  \n" ;*)
+	 | MEMBEROFPTR (ex, c) 		->	 
+
+(*
+if (existeAffectationVarListe ex a ) then
+		begin
+			let newassign = (ro ex a) in
+
+			 Printf.printf "variable source cas else %s\n"(List.hd lid);
+
+			(*ASSIGN_SIMPLE (_, EXP(valeur)) ->(valeur) |ASSIGN_SIMPLE (_, MULTIPLE) ->isRenameVar := true;boolAS:= true; NOTHING| _ ->	e*)
+		end*)
+		 
+
+
 				let lid =	getInitVarFromStruct e  in
 				(* *)
 				if lid != [] && (isCallVarStruct lid = false )then
@@ -3978,14 +3985,16 @@ Printf.printf "index   OK 2\n" ;
 												(String.sub fid 1 ((String.length fid)-1) ,fid)
 											else (fid ,fid )
 									else (fid ,fid ) in
-					(*if id != fid then Printf.printf "id %s, fid %s\n" id pid;*)
-				(*	Printf.printf "AS variable source %s\n"(List.hd lid);*)
+				 
+(*print_expression    c 0;new_line(); flush() ;space(); flush(); new_line(); flush();
+						Printf.printf "single tab of champ of fin %s %s\n" id pid  ;*)
+
 					let na = traiterChampOfstruct pid a e id lid true in
 					if na = VARIABLE ("--NOINIT--") then e else na
 
 
 				end
-				else ( (*Printf.printf "variable source cas else %s\n"(List.hd lid);*) e )
+				else (  e )
 
 	| _	-> if !vDEBUG then Printf.printf "struct et gnu body non traités pour le moment \n";
 			boolAS:= true;
@@ -4264,6 +4273,10 @@ let rondListe a1  ro2x =
 
 		match ro2x with
 			ASSIGN_SIMPLE (x, exp) ->
+(*Printf.printf "ASSIGN_SIMPLE recherche %s dans liste :\n"  x ;afficherListeAS a1;new_line ();Printf.printf "fin s liste :\n" ;*)
+
+
+
 
 				isRenameVar := false;
 				let assign =   applyStoreVA exp a1   in
@@ -4277,144 +4290,259 @@ let rondListe a1  ro2x =
 									else begin  false end in
 
 				let hasstructtorename =  !isRenameVar && isStruct in
-				let na = if isStruct && (existeAffectationVarListe x a1 )  then
+				let (na, isTab, next, tab, idx) = if isStruct && (existeAffectationVarListe x a1 )  then
 						 begin
 							match  (ro x a1)  with
-								ASSIGN_SIMPLE (id, e) -> let assignBefore =  expVaToExp e in
-								let expassign = (expVaToExp assign) in
-								let res = unionCONSTCOUNPOUND  expassign assignBefore in
-								new_assign_simple x
-														(EXP (remplacerValPar  x assignBefore res))
-							|_->(*Printf.printf"NOTHING..."; *)new_assign_simple x  (EXP ((expVaToExp assign) ))
+								ASSIGN_SIMPLE (id, expr) -> let assignBefore =  expVaToExp expr in
+								 
+								let (tab1,_, _) =getArrayNameOfexp assignBefore in
+								 
+
+
+								if tab1 = "" then
+								begin
+
+									let expassign = (expVaToExp assign) in
+									let res = unionCONSTCOUNPOUND  expassign assignBefore in
+									(new_assign_simple x
+															(EXP (remplacerValPar  x assignBefore res)),false, [],"",(CONSTANT(CONST_INT("0"))))
+								end
+								else
+								begin
+									(*
+(*if ((isConstant assignBefore )&& (isConstant (expVaToExp assign)))  then*)
+									 begin  Printf.printf"NOTHING..."; 
+										 let nres = remplacerValPar  x (INDEX(VARIABLE(tab1),(remplacerValPar  tab1 (CONSTANT(CONST_INT("0"))) ( assignBefore))))  (expVaToExp assign)  in
+										 let res = unionCONSTCOUNPOUND  (expVaToExp assign) assignBefore in
+	 									(new_assign_double tab1 (EXP index) (EXP (remplacerValPar  x assignBefore res)),true)
+									  end
+									(*  else  ((new_assign_simple x e), true)*)
+*)
+									(*if ((isConstant assignBefore )&& (isConstant (expVaToExp assign)))  then*)
+									  
+										let index =   remplacerValPar  tab1 (CONSTANT(CONST_INT("0")))  assignBefore   in
+										 
+										 let res = unionCONSTCOUNPOUND  (expVaToExp assign) assignBefore in
+	 									(*(new_assign_simple x e) ,true, [new_assign_double tab1 (EXP index) (EXP (remplacerValPar  x assignBefore res))]*)
+										(*  new_assign_double tab1 (EXP index) (EXP (remplacerValPar  x assignBefore res)) ,true, [])*)(*(new_assign_simple x e)])*)
+
+										if  (existeAffectationVarIndexListe tab1 a1 (EXP index))   then
+										begin
+											match    (roindex tab1 a1 (EXP index))  with
+												ASSIGN_DOUBLE (_, _, e) |ASSIGN_MEM (_,_ , e) -> let ab =  expVaToExp e in
+										 
+												 
+												let res2 = unionCONSTCOUNPOUND  (expVaToExp assign) ab  in
+											 
+												 
+																				
+												  (new_assign_double tab1 (EXP index)   (EXP (  res2)) ,true, [ (new_assign_simple x expr)], tab1, index)
+												|_->  (new_assign_double tab1 (EXP index)  (EXP (remplacerValPar  x assignBefore res)) ,true, [ (new_assign_simple x expr)], tab1, index)
+										end
+										else(  
+											  ( new_assign_double tab1 (EXP index) (EXP (remplacerValPar  x assignBefore res)) ,true,  [(new_assign_simple x expr)], tab1, index))
+
+
+(*(new_assign_simple x e)]*)
+									  
+									(*  else  ((new_assign_simple x e), true)*)
+								end
+							|_ ->
+							if  existAssosPtrNameType x &&  (isConstant (expVaToExp assign)) then    
+								  (   new_assign_simple ("*"^x)   assign, false, [],"", (CONSTANT(CONST_INT("0"))))
+
+							else (new_assign_simple x   assign, false, [],"", (CONSTANT(CONST_INT("0"))))
 
 						 end
-						 else  	new_assign_simple x assign in
-			([ na], listWithoutVarAssignSingle x a1 hasstructtorename )
+						 else  	(new_assign_simple x assign, false, [],"",(CONSTANT(CONST_INT("0")))) in
+			([ na], if isTab then List.append next(listWithoutVarAssignSingle x (listWithoutIndexAssign tab (EXP(idx)) a1 ) hasstructtorename) else 
+						if  existAssosPtrNameType x &&  (isConstant (expVaToExp assign)) then   (  a1  )else listWithoutVarAssignSingle x a1 hasstructtorename )
 
 		|	ASSIGN_DOUBLE (x, exp1, exp2) ->
 
+	
+ 
+			let index =        applyStoreVA exp1  a1 in
+			let nindex =   if existAssosArrayType x   then   EXP(remplacerValPar  x (CONSTANT(CONST_INT("0"))) (expVaToExp index)) else  index in
+ 
 
-
-			let index =  applyStoreVA exp1  a1 in
-			if (existeAffectationVarIndexListe x a1 index) then
+			if (existeAffectationVarIndexListe x a1 ((nindex))) then
 			begin (* affectation de x(i) dans les deux cas *)
-					match  (roindex x a1 index)  with
-						ASSIGN_DOUBLE (_, _, e) |ASSIGN_MEM (_,_ , e) -> let assignBefore =  expVaToExp e in
+					match  (roindex x a1 ((nindex)))  with
+						ASSIGN_DOUBLE (_, _, e)|ASSIGN_MEM (_,_ , e)-> let assignBefore =  expVaToExp e in
 								let expassign = (expVaToExp (applyStoreVA exp2 a1)) in
 								let res = unionCONSTCOUNPOUND  expassign assignBefore in
-								let na =  new_assign_double x index  (EXP(res)) in
-			    				([na], listWithoutIndexAssign x index a1)
 
-						|_->
+								let na =  new_assign_double x nindex  (EXP(res)) in
+ 
+	
+			    				([na], listWithoutIndexAssign x nindex a1)
+	 
+
+						|_->  
 
 
-								 let na = new_assign_double x index (applyStoreVA exp2 a1) in
-			   					 ([na], listWithoutIndexAssign x index a1)
+								 let na = new_assign_double x ( nindex) (applyStoreVA exp2 a1) in
+			   					 ([na], listWithoutIndexAssign x ((nindex)) a1)
 			end
 			else
 			begin
-				 if couldExistAssignVarIndexList x a1 index then   ([new_assign_double x index MULTIPLE], a1)
+ 
+				 if couldExistAssignVarIndexList x a1 (nindex) then   ([new_assign_double x ((nindex)) MULTIPLE], a1)
 
-				 else (* n'appartient pas à ro1*)	 	([new_assign_double x index (applyStoreVA exp2  a1)], a1)
+				 else (* n'appartient pas à ro1*)	 	([new_assign_double x ((nindex)) (applyStoreVA exp2  a1)], a1)
 			end
 		|	ASSIGN_MEM (x, exp1, exp2) ->
 
-			let index =  (applyStoreVA exp1  a1) in
-			let assign = (applyStoreVA exp2  a1) in
-			let (t,i,isOk) =getArrayAssignFromMem  x index in
+		
+
+ 
 			let id = if  String.length x > 1 then
 											if (String.sub x  0 1)="*" then
 												(String.sub x 1 ((String.length x)-1) )
 											else (x )
 									else (x ) in
 
-
-			if (existeAffectationVarIndexListe x a1 index) then
-			begin (* affectation de x(i) dans les deux cas *)
-				let  ro2avant = (roindex x a1 index)  in
-
-				match  ro2avant with
-					ASSIGN_MEM (_, _, e) ->
-						let assignBefore =  expVaToExp e in
-						let expassign = (expVaToExp assign) in
-						let res = unionCONSTCOUNPOUND  expassign assignBefore in
-						let nres = if t != "" then
-									remplacerValPar  id (INDEX(VARIABLE(t),expVaToExp i))
-									 res
-									else res in
-						(*if  x = "*c" (*&& res != expassign*) then (
-
-										Printf.printf "Beforen as mem %s\n"x  ;
-										print_expression    (expVaToExp assign) 0;new_line(); flush() ;space(); flush(); new_line(); flush();
+ 
+			let index =  (applyStoreVA exp1  a1) in
+			let assign = (applyStoreVA exp2  a1) in
+ 
 
 
-											Printf.printf "Beforen\n"  ;
-										print_expression    assignBefore 0;new_line(); flush() ;space(); flush(); new_line(); flush();
-										new_line(); flush() ;space(); flush(); new_line(); flush();
-Printf.printf "nres\n"  ;
-										print_expression    nres 0;new_line(); flush() ;space(); flush(); new_line(); flush();
-										new_line(); flush() ;space(); flush(); new_line(); flush();
+			let (t, nindex, tabindex) =	if (existeAffectationVarListe id a1 ) then
+				begin (* affectation de x(i) dans les deux cas *)
+					let  ro2avant = (ro id a1)  in
 
-											);*)
-
-						let (na,istab,tab,i) = getArrayAssign x index (EXP(nres))  in
-						let (resb,aa) =
-								if istab then (  [na],listWithoutIndexAssign tab i a1) else ([na],a1) in
-						 (resb, listWithoutIndexAssign x index aa)
-
-					|_->
-						let nres = if t != "" then
-									remplacerValPar  id (INDEX(VARIABLE(t),expVaToExp i))
-									(expVaToExp assign)
-									else expVaToExp assign in
-
-						 let (na,istab,tab,i) = getArrayAssign x index (EXP( nres)) in
-
-						  let (res,aa) = if istab then (  [na],listWithoutIndexAssign tab i a1) else ([na],a1) in
-						 (res, listWithoutIndexAssign x index aa)(*listWithoutVarAssignSingle x a1 hasstructtorename*)
-			end
-			else
-			begin
-				if  (existeAffectationVarIndexListe t a1 i) then
-				begin
-					let  ro2avant = (roindex t a1 i)  in
 					match  ro2avant with
-						ASSIGN_DOUBLE (_, _, e) ->
+						ASSIGN_SIMPLE (v, e) ->
 
+								let assignBefore =  expVaToExp e in
+								 
+
+								let (tab1,_, _) =getArrayNameOfexp assignBefore in
+
+ 
+								 
+							   
+
+								let nres =  if tab1 = "" then index else EXP(remplacerValPar  id assignBefore (expVaToExp index) )  		 in
+
+
+	 
+
+
+								(tab1, nres, if tab1 = "" then EXP(assignBefore)  else EXP(remplacerValPar tab1  (CONSTANT(CONST_INT("0"))) assignBefore))
+							|_->("", index,index )
+				end
+				else ("", index, index) in
+   
+ 
+
+
+				if (existeAffectationVarIndexListe x a1 index) then
+				begin (* affectation de x(i) dans les deux cas *)
+					let  ro2avant = (roindex x a1 index)  in
+
+					match  ro2avant with
+						ASSIGN_MEM (_, _, e) ->
 							let assignBefore =  expVaToExp e in
 							let expassign = (expVaToExp assign) in
 							let res = unionCONSTCOUNPOUND  expassign assignBefore in
 
-							let nres =  remplacerValPar  id (INDEX(VARIABLE(t),expVaToExp i)) res   in
+ 
 
+
+							let nres = if t = "" then res 
+										else remplacerValPar  id (INDEX(VARIABLE(t), (remplacerValPar  id (CONSTANT(CONST_INT("0"))) (expVaToExp nindex))))  res		 in
+
+
+							(*if  x = "*c" (*&& res != expassign*) then (
+
+											Printf.printf "Beforen as mem %s\n"x  ;
+											print_expression    (expVaToExp assign) 0;new_line(); flush() ;space(); flush(); new_line(); flush();
+
+
+												Printf.printf "Beforen\n"  ;
+											print_expression    assignBefore 0;new_line(); flush() ;space(); flush(); new_line(); flush();
+											new_line(); flush() ;space(); flush(); new_line(); flush();
+	Printf.printf "nres\n"  ;
+											print_expression    nres 0;new_line(); flush() ;space(); flush(); new_line(); flush();
+											new_line(); flush() ;space(); flush(); new_line(); flush();
+
+												);*)
+ 
 							let (na,istab,tab,i) = getArrayAssign x index (EXP(nres))  in
 
-
+ 
+ 
 
 							let (resb,aa) =
-									if istab then (  [na],listWithoutIndexAssign tab i a1) else ([na],a1) in
+									if istab then ( (  [na],listWithoutIndexAssign tab i a1)) else (  ([na],a1)) in
 							 (resb, listWithoutIndexAssign x index aa)
 
-						|_->
-							 let nassign = remplacerValPar  id (INDEX(VARIABLE(t),expVaToExp i)) (expVaToExp assign) in
-							 let (na,istab,tab,i) = getArrayAssign x index (EXP(nassign)) in
+						|_-> 
+							let nres = if t = "" then expVaToExp assign 
+			                           else 
+										remplacerValPar  id (INDEX(VARIABLE(t),(remplacerValPar  id (CONSTANT(CONST_INT("0"))) (expVaToExp nindex))))  (expVaToExp assign)  in
 
-							  let (res,aa) = if istab then (
-									 [na],listWithoutIndexAssign tab i a1) else ([na],a1) in
-							 (res, listWithoutIndexAssign x index aa)
+							 let (na,istab,tab,i) = getArrayAssign x index (EXP( nres)) in
+
+							  let (res,aa) = if istab then (  [na],listWithoutIndexAssign tab i a1) else ([na],a1) in
+							 (res, listWithoutIndexAssign x index aa)(*listWithoutVarAssignSingle x a1 hasstructtorename*)
 				end
 				else
-					if couldExistAssignVarIndexList x a1 index || (isOk && (couldExistAssignVarIndexList t a1 i)) then
-						 ([new_assign_mem x index MULTIPLE] , a1)
-					else (* n'appartient pas à ro1*)
-						(
-								let nassign = remplacerValPar  id (INDEX(VARIABLE(t),expVaToExp i)) (expVaToExp assign) in
-								let (na,istab,tab,i) = getArrayAssign x index (EXP(nassign)) in
-								let (res,aa) = if istab then
-									(  [na],listWithoutIndexAssign tab i a1) else ([na],a1) in
-							 (res, listWithoutIndexAssign x index aa)
-						)
-			end
+				begin
+					let estTab = if t ="" then false else true in 
+
+ 
+ 
+
+					if  (estTab &&  (existeAffectationVarIndexListe t a1 tabindex)) then
+					begin 	 
+
+						
+
+						 
+
+						let  ro2avant = (roindex t a1 tabindex)  in
+						match  ro2avant with
+							ASSIGN_DOUBLE (_, _, e) ->
+ 
+
+								let assignBefore =  expVaToExp e in
+								let expassign = (expVaToExp assign) in
+								let res = unionCONSTCOUNPOUND  expassign assignBefore in
+
+								let nres =  remplacerValPar  id (INDEX(VARIABLE(t),(remplacerValPar  id (CONSTANT(CONST_INT("0"))) (expVaToExp tabindex))))  res   in
+
+								let (na,istab,tab,i) = getArrayAssign t tabindex (EXP(nres))  in
+
+ 
+
+								let (resb,aa) =
+										(*if istab then*) (  [na],listWithoutIndexAssign tab i a1) (*else ([na],a1) *) in
+								 (resb, listWithoutIndexAssign x index aa)
+
+							|_-> 	 
+								 let nassign = remplacerValPar  id (INDEX(VARIABLE(t),(remplacerValPar  id (CONSTANT(CONST_INT("0"))) (expVaToExp tabindex))))  (expVaToExp assign) in
+								 let (na,istab,tab,i) = getArrayAssign x index (EXP(nassign)) in
+
+								  let (res,aa) = (*if istab then *)(
+										 [na],listWithoutIndexAssign tab i a1)(* else ([na],a1)*) in
+								 (res, listWithoutIndexAssign x index aa)
+					end
+					else 
+						if couldExistAssignVarIndexList x a1 index || (estTab && (couldExistAssignVarIndexList t a1 tabindex)) then
+							 ([new_assign_mem x index MULTIPLE] , a1)
+						else (* n'appartient pas à ro1*)
+							(	 
+									let nassign = remplacerValPar  id (INDEX(VARIABLE(t),(remplacerValPar  id (CONSTANT(CONST_INT("0"))) (expVaToExp nindex))))  (expVaToExp assign) in
+									let (na,istab,tab,i) = getArrayAssign x index (EXP(nassign)) in
+									let (res,aa) = if istab then
+										(  [na],listWithoutIndexAssign tab i a1) else ([na],a1) in
+								 (res, listWithoutIndexAssign x index aa)
+							)
+				end
 
 
 (*let rechercherToutesLesVariablesDE a1 a2 = rechercheLesVar a2 (rechercheLesVar a1 [])  *)
@@ -6404,7 +6532,7 @@ LocalAPContext.print ptr ;*)
 
 
 and getTabAssign sortie a g i ptr=
-
+Printf.printf "getTabAssign ...ok  \n" ;
 let index = match sortie with VAR(_, _,_,_)->CONSTANT(CONST_INT("0"))| TAB (_, e1, _,_,_)-> expVaToExp (applyStoreVA (applyStoreVA e1 a)g)|_->NOTHING in
 let valindex = ( calculer  (EXP(index))   !infoaffichNull [] 1) in
 match sortie with
@@ -6421,7 +6549,7 @@ match sortie with
 
 									(*let (before, next) =    roavant a newassign  [] in*)
 									if (existeAffectationVarListe ("*"^var) a ) = false then
-									begin (* Printf.printf "getTabAssign ...ok %s \n" id;*)
+									begin  Printf.printf "getTabAssign ...ok %s \n" id;
 										let listassign = List.map(
 											fun aSCourant ->  match aSCourant with ASSIGN_SIMPLE (_, _) -> aSCourant
 													|	ASSIGN_DOUBLE (n, EXP(ei), ee) ->
@@ -6767,18 +6895,18 @@ begin
 	let (first, next) = (List.hd others, List.tl others) in
 	let (firstChange, nextchanges) = ([List.hd newothers], List.tl newothers) in
 	let (before, after) = roavant  nasl first [] in
-(*afficherListeAS before;space();flush();new_line();
+afficherListeAS before;space();flush();new_line();
 Printf.printf "\nactual\n";
 afficherAS first;space();flush();new_line();
 Printf.printf "\nafter\n";
 afficherListeAS after;space();flush();new_line();
-Printf.printf "\nend\n";*)
+Printf.printf "\nend\n";
 	let na = applynewothers before firstChange in
 	let nl =  (traiterOthers (List.append na(List.append [first] after)) next nextchanges)  in
 
-(*Printf.printf "\traiterOthers\n";
+Printf.printf "\traiterOthers\n";
 afficherListeAS nl;space();flush();new_line();
-Printf.printf "\traiterOthers\n";*)
+Printf.printf "\traiterOthers\n";
 
 	 nl
 end
@@ -6861,7 +6989,7 @@ match assign with
 								let (isTruecteArg1, _) =isTrueConstant (expVaToExp e2)  in
 								if isTruecteArg1 then
 								begin
-									(*Printf.printf "truecte\n";*)
+									Printf.printf "truecte\n";
 									[ASSIGN_MEM (id, e1, EXP(CALL (VARIABLE("SET") ,
 											List.append [UNARY(MEMOF, BINARY(ADD,VARIABLE(id), expVaToExp e1))]
 
@@ -6960,7 +7088,7 @@ end
 and remplacerUneAffect assign aSC =
 let listeDesVarModifiees = (rechercheLesVar aSC [] ) in
 
-(*Printf.printf " remplacer remplacerUneAffect \n";afficherAS assign;new_line();*)
+Printf.printf " remplacer remplacerUneAffect \n";afficherAS assign;new_line();
 match assign with
 	ASSIGN_SIMPLE (id, e)->
 		(match e with
