@@ -1913,7 +1913,7 @@ if id = var&& eqindex e i then true
 else
 begin
 	let (tab1,_, _) =getArrayNameOfexp (expVaToExp e) in
-Printf.printf "eqmemindex:tableau tab trouve tab %s ptr %s \n" tab1 id;
+ 
 	let (index , _) = consArrayFromPtrExp (expVaToExp e )  tab1 in
 
 	if tab1 = "" then false else tab1 = var && eqindex (EXP index) i (* the same var and the same index *)
@@ -3146,7 +3146,7 @@ let suite = List.tl l in
 	| ASSIGN_MEM (s, e1, e2)	->
 			if s = v (*and il faut évaluer les 2 expression index = e1*) then
 			begin
-				(*if !vDEBUG then*) begin	Printf.eprintf "tableau avec index à terminer\n";(* afficherAS a *) end;
+				if !vDEBUG then begin	Printf.eprintf "tableau avec index à terminer\n";(* afficherAS a *) end;
 				e2
 			end
 			else  rechercheAffectVDsListeAS v (*index*) suite
@@ -6895,18 +6895,18 @@ begin
 	let (first, next) = (List.hd others, List.tl others) in
 	let (firstChange, nextchanges) = ([List.hd newothers], List.tl newothers) in
 	let (before, after) = roavant  nasl first [] in
-afficherListeAS before;space();flush();new_line();
+(*afficherListeAS before;space();flush();new_line();
 Printf.printf "\nactual\n";
 afficherAS first;space();flush();new_line();
 Printf.printf "\nafter\n";
 afficherListeAS after;space();flush();new_line();
-Printf.printf "\nend\n";
+Printf.printf "\nend\n";*)
 	let na = applynewothers before firstChange in
 	let nl =  (traiterOthers (List.append na(List.append [first] after)) next nextchanges)  in
 
-Printf.printf "\traiterOthers\n";
+(*Printf.printf "\traiterOthers\n";
 afficherListeAS nl;space();flush();new_line();
-Printf.printf "\traiterOthers\n";
+Printf.printf "\traiterOthers\n";*)
 
 	 nl
 end
@@ -7088,7 +7088,7 @@ end
 and remplacerUneAffect assign aSC =
 let listeDesVarModifiees = (rechercheLesVar aSC [] ) in
 
-Printf.printf " remplacer remplacerUneAffect \n";afficherAS assign;new_line();
+(*Printf.printf " remplacer remplacerUneAffect \n";afficherAS assign;new_line();*)
 match assign with
 	ASSIGN_SIMPLE (id, e)->
 		(match e with

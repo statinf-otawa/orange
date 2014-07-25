@@ -4441,8 +4441,8 @@ let newaffect =
 								let ne = consCommaExp (VARIABLE(id)) btype [id] lid (BINARY(op, e1, e2)) false NOTHING in
 								[new_instVarAndPtr id (EXP(ne) )]
 								
-							end else ( Printf.eprintf "creerAFFECT struct expr not implemented strunt 1\n"; []);	 
-				| MEMBEROFPTR (e , t) 	->	 Printf.eprintf "creerAFFECT struct expr not implemented strunt 1\n";
+							end else ( (*Printf.eprintf "creerAFFECT struct expr not implemented strunt 1\n";*) []);	 
+				| MEMBEROFPTR (e , t) 	->	 (*Printf.eprintf "creerAFFECT struct expr not implemented strunt 1\n";*)
 							let lid =	getInitVarFromStruct e1  in
 							let id = if lid != [] then List.hd lid else (Printf.eprintf "not id 3876\n"; "noid") in
 							let (btype, isdeftype) = 
@@ -4533,7 +4533,7 @@ and treatStruct exp1 exp2 i t isStruct =
 			if isTruecteArg then
 			begin 
 				let tid = if lid != [] then List.hd (List.rev lid) else (Printf.eprintf "not id 3876\n"; "noid") in
-				print_expression exp1 0 ; flush();space() ;flush();space() ;  Printf.eprintf "array of array expr not implemented %s\n" id ;
+				(*print_expression exp1 0 ; flush();space() ;flush();space() ;  Printf.eprintf "array of array expr not implemented %s\n" id ;*)
 				if (List.mem_assoc tid !listAssosTypeDefArrayIDsize) then (*ajouter une option pour struct détaillé*)
 				begin
 					let size = getAssosTypeDefArrayIDsize tid in
@@ -4829,7 +4829,7 @@ and  analyse_expressionaux exp =
 					Printf.printf "analyse_expressionaux %s EXISTE \n" name ;*)
 					 let (fichier , ligne ) = getAssosIdCallFunctionRef ida in
 
-					(*Printf.printf "analyse_expressionaux %s EXISTE %s fichier %d line\n" name fichier ligne ;*)
+					Printf.printf "analyse_expressionaux 45  %s EXISTE %s fichier %d line\n" name fichier ligne ;
 					listeBoucleOuAppelCourante	:= 
 						List.append  !listeBoucleOuAppelCourante  [IDAPPEL(ida, exp, !listeDesInstCourantes,"", !trueList,!falseList ,fichier , ligne)];
 					let _ = traiterAppelFonction e args !listeDesInstCourantes ida in
@@ -4864,6 +4864,7 @@ and  analyse_expressionaux exp =
 (*Printf.printf "analyse_expressionaux %s num appel %d \n" (nomFonctionDeExp e) ida;		
 Printf.printf "analyse_expressionaux %s NON EXISTE \n" (nomFonctionDeExp e) ;*)
 					 let (fichier , ligne ) = getAssosIdCallFunctionRef ida in
+Printf.printf "analyse_expressionaux %s EXISTE %s fichier 89 %d line\n" nom fichier ligne ;
 					listeBoucleOuAppelCourante	
 						:= List.append  !listeBoucleOuAppelCourante [IDAPPEL(ida, exp,!listeDesInstCourantes,"" , !trueList,!falseList ,fichier , ligne)];
 					let isComponant = traiterAppelFonction e args !listeDesInstCourantes ida in

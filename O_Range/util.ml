@@ -1168,7 +1168,7 @@ let rec remplacerValPar  var nouexp expr =
 
 
 let rec remplacerPtrParTab  var nouexp expr =
-Printf.printf "remplacerPtrParTab :  %s 11 \n"  var;
+(*Printf.printf "remplacerPtrParTab :  %s 11 \n"  var;*)
 	match expr with
 	NOTHING 					-> NOTHING
 	| UNARY (op, exp) 			-> UNARY (op, remplacerPtrParTab   var nouexp exp)
@@ -1181,13 +1181,12 @@ Printf.printf "remplacerPtrParTab :  %s 11 \n"  var;
 	| CONSTANT ( CONST_COMPOUND expsc)  -> CONSTANT ( CONST_COMPOUND ( List.map(fun a-> remplacerPtrParTab  var nouexp a)expsc))
 	| COMMA exps 					->	(COMMA ( List.map (fun a -> remplacerPtrParTab  var nouexp a) exps))
 	| MEMBEROF (ex, c) 			->   (MEMBEROF (remplacerPtrParTab   var nouexp ex,   c) )
-	| MEMBEROFPTR (ex, c) 		->	Printf.printf "remplacerPtrParTab :  %s 112 \n"  var;
-
+	| MEMBEROFPTR (ex, c) 		->	(*Printf.printf "remplacerPtrParTab :  %s 112 \n"  var;*)
 let lid =	getInitVarFromStruct ex  in
-									let id = if lid != [] then List.hd lid else (Printf.printf "not id 3876\n"; "noid") in
+									let id = if lid != [] then List.hd lid else ((*Printf.eprintf "not id 3876\n"; *)"noid") in
 
-Printf.printf "remplacement ??? %s %s\n" id var;   
-									if id = var then (Printf.printf "remplacement ok %s %s\n" id var;   MEMBEROF (remplacerValPar  var nouexp ex, c) ) else  (MEMBEROFPTR (remplacerPtrParTab   var nouexp ex,   c) )
+(*Printf.printf "remplacement ??? %s %s\n" id var; *) 
+									if id = var then ((*Printf.printf "remplacement ok %s %s\n" id var; *)  MEMBEROF (remplacerValPar  var nouexp ex, c) ) else  (MEMBEROFPTR (remplacerPtrParTab   var nouexp ex,   c) )
 	| EXPR_SIZEOF exp -> EXPR_SIZEOF (remplacerPtrParTab   var nouexp exp )
 	| EXPR_LINE (expr, _, _) ->
 			remplacerValPar   var nouexp  expr
