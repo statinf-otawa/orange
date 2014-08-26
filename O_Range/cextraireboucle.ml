@@ -2895,15 +2895,15 @@ and analyse_defPB def =
 
 and getStatementLine stat =
 match stat with
-	| STAT_LINE (st, file, line) -> 
-			(match st with
-				| BLOCK (_, statement)
-				| STAT_LINE (statement,_,_) ->	getStatementLine statement
-				|_-> Some (line , file)
-			)
-	| BLOCK (_, statement) ->	getStatementLine statement
+	| STAT_LINE (st, file, line) -> Some (line , file)
+			(*(match st with
+				| BLOCK (_, statement) 
+			 | STAT_LINE (statement,_,_) TO SEE XITH PASCAL + VINCENT ->	getStatementLine statement*)
+			(*	|_->Some (line , file)
+			)*) 
+	(*| BLOCK (_, statement) ->	getStatementLine statement*)
 	| _ ->			None
-
+ 
 	
 
 and  consRefstatement   stat =
@@ -2964,13 +2964,13 @@ and  consRefexpression exp =
 	| QUESTION (exp1, exp2, exp3) -> consRefexpression exp1 ; consRefexpression exp2; consRefexpression exp3;()
 	| CAST (_, e) 		 ->  consRefexpression e ; ()
 	| CALL (e , args) 				->		idAppel := !idAppel+1;
-				setAssosIdCallFunctionRef !idAppel (!fileCour , !numLine );(*Printf.printf "setAssosIdCallFunctionRef functiuon %s numAppel %d \n" (nomFonctionDeExp e) !idAppel;*)
+				setAssosIdCallFunctionRef !idAppel (!fileCour , !numLine );  
 				List.iter (fun ep -> consRefexpression ep) args; 
 				(* Printf.printf "setAssosIdCallFunctionRef functiuon %s numAppel %d \n" (nomFonctionDeExp e) !idAppel;*) ()
 	| COMMA e 				->    List.iter (fun ep -> consRefexpression ep) e; ()
 	| MEMBEROF (e , _) 		
 	| MEMBEROFPTR (e , _) 	->		consRefexpression e ; ()
-	| GNU_BODY (decs, stat) ->  consRefstatement   (BLOCK (decs, stat));()
+	| GNU_BODY (decs, stat) ->   Printf.printf "setAssosIdCallFunctionRef   numAppel GNU_BODY %d \n"  !idAppel; consRefstatement   (BLOCK (decs, stat));Printf.printf "setAssosIdCallFunctionRef   GNU_BODY numAppel %d \n"  !idAppel;()
 	| EXPR_SIZEOF e ->consRefexpression e;()
 	| INDEX (e, _) ->consRefexpression e;()
 	| EXPR_LINE (exp, file, line)-> fileCour := file; numLine := line; consRefexpression exp;()		
@@ -3519,8 +3519,9 @@ let rec analyse_statement   stat =
 
 		listeDesInstCourantes := [];
 		trueList := List.append !trueList [varIfN];
+	
 		analyse_statement  s1;
-
+	 
 		let listeThen = !listeDesInstCourantes in
 (*Printf.printf"analyse statement if\n";
 afficherLesAffectations !listeDesInstCourantes;*)
@@ -3541,7 +3542,7 @@ afficherLesAffectations !listeDesInstCourantes;*)
 				begin					 
 					listeBoucleOuAppelCourante := [];
 					listeDesInstCourantes := [];
-					falseList := List.append !falseList [varIfN];
+					falseList := List.append !falseList [varIfN]; 
 					analyse_statement  s2;			
 					let listeElse = !listeDesInstCourantes in
 
@@ -3607,7 +3608,7 @@ print_statement  s2 ;*)
 			 	
 					upperLoop := numBoucle;
 					(*if into = false then  upperLoop := a;*)
-		 
+		
 				let (ida,nbi,idb,id_if,l) = (!idAppel,!nbImbrications , !idBoucle,!idIf,!listeDesInstCourantes) in	
 				let maListeDesBoucleOuAppelPredP = !listeBoucleOuAppelCourante in
 				listeDesInstCourantes := []; onlyAexpression   exp ; onlyAstatement stat;onlyAexpression   exp ;
@@ -4478,7 +4479,7 @@ listeDesInstCourantes := List.append !listeDesInstCourantes   newaffect;
 and affectationUnaire op e = creerAFFECT op e  (CONSTANT(CONST_INT("1")))
 and affectationBinaire op e1 e2 = creerAFFECT op e1 e2
 and contruireAux par args	=
-	if par = [] || args = [] then ()
+	if par = [] || args = [] then if args = [] then () else ( List.iter (fun ep -> analyse_expression  ep  ) args; (*Printf.printf "  pas même nb par et args\n"  ;*))
 	else
 	begin
 		analyse_expression (BINARY(ASSIGN, VARIABLE(List.hd(par)), List.hd(args)));
@@ -4813,6 +4814,7 @@ and  analyse_expressionaux exp =
 																					
 	| CAST (t, e) 						->  analyse_expressionaux e ; nouvExp:=CAST (t, !nouvExp) 
 	| CALL (e , args) 				->		
+ 
 				let listeInstPred = !listeDesInstCourantes in					
 				if existeFonction (nomFonctionDeExp e) && (not (is_in_use_partial (nomFonctionDeExp e))) then 
 				begin
@@ -4824,12 +4826,12 @@ and  analyse_expressionaux exp =
 	
 					idAppel := !idAppel + 1;
 				    let ida = !idAppel in	
-
+		 
 					(*Printf.printf "analyse_expressionaux %s num appel %d \n" name ida;	
 					Printf.printf "analyse_expressionaux %s EXISTE \n" name ;*)
 					 let (fichier , ligne ) = getAssosIdCallFunctionRef ida in
 
-					Printf.printf "analyse_expressionaux 45  %s EXISTE %s fichier %d line\n" name fichier ligne ;
+					(*Printf.printf "analyse_expressionaux 45  %s EXISTE %s fichier %d line\n" name fichier ligne ;*)
 					listeBoucleOuAppelCourante	:= 
 						List.append  !listeBoucleOuAppelCourante  [IDAPPEL(ida, exp, !listeDesInstCourantes,"", !trueList,!falseList ,fichier , ligne)];
 					let _ = traiterAppelFonction e args !listeDesInstCourantes ida in
@@ -4850,21 +4852,32 @@ and  analyse_expressionaux exp =
 				end
 				else 
 				begin 
+ 
 					listeDesInstCourantes := [];
 					let nom = (nomFonctionDeExp e) in
+
+ 
+					idAppel := !idAppel + 1;
+				    let ida = !idAppel in	
+
+ 				   
 					if existeNomFonctionDansListe nom   then
-					begin 
+					begin (* Printf.printf " %d line 11 \n"    !idAppel ;
+ List.iter (fun ep -> analyse_expression  ep  ) args; Printf.printf " %d line 12 \n"    !idAppel ;*)
 						let (_, _,base,_) = tupleNumNomFonctionDansListe nom in
 						externFct base exp nom
 					end
-					else  
-					 List.iter (fun ep -> analyse_expression  ep  ) args;
-					idAppel := !idAppel + 1;
-				    let ida = !idAppel in	
+					else  List.iter (fun ep -> analyse_expression  ep  ) args;
+
+
+
+
+ 
+
 (*Printf.printf "analyse_expressionaux %s num appel %d \n" (nomFonctionDeExp e) ida;		
 Printf.printf "analyse_expressionaux %s NON EXISTE \n" (nomFonctionDeExp e) ;*)
 					 let (fichier , ligne ) = getAssosIdCallFunctionRef ida in
-Printf.printf "analyse_expressionaux %s EXISTE %s fichier 89 %d line\n" nom fichier ligne ;
+ 
 					listeBoucleOuAppelCourante	
 						:= List.append  !listeBoucleOuAppelCourante [IDAPPEL(ida, exp,!listeDesInstCourantes,"" , !trueList,!falseList ,fichier , ligne)];
 					let isComponant = traiterAppelFonction e args !listeDesInstCourantes ida in
@@ -4890,7 +4903,9 @@ else   Printf.printf "analyse_expressionaux %s NON EXISTE IS NOT COMPOSANT\n" (n
 	| GNU_BODY (decs, stat) 		-> 	
 			let listePred = !listeDesInstCourantes in
 			listeDesInstCourantes := [];
+ 
 			analyse_statement (BLOCK (decs, stat));
+ 
 			listeDesInstCourantes := 	[new_instBEGIN  !listeDesInstCourantes];
 			listeDesInstCourantes :=    List.append listePred  !listeDesInstCourantes 	;
 			nouvExp:=GNU_BODY (decs, stat)

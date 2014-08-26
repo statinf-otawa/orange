@@ -408,7 +408,8 @@ let _ =
 	let getMergedFile args =
 		let cfiles = (List.map
 			(fun filename ->
-				match (Frontc.parse (FROM_FILE(filename) :: args)) with
+				match (Frontc.parse (FROM_FILE(filename) :: (List.filter ( fun x -> x <> USE_CPP) args))) with
+				(* match (Frontc.parse (FROM_FILE(filename) ::   args)) with INIT COMMAND*)
 					| PARSING_ERROR -> failwith ("Frontc Failled to load "^filename);
 					| PARSING_OK(defs) -> defs
 			)
