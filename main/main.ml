@@ -331,6 +331,49 @@ let analysePartielle file =
 
 
 
+(* remove line number for parsed file *)
+let rec   nolinenum_expression (exp : expression) =
+		 match exp with
+ 
+			| EXPR_LINE (exp, _, _)->  exp
+			| GNU_BODY (decs, stat) ->   GNU_BODY (decs,nolinenum_statement stat) 
+			| _ -> exp
+
+
+and nolinenum_statement stat = 
+		match stat with
+		  COMPUTATION exp -> COMPUTATION (nolinenum_expression exp)
+		| BLOCK (defs, stat) -> 
+			  BLOCK (defs, (nolinenum_statement stat))   
+		| SEQUENCE (s1, s2) -> 
+				SEQUENCE (nolinenum_statement s1, nolinenum_statement s2)
+		| IF (exp, s1, s2) ->  IF (nolinenum_expression exp, nolinenum_statement s1, nolinenum_statement s2)
+		| WHILE (exp, stat) -> WHILE (nolinenum_expression  exp, nolinenum_statement stat)
+		| DOWHILE (exp, stat)->DOWHILE (nolinenum_expression  exp, nolinenum_statement stat) 
+		| FOR (exp1, exp2, exp3, stat) ->
+			FOR (nolinenum_expression  exp1, nolinenum_expression  exp2,nolinenum_expression  exp3, nolinenum_statement stat)
+		| RETURN exp -> 		RETURN (nolinenum_expression exp)
+		| SWITCH (exp, stat) ->	SWITCH (nolinenum_expression exp, nolinenum_statement stat)
+		| CASE (exp, stat) ->	CASE (nolinenum_expression exp, nolinenum_statement stat)
+		| DEFAULT stat -> 		DEFAULT (nolinenum_statement stat)
+		| LABEL (name, stat) ->	LABEL (name, nolinenum_statement stat) 	
+		| STAT_LINE (stat, file, line) ->   (nolinenum_statement stat) 
+		| _ ->	stat
+
+
+
+
+and nolinenum_def def =
+		match def with
+			FUNDEF (proto, body) ->
+
+			    let (decs, stat) = body in 
+				
+				FUNDEF (  proto,  (decs , nolinenum_statement stat)) 
+			| _ -> def 
+
+
+
 
 
 (* === Main program === *)
@@ -408,8 +451,8 @@ let _ =
 	let getMergedFile args =
 		let cfiles = (List.map
 			(fun filename ->
-				match (Frontc.parse (FROM_FILE(filename) :: (List.filter ( fun x -> x <> USE_CPP) args))) with
-				(* match (Frontc.parse (FROM_FILE(filename) ::   args)) with INIT COMMAND*)
+				(*match Frontc.parse (FROM_FILE(filename) :: (List.filter ( fun x -> x <> USE_CPP) args))) with*)
+				 match (Frontc.parse (FROM_FILE(filename) ::   args)) with  
 					| PARSING_ERROR -> failwith ("Frontc Failled to load "^filename);
 					| PARSING_OK(defs) -> defs
 			)
@@ -449,7 +492,7 @@ let _ =
 	printf ".merge.cm ...\n";
 	let out = open_out ".merge.cm" in
 
-	printf "..nombre de définitions %u entrees, affichage: \n"(List.length(firstParse));
+	(*printf "..nombre de définitions %u entrees, affichage: \n"(List.length(firstParse));*)
 	Cprint.print  out firstParse;
 	close_out out;
 		
@@ -483,9 +526,37 @@ let _ =
 
 	
 	(* Second parse *)
-	let secondParse =
+
+
+	
+	(* Second parse *)
+(*	let secondParse = (*
 		let merge_file = (getMergedFile a2)
-		in Rename.go(Frontc.trans_old_fun_defs  merge_file ) in
+		in Rename.go(Frontc.trans_old_fun_defs  merge_file ) *)  in*)
+
+
+
+	(* Second parse *)
+	let second  =   (List.map	(fun dec -> nolinenum_def dec)		  firstParse ) in
+
+
+
+	let out = open_out "/tmp/.merge2.c" in
+	Cprint.print  out second;
+	close_out out;
+
+	let secondParse =(
+		 match Frontc.parse (FROM_FILE("/tmp/.merge2.c") :: a2) with  
+
+					| PARSING_ERROR -> failwith ("Frontc Failled to load ");
+					| PARSING_OK(defs) -> defs) in
+
+   
+  (*  let myString =  ( Cprint.print_defs second) in
+	let secondParse = Frontc.parse_channel  
+					(Stream.of_string myString)  
+					stdout 
+			in *)
 	
 	if !onlyGraphe then	(* Call graph mode *)
 		if (!completeGraphe)

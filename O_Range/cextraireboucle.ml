@@ -122,12 +122,17 @@ let aUneFctNotDEf = ref false
 	let listVarIFRef = ref []
 	let listIdCallFunctionRef =ref  []
 	let exitsAssosIdLoopRef id = List.mem_assoc id !listLoopIdRef
-	let setAssosIdLoopRef id refe = if exitsAssosIdLoopRef id = false then listLoopIdRef := List.append   [(id, refe)]   !listLoopIdRef
+	let setAssosIdLoopRef id refe = if exitsAssosIdLoopRef id = false then 
+									(
+										listLoopIdRef := List.append   [(id, refe)]   !listLoopIdRef )
 	let getAssosIdLoopRef id = if exitsAssosIdLoopRef id then List.assoc id !listLoopIdRef else ("",0)
 	
 	
     let exitsAssosIdIFRef id = List.mem_assoc id !listVarIFRef
-	let setAssosIdIFRef id refe =listVarIFRef := List.append   [(id, refe)]   !listVarIFRef
+	let setAssosIdIFRef id refe =listVarIFRef := 
+						(
+										List.append   [(id, refe)]   !listVarIFRef
+						)
 	let getAssosIdIFRef id = if exitsAssosIdIFRef id then (*let (file, line, _,_) =*) List.assoc id !listVarIFRef (*in (file, line)*) else ("",0, None, None)
 
 
@@ -2895,14 +2900,23 @@ and analyse_defPB def =
 
 and getStatementLine stat =
 match stat with
-	| STAT_LINE (st, file, line) -> Some (line , file)
+	| STAT_LINE (_, file, line) -> Some (line , file)
 			(*(match st with
 				| BLOCK (_, statement) 
 			 | STAT_LINE (statement,_,_) TO SEE XITH PASCAL + VINCENT ->	getStatementLine statement*)
 			(*	|_->Some (line , file)
 			)*) 
-	(*| BLOCK (_, statement) ->	getStatementLine statement*)
-	| _ ->			None
+	| BLOCK (_, statement)  ->		getStatementLine statement
+(*	| SEQUENCE (s1, s2) ->	let res =  getStatementLine   s1  in		
+		(match res with
+			None ->  getStatementLine   s2;
+			|_ -> res)	*)
+	| COMPUTATION exp -> (match exp with
+				| EXPR_LINE (_ , file, line)->    Some (line , file)
+				| _ ->	  None
+		)	
+	(*|	NOP -> 	None*)
+	| _ ->		None
  
 	
 
@@ -2918,7 +2932,7 @@ and  consRefstatement   stat =
 
 		let (fic, numl) = (!fileCour , !numLine) in
 		setAssosIdIFRef varIfN (fic , numl, getStatementLine s1, getStatementLine s2 );	  
-
+	 
 		consRefstatement  s1; consRefstatement  s2;
 	()			
 	| WHILE (exp, stat) ->  	(*analyse_expression  exp ;rien condition sans effet de bord*)	
@@ -2954,6 +2968,7 @@ and  consRefstatement   stat =
 	| DEFAULT stat ->				consRefstatement    stat;()
 	| LABEL ((*name*)_, stat) ->	consRefstatement    stat;()
 	| STAT_LINE (stat, file, line) ->  fileCour := file; numLine := line; consRefstatement stat;()
+
 	| _ ->			(*Printf.printf "DEFAUT STATEMENT\n";*)	()
 	 
 
@@ -2970,7 +2985,7 @@ and  consRefexpression exp =
 	| COMMA e 				->    List.iter (fun ep -> consRefexpression ep) e; ()
 	| MEMBEROF (e , _) 		
 	| MEMBEROFPTR (e , _) 	->		consRefexpression e ; ()
-	| GNU_BODY (decs, stat) ->   Printf.printf "setAssosIdCallFunctionRef   numAppel GNU_BODY %d \n"  !idAppel; consRefstatement   (BLOCK (decs, stat));Printf.printf "setAssosIdCallFunctionRef   GNU_BODY numAppel %d \n"  !idAppel;()
+	| GNU_BODY (decs, stat) ->     consRefstatement   (BLOCK (decs, stat)); ()
 	| EXPR_SIZEOF e ->consRefexpression e;()
 	| INDEX (e, _) ->consRefexpression e;()
 	| EXPR_LINE (exp, file, line)-> fileCour := file; numLine := line; consRefexpression exp;()		
@@ -3505,6 +3520,7 @@ let rec analyse_statement   stat =
 		let trueListPred = !trueList in
 		let falseListPred = !falseList in
 		idIf := !idIf + 1;
+ 
 		analyse_expression   exp ;
 		let ne = !nouvExp in   
 		let varIfN =  Printf.sprintf "%s-%d" "IF" !idIf  in	 
@@ -3519,12 +3535,16 @@ let rec analyse_statement   stat =
 
 		listeDesInstCourantes := [];
 		trueList := List.append !trueList [varIfN];
-	
+	let (fic,lig, infothen, infoelse)=getAssosIdIFRef varIfN in		
+
+(*Printf.printf"analyse statement if %s %d \n" varIfN  lig;	
+	Printf.printf "condition   dans fichier %s\n" fic ; print_expression exp 0;new_line();flush(); new_line();space(); new_line();
+	new_line();flush(); new_line();space(); new_line();new_line();flush(); new_line();space(); new_line();new_line();flush(); new_line();space(); new_line();new_line();flush(); new_line();space(); new_line();*)
 		analyse_statement  s1;
 	 
 		let listeThen = !listeDesInstCourantes in
-(*Printf.printf"analyse statement if\n";
-afficherLesAffectations !listeDesInstCourantes;*)
+
+(*afficherLesAffectations !listeDesInstCourantes;*)
 		let bouavrai = !listeBoucleOuAppelCourante in
 		trueList := trueListPred ;
   		let (instthen,treethen, instelse,treeelse) =
@@ -3561,7 +3581,7 @@ print_statement  s2 ;*)
 					falseList := falseListPred;
 					(listeThen,bouavrai,listeElse,!listeBoucleOuAppelCourante)
 				end in	
-		let (fic,lig, infothen, infoelse)=getAssosIdIFRef varIfN in			
+		 	
 		listeBoucleOuAppelCourante	:= 
 			List.append  maListeDesBoucleOuAppelPred   [IDIF(varIfN , instthen,treethen, instelse,treeelse,trueListPred,falseListPred,fic,lig, infothen, infoelse,ne)]
 												
@@ -3593,7 +3613,10 @@ print_statement  s2 ;*)
 		listAssocIdType := List.append !listAssocIdType [(varBoucleIfN, INT_TYPE)] ;
 		let listePred = !listeDesInstCourantes in
 		listeDesInstCourantes := !listeNextExp;		
-		let (fic,lig)=getAssosIdLoopRef numBoucle in															
+		let (fic,lig)=getAssosIdLoopRef numBoucle in	
+
+										 
+									 												
 		listeBoucleOuAppelCourante	:= List.append  !listeBoucleOuAppelCourante   [IDBOUCLE(numBoucle, !trueList,!falseList ,fic ,lig)];	
 		let maListeDesBoucleOuAppelPred = 	!listeBoucleOuAppelCourante		in
 
@@ -3759,7 +3782,8 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		let listePred = !listeDesInstCourantes in
 		listeDesInstCourantes := [];
 		listAssocIdType := List.append !listAssocIdType [(varBoucleIfN, INT_TYPE)] ;
-		let (fic,lig)=getAssosIdLoopRef numBoucle in												
+		let (fic,lig)=getAssosIdLoopRef numBoucle in	
+ 											
 		listeBoucleOuAppelCourante	:= List.append !listeBoucleOuAppelCourante  [IDBOUCLE(numBoucle, !trueList,!falseList, fic,lig)];
 		let listeBouclesInbriqueesPred  = !listeDesBouclesDuNidCourant in					
 		listeDesBouclesDuNidCourant := List.append  !listeDesBouclesDuNidCourant [numBoucle];			
@@ -3952,7 +3976,8 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 		let listePred = !listeDesInstCourantes in
 		listAssocIdType := List.append !listAssocIdType [(varBoucleIfN, INT_TYPE)] ;
 		listeDesInstCourantes := !listeNextExp;	
-		let (fic,lig)=getAssosIdLoopRef num in										
+		let (fic,lig)=getAssosIdLoopRef num in				
+ 								
 		listeBoucleOuAppelCourante	:= List.append  !listeBoucleOuAppelCourante [IDBOUCLE(num, !trueList,!falseList, fic, lig )];	
 		let listeBouclesInbriqueesPred  = !listeDesBouclesDuNidCourant in
 		let maListeDesBoucleOuAppelPred = 	!listeBoucleOuAppelCourante		in
