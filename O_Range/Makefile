@@ -14,17 +14,29 @@ SOURCES = \
 	increment.ml\
     covariance.ml \
 	cextraireboucle.ml \
+	balance.ml \
 	orange.ml 
 
 # absClassProperty.ml\
 	
-OCAMLC_CFLAGS += -g
+OCAMLC_CFLAGS += -g #-p f  #profiler (fcts)
 OCAMLC_LDFLAGS += -g
-OCAML_INC += ../../frontc/frontc
-OCAML_LIB += unix ../../frontc/frontc/frontc
-OCAMLYACC_FLAGS = -v
+OCAML_INC += ../../frontc/frontc ../../xml-light
+OCAML_LIB += unix ../../frontc/frontc/frontc ../../xml-light/xml-light
 
-$(eval $(call ocaml_prog,orange, $(SOURCES), no_install $(PROG_FLAGS)))
+
+$(eval $(call ocaml_prog,orange, $(SOURCES), no_install))
 $(eval $(call ocaml_lib,orange,$(SOURCES), no_install))
 
+
+
+OCAMLYACC_FLAGS = -v
+
+
+
+
 include ../Makefile.tail
+
+
+
+
