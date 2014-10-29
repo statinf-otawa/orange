@@ -1,0 +1,2 @@
+the input ffx changes use xml-light, which can be found in the FFX2PVAL directory
+(the makefile assumes a similar location as for frontc, which is the parent folder).
