@@ -287,7 +287,7 @@ else if lid1 = [] || lid2 = [] then false
 (*	let nee = consCommaExp (VARIABLE(id)) btype [id] lid ne  in*)
 let rec consCommaExp front t champlist champlistLookingFor exp  withindex index=
 match t with
-	FLOAT_TYPE |INT_TYPE  -> 
+	FLOAT_TYPE |INT_TYPE  ->(* Printf.printf    " util :consCommaExp = FLOAT_TYPE |INT_TYPE  ";  new_line(); *)
 				if champlistLookingFor = [] then (*front VARIABLE ("NOINIT")*)front
 				else
 				begin
@@ -299,20 +299,21 @@ match t with
 							exp
 						end
 						else	exp	
-					else (*front*)VARIABLE ("--NOINIT--")
+					else  front 
 				end
-	|UNION_TYPE s| TYPEDEF_NAME s->  
+	|UNION_TYPE s| TYPEDEF_NAME s-> (* Printf.printf    " util :consCommaExp = UNION_TYPE s| TYPEDEF_NAME ";  new_line(); *)
 		 if (List.mem_assoc s !listAssosIdTypeTypeDec)= true then 
 		 begin
 			match  (List.assoc s !listAssosIdTypeTypeDec)  with 
 				 TYPEDEFTYPE (typ,_) -> consCommaExp front typ champlist champlistLookingFor exp withindex index | _->(*front VARIABLE ("NOINIT")*) front
 		 end
 		else (*front VARIABLE ("NOINIT")*)front
-	|  STRUCT_TYPE s ->  
+	|  STRUCT_TYPE s ->   (* Printf.printf    " util :consCommaExp = STRUCT_TYPE ";  new_line(); *)
 		if (List.mem_assoc s !listAssosIdTypeTypeDec)= true then 
 		 begin
 			match  (List.assoc s !listAssosIdTypeTypeDec)  with  
-				STRUCTORUNION (l) -> 
+				STRUCTORUNION (l) -> (*print_expression exp 0 ; flush();space() ;Printf.printf    " consCommaExp = ";  new_line(); *)
+							
 					
 							CONSTANT(	CONST_COMPOUND(
 									List.map (
@@ -321,9 +322,12 @@ match t with
 										  consCommaExp ( MEMBEROF (front, n)) t champlist champlistLookingFor exp   withindex index
 									)l  ))
 						
-				| _->(*frontVARIABLE ("NOINIT")*)front
+				| _->(* Printf.printf    " util : consCommaExp = NOINIT";  new_line(); *) (*frontVARIABLE ("NOINIT")*)front
 		 end
-		else (*front VARIABLE ("NOINIT")*)front
+		else (* Printf.printf    " util : consCommaExp = NOINIT because other";  new_line(); *) (*front VARIABLE ("NOINIT")*)front
+
+
+
 
 let rec getconsCommaExp  t  champlistLookingFor lexp =
 
@@ -416,6 +420,23 @@ let (listeAssosPtrNameType: (string *newBaseType )list ref)=  ref []
 	let existAssosPtrNameType  name  = (List.mem_assoc name !listeAssosPtrNameType)
 	let getAssosPtrNameType name  = (List.assoc name !listeAssosPtrNameType)
  
+
+let getIsStructVar var =
+let (btype, isdeftype) =
+			if List.mem_assoc var !listAssocIdType then (getBaseType (List.assoc var !listAssocIdType), true)
+			else
+				if List.mem_assoc var !listeAssosPtrNameType then (getBaseType (List.assoc var !listeAssosPtrNameType), true)
+				else (INT_TYPE, false)
+	in
+
+	if isdeftype then
+	begin
+		let (isStruct, _) = isStructAndGetIt btype    in
+	     isStruct
+	end 
+	else false
+
+
 
 (* fonction de recherche booleenne *)
 	let rec estProto typ =

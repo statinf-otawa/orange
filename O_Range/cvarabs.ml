@@ -1993,7 +1993,7 @@ and get_base_typeEPS  ntyp =
 	| FLOAT (_) | DOUBLE (_)  -> FLOAT_TYPE
 	| NAMED_TYPE id  ->   TYPEDEF_NAME(id)
 	| STRUCT (id, dec) ->
-
+ 
 			let nid = if id ="" then
 				((*Printf.printf "NONAMMED STRUCT %s_T\n"!nonamedForTypeDef; *)Printf.sprintf "%s_T"  !nonamedForTypeDef) else id in
 			if  dec != [] && (List.mem_assoc nid !listAssosIdTypeTypeDec)= false then
@@ -2001,7 +2001,7 @@ and get_base_typeEPS  ntyp =
 
 						let newType = STRUCT_TYPE (nid) in
 						(*printfBaseType newType;*)
-			if  dec != [] then newType else ((*Printf.printf "recursive type not implemented%s\n" id;*) FLOAT_TYPE)
+			if  dec != [] then newType else if (List.mem_assoc id !listAssosIdTypeTypeDec) then newType else  (Printf.eprintf "recursive type not implemented%s\n" id; FLOAT_TYPE)
 
 	| UNION (id, dec) ->
 			let nid = if id ="" then ((*Printf.printf "NONAMMED UNION %s_T\n"!nonamedForTypeDef;*) Printf.sprintf "%s_T"  !nonamedForTypeDef) else id in
@@ -3504,27 +3504,37 @@ let traiterChampOfstruct id a e idsaufetoile lid isptr=
 											|_-> traiterChampOfstructAux (List.append [tab1] lid) valeur tab1 btype e a) in
 										(*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas TAB->a %s non traité %s\n" id tab1;*) (*traiterChampOfstructAux lid va id btype e a*) na
 									 end
-									else  traiterChampOfstructAux (List.append [tab1] lid) valeur id btype e a
+									else 
+										begin
+  								
+											 
+											let nlid =	getInitVarFromStruct e  in 
+											(*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas  9999 %s   %s \n" id  (List.hd nlid); *)
+											if nlid != [] && (isCallVarStruct nlid = false )  && getIsStructVar (List.hd nlid)  then  
+												  ((*Printf.printf "cvarabs :traiterChampOfstructAux cas 1\n"; *)traiterChampOfstructAux(List.append [tab1] nlid) valeur tab1 btype e a  )
+											else  ((*Printf.printf "cvarabs :traiterChampOfstructAux cas 2\n"; *)traiterChampOfstructAux (List.append [tab1] lid) valeur id btype e a )
+										end	
+
 									end else  traiterChampOfstructAux lid valeur id btype e a
 								end else  traiterChampOfstructAux lid valeur id btype e a
 						end
 
-(*Printf.printf "traiterChampOfstruct MEMBEROFPTR   cas simple%s non traité %s iiii %s\n" id gid tab1;  traiterChampOfstructAux lid valeur id btype e a
+					(*Printf.printf "traiterChampOfstruct MEMBEROFPTR   cas simple%s non traité %s iiii %s\n" id gid tab1;  traiterChampOfstructAux lid valeur id btype e a
 						end*)
 				| ASSIGN_DOUBLE (id,_,EXP(va)) ->
 						(*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas TAB.a %s non traité %s\n" id gid;*) (* boolAS:= true; (NOTHING)*)
 								traiterChampOfstructAux lid va id btype e a
 
-				| ASSIGN_MEM (id, index, EXP(va))-> (*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas TAB->a %s non traité %s 9999 %s 555 \n" id gid idsaufetoile;*) 
+				| ASSIGN_MEM (id, index, EXP(va))-> (*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas TAB->a %s non traité %s 9999 %s 555 \n" id gid idsaufetoile;*)
 					let (value,trouve) =
 							if existeAffectationVarListe idsaufetoile a  then
 									(expVaToExp (rechercheAffectVDsListeAS (idsaufetoile) a ), true)
 							else  (e, false) in
-(*print_expression (expVaToExp index) 0;new_line() ; new_line() ;flush();space();new_line() ;flush();space();
-print_expression va 0;new_line() ; new_line() ;flush();space();new_line() ;flush();space();
+								(*print_expression (expVaToExp index) 0;new_line() ; new_line() ;flush();space();new_line() ;flush();space();
+								print_expression va 0;new_line() ; new_line() ;flush();space();new_line() ;flush();space();*)
 
-
-Printf.printf "recherche %s dans liste :\n"  idsaufetoile;afficherListeAS a;new_line ();Printf.printf "fin s liste :\n" ;*)
+								(*
+								Printf.printf "recherche %s dans liste :\n"  idsaufetoile;afficherListeAS a;new_line ();Printf.printf "fin s liste :\n" ;*)
 
 									 
 					if trouve then 
@@ -3537,7 +3547,7 @@ Printf.printf "recherche %s dans liste :\n"  idsaufetoile;afficherListeAS a;new_
 							(*Printf.printf "getArrayAssign:tableau tab trouve tab %s ptr %s \n" tab1 id;*)
 							let ni = remplacerPtrParTab  id value (expVaToExp index) in
 							let (indexexp , isok) = consArrayFromPtrExp  ni   tab1 in
-							if  (*isok*) indexexp != NOTHING then 
+							if  (*isok*) indexexp != NOTHING then (*ce n'est pas un tableau*)
 							begin
 								let nres =  remplacerValPar  id (INDEX(VARIABLE(tab1),(remplacerValPar  id (CONSTANT(CONST_INT("0")))  indexexp)))  e  in
 								let nlid =	getInitVarFromStruct nres  in
@@ -3546,11 +3556,19 @@ Printf.printf "recherche %s dans liste :\n"  idsaufetoile;afficherListeAS a;new_
 									let npid =  (List.hd nlid) in
 									(*Printf.printf "single tab of champ of fin %s %s\n" id npid  ;*)
 									let na = traiterChampOfstructAux nlid va npid btype e a in
-								(*	Printf.printf "traiterChampOfstruct MEMBEROFPTRcas TAB->a %s non traité %s\n" id npid; *)(*traiterChampOfstructAux lid va id btype e a*) na
-								end else  traiterChampOfstructAux lid va id btype e a
-							end else  traiterChampOfstructAux lid va id btype e a
+									(*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas TAB->a %s non traité %s\n" id npid;*) (*traiterChampOfstructAux lid va id btype e a*) na
+								end else  ((*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas  8888 %s   %s\n" id id; *) traiterChampOfstructAux lid va id btype e a)
+							end else  
+							begin
+  								
+								(*Printf.printf "recherche %s dans liste :\n"  idsaufetoile;afficherListeAS a;new_line ();Printf.printf "fin s liste :\n" ;*)
+								let nlid =	getInitVarFromStruct (expVaToExp index)  in 
+								(*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas  9999 %s   %s\n" id  (List.hd nlid); *)
+								if nlid != [] && (isCallVarStruct nlid = false ) && getIsStructVar (List.hd nlid)   then   traiterChampOfstructAux nlid va (List.hd nlid) btype e a  
+								else traiterChampOfstructAux lid va id btype e a
+							end
 						end
-					end  else  traiterChampOfstructAux lid va id btype e a
+					end  else   ((*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas  7777  %s   %s\n" id id; *)traiterChampOfstructAux lid va id btype e a)
 
 				| _->(*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas 4 %s non traité %s\n" id gid; *) boolAS:= true;NOTHING
 
@@ -5722,10 +5740,12 @@ match i with
 						else [] in
 
 			let (x, onlyOne ) = if ptrvalues=[] && values != [] && List.tl values = [] then (List.hd values, true) else ("", false) in
-
+			(*Printf.printf "%s  :" x; if onlyOne then Printf.printf "seule    " ;*)
           	let listToAdd =
 						if onlyOne   then  (* on sait quelle est la variable modifiée et aucun autre pointeur peut la changer donc on peut rempalcer*)
-								 if  existAssosArrayType x = false then [new_assign_simple x exp2] else [new_assign_double x exp1 exp2]
+								 if  existAssosArrayType x = false then 
+									(	(*Printf.printf "seule    CAS 1" ; *)[new_assign_simple x exp2] )
+								 else (	(*Printf.printf "seule    CAS 2" ;*)[new_assign_double x exp1 exp2] )
 						else makeListOfMem u values ptrvalues gnen exp1 exp2 fid
 
 				 in

@@ -2818,12 +2818,13 @@ let (rep, var, isvar,expression) = hasPtrArrayBoundCondition bs in
 
 let rec typeDefList typ name result =
 if name != [] then 
-begin
-	let ((id, t, _, _), others) = (List.hd name, List.tl name) in  (*Printf.printf "mane %s typeDefList\n " id;*)(*print_base_type typ true ;print_base_type t true;*)
+begin   
+	let ((id, t, _, _), others) = (List.hd name, List.tl name) in  
 	if  (List.mem_assoc id !listAssosIdTypeTypeDec)= false then 
 		listAssosIdTypeTypeDec := List.append !listAssosIdTypeTypeDec [(id, newDecTypeTYPEDEFTYPE (get_base_typeEPS t) t )]; 
 	typeDefList typ others (List.append result [(id, (get_base_typeEPS t))])
-end; ()
+end  
+; ()
 
 let isPtr var = List.mem_assoc var !listeAssosPtrNameType 
 
@@ -2882,8 +2883,8 @@ and analyse_defPB def =
 			end;
 			
 		()	
-		| TYPEDEF (n, _)  -> 
-				let (typ, _, names) =n in (*let base = get_base_type typi*)
+		| TYPEDEF (n, _)| ONLYTYPEDEF n  -> 
+				let (typ, _, names) =n in  
 				nonamedForTypeDef:=
 					if names =[] then ""
 					else
@@ -2892,10 +2893,12 @@ and analyse_defPB def =
 						id
 					end
 				;
-				(*Printf.printf "id name typedef %s\n " !nonamedForTypeDef;*)
+			 
 				(*let baseT = (get_base_typeEPS typ) in*)
-				typeDefList (*baseT*)typ names []  ;()	
-		| ONLYTYPEDEF n -> 	(* Definition of lonely "struct", "union" or "enum". *)   (*get_name_group n ;*)()	
+				 typeDefList (*baseT*)typ names []  ;let _ = (get_base_typeEPS typ) in
+
+				 ()	
+		 
 
 
 and getStatementLine stat =
@@ -4559,7 +4562,7 @@ and treatStruct exp1 exp2 i t isStruct =
 			if isTruecteArg then
 			begin 
 				let tid = if lid != [] then List.hd (List.rev lid) else (Printf.eprintf "not id 3876\n"; "noid") in
-				(*print_expression exp1 0 ; flush();space() ;flush();space() ;  Printf.eprintf "array of array expr not implemented %s\n" id ;*)
+				print_expression exp1 0 ; flush();space() ;flush();space() ;  Printf.eprintf "array of array expr not implemented %s\n" id ;
 				if (List.mem_assoc tid !listAssosTypeDefArrayIDsize) then (*ajouter une option pour struct détaillé*)
 				begin
 					let size = getAssosTypeDefArrayIDsize tid in
@@ -4637,7 +4640,7 @@ and  analyse_expressionaux exp =
 						| _->
 								nouvExp := exp)
 				|_ -> 		
-					if !vDEBUG then( Printf.eprintf "not implemented\n";(*print_expression e 0; *)new_line(); );
+					(*if !vDEBUG then*)( Printf.eprintf "not implemented\n";(*print_expression e 0; *)new_line(); );
 				    analyse_expressionaux e;	 let ne = !nouvExp in  nouvExp := UNARY (op, ne) 
 			);
 	| BINARY (op, exp11, exp2) -> let exp1 = simplifierValeur exp11 in
@@ -4665,6 +4668,7 @@ and  analyse_expressionaux exp =
 									match opr with
 									MEMOF		->analyse_expressionaux exp2;	 let ne = !nouvExp in   
 										(** "*" operator. *)(* revoir e n'est pas forcement une variable *)
+
 										listeDesInstCourantes := 
 											List.append !listeDesInstCourantes 
 														[new_instTab ("*"^v) (EXP(i))	(EXP(ne))]
@@ -4674,7 +4678,7 @@ and  analyse_expressionaux exp =
 								| _->  if !vDEBUG then  Printf.eprintf "array expr not implemented\n" 
 							)
 						| MEMBEROF (_ , _) 	-> listeDesInstCourantes := List.append !listeDesInstCourantes  (treatStruct exp1 exp2 i t false)	
-				 		| MEMBEROFPTR (_ , _) 	->	listeDesInstCourantes := List.append !listeDesInstCourantes  (treatStruct exp1 exp2 i t true)
+				 		| MEMBEROFPTR (_ , _) 	->	  listeDesInstCourantes := List.append !listeDesInstCourantes  (treatStruct exp1 exp2 i t true)
 						| INDEX (_,_)->  
 							let (tab,lidx) = analyseArray exp1 []  in
 							if tab = "" then 
@@ -4722,7 +4726,7 @@ and  analyse_expressionaux exp =
 
 								(match !nouvExp with
 								  VARIABLE v -> analyse_expressionaux exp2;	 let ne = !nouvExp in   
-									(** "*" operator. *)(*Printf.printf "array expr  MEMOF\n" ;*)
+									(** "*" operator. *)
 									    (* afficherUneAffect( new_instMem ("*"^v) (EXP(VARIABLE(v))) (EXP(ne))); flush(); new_line(); *)
 									listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instMem ("*"^v) (EXP(VARIABLE(v))) (EXP(ne))]
 								  | UNARY(ADDROF,expaux)	->(** "&" operator. *)
@@ -4782,7 +4786,7 @@ and  analyse_expressionaux exp =
 							
 							listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect];
 						end;		
-				 | MEMBEROFPTR (e , t) 	->		
+				 | MEMBEROFPTR (e , t) 	->		(*Printf.printf "cextraireboucle array expr  MEMBEROFPTR\n" ;*)
 						let lid =	getInitVarFromStruct exp1  in
 						let id = if lid != [] then List.hd lid else (Printf.eprintf "not id 3876\n"; "noid") in
 						let (btype, isdeftype) = 
@@ -4802,7 +4806,10 @@ and  analyse_expressionaux exp =
 							(*Printf.printf "varDefList id %s type :\n"id;  new_line();*)
 							let nee = consCommaExp (VARIABLE(id)) btype [id] lid ne false NOTHING  in
 							(*if id = "os_thread" then*)
-							(*print_expression exp1 0 ; flush();space() ;Printf.printf "MEMBEROFPTR varDefList id %s type :\n"id;  new_line();print_expression exp2 0 ; flush();space() ; print_expression ne 0 ; flush();space() ;
+							(*print_expression exp1 0 ; flush();space() ;Printf.printf "MEMBEROFPTR varDefList id %s type :\n"id;  new_line();print_expression exp2 0 ; flush();space() ; *)
+
+							(*print_expression ne1 0 ; flush();space() ;Printf.printf    "  = ";  new_line(); 
+							print_expression ne 0 ; flush();space() ;
 							Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression nee 0 ; flush();space() ;new_line(); *)
 							(*listeDesInstCourantes := List.append !listeDesInstCourantes  (treatStruct exp1 exp2 EXP(CONSTANT("0")) id true) *)
 
@@ -4812,7 +4819,7 @@ and  analyse_expressionaux exp =
 							listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect];
 						end;
 
-				 |_-> if !vDEBUG then Printf.eprintf "array expr not implemented\n" 		 
+				 |_-> if !vDEBUG then Printf.eprintf "cextraireboucle : array expr not implemented\n" 		 
 			); 
 			
 			| ADD_ASSIGN	->analyse_expressionaux exp2;	 let ne = !nouvExp in analyse_expressionaux (BINARY (ASSIGN, exp1 ,BINARY (ADD,exp1, ne))) ;  nouvExp:=BINARY (op, exp1, ne) 
