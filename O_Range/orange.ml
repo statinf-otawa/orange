@@ -4964,7 +4964,8 @@ let printFile (result : out_channel)  (defs2 : file) need_analyse_defs =
       {laListeDesBoucles = a; laListeDesFonctions = b;
        laListeDesAssosBoucleBorne = c; laListeDesNids = d} ->
         ref {laListeDesBoucles = a;
-             laListeDesFonctions = (fixupScenarioInFunction "main" b);
+             (* JZ: fix entry point: laListeDesFonctions = (fixupScenarioInFunction "main" b); *)
+             laListeDesFonctions = (fixupScenarioInFunction !(!mainFonc) b);
              laListeDesAssosBoucleBorne = c;
              laListeDesNids = d}
   in
@@ -4997,7 +4998,8 @@ let printFile (result : out_channel)  (defs2 : file) need_analyse_defs =
   } in
   (* to get from document to definition list we need to extract 
      for the required fct the corpsS *)
-  let entry = "main" in
+  (* JZ: fix entry point: let entry = "main" in *)
+  let entry = !(!mainFonc) in 
   let fctlist = !docToAnalyze.laListeDesFonctions in
   (* reconstruct frontc output from doc *)
   let allFcts =
