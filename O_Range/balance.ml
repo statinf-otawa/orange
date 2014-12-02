@@ -246,11 +246,14 @@ let analysis
   let rec fun_eval (ctx: Ctx.t) (fname: string) : CodeEval.t
       =
     try Hashtbl.find finfo (ctx,fname)
-    with Not_found -> let body = try function_def defs fname
-  with Not_found -> failwith (fname^" is not a known function") in
-  let eval = stmt_eval (CtxNode.function_call ctx fname body) in
-  Hashtbl.add finfo (ctx,fname) eval;
-  eval
+    with Not_found -> try 
+      let body = 	
+	function_def defs fname in
+      let eval = stmt_eval (CtxNode.function_call ctx fname body) in
+      Hashtbl.add finfo (ctx,fname) eval;
+      eval
+    with Not_found -> 10 (* Default weight when function not found failwith (fname^" is not a known function") in*)
+  
 
   (* Analysis of an expression. *)
   and expr_eval (ctx: Ctx.t) (expr: Cabs.expression) : weight
