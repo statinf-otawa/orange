@@ -174,7 +174,7 @@ let rec getBaseType t =
 match t with
 	FLOAT_TYPE |INT_TYPE -> t 
 	| UNION_TYPE s -> t
-	| TYPEDEF_NAME s->  
+	| TYPEDEF_NAME s->   
 		 if (List.mem_assoc s !listAssosIdTypeTypeDec)= true then 
 		 begin
 			match  (List.assoc s !listAssosIdTypeTypeDec)  with  TYPEDEFTYPE (typ,_) -> getBaseType typ  | _->t
@@ -252,7 +252,8 @@ match t with
 		 if (List.mem_assoc s !listAssosIdTypeTypeDec)= true then 
 		 begin 
 			match  (List.assoc s !listAssosIdTypeTypeDec)  with
-					  TYPEDEFTYPE (typ,_) ->(*Printf.printf "isStructAndGetItchanged"; *) isStructAndGetIt typ
+					  TYPEDEFTYPE (typ,_) ->(*Printf.printf "isStructAndGetItchanged %s \n" s;  *)
+						let (rep1, rep2 ) = isStructAndGetIt typ in (*Printf.printf "FIN isStructAndGetItchanged %s \n" s; *) (rep1, rep2 )
 					|(* _->(false,t)*) STRUCTORUNION _ -> (true, t) (* no union type for the moment LAST REVOIR*)
 		 end
 		 else ((*Printf.printf "TYPEDEF_NAME\n"; MERASA pa*) (false, t))
@@ -301,7 +302,7 @@ match t with
 						else	exp	
 					else  front 
 				end
-	|UNION_TYPE s| TYPEDEF_NAME s-> (* Printf.printf    " util :consCommaExp = UNION_TYPE s| TYPEDEF_NAME ";  new_line(); *)
+	|UNION_TYPE s| TYPEDEF_NAME s-> (*Printf.printf    " util :consCommaExp = UNION_TYPE s| TYPEDEF_NAME %s "s;  new_line(); *)
 		 if (List.mem_assoc s !listAssosIdTypeTypeDec)= true then 
 		 begin
 			match  (List.assoc s !listAssosIdTypeTypeDec)  with 
@@ -312,12 +313,12 @@ match t with
 		if (List.mem_assoc s !listAssosIdTypeTypeDec)= true then 
 		 begin
 			match  (List.assoc s !listAssosIdTypeTypeDec)  with  
-				STRUCTORUNION (l) -> (*print_expression exp 0 ; flush();space() ;Printf.printf    " consCommaExp = ";  new_line(); *)
+				STRUCTORUNION (l) -> (*print_expression exp 0 ; flush();space() ;Printf.printf    " consCommaExp = %s"s;  new_line(); *)
 							
 					
 							CONSTANT(	CONST_COMPOUND(
 									List.map (
-									fun(n,t,_)->  
+									fun(n,t,_)->  (*Printf.printf    " champ %s" n;  new_line();*)
 											 
 										  consCommaExp ( MEMBEROF (front, n)) t champlist champlistLookingFor exp   withindex index
 									)l  ))
@@ -327,6 +328,16 @@ match t with
 		else (* Printf.printf    " util : consCommaExp = NOINIT because other";  new_line(); *) (*front VARIABLE ("NOINIT")*)front
 
 
+(*
+let getChampFromConstComp 	exp =
+match exp with
+	CONSTANT(	CONST_COMPOUND(  _ )) -> Printf.printf "getChampFromConstComp comma\n";
+									print_expression exp 0; new_line(); Printf.printf "\n";new_line(); 
+	 				Printf.printf "FIN getChampFromConstComp \n"
+		|MEMBEROF (_, _) | MEMBEROFPTR (_, _)  -> Printf.printf "getChampFromConstComp member\n";
+										print_expression exp 0; new_line(); Printf.printf "\n";new_line(); 
+			Printf.printf "FIN getChampFromConstComp \n"
+	| _ -> Printf.printf "other member\n" *)
 
 
 let rec getconsCommaExp  t  champlistLookingFor lexp =
@@ -354,16 +365,17 @@ match t with
 				begin	
 					let (champ,suitec,expChamp,suiteexpc) = (List.hd champlistLookingFor,List.tl champlistLookingFor,  List.hd lexp,  List.tl lexp) in
 					let ((n,typ,_),suitedec) = (List.hd l,List.tl l) in
-						(*Printf.printf "champ=%s, n %s\n"champ n;*)
+					(*	Printf.printf "getconsCommaExp champ=%s, n %s\n"champ n;*)
 					if n = champ then
-						if  suitec = [] then begin  (*print_expression expChamp 0; new_line();  *)expChamp end(*trouve*)
+						if  suitec = [] then begin  (*getChampFromConstComp 	  expChamp ; new_line(); *)
+								 expChamp end(*trouve*)
 						else getconsCommaExp  typ  suitec suiteexpc(*dans sous champs*)
 					else getNextChamp  champlistLookingFor  suiteexpc suitedec (*dans autre champs*)
 				end
 				
-			| TYPEDEFTYPE (n,_)->(Printf.printf "not membrer \n"; NOTHING)
+			| TYPEDEFTYPE (n,_)->(Printf.eprintf "not membrer \n"; NOTHING)
 		 end
-		else (Printf.printf "not def struct\n"; NOTHING)
+		else (Printf.eprintf "not def struct\n"; NOTHING)
 
 and getNextChamp lchamps  lexp ldec =
 if lchamps = [] || lexp = [] || ldec = [] then (NOTHING)
@@ -371,9 +383,10 @@ else
 begin	
 	let (champ,suitec,expChamp,suiteexpc) = (List.hd lchamps,List.tl lchamps, List.hd lexp,  List.tl lexp) in
 	let ((n,typ,_),suitedec) = (List.hd ldec,List.tl ldec) in
-(*Printf.printf "getNextChamp champ=%s, n %s\n"champ n;*)
+	(*Printf.printf "getconsCommaExp getNextChamp champ=%s, n %s\n"champ n;*)
 	if n = champ then
-						if  suitec = [] then ( (* print_expression expChamp 0; new_line(); *) expChamp (*trouve*))
+						if  suitec = [] then ( (*getChampFromConstComp 	  expChamp ; new_line();  new_line();  *)
+										expChamp (*trouve*))
 						else getconsCommaExp  typ  suitec suiteexpc(*dans sous champs*)
 	else getNextChamp  lchamps  suiteexpc suitedec (*dans autre champs*)
 end
@@ -431,7 +444,9 @@ let (btype, isdeftype) =
 
 	if isdeftype then
 	begin
+ 
 		let (isStruct, _) = isStructAndGetIt btype    in
+ 
 	     isStruct
 	end 
 	else false
@@ -896,7 +911,7 @@ let  used =
 
 
 let rec getconsCommaExpType  t  champlistLookingFor  =
-
+(*Printf.printf "getconsCommaExpType\n";*)
 if champlistLookingFor = []  then NO_TYPE else 
 match t with
 	FLOAT_TYPE |INT_TYPE  ->NO_TYPE
@@ -904,12 +919,12 @@ match t with
 		 if (List.mem_assoc s !listAssosIdTypeTypeDec)= true then 
 		 begin
 			match  (List.assoc s !listAssosIdTypeTypeDec) with  
-				TYPEDEFTYPE (typ,_) -> 
+				TYPEDEFTYPE (typ,_) -> (*Printf.printf "getconsCommaExpType TYPEDEFTYPE\n";*)
 										getconsCommaExpType  typ  champlistLookingFor  
 				| _->NO_TYPE
 		 end
 		else NO_TYPE
-	|  STRUCT_TYPE s ->  
+	|  STRUCT_TYPE s ->  (*Printf.printf "getconsCommaExpType STRUCT_TYPE\n";*)
 	 
 		if (List.mem_assoc s !listAssosIdTypeTypeDec)= true then 
 		 begin
@@ -920,7 +935,7 @@ match t with
 				begin	
 					let (champ,suitec) = (List.hd champlistLookingFor,List.tl champlistLookingFor) in
 					let ((n,typ,rt),suitedec) = (List.hd l,List.tl l) in
- 
+  
 					if n = champ then
 						if  suitec = [] then   rt  (*trouve*)
 						else getconsCommaExpType  typ  suitec  (*dans sous champs*)
@@ -1154,10 +1169,46 @@ else			let x =  (List.hd lid) in
 
 (* TEST UTIL FUNCTION end*)
 
+let gettype id =
+	 if List.mem_assoc id !listAssocIdType then (getBaseType (List.assoc id !listAssocIdType), true)
+	else
+		if List.mem_assoc id !listeAssosPtrNameType then (getBaseType (List.assoc id !listeAssosPtrNameType), true)
+		else (INT_TYPE, false)
+ 
+
+
+(* FUNCTION that combine 2  struct CONSTANT(CONST_COMPOUND or 2 set*)
+let rec simplifierStructSet btype lid listexp e id=
+Printf.printf "simplifierStructSet cas1 %s \n" id ; 
+if listexp = [] || List.tl listexp = [] then NOTHING
+else
+begin
+	let (firstarg,secondarg) = (List.hd listexp, List.hd(List.tl listexp)) in
+	let simplifiedfirst =
+		match  firstarg with
+				CALL(VARIABLE "SET", args) -> simplifierStructSet btype lid  args e id
+			|	CONSTANT(CONST_COMPOUND expsc) ->  getconsCommaExp  btype  lid expsc
+			|	_	->Printf.printf "simplifierStructSet cas1 \n" ; print_expression firstarg 0; new_line();  remplacerValPar  id  firstarg e in
+	let lid1 = getInitVarFromStruct (simplifiedfirst)  in
+
+	let simplifiedsecond =
+		match  secondarg with
+				CALL(VARIABLE "SET", args) -> simplifierStructSet btype lid  args e id
+			|	CONSTANT(CONST_COMPOUND expsc) ->  getconsCommaExp  btype  lid expsc
+			|	_	->Printf.printf "simplifierStructSet cas1 \n" ;  print_expression secondarg 0; new_line();  remplacerValPar  id  secondarg e in
+	let lid2 =	getInitVarFromStruct (simplifiedsecond)  in
+	let egal = equalList lid1 lid2 in
+			if egal then simplifiedfirst
+			else CALL(VARIABLE "SET", List.append [simplifiedfirst] [simplifiedsecond])
+end
+
+	
 
 (* REWRITTING FUNCTION*)
 
-let rec remplacerValPar  var nouexp expr =
+
+and  remplacerValPar  var nouexp expr =
+
 	match expr with
 	NOTHING 					-> NOTHING
 	| UNARY (op, exp) 			-> UNARY (op, remplacerValPar   var nouexp exp)
@@ -1169,22 +1220,48 @@ let rec remplacerValPar  var nouexp expr =
 
 
 	| CAST (typ, exp) ->CAST (typ, remplacerValPar   var nouexp  exp)
-	| CONSTANT ( CONST_COMPOUND expsc)  -> CONSTANT ( CONST_COMPOUND ( List.map(fun a-> remplacerValPar  var nouexp a)expsc))
+	| CONSTANT ( CONST_COMPOUND expsc)  ->
+		CONSTANT ( CONST_COMPOUND ( List.map(fun a-> remplacerValPar  var nouexp a)expsc))
 	| COMMA exps 					->	(COMMA ( List.map (fun a -> remplacerValPar  var nouexp a) exps))
 	| MEMBEROF (ex, c) 			->  (match nouexp with 
 											VARIABLE (v) -> MEMBEROF (remplacerValPar   var nouexp ex,   c) 
 										|  	UNARY (MEMOF, VARIABLE(v)) -> MEMBEROF (remplacerValPar   var (VARIABLE(v)) ex,   c) 
-					
+										| CONSTANT ( CONST_COMPOUND epaux)  -> 
+											(*let res = MEMBEROF (remplacerValPar   var nouexp ex,   c) in*)
+
+									(*recuperer la valeur du champs*)
+												let (btype, _) = gettype var in
+												let nlid =	getInitVarFromStruct expr  in
+												let nres = getconsCommaExp  btype  nlid epaux in
+
+
+												(*	res*)nres
 										|_-> MEMBEROF (remplacerValPar   var nouexp ex,   c) )
 	| MEMBEROFPTR (ex, c) 		->	(match nouexp with 
 											VARIABLE (v) -> MEMBEROFPTR (remplacerValPar   var nouexp ex,   c) 
 										|  	UNARY (ADDROF, VARIABLE(v)) -> MEMBEROFPTR (remplacerValPar   var (VARIABLE(v)) ex,   c) 
-					
+										| CONSTANT ( CONST_COMPOUND epaux)  ->(*Printf.printf "remplacerValPar MEMBEROFPTR un const compound var %s\n" var;   *)
+
+										(*let res = MEMBEROF (remplacerValPar   var nouexp ex,   c) in*)
+ 										(*recuperer la valeur du champs*)
+												let (btype, _) = gettype var in
+												let nlid =	getInitVarFromStruct expr  in
+												let nres = getconsCommaExp  btype  nlid epaux in
+
+
+
+
+(*	res*)nres
 										|_->  MEMBEROFPTR (remplacerValPar   var nouexp ex,   c) )
 	| EXPR_SIZEOF exp -> EXPR_SIZEOF (remplacerValPar   var nouexp exp )
 	| EXPR_LINE (expr, _, _) ->
 			remplacerValPar   var nouexp  expr
 	| _ 						-> 	expr
+
+
+
+
+
 
 
 
@@ -1570,7 +1647,7 @@ match t with
 				begin	
 					let (champ,suitec) = (List.hd champlistLookingFor,List.tl champlistLookingFor) in
 					let ((n,typ,rt),suitedec) = (List.hd l,List.tl l) in
- 
+  					(*Printf.printf"champ of struct %s %s= false\n" champ n;*)
 					if n = champ then
 						if  suitec = [] then   rt  (*trouve*)
 						else getconsCommaExpType  typ  suitec  (*dans sous champs*)

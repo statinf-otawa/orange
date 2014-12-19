@@ -4562,7 +4562,7 @@ and treatStruct exp1 exp2 i t isStruct =
 			if isTruecteArg then
 			begin 
 				let tid = if lid != [] then List.hd (List.rev lid) else (Printf.eprintf "not id 3876\n"; "noid") in
-				print_expression exp1 0 ; flush();space() ;flush();space() ;  Printf.eprintf "array of array expr not implemented %s\n" id ;
+				(*print_expression exp1 0 ; flush();space() ;flush();space() ;  Printf.eprintf "array of array expr not implemented %s\n" id ;*)
 				if (List.mem_assoc tid !listAssosTypeDefArrayIDsize) then (*ajouter une option pour struct détaillé*)
 				begin
 					let size = getAssosTypeDefArrayIDsize tid in
@@ -4640,7 +4640,7 @@ and  analyse_expressionaux exp =
 						| _->
 								nouvExp := exp)
 				|_ -> 		
-					(*if !vDEBUG then*)( Printf.eprintf "not implemented\n";(*print_expression e 0; *)new_line(); );
+					if !vDEBUG then ( Printf.eprintf "not implemented\n";(*print_expression e 0; *)new_line(); );
 				    analyse_expressionaux e;	 let ne = !nouvExp in  nouvExp := UNARY (op, ne) 
 			);
 	| BINARY (op, exp11, exp2) -> let exp1 = simplifierValeur exp11 in
@@ -4773,7 +4773,9 @@ and  analyse_expressionaux exp =
 								else 
 									if List.mem_assoc id !listeAssosPtrNameType then (getBaseType (List.assoc id !listeAssosPtrNameType), true) 
 									else (INT_TYPE, false) in
-						
+					(*	if isdeftype then
+							(Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression exp2 0 ; flush();space() ; flush();space() )
+						else Printf.printf "nodef id %s type :\n"id;*)
 						if lid != [] then 
 						begin
 							analyse_expressionaux exp2;	 let ne = !nouvExp in  

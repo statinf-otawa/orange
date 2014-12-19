@@ -3481,7 +3481,7 @@ let traiterChampOfstruct id a e idsaufetoile lid isptr=
 							begin
 
  
-
+								(*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas TAB->a %s non traité %s\n" id tab1;*)
 
 							 	let nres =     (remplacerValPar  id valeur    e)   in
 
@@ -3510,8 +3510,8 @@ let traiterChampOfstruct id a e idsaufetoile lid isptr=
 											 
 											let nlid =	getInitVarFromStruct e  in 
 											(*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas  9999 %s   %s \n" id  (List.hd nlid); *)
-											if nlid != [] && (isCallVarStruct nlid = false )  && getIsStructVar (List.hd nlid)  then  
-												  ((*Printf.printf "cvarabs :traiterChampOfstructAux cas 1\n"; *)traiterChampOfstructAux(List.append [tab1] nlid) valeur tab1 btype e a  )
+											if nlid != [] (*&& (isCallVarStruct nlid = false )  && getIsStructVar (List.hd nlid)  *)then  
+												  ((*Printf.printf "cvarabs :traiterChampOfstructAux cas 1\n";*) traiterChampOfstructAux(List.append [tab1] nlid) valeur tab1 btype e a  )
 											else  ((*Printf.printf "cvarabs :traiterChampOfstructAux cas 2\n"; *)traiterChampOfstructAux (List.append [tab1] lid) valeur id btype e a )
 										end	
 
@@ -3519,7 +3519,7 @@ let traiterChampOfstruct id a e idsaufetoile lid isptr=
 								end else  traiterChampOfstructAux lid valeur id btype e a
 						end
 
-					(*Printf.printf "traiterChampOfstruct MEMBEROFPTR   cas simple%s non traité %s iiii %s\n" id gid tab1;  traiterChampOfstructAux lid valeur id btype e a
+(*Printf.printf "traiterChampOfstruct MEMBEROFPTR   cas simple%s non traité %s iiii %s\n" id gid tab1;  traiterChampOfstructAux lid valeur id btype e a
 						end*)
 				| ASSIGN_DOUBLE (id,_,EXP(va)) ->
 						(*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas TAB.a %s non traité %s\n" id gid;*) (* boolAS:= true; (NOTHING)*)
@@ -3530,11 +3530,11 @@ let traiterChampOfstruct id a e idsaufetoile lid isptr=
 							if existeAffectationVarListe idsaufetoile a  then
 									(expVaToExp (rechercheAffectVDsListeAS (idsaufetoile) a ), true)
 							else  (e, false) in
-								(*print_expression (expVaToExp index) 0;new_line() ; new_line() ;flush();space();new_line() ;flush();space();
-								print_expression va 0;new_line() ; new_line() ;flush();space();new_line() ;flush();space();*)
+(*print_expression (expVaToExp index) 0;new_line() ; new_line() ;flush();space();new_line() ;flush();space();
+print_expression va 0;new_line() ; new_line() ;flush();space();new_line() ;flush();space();*)
 
-								(*
-								Printf.printf "recherche %s dans liste :\n"  idsaufetoile;afficherListeAS a;new_line ();Printf.printf "fin s liste :\n" ;*)
+(*
+Printf.printf "recherche %s dans liste :\n"  idsaufetoile;afficherListeAS a;new_line ();Printf.printf "fin s liste :\n" ;*)
 
 									 
 					if trouve then 
@@ -6552,7 +6552,7 @@ LocalAPContext.print ptr ;*)
 
 
 and getTabAssign sortie a g i ptr=
-Printf.printf "getTabAssign ...ok  \n" ;
+ 
 let index = match sortie with VAR(_, _,_,_)->CONSTANT(CONST_INT("0"))| TAB (_, e1, _,_,_)-> expVaToExp (applyStoreVA (applyStoreVA e1 a)g)|_->NOTHING in
 let valindex = ( calculer  (EXP(index))   !infoaffichNull [] 1) in
 match sortie with
@@ -6569,7 +6569,7 @@ match sortie with
 
 									(*let (before, next) =    roavant a newassign  [] in*)
 									if (existeAffectationVarListe ("*"^var) a ) = false then
-									begin  Printf.printf "getTabAssign ...ok %s \n" id;
+									begin   
 										let listassign = List.map(
 											fun aSCourant ->  match aSCourant with ASSIGN_SIMPLE (_, _) -> aSCourant
 													|	ASSIGN_DOUBLE (n, EXP(ei), ee) ->
