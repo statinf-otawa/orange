@@ -1238,6 +1238,102 @@ and replaceEPSINT li ia l sign  =
 	   		evalexpression (calculer (EXP(remplacerValPar  "EPSILONINT" (CONSTANT (CONST_INT "1")) li) ) ia l sign)
     else v1
 
+(* FUNCTION that research if an expression is a set of constant values and sort the min and max values *)
+
+and evalConstant cst =
+				(	match cst with
+						CONST_INT i 	->
+
+						  let res =	(ConstInt( (removeSpecifieur  i true)))  in res
+						| RCONST_INT i 	->	  	(ConstInt(Printf.sprintf "%d" ( i )))
+						| CONST_FLOAT r ->	   (ConstFloat( (removeSpecifieur r false)))
+						| RCONST_FLOAT r ->	   	 (RConstFloat(r))
+
+						|   _ ->	NOCOMP
+				)
+
+and interSet min1 max1 min2 max2 =
+ 
+	let subBound =   if estSup min1  min2 then min1 else min2 in
+	let upperBound =  if estSup max1  max2 then max2 else max1 in
+	(subBound, upperBound)
+
+and isConstSetAndSortBounds exp ia li sign=
+	match exp  with
+	CALL(VARIABLE("SET"), l) ->  
+						(match (List.hd l,List.hd (List.tl l)) with
+								(CONSTANT(i),CONSTANT(j)) ->  
+										let value1 = evalConstant i in 
+										let value2 = evalConstant j in 	  
+										let (min, max) = if estSup value1  value2 then (value2,value1) else (value1,value2) in
+  
+										(true, min, max, false)
+								|	(	CALL	(	VARIABLE("SET"), l1),CONSTANT(j))
+								| 	(CONSTANT(j), 	CALL(VARIABLE("SET"), l1))	
+									->  
+										let (isconstset1, min, max, empty) = isConstSetAndSortBounds (CALL(VARIABLE("SET"), l1)) ia li sign in
+										let value1 = evalConstant j in 
+										if empty then (isconstset1, min, max, empty)
+										else if isconstset1 then
+												if estSup min value1  || estSup value1 max then  ( (*Printf.eprintf "WARNING != ABSTRACTINTER ... not into set ... ..."  ; *)(false, NOCOMP, NOCOMP, true (*vide*)) )
+												else (true, value1, value1, false)
+											 else if min = NOCOMP && max = NOCOMP then (true, value1, value1, false)
+												 else if (min = NOCOMP && (estSup max value1 || max = value1)) || (max = NOCOMP  && (estSup value1 min || value1 = min)  )then (true, value1, value1, false)
+													  else  (false, NOCOMP, NOCOMP, true) 
+
+								
+								|	_		-> (false, NOCOMP, NOCOMP, false) 
+								
+						)
+
+	|CALL(VARIABLE("ABSTRACTINTER"), l)-> 
+					(match (List.hd l,List.hd (List.tl l)) with
+								(CONSTANT(i),CALL(VARIABLE("SET"), _)) ->  
+										let value1 = evalConstant i in 
+										let (boolean, min, max, empty) =isConstSetAndSortBounds (CALL(VARIABLE("SET"), l)) ia li sign in
+										if empty then (boolean, min, max, empty)
+										else 
+											if boolean then
+												if estSup min value1   || estSup value1 max then  ( (*Printf.eprintf "WARNING != ABSTRACTINTER ... not into set ... ..."  ;*) (false, NOCOMP, NOCOMP, true) )
+												else (true, value1, value1, false) 
+											else if min = NOCOMP && max = NOCOMP then (true, value1, value1, false) 
+												 else if (min = NOCOMP && ( estSup max value1 || value1 = max) ) || (max = NOCOMP  && (estSup value1 min || value1 = min)  )then (true, value1, value1, false) 
+													  else  (false, NOCOMP, NOCOMP, false) 
+								| (CALL	(VARIABLE("ABSTRACTINTER"), _), CALL(VARIABLE("SET"), _))  		
+								| (CALL( VARIABLE("SET"), _),CALL(VARIABLE("SET"), _)) -> 
+										let (isconstset1, min1, max1, empty1) = isConstSetAndSortBounds (List.hd l) ia li sign in
+										let (isconstset2, min2, max2, empty2) = isConstSetAndSortBounds (List.hd (List.tl l)) ia li sign in
+										if (empty1 || empty2) then ( (*Printf.eprintf "WARNING != ABSTRACTINTER ... not into set ... ..."  ;*)  (false, NOCOMP, NOCOMP, true) ) 
+										else
+										begin
+ 		 
+	
+
+											let (  min, max ) =  interSet min1 max1 min2 max2 in
+
+											if (isconstset1 && isconstset2) && (estSup max min || max = min)   then (  ( true,   min, max, false))
+											else if (isconstset1 && isconstset2)  then ( (*Printf.eprintf "WARNING != ABSTRACTINTER ... not into set ... ..."  ; *) (false, NOCOMP, NOCOMP, true) ) 
+												 else (isconstset2, min2, max2, empty2)
+										end
+	
+								|
+									(_,CALL(VARIABLE("SET"), l2)) ->  
+										isConstSetAndSortBounds (CALL(VARIABLE("SET"), l2)) ia li sign
+								(*| _ ->assert false *)
+								|	_		->   (false, NOCOMP, NOCOMP, false) 
+								
+						)
+	| _->(false, NOCOMP, NOCOMP, false) 
+
+
+
+and eqAllvalue min1 max1 min2 max2  = 
+	if min1 =  max1 &&  min2 = max2 && min1 = max2 then true else false
+
+and estSup  max min  = 
+		if estPositif max && estPositif min then
+			estPositif( evalexpression (Diff (max, min))) (* *)
+		else if estPositif max then true else if  estPositif min  then false else estPositif( evalexpression (Diff (max, min)))
 
 and  calculer expressionVA ia l sign =
 	match expressionVA with
@@ -1413,8 +1509,38 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 								else 	if isOkval2 = false && isOkval1 then evalexpression (Shr (val1, val22))
 										else evalexpression (Shr (val11, val22))
 				| EQ 	->
-			(*	Printf.printf"EQ exp1 , exp2\n";  print_expTerm val1; new_line(); print_expTerm val2;new_line();*)
-				if hasSETCALLval1 || hasSETCALLval2 then NOCOMP
+				if hasSETCALLval1 || hasSETCALLval2 then 
+				begin
+					let (isconstset1,  min1, max1, empty1) = isConstSetAndSortBounds exp1 ia l sign in
+					let (isconstset2,  min2, max2, empty2) = isConstSetAndSortBounds exp2 ia l sign in
+					if empty1 || empty2 then Boolean(false) 
+					else 
+						if (isconstset1 && isconstset2) then 
+						begin
+								if eqAllvalue min1 max1 min2 max2 then Boolean(true) 
+								else 
+								(
+									if estSup min2 max1 ||  estSup  min1 max2 then  Boolean (false)  (* the two intervals are disjoints*) 
+									else  NOCOMP
+								) 
+						end
+						else 
+						begin  
+								 
+								if isconstset1 && estDefExp val2 then 
+								begin 
+									if eqAllvalue min1 max1  max1  val2  then   Boolean(true)  
+									else 
+										if estSup val2 max1 ||  estSup  min1 val2 then  Boolean (false)  (* the two intervals are disjoints*)  else  NOCOMP
+								end
+							 	else if isconstset2 && estDefExp val1 then 
+										if eqAllvalue min2 max2  max2   val1 then Boolean(true) 
+										else 
+										(	if estSup min2 val1 ||  estSup  val1 max2  then  Boolean (false)  (* the two intervals are disjoints*)  else  NOCOMP )
+								  else NOCOMP
+
+						end 
+				end
 				else
 					if estBool val1 && estBool val2 then if val1 = val2   then Boolean(true)  else Boolean (false)
 					else if estDefExp val1  &&  estDefExp val2 then
@@ -1425,8 +1551,40 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 									end
 									else NOCOMP
 				| NE->
-(*Printf.printf"NEQ exp1 , exp2\n";  print_expTerm val1; new_line(); print_expTerm val2;new_line();*)
-					if hasSETCALLval1 || hasSETCALLval2 then NOCOMP
+ 
+					if hasSETCALLval1 || hasSETCALLval2 then 
+					begin
+						let (isconstset1,  min1, max1, empty1) = isConstSetAndSortBounds exp1 ia l sign in
+						let (isconstset2,  min2, max2, empty2) = isConstSetAndSortBounds exp2 ia l sign in
+						if empty1 || empty2 then Boolean(true) 
+						else 
+							if (isconstset1 && isconstset2) then 
+							begin
+									if eqAllvalue min1 max1 min2 max2 then Boolean(false) 
+									else 
+									(
+										if estSup min2 max1 ||  estSup  min1 max2 then  Boolean (true)  (* the two intervals are disjoints*) 
+										else  NOCOMP
+									) 
+							end
+							else 
+							begin  
+									 
+									if isconstset1 && estDefExp val2 then 
+									begin 
+										if eqAllvalue min1 max1  max1  val2  then   Boolean(false)  
+										else 
+											if estSup val2 max1 ||  estSup  min1 val2 then  Boolean (true)  (* the two intervals are disjoints*)  
+											else  NOCOMP
+									end
+								 	else if isconstset2 && estDefExp val1 then 
+											if eqAllvalue min2 max2  max2   val1 then Boolean(false) 
+											else 
+											(	if estSup min2 val1 ||  estSup  val1 max2  then  Boolean (true)  (* the two intervals are disjoints*)  												else  NOCOMP )
+									  else NOCOMP
+
+							end 
+					end
 					else
 						if estBool val1 && estBool val2 then if val1 = val2  then Boolean(false)  else Boolean (true)
 						else if estDefExp val1 && estDefExp val2 then
@@ -1434,26 +1592,168 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 								else Boolean (true)
 						else NOCOMP
 				| LT ->
-					if hasSETCALLval1 || hasSETCALLval2 then NOCOMP
+					if hasSETCALLval1 || hasSETCALLval2 then
+					begin 
+						let (isconstset1,  min1, max1, empty1) = isConstSetAndSortBounds exp1 ia l sign in
+						let (isconstset2,  min2, max2, empty2) = isConstSetAndSortBounds exp2 ia l sign in
+						if (isconstset1 && isconstset2) then 
+						begin
+								if estSup min2 max1 then Boolean(true) 
+								else 
+								(
+									if estSup min1 max2 || min1 = max2 then  Boolean (false)  (* the two intervals are disjoints*) 
+									else  NOCOMP
+								) 
+						end
+						else 
+						begin  
+								 
+								if isconstset1 && estDefExp val2 then 
+								begin 
+									if estSup val2 max1 then Boolean(true) 
+									else 
+									(
+										if estSup min1 val2 || min1 = val2 then  Boolean (false)  (* the two intervals are disjoints*) 
+										else  NOCOMP
+									) 
+								end
+							 	else  if isconstset2 && estDefExp val1 then 
+										if estSup min2 val1 then Boolean(true) 
+										else 
+										(
+											if estSup val1 max2 || val1 = max2 then  Boolean (false)  (* the two intervals are disjoints*) 
+											else  NOCOMP
+										) 
+									  else NOCOMP
+								  
+						end
+					end
 					else if estDefExp val1 && estDefExp val2 then
 							if estPositif  (evalexpression (Diff (val1, val2 ))) then Boolean(false)  else Boolean (true)
 						else NOCOMP
 				| GT ->
-					if hasSETCALLval1 || hasSETCALLval2 then NOCOMP
+					
+					if hasSETCALLval1 || hasSETCALLval2 then
+					begin 
+						let (isconstset1,  min1, max1, empty1) = isConstSetAndSortBounds exp1 ia l sign in
+						let (isconstset2,  min2, max2, empty2) = isConstSetAndSortBounds exp2 ia l sign in
+						if (isconstset1 && isconstset2) then 
+						begin
+								if estSup min1 max2 then Boolean(true) 
+								else 
+								(
+									if estSup min2 max1 || min2 = max1 then  Boolean (false)  (* the two intervals are disjoints*) 
+									else  NOCOMP
+								) 
+						end
+						else 
+						begin  
+								 
+								if isconstset1 && estDefExp val2 then 
+								begin 
+									if estSup min1 val2 then Boolean(true) 
+									else 
+									(
+										if estSup val2 max1 || val2 = max1 then  Boolean (false)  (* the two intervals are disjoints*) 
+										else  NOCOMP
+									) 
+								end
+							 	else  if isconstset2 && estDefExp val1 then 
+										if estSup val1 max2 then Boolean(true) 
+										else 
+										(
+											if estSup min2 val1 || min2 = val1  then  Boolean (false)  (* the two intervals are disjoints*) 
+											else  NOCOMP
+										) 
+									  else NOCOMP
+								  
+						end
+					end
 					else
 						 if estDefExp val1 && estDefExp val2 then
 							if estStricPositif  (evalexpression (Diff (val1, val2 ))) then Boolean(true)
 							else Boolean (false)
 						else NOCOMP
 				| LE ->
-					if hasSETCALLval1 || hasSETCALLval2 then NOCOMP
+					if hasSETCALLval1 || hasSETCALLval2 then
+					begin 
+						let (isconstset1,  min1, max1, empty1) = isConstSetAndSortBounds exp1 ia l sign in
+						let (isconstset2,  min2, max2, empty2) = isConstSetAndSortBounds exp2 ia l sign in
+						if (isconstset1 && isconstset2) then 
+						begin
+								if estSup min2 max1 ||  max1 = min2 then Boolean(true) 
+								else 
+								(
+									if estSup min1 max2  then  Boolean (false)  (* the two intervals are disjoints*) 
+									else  NOCOMP
+								) 
+						end
+						else 
+						begin  
+								 
+								if isconstset1 && estDefExp val2 then 
+								begin 
+									if estSup val2 max1 || max1 = val2 then Boolean(true) 
+									else 
+									(
+										if estSup min1 val2  then  Boolean (false)  (* the two intervals are disjoints*) 
+										else  NOCOMP
+									) 
+								end
+							 	else  if isconstset2 && estDefExp val1 then 
+									if estSup min2 val1 || min2 = val1 then Boolean(true) 
+									else 
+									(
+										if estSup val1 max2  then  Boolean (false)  (* the two intervals are disjoints*) 
+										else  NOCOMP
+									) 
+									else NOCOMP
+								  
+						end
+					end
 					else
 						if estDefExp val1 && estDefExp val2 then
 							if estStricPositif (evalexpression (Diff (val1, val2 ))) then  Boolean(false)
 							else Boolean (true)
 						else NOCOMP
 				| GE ->
-					if hasSETCALLval1 || hasSETCALLval2 then NOCOMP
+					
+					if hasSETCALLval1 || hasSETCALLval2 then
+					begin 
+						let (isconstset1,  min1, max1, empty1) = isConstSetAndSortBounds exp1 ia l sign in
+						let (isconstset2,  min2, max2, empty2) = isConstSetAndSortBounds exp2 ia l sign in
+						if (isconstset1 && isconstset2) then 
+						begin
+								if estSup min1 max2 || min1 = max2 then Boolean(true) 
+								else 
+								(
+									if estSup min2 max1  then  Boolean (false)  (* the two intervals are disjoints*) 
+									else  NOCOMP
+								) 
+						end
+						else 
+						begin  
+								 
+								if isconstset1 && estDefExp val2 then 
+								begin 
+									if estSup min1 val2 || min1 = val2 then Boolean(true) 
+									else 
+									(
+										if estSup val2 max1 then  Boolean (false)  (* the two intervals are disjoints*) 
+										else  NOCOMP
+									) 
+								end
+							 	else if isconstset2 && estDefExp val1 then 
+										if estSup val1 max2 || val1 = max2 then Boolean(true) 
+										else 
+										(
+											if estSup min2 val1    then  Boolean (false)  (* the two intervals are disjoints*) 
+											else  NOCOMP
+										) 
+									else NOCOMP
+								  
+						end
+					end
 					else if estDefExp val1 && estDefExp val2 then
 							if estPositif (evalexpression (Diff (val1, val2 ))) then Boolean(true)
 							else Boolean (false)
@@ -1652,7 +1952,15 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 						if estNoComp val2   then   NOCOMP
 						else evalexpression (Minimum  (val1, val2))
 					end
+                |  VARIABLE("ABSTRACTINTER") ->  
 
+ 
+
+
+					let suite = List.tl args in
+					let val2 = (calculer (EXP(List.hd suite )) ia l sign)in
+	
+						val2
 				|VARIABLE("SET") ->(*pour le moment deux arg*)
 					hasSETCALL:=true;
 					let val1 = evalexpression (calculer (EXP(List.hd args)) ia l sign) in

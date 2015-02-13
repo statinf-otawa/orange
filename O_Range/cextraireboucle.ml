@@ -1139,7 +1139,7 @@ end
  (* to be called with numberOfBits =0 at init intvalue>0 *)
 
 let rec  getMostSignifiantBit intvalue numberOfBits   =
-if intvalue = 0 or  intvalue = 1 then numberOfBits
+if intvalue = 0 ||  intvalue = 1 then numberOfBits
 else getMostSignifiantBit (intvalue / 2) (numberOfBits+1)  
  (* to be called with numberOfBits =-1 at init intvalue>0 *)
 
@@ -3483,6 +3483,48 @@ else listDefault
 
 
 let numArg = ref 0
+
+let rec cons_list_of_cond_impact_statement_from constraints =
+	match constraints with
+		[] -> NOP
+		|	 (var, (low, high))::sp ->
+			 
+					match var with
+						| Cabs.VARIABLE v ->  
+							  SEQUENCE ((COMPUTATION(BINARY (ASSIGN, var, 
+												( CALL 
+													( VARIABLE("ABSTRACTINTER") ,
+														[var; CALL(VARIABLE("SET"), 
+																		[CONSTANT ( CONST_INT(string_of_int low)) ; 
+																			CONSTANT ( CONST_INT(string_of_int  high))
+																		] )
+																	]
+													)
+												)))), cons_list_of_cond_impact_statement_from sp )
+					
+ 
+
+						| _ ->assert false 
+
+(*let rec cons_list_of_cond_impact_statement_from constraints =
+	 List.map (fun (var, (low, high))->
+			match var with
+				| Cabs.VARIABLE v ->  
+					 new_instVar v
+											(EXP	( CALL 
+													( VARIABLE("ABSTRACTINTER") ,
+														[var; CALL(VARIABLE("SET"), 
+																		[CONSTANT ( CONST_INT(string_of_int low)) ; 
+																			CONSTANT ( CONST_INT(string_of_int  high))
+																		] )
+																	]
+													)
+												))
+				| _ ->assert false 
+			)constraints 
+*)
+
+
 let rec analyse_statement   stat =
 	match stat with
 	NOP -> 						()
@@ -3540,25 +3582,36 @@ let rec analyse_statement   stat =
 		trueList := List.append !trueList [varIfN];
 	let (fic,lig, infothen, infoelse)=getAssosIdIFRef varIfN in		
 
-(*Printf.printf"analyse statement if %s %d \n" varIfN  lig;	
-	Printf.printf "condition   dans fichier %s\n" fic ; print_expression exp 0;new_line();flush(); new_line();space(); new_line();
-	new_line();flush(); new_line();space(); new_line();new_line();flush(); new_line();space(); new_line();new_line();flush(); new_line();space(); new_line();new_line();flush(); new_line();space(); new_line();*)
-		analyse_statement  s1;
+		
+
+		(* evaluating the impact of the condition*)
+		let (condStatementsThen, condStatementsElse) = 
+			let constraintsThen = ConditionAnalysis.constraints_from_condition exp true in
+			let constraintsElse = ConditionAnalysis.constraints_from_condition exp false in
+			(cons_list_of_cond_impact_statement_from constraintsThen, (cons_list_of_cond_impact_statement_from constraintsElse))
+
+		 in 
+
+		(*Printf.printf"analyse statement if %s %d \n" varIfN  lig;	
+		Printf.printf "condition   dans fichier %s\n" fic ; print_expression exp 0;new_line();flush(); new_line();space(); new_line();
+		new_line();flush(); new_line();space(); new_line();new_line();flush(); new_line();space(); new_line();new_line();flush(); new_line();space(); new_line();new_line();flush(); new_line();space(); new_line();*)
+		analyse_statement (SEQUENCE (condStatementsThen, s1));
 	 
 		let listeThen = !listeDesInstCourantes in
 
-(*afficherLesAffectations !listeDesInstCourantes;*)
+		(*afficherLesAffectations !listeDesInstCourantes;*)
 		let bouavrai = !listeBoucleOuAppelCourante in
 		trueList := trueListPred ;
+		
   		let (instthen,treethen, instelse,treeelse) =
-				if (s2 = NOP)	then 
+				if (s2 = NOP)	then (* no else*)
 				begin
-					
+					 
 					let  fc = (localPtrAnalyse [new_instBEGIN (listeThen)]  prevPtrct   !intoLoopCurrent false) in  
 							
 					myCurrentPtrContext:=(LocalAPContext.joinSet fc prevPtrct );
 
-					listeDesInstCourantes :=  List.append listePred  [ new_instIFV (EXP(VARIABLE(varIfN))) (new_instBEGIN (listeThen)) ];
+					listeDesInstCourantes :=  List.append listePred  [ new_instIFV (EXP(VARIABLE(varIfN))) (new_instBEGIN ((*condStatements@*)listeThen)) ];
 					(listeThen,bouavrai,[],[])
 				end
 				else 	
@@ -3566,12 +3619,12 @@ let rec analyse_statement   stat =
 					listeBoucleOuAppelCourante := [];
 					listeDesInstCourantes := [];
 					falseList := List.append !falseList [varIfN]; 
-					analyse_statement  s2;			
+					analyse_statement   (SEQUENCE (condStatementsElse, s2));
 					let listeElse = !listeDesInstCourantes in
 
-(*Printf.printf"analyse statement else\n";
-afficherLesAffectations !listeDesInstCourantes;
-print_statement  s2 ;*)
+						(*Printf.printf"analyse statement else\n";
+						afficherLesAffectations !listeDesInstCourantes;
+						print_statement  s2 ;*)
 					 
 					let fc  = (localPtrAnalyse [new_instBEGIN (listeThen)]  prevPtrct   !intoLoopCurrent false) in
 					let  ec= (localPtrAnalyse [new_instBEGIN (listeElse)]  prevPtrct   !intoLoopCurrent false) in
@@ -4866,8 +4919,9 @@ and  analyse_expressionaux exp =
 					 let (fichier , ligne ) = getAssosIdCallFunctionRef ida in
 
 					(*Printf.printf "analyse_expressionaux 45  %s EXISTE %s fichier %d line\n" name fichier ligne ;*)
-					listeBoucleOuAppelCourante	:= 
-						List.append  !listeBoucleOuAppelCourante  [IDAPPEL(ida, exp, !listeDesInstCourantes,"", !trueList,!falseList ,fichier , ligne)];
+					
+					listeBoucleOuAppelCourante	:= if  name = "SET" || name ="ABSTRACTINTER" then( !listeBoucleOuAppelCourante )
+						else List.append  !listeBoucleOuAppelCourante  [IDAPPEL(ida, exp, !listeDesInstCourantes,"", !trueList,!falseList ,fichier , ligne)];
 					let _ = traiterAppelFonction e args !listeDesInstCourantes ida in
 					let nouvar = Printf.sprintf "call-%s%d" (nomFonctionDeExp e) ida in
 					(*if isvoid = false then *)
@@ -4912,8 +4966,8 @@ and  analyse_expressionaux exp =
 Printf.printf "analyse_expressionaux %s NON EXISTE \n" (nomFonctionDeExp e) ;*)
 					 let (fichier , ligne ) = getAssosIdCallFunctionRef ida in
  
-					listeBoucleOuAppelCourante	
-						:= List.append  !listeBoucleOuAppelCourante [IDAPPEL(ida, exp,!listeDesInstCourantes,"" , !trueList,!falseList ,fichier , ligne)];
+					listeBoucleOuAppelCourante	:= if  nom = "SET" || nom ="ABSTRACTINTER" then( !listeBoucleOuAppelCourante )
+						else List.append  !listeBoucleOuAppelCourante [IDAPPEL(ida, exp,!listeDesInstCourantes,"" , !trueList,!falseList ,fichier , ligne)];
 					let isComponant = traiterAppelFonction e args !listeDesInstCourantes ida in
 
 (*if isComponant then Printf.printf "analyse_expressionaux %s NON EXISTE IS COMPOSANT %d\n" (nomFonctionDeExp e) ida

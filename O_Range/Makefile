@@ -2,6 +2,7 @@
 include ../Makefile.head
 
 SOURCES = \
+	conditionAnalysis.ml \
 	cexptostr.ml \
 	cvariables.ml \
 	constante.ml\

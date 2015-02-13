@@ -152,7 +152,7 @@ let rec estDansListeVar id liste =
 List.mem id liste 
 
 let rec intersection l1 l2  =
-if l1 = [] or l2 = [] then begin  []end
+if l1 = [] || l2 = [] then begin  []end
 else	
 begin
 	if List.mem (List.hd l2) l1 then List.append [List.hd l2] (	intersection l1 (List.tl l2) )
