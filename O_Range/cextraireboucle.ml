@@ -3579,7 +3579,6 @@ let rec analyse_statement   stat =
 		listeBoucleOuAppelCourante := [];
 		listeDesInstCourantes := [];
 		trueList := List.append !trueList [varIfN];
-(*	let (fic,lig, infothen, infoelse)=getAssosIdIFRef varIfN in		*)
 
 		
 
