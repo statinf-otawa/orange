@@ -5031,9 +5031,12 @@ let printFile (result : out_channel)  (defs2 : file) need_analyse_defs =
         Format.printf "\t%s: " parent;
         List.iter (fun child -> Format.printf "%s " child) children;
         Format.printf "\n"
-    ) parents 
-
-
+    ) parents
+  end ;
+  if !wcee then begin
+    Format.printf "Now performing the worst case execution estimation@\n";
+    let _ = Wcee.analysis ff allFcts entry in
+    ()
   end ;
   print_newline ();
   flush ();

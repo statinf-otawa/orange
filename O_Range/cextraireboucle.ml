@@ -3392,7 +3392,7 @@ let rec hasMultiOuputInst stat =
 	| IF (exp, s1, s2) ->hasMultiOuputExp  exp ||hasMultiOuputInst s1 || hasMultiOuputInst s2
 	| WHILE (e, stat) | DOWHILE (e, stat)->hasMultiOuputExp  e ||hasMultiOuputInst stat
 	| FOR (exp1, exp2, exp3, stat) -> hasMultiOuputExp  exp1 || hasMultiOuputExp  exp2 ||hasMultiOuputExp  exp3 ||hasMultiOuputInst stat
-	| BREAK | CONTINUE | RETURN _| GOTO _  | ASM _ | GNU_ASM (_, _, _, _)| GNU_ASM_VOLATILE(_, _, _, _)->true
+	| BREAK | CONTINUE | RETURN _| GOTO _  | ASM _ | GNU_ASM (_, _, _, _) (* | GNU_ASM_VOLATILE(_, _, _, _) *)->true
 
 and hasMultiOuputExp exp =
 	match exp with

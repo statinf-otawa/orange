@@ -140,7 +140,8 @@ let opts = [
 		"Input flow facts from the given file (instrumented 'ghost' instructions). Use with --iffx");
 	("--delta", Arg.Set delta,
 		"Perform delta analysis. Don't use with --iffxg");
-
+	("--wcee", Arg.Set wcee,
+		"Perform worst case execution estimation. Don't use with --iffxg");
 	("--", Arg.Set from_stdin,
 		"Takes input from standard input.");
 	("--funlist", Arg.String (fun file -> fun_list_file := file),

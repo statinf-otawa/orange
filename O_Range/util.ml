@@ -1863,6 +1863,7 @@ let rec   addAInstEachVarOfListAssign   listOfCovariantVar  instructiontoadd ins
 
 (* arguments *)
 let delta = ref false
+let wcee = ref false
 let ghost = ref false
 let in_ffx_file = ref ""
 
