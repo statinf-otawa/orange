@@ -13,16 +13,20 @@ SOURCES = \
 	cvarabs.ml \
 	interval.ml \
 	increment.ml\
-    covariance.ml \
+	covariance.ml \
 	cextraireboucle.ml \
+	tMap.ml \
+	maxima.ml \
+	balance.ml \
+	wcee.ml \
 	orange.ml 
 
 # absClassProperty.ml\
-	
+
 OCAMLC_CFLAGS += -g
 OCAMLC_LDFLAGS += -g
-OCAML_INC += ../../frontc/frontc
-OCAML_LIB += unix ../../frontc/frontc/frontc
+OCAML_INC += ../../frontc/frontc ../xml-light
+OCAML_LIB += unix ../../frontc/frontc/frontc ../xml-light/xml-light
 OCAMLYACC_FLAGS = -v
 
 $(eval $(call ocaml_prog,orange, $(SOURCES), no_install $(PROG_FLAGS)))

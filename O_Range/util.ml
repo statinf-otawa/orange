@@ -9,6 +9,9 @@ open Cvariables
 open Coutput
 open Rename
 open Printf
+
+open Xml
+
 let vDEBUG = ref false
 let  cSNPRT = ref true   (* pas d'analyse de domaine de pointeur dans util.ml de O_Range*)
 let hasCondListFile_name = ref false
@@ -1887,5 +1890,207 @@ let rec   addAInstEachVarOfListAssign   listOfCovariantVar  instructiontoadd ins
 
 
  
+(* ------------------------------------------------------------------------ *
+ * ------------------------------------------------------------------------ *)
+
+(* arguments *)
+let delta = ref false
+let wcee = ref false
+let ghost = ref false
+let in_ffx_file = ref ""
+
+(* jz: data for input ffx (both options), balance (delta-stuff) *)
+
+(* 'pointer' to the list of global vars/instrs,
+    set only later in evalCorpsFOB. this is just a list,
+    we will insert the global list into this list at the
+    first position. *)
+let (glbllist : abstractStore list) = []
+let (globalesPtr : abstractStore list ref) = ref glbllist
+
+(* alternative: encode as instructions in doc *)
+let (scenasdocinsts : expression list) = [] 
+let scenarioAsDocInsts = ref scenasdocinsts
+
+
+(* not used anymore *)
+(* alternative: encode as global inits *)
+let (rscenasglobinst : inst list) = [] 
+let scenarioAsGlobalInsts = ref rscenasglobinst
+
+(* same as below but for instructions *)
+let cmpScenarioInstAsgns a b =
+  match a with
+    VAR(varA, expA, _, _) ->
+      (match b with
+        VAR(varB, expB, _, _) ->
+          if varA < varB then -1
+          else if varB < varA then 1
+          else 0
+        | _ -> -1)
+    | _ -> -1
+
+(* same as below but for instructions -- maybe one version, supplying comparator *)
+let rec mergePrioA_AB_Insts listA listB listRes =
+  (* non empty lists, recurse *)
+  if listA != [] && listB != [] then
+    let (hda, tla) = ((List.hd listA), (List.tl listA)) in
+    let (hdb, tlb) = ((List.hd listB), (List.tl listB)) in
+    if cmpScenarioInstAsgns hda hdb = -1 then mergePrioA_AB_Insts tla ([hdb]@tlb) ([hda]@listRes)
+    else if cmpScenarioInstAsgns hda hdb = 1 then mergePrioA_AB_Insts ([hda]@tla) tlb ([hdb]@listRes)
+    else mergePrioA_AB_Insts tla tlb ([hda]@listRes)
+  else begin
+    if listA = [] then listB@listRes
+    else if listB = [] then listA@listRes
+    else listRes
+  end        
+
+(** jz: this (for now) represents static information about
+        a scenario. it should be read from an ffx file at some
+        point. Orange@evalCorpsFOB does merge this information
+        with the list of globals (overwriting any assignments)
+        and then sets this list to [] such that it is not
+        reflected in following calls. this mechanism needs
+        to be verified. we use a ref so we can just set it to 
+        empty list after first using it.
+*)
+let (rscenasglob : abstractStore list) = [] 
+(* examples: *)
+   (* ASSIGN_SIMPLE ("z", EXP (CONSTANT(CONST_INT "91"))); *)
+   (* ASSIGN_SIMPLE ("k",
+        EXP (CALL (VARIABLE "SET", 
+        [CONSTANT (CONST_INT "1"); CONSTANT (CONST_INT "5")]))) *)
+let scenarioAsGlobals = ref rscenasglob
+let scenarioAsGlobalsUsedOnce = ref 1
+
+(* flow facts as xml object *)
+let ffx_flowfacts = PCData("")
+let (scenarioAS: (string * string * string) list) = []
+(* stores flow facts read from scenario file as abstract store *)
+let (rscAS: (string * string * string) list ref) = ref scenarioAS
+
+(** jz: helper functions and tests
+        [1] sorter for abstract stores
+        [2] merger for abstract stores
+        these functions should be called to overwrite any
+        global assignments by the constraints we supply as scenario.
+
+        compare (comparator) for abstract stores;
+        the assigned-to variable is taken for sorting elements.
+        all other elements are just ignored.
+        result: -1 if a < b, 0 if == and 1 if a > b
+        @a: element 1 to compare
+        @b: element 2 to compare
+*)
+let cmpScenarioASAsgns a b =
+  match a with
+    ASSIGN_SIMPLE(varA, expA) ->
+      (match b with
+        ASSIGN_SIMPLE(varB, expB) ->
+          if varA < varB then -1
+          else if varB < varA then 1
+          else 0
+        | _ -> -1)
+    | _ -> -1
+
+(** jz: merges two lists, giving priority to elements of list A
+        i.e. if there are two elements which are equal, then only the
+        value from list A is inserted, the other one dropped.
+        comparison is done by variable name (cmpScenarioASAsgns is comparator)
+        result: merged list with similar elements taken from list A
+        @listA: high priority list when adding, as get added if elems ==
+        @listB: low priority list when adding, bs get dropped if elems ==
+        @listRes: accumulator list
+*)
+let rec mergePrioA_AB listA listB listRes =
+  (* non empty lists, recurse *)
+  if listA != [] && listB != [] then
+    let (hda, tla) = ((List.hd listA), (List.tl listA)) in
+    let (hdb, tlb) = ((List.hd listB), (List.tl listB)) in
+    if cmpScenarioASAsgns hda hdb = -1 then mergePrioA_AB tla ([hdb]@tlb) ([hda]@listRes)
+    else if cmpScenarioASAsgns hda hdb = 1 then mergePrioA_AB ([hda]@tla) tlb ([hdb]@listRes)
+    else mergePrioA_AB tla tlb ([hda]@listRes)
+  else begin
+    if listA = [] then listB@listRes
+    else if listB = [] then listA@listRes
+    else listRes
+  end        
+
+(* jz: parse in ffx, called from _ (main) *)
+let parseFFXScenario ffx_flowf =
+  (* get all child contexts *)
+  let ffx_context = Xml.children ffx_flowf in
+  (* result list *)
+  List.iter (
+    fun f -> (* get context = scenario name, data elements *)
+      List.iter (
+        fun c -> (* get name for each data element *)
+          let str_dname = Xml.attrib c "name" in (* get all child data elements *)
+          let dattribs = Xml.children c in
+          (* value for each data element: can be constants or ranges,
+             for constants we extract the value attrib and store it to both
+             value strings, for ranges we put lower and upper attrib into those *)
+          List.iter (
+            fun a ->
+              try (* catch Xml.Not_element *)
+                let str_aval = Xml.attrib a "value" in
+                rscAS := List.rev_append [(str_dname, str_aval, str_aval)] !rscAS;
+              with
+                Xml.No_attribute "value" -> ();
+              try (* catch Xml.Not_element *)
+                let str_alval = Xml.attrib a "lower" in
+                let str_auval = Xml.attrib a "upper" in
+                rscAS := List.rev_append [(str_dname, str_alval, str_auval)] !rscAS;
+              with
+                Xml.No_attribute "lower"
+              | Xml.No_attribute "upper" -> ()
+          ) dattribs
+      ) (Xml.children f)
+      (* construct AS for each data element, i.e. (name, ASGN) *)
+  ) (ffx_context)
+  (*finally: List.iter (fun f -> parseContext f) (List.map Xml.tag ffx_context);*)
+
+
+let (globalsAndConstraints : abstractStore list ref) = ref []
+
+(* stuff for balance.ml -- delta-stuff *)
+(* loop information (i.e. id + bounds) *)
+let (lpinfo : (int * int * int) list) = []
+let loopInfo = ref lpinfo
+
+(* loops in original doc *)
+let (loopstmtsinorig : Cabs.statement list) = []
+let vanillaLoopStmts = ref loopstmtsinorig
+(* analyzed loops *)
+let (analyzedloopstmts : (int * int) list) = []
+let completeLoopStmts = ref analyzedloopstmts
+(* ds to store loop<->bounds *)
+let (mresloops : (Cabs.statement * int) list)= []
+let balanceLoops = ref mresloops
+
+(* same for conditionals *)
+(* 'pointers' for updating the ifInfo list *)
+let (ifstack : ((string * (bool list)) ref) Stack.t) = Stack.create ();;
+let (ifinfo : ((string * (bool list)) ref) list) = []
+let ifInfo = ref ifinfo
+(* ifs in original doc *)
+let (ifstmtsinorig : Cabs.statement list) = []
+let vanillaIfStmts = ref ifstmtsinorig
+(* ds to store if<->executed *)
+let (mresifs : (Cabs.statement * (bool list)) list) = []
+let balanceIfs = ref mresifs
+let tmpifcnt = 0
+let tmpIfCnt = ref tmpifcnt
+
+let (condtbl : (string, Cabs.statement) Hashtbl.t) = Hashtbl.create 30;;
+let (looptbl : (int, Cabs.statement) Hashtbl.t) = Hashtbl.create 10;;
+
+let (parents: (string, string list) Hashtbl.t) = Hashtbl.create 30;;
+
+let (allFunctionNamesList : (string list)) = []
+let allFunctionNames = ref allFunctionNamesList
+
+(* we don't need the list because of 'binding updates' of hashtbl ... *)
+let (varsPointingToFcts : ((string * int), (string * string)) Hashtbl.t) = Hashtbl.create 40;;
 
 
