@@ -17,7 +17,7 @@ OPTIONS += custom
 endif
 
 OCAML_INC += ../../frontc/frontc ../O_Range ../inst/lib/ ../graph ../xml-light
-OCAML_LIB += unix str ../../frontc/frontc/frontc ../O_Range/orange ../graph/resumeforgraph ../xml-light/xml-light
+OCAML_LIB += unix str ../../frontc/frontc/frontc ../xml-light/xml-light ../O_Range/orange ../graph/resumeforgraph
 
 $(eval $(call ocaml_prog,orange,$(SOURCES),$(OPTIONS)))
 
