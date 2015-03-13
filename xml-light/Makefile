@@ -2,7 +2,7 @@
 # http://tech.motion-twin.com
 .SUFFIXES : .ml .mli .cmo .cmx .cmi .mll .mly
 
-INSTALLDIR=`ocamlc -where`
+INSTALLDIR=$(PREFIX)/lib
 CFLAGS=
 LFLAGS= -a
 LIBS=
@@ -12,7 +12,8 @@ all: xml-light.cma test.exe doc
 opt: xml-light.cmxa test_opt.exe
 
 install: all opt
-	cp xml-light.cmxa xml-light.a xml-light.cma xml.mli xmlParser.mli dtd.mli xml.cmi xmlParser.cmi dtd.cmi xml.cmx dtd.cmx xmlParser.cmx $(INSTALLDIR)
+
+#	cp xml-light.cmxa xml-light.a xml-light.cma xml.mli xmlParser.mli dtd.mli xml.cmi xmlParser.cmi dtd.cmi xml.cmx dtd.cmx xmlParser.cmx $(INSTALLDIR)
 
 doc:
 	mkdir doc
