@@ -158,10 +158,6 @@ module Footprint = struct
   let list l = MaxCount.just (ItemCount.list l)
   let add mc1 mc2 =
     let mc = MaxCount.combine ~iso1:true ~iso2:true ItemCount.add mc1 mc2 in
-    Format.printf "SUM(%a,@ %a)@ = %a@\n"
-      MaxCount.print mc1
-      MaxCount.print mc2
-      MaxCount.print mc;
     mc
   let add_all l = List.fold_left add nothing l
   let max = MaxCount.max

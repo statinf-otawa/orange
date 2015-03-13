@@ -20,7 +20,7 @@ doc:
 
 test.exe: xml-light.cma
 	ocamlc xml-light.cma test.ml -o test.exe
-	
+
 test_opt.exe: xml-light.cmxa
 	ocamlopt xml-light.cmxa test.ml -o test_opt.exe
 
@@ -47,6 +47,9 @@ dtd.cmi: xml.cmi
 xml.cmi: 
 
 xmlParser.cmi: dtd.cmi xml.cmi
+
+xml_parser.cmi: dtd.cmi xml.cmi
+	cp xml_parser.mli.patch xml_parser.mli; ocamlc xml_parser.mli
 
 xml_lexer.cmi: dtd.cmi
 
