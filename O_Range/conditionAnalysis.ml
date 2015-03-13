@@ -173,7 +173,7 @@ let rec cond_to_ranges expr =
     end
   | GNU_BODY _
   | NOTHING -> raise InvalidCondition
-  | _ -> failwith "todo"
+  | _ -> Ranges.top (* failwith "todo" *)
 
 let constraints_from_condition
     (expr : Cabs.expression)
