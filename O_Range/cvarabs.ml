@@ -1138,7 +1138,7 @@ Printf.printf " consArrayFromPtrExp index \n";
 						consArrayFromPtrExp (BINARY (ADD,  VARIABLE(tab),List.hd lidx)) arrayName
 
 
-						| MSARRAY (lsize) -> let index = prodListSizeIndex lsize lidx in Printf.printf " consArrayFromPtrExp index 222\n";
+						| MSARRAY (lsize) -> let index = prodListSizeIndex lsize lidx in  
 											 	consArrayFromPtrExp (BINARY (ADD,  VARIABLE(tab),index)) arrayName ) in(* (NOTHING, false)in*)
 					(*print_expression VARIABLE(tab)) 0;  print_expression res 0;
 					if isok then Printf.printf "OK\n";*)
