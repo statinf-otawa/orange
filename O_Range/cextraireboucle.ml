@@ -2989,7 +2989,7 @@ and  consRefexpression exp =
 	| QUESTION (exp1, exp2, exp3) -> consRefexpression exp1 ; consRefexpression exp2; consRefexpression exp3;()
 	| CAST (_, e) 		 ->  consRefexpression e ; ()
 	| CALL (e , args) 				->		idAppel := !idAppel+1;
-				setAssosIdCallFunctionRef !idAppel (!fileCour , !numLine );Printf.printf "setAssosIdCallFunctionRef functiuon %s numAppel %d %d\n" (nomFonctionDeExp e) !idAppel !numLine;
+				setAssosIdCallFunctionRef !idAppel (!fileCour , !numLine );(*Printf.printf "setAssosIdCallFunctionRef functiuon %s numAppel %d \n" (nomFonctionDeExp e) !idAppel;*)
 				List.iter (fun ep -> consRefexpression ep) args;
 				(* Printf.printf "setAssosIdCallFunctionRef functiuon %s numAppel %d \n" (nomFonctionDeExp e) !idAppel;*) ()
 	| COMMA e 				->    List.iter (fun ep -> consRefexpression ep) e; ()
@@ -4882,43 +4882,38 @@ and analyse_expressionaux exp =
 					listeDesInstCourantes := [];
 					construireAsAppel f.declaration	exp ;
 
+					 let ida =
+
+						if  name = "SET" || name ="ABSTRACTINTER" then 0
+						else 
+						begin
+							idAppel := !idAppel + 1;
+						   !idAppel 
+					 end in
+
+					(*Printf.printf "analyse_expressionaux %s num appel %d \n" name ida;
+					Printf.printf "analyse_expressionaux %s EXISTE \n" name ;*)
+					 let (fichier , ligne ) = getAssosIdCallFunctionRef ida in
+
+					(*Printf.printf "analyse_expressionaux 45  %s EXISTE %s fichier %d line\n" name fichier ligne ;*)
 					
- 					if  name = "SET" || name ="ABSTRACTINTER" then ()
-					else 
+					listeBoucleOuAppelCourante	:= if  name = "SET" || name ="ABSTRACTINTER" then( !listeBoucleOuAppelCourante )
+						else List.append  !listeBoucleOuAppelCourante  [IDAPPEL(ida, exp, !listeDesInstCourantes,"", !trueList,!falseList ,fichier , ligne)];
+					let _ = traiterAppelFonction e args !listeDesInstCourantes ida in
+					let nouvar = Printf.sprintf "call-%s%d" (nomFonctionDeExp e) ida in
+					(*if isvoid = false then *)
 					begin
 
+						let nouvarres = Printf.sprintf "res-%s" (nomFonctionDeExp e) in
+						let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
+						listeDesInstCourantes :=  List.append !listeDesInstCourantes  [newaffect]
+					end;
+					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
 
-						idAppel := !idAppel + 1;
-						let ida = !idAppel in
+(*afficherLesAffectations (  !listeDesInstCourantes) ;new_line () ;*)
+(*Printf.printf "FIN analyse_expressionaux %s num appel %d \n" (nomFonctionDeExp e) ida;	*)
 
-						(*Printf.printf "analyse_expressionaux %s num appel %d \n" name ida;
-						Printf.printf "analyse_expressionaux %s EXISTE \n" name ;*)
-						 let (fichier , ligne ) = getAssosIdCallFunctionRef ida in
-
-						Printf.printf "analyse_expressionaux ida %d  %s EXISTE %s fichier %d line\n" ida name fichier ligne ;
-					
-						listeBoucleOuAppelCourante	:=  List.append  !listeBoucleOuAppelCourante  [IDAPPEL(ida, exp, !listeDesInstCourantes,"", !trueList,!falseList ,fichier , ligne)];
-						let _ = traiterAppelFonction e args !listeDesInstCourantes ida in
-						let nouvar = Printf.sprintf "call-%s%d" (nomFonctionDeExp e) ida in
-						(*if isvoid = false then *)
-						begin
-
-							let nouvarres = Printf.sprintf "res-%s" (nomFonctionDeExp e) in
-							let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
-							listeDesInstCourantes :=  List.append !listeDesInstCourantes  [newaffect]
-						end;
-						listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
-
-							(*afficherLesAffectations (  !listeDesInstCourantes) ;new_line () ;*)
-							(*Printf.printf "FIN analyse_expressionaux %s num appel %d \n" (nomFonctionDeExp e) ida;	*)
-
-						nouvExp:=VARIABLE(nouvar)
-
-
-					end; 
-
-
-					
+					nouvExp:=VARIABLE(nouvar)
 				end
 				else
 				begin
@@ -4931,32 +4926,33 @@ and analyse_expressionaux exp =
 					end
 					else
 					 List.iter (fun ep -> analyse_expression  ep  ) args;
+					 let ida =
 
- 					if  nom = "SET" || nom ="ABSTRACTINTER" then ()
-					else 
-					begin
+						if  nom = "SET" || nom ="ABSTRACTINTER" then 0
+						else 
+						begin
+							idAppel := !idAppel + 1;
+						   !idAppel 
+					 end in
+(*Printf.printf "analyse_expressionaux %s num appel %d \n" (nomFonctionDeExp e) ida;
+Printf.printf "analyse_expressionaux %s NON EXISTE \n" (nomFonctionDeExp e) ;*)
+					 let (fichier , ligne ) = getAssosIdCallFunctionRef ida in
+ 
+					listeBoucleOuAppelCourante	:= if  nom = "SET" || nom ="ABSTRACTINTER" then( !listeBoucleOuAppelCourante )
+						else List.append  !listeBoucleOuAppelCourante [IDAPPEL(ida, exp,!listeDesInstCourantes,"" , !trueList,!falseList ,fichier , ligne)];
+					let isComponant = traiterAppelFonction e args !listeDesInstCourantes ida in
 
-						idAppel := !idAppel + 1;
-						let ida = !idAppel in
-	(*Printf.printf "analyse_expressionaux %s num appel %d \n" (nomFonctionDeExp e) ida;
-	Printf.printf "analyse_expressionaux %s NON EXISTE \n" (nomFonctionDeExp e) ;*)
-						 let (fichier , ligne ) = getAssosIdCallFunctionRef ida in
-	 
-						listeBoucleOuAppelCourante	:=  List.append  !listeBoucleOuAppelCourante [IDAPPEL(ida, exp,!listeDesInstCourantes,"" , !trueList,!falseList ,fichier , ligne)];
-						let isComponant = traiterAppelFonction e args !listeDesInstCourantes ida in
+(*if isComponant then Printf.printf "analyse_expressionaux %s NON EXISTE IS COMPOSANT %d\n" (nomFonctionDeExp e) ida
+else   Printf.printf "analyse_expressionaux %s NON EXISTE IS NOT COMPOSANT\n" (nomFonctionDeExp e) ;*)
+					let nouvar = Printf.sprintf "call-%s%d" nom ida in
+					let nouvarres = Printf.sprintf "res-%s" nom in
+					let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
+					listeDesInstCourantes :=  List.append !listeDesInstCourantes  [newaffect];
+					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
 
-	(*if isComponant then Printf.printf "analyse_expressionaux %s NON EXISTE IS COMPOSANT %d\n" (nomFonctionDeExp e) ida
-	else   Printf.printf "analyse_expressionaux %s NON EXISTE IS NOT COMPOSANT\n" (nomFonctionDeExp e) ;*)
-						let nouvar = Printf.sprintf "call-%s%d" nom ida in
-						let nouvarres = Printf.sprintf "res-%s" nom in
-						let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
-						listeDesInstCourantes :=  List.append !listeDesInstCourantes  [newaffect];
-						listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
-
-	(*afficherLesAffectations (  !listeDesInstCourantes) ;new_line () ;*)
-	(*Printf.printf "end analyse_expressionaux %s num call %d \n" (nomFonctionDeExp e) ida;	*)
-						if isComponant then nouvExp:=VARIABLE(nouvar) else nouvExp:=exp
-					end;
+(*afficherLesAffectations (  !listeDesInstCourantes) ;new_line () ;*)
+(*Printf.printf "end analyse_expressionaux %s num call %d \n" (nomFonctionDeExp e) ida;	*)
+					if isComponant then nouvExp:=VARIABLE(nouvar) else nouvExp:=exp
 				end		;
 	| COMMA e 	-> (*Printf.printf "into comma\n";print_expression exp 0; new_line();*) List.iter (fun ep -> analyse_expressionaux ep) e;
 					nouvExp:=COMMA(e)

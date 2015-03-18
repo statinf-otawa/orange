@@ -1260,7 +1260,8 @@ and interSet min1 max1 min2 max2 =
 
 and isConstSetAndSortBounds exp ia li sign=
 	match exp  with
-	CALL(VARIABLE("SET"), l) ->  
+    CONSTANT(i) -> let value1 = evalConstant i in  (true ,value1, value1, false)
+	| CALL(VARIABLE("SET"), l) ->  
 						(match (List.hd l,List.hd (List.tl l)) with
 								(CONSTANT(i),CONSTANT(j)) ->  
 										let value1 = evalConstant i in 
@@ -1293,10 +1294,13 @@ and isConstSetAndSortBounds exp ia li sign=
 										let (boolean, min, max, empty) =isConstSetAndSortBounds (CALL(VARIABLE("SET"), l)) ia li sign in
 										if empty then (boolean, min, max, empty)
 										else 
-											if boolean then
-												if estSup min value1   || estSup value1 max then  ( (*Printf.eprintf "WARNING != ABSTRACTINTER ... not into set ... ..."  ;*) (false, NOCOMP, NOCOMP, true) )
+											if boolean then 
+											begin 
+												if estSup min value1   || estSup value1 max then  ( Printf.printf "EMPTY"  ; (false, NOCOMP, NOCOMP, true) )
 												else (true, value1, value1, false) 
+											end
 											else if min = NOCOMP && max = NOCOMP then (true, value1, value1, false) 
+									
 												 else if (min = NOCOMP && ( estSup max value1 || value1 = max) ) || (max = NOCOMP  && (estSup value1 min || value1 = min)  )then (true, value1, value1, false) 
 													  else  (false, NOCOMP, NOCOMP, false) 
 								| (CALL	(VARIABLE("ABSTRACTINTER"), _), CALL(VARIABLE("SET"), _))  		
@@ -1331,9 +1335,10 @@ and eqAllvalue min1 max1 min2 max2  =
 	if min1 =  max1 &&  min2 = max2 && min1 = max2 then true else false
 
 and estSup  max min  = 
+   
 		if estPositif max && estPositif min then
-			estPositif( evalexpression (Diff (max, min))) (* *)
-		else if estPositif max then true else if  estPositif min  then false else estPositif( evalexpression (Diff (max, min)))
+		  estStricPositif( evalexpression (Diff (max, min)))(* *)
+		else if estPositif max then true else if  estPositif min  then false else estStricPositif( evalexpression (Diff (max, min)))
 
 and  calculer expressionVA ia l sign =
 	match expressionVA with
@@ -1510,13 +1515,13 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 										else evalexpression (Shr (val11, val22))
 				| EQ 	->
 				if hasSETCALLval1 || hasSETCALLval2 then 
-				begin
+				begin    
 					let (isconstset1,  min1, max1, empty1) = isConstSetAndSortBounds exp1 ia l sign in
 					let (isconstset2,  min2, max2, empty2) = isConstSetAndSortBounds exp2 ia l sign in
-					if empty1 || empty2 then Boolean(false) 
-					else 
+					if empty1 || empty2 then (Printf.printf "EQ 2"  ; Boolean(false) )
+					else  
 						if (isconstset1 && isconstset2) then 
-						begin
+						begin   
 								if eqAllvalue min1 max1 min2 max2 then Boolean(true) 
 								else 
 								(
@@ -1526,7 +1531,7 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 						end
 						else 
 						begin  
-								 
+								  
 								if isconstset1 && estDefExp val2 then 
 								begin 
 									if eqAllvalue min1 max1  max1  val2  then   Boolean(true)  
@@ -1541,7 +1546,7 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 
 						end 
 				end
-				else
+				else  ( 
 					if estBool val1 && estBool val2 then if val1 = val2   then Boolean(true)  else Boolean (false)
 					else if estDefExp val1  &&  estDefExp val2 then
 					begin
@@ -1549,7 +1554,7 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 										if estNul diff then Boolean(true)
 										else Boolean (false)
 									end
-									else NOCOMP
+									else NOCOMP)
 				| NE->
  
 					if hasSETCALLval1 || hasSETCALLval2 then 
