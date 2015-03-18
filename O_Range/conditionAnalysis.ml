@@ -139,16 +139,20 @@ module CondUtils = struct
       | EXPR_LINE (e,_,_), _ -> rifc false cmp e right
       | VARIABLE _, CONSTANT (CONST_INT ns) ->
 	let e = Expr.make left in
-	let n = int_of_string ns in
-	let i = match cmp with
-	  | EQ -> Interval.singleton n
-	  | LT -> Interval.upper_bounded (n - 1)
-	  | LE -> Interval.upper_bounded n
-	  | GT -> Interval.lower_bounded (n + 1)
-	  | GE -> Interval.lower_bounded n
-	  | _ -> failwith "unhandled argument"
-	in
-	Some (e,i)
+	begin
+	  try
+	    let n = int_of_string ns in
+	    let i = match cmp with
+	      | EQ -> Interval.singleton n
+	      | LT -> Interval.upper_bounded (n - 1)
+	      | LE -> Interval.upper_bounded n
+	      | GT -> Interval.lower_bounded (n + 1)
+	      | GE -> Interval.lower_bounded n
+	      | _ -> failwith "unhandled argument"
+	    in
+	    Some (e,i)
+	  with Failure("int_of_string") -> None
+	end
       | _ when not justFlipped -> rifc true (flip cmp) right left
       | _ -> None in
     rifc false cmp left right
