@@ -270,6 +270,7 @@ let new_variation i s inc d op b=
 	}
 
 	let new_boucleInfo typeb id l deg eng  condcte cond multiple liste vari b=
+
 	{
 		typeBoucle = typeb;
 		nomEnglobante = eng;
@@ -1062,7 +1063,8 @@ NOTHING ->   ()
 let traiterEQ init borne var c =
 		match !estPosInc with
 			INCVIDE -> (CONSTANTE , NOTHING, NOTHING, EQ, false, var, c)(* sic=1 alors init = borne toujours sinon 0*)
-			|POS|NEG-> (CONSTANTE , NOTHING, (CONSTANT (CONST_INT "1")), EQ, false, var, c)(* si init = borne 1 sinon 0*)
+			|POS->  (CROISSANT , NOTHING, (CONSTANT (CONST_INT "1")), EQ, false, var, c)(* si init = borne 1 sinon 0*)
+			|NEG->  (DECROISSANT , NOTHING, (CONSTANT (CONST_INT "1")), EQ, false, var, c)(* si init = borne 1 sinon 0*)
 			|_ ->  (CROISSANT , (CONSTANT (CONST_INT "1")), NOTHING, EQ, true, var, c)
 		(*end*)
 
@@ -1182,7 +1184,7 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 	begin
 		if isLoopCtee2 then
 		begin
-(*Printf.printf "rechercheConditionBinary cas 2\n";	*)
+			(*Printf.printf "rechercheConditionBinary cas 2\n";	*)
 			let nop = if sens1 = CROISSANT then op else changeCompOp op in
 			let ne2 =
 				if  b1nul then
@@ -1211,7 +1213,7 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 
 								(CROISSANT , NOTHING, NOTHING, EQ, true, var, ne) else traiterEQ init ne2  var ne
 
-							|_->traiterEQ init ne2  var ne)
+							|_->(*Printf.printf "rechercheConditionBinary cas 4\n";	*) traiterEQ init ne2  var ne)
 
 			| NE -> let (isindirect,inc,_,_,isMultiInc) =  getLoopVarIncOrCov var inst  firstcond hasAndCond in
 					if isMultiInc then isExactForm := false;
@@ -1224,7 +1226,7 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 								if isAssignedOK then
 									(CROISSANT , NOTHING, NOTHING, NE, true, var, ne) else traiterNEQ init ne2  var ne true
 
-							|_->traiterNEQ init ne2  var ne false)
+							|_->(*Printf.printf "rechercheConditionBinary cas 3\n";	*) traiterNEQ init ne2  var ne false)
 			| BAND ->
 					let (isindirect,inc,_,_,isMultiInc) =  getLoopVarIncOrCov var inst  firstcond hasAndCond in
 					if isMultiInc then isExactForm := false;
@@ -2590,9 +2592,10 @@ and analyseCompFor  var init comp l avant dans cte t lv lvb inst firstcond hasAn
 				begin
 					borne:=borneSup; initialisation:=borneInf;  (operateur,	CROISSANT, false, var)
 				end
-				else begin  borne:=borneInf; initialisation:=borneSup; (operateur,croissant, false, var)   end
+				else begin (*Printf.printf "\nanalyseCompFor    aprs appel rechercheConditionBinary %s\n" var  ;	printSens croissant; *)	
+							borne:=borneInf; initialisation:=borneSup; (operateur,croissant, false, var)   end
 			end
-			else 	( op, NONMONOTONE, true, var)
+			else 	( Printf.printf "\nanalyseCompFor   NONMONOTONE \n"  ; ( op, NONMONOTONE, true, var))
 		| VARIABLE name ->
 						analyseCompFor  var init (BINARY(NE, VARIABLE (name),  CONSTANT (CONST_INT "0")))  l avant dans cte t lv lvb inst firstcond hasAndCond;
 		| _-> 	 ( ADD, NONMONOTONE,false, var) (*pas multiple meme chose que pour unary si booleen*)
@@ -2617,11 +2620,11 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 	(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var;*)
 	let varCond = match conditionI with VARIABLE(v)->v |_-> "NODEF" in
 	(*print_expVA (EXP(conditionI)); new_line ();*)
-	let affect = if (conditionConstante) then  (  (*Printf.printf"cons cte";*) EXP(conditionI) )
+	let affect = if (conditionConstante) then  (    applyStoreVA (EXP(conditionI)) appel )
 			else
 				if (existeAffectationVarListe varCond appel) then ( (* Printf.printf"cons non cte 1";*)
 					applyStoreVA(rechercheAffectVDsListeAS  varCond appel)[] )
-				else ( (* Printf.printf"cons non cte 2"; *) EXP(NOTHING)) in
+				else ( (* Printf.printf"cons non cte 2"; *) applyStoreVA (EXP(conditionI)) appel) in
 
 	let const = calculer   affect !infoaffichNull  [](*appel*) 1 in
 	(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var; print_expTerm const; new_line ();*)
@@ -3147,7 +3150,7 @@ match op with EQ|NE->true|_->false
 	let nb = expVaToExp (getNombreIt nsup (typevar=CONSTANTE||cte) t nc multiple [] typeopPlusouMUL  infoVar nv []) in
 	listeBoucleOuAppelCourante := reecrireCAll var2 !listeBoucleOuAppelCourante;
 
-
+ 
 	let info = (new_boucleInfo t nom listeV nbIt eng (typevar=CONSTANTE||cte) nc multiple !listeBoucleOuAppelCourante
 				( new_variation !expressionDinitFor nb inc typevar operateur indirectafter) typeopPlusouMUL) in
 
@@ -3169,6 +3172,12 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 	listADD := [];listADDInc := [];covvarAssign:=   MULTIPLE;  covvarAfter :=  false;
  	covvarLoop :=  false;
  	let (op, typev,multi,v) = analyseCompFor    var  (VARIABLE(var)) cond listLoopVar  avant dans cte t var2 lvb inst cond false in
+
+		(*
+		Printf.printf "\n\ntraiterConditionBoucleFor  analyseCompFor %d\n" nom ;
+		printSens typev;*)
+
+
 	let liste = listeDesVarsDeExpSeules  cond in
 	expressionIncFor:= NOTHING;
 	(*Printf.printf "\n\ntraiterConditionBoucleFor  analyseCompFor\n" ;*)
@@ -3266,8 +3275,12 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 	borne := nsup;
 	initialisation := ninf;
 
-	(*Printf.printf "\n\ntraiterConditionBoucleFor  2\n" ;*)
+ 
+
+
+
  	let infoVar =   new_variation ninf nsup inc typevar  operateur indirectafter in
+
 	let nc = if (typevar=CONSTANTE||cte) then cond else vcond in
 	let nb = expVaToExp (getNombreIt nsup (typevar=CONSTANTE||cte) t nc multiple [] !opEstPlus   infoVar v []) in
 	listeBoucleOuAppelCourante := reecrireCAll var2 !listeBoucleOuAppelCourante;

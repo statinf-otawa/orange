@@ -4035,7 +4035,7 @@ and evalNid nid appel (*appelée pour une mere de nid*) listeEng lt lf estexeEng
       Printf.eprintf "NID av eval nid de %d pas dans autre boucle\n" (getBoucleIdB nid.infoNid.laBoucle);
     let (vt, vf) = creerVarTF lt lf appel [] in
     let isExe = estexeEng && isExecuted lt lf aSC [] [] true in
-            (*Printf.printf"evalNid : valeur de isexe dans evalboucel pas dans autre : ";
+          (*  Printf.printf"evalNid : valeur de isexe dans evalboucel pas dans autre : ";
               if isExe then Printf.printf"vrai\n" else Printf.printf"false\n" ;*)
     estDansBoucle := true;
     let varDeBouclePred = !varDeBoucleBoucle in

@@ -1458,14 +1458,9 @@ and  calculer expressionVA ia l sign =
 				begin
 (*
 if hasSETCALLval1 || hasSETCALLval2 then
-begin
-				Printf.printf"binary calculer\n";print_expression exp1 0;new_line ()	; flush(); space();new_line();flush(); space();new_line();
-				print_expression exp2 0;new_line () ;flush(); space();new_line();flush(); space();new_line();
-Printf.printf"var1\n "; print_expTerm val1; new_line();
-Printf.printf"var1\n "; print_expTerm val11; new_line();
-Printf.printf"var2\n "; print_expTerm val2; new_line();
-Printf.printf"var1\n "; print_expTerm val22; new_line();
-			end;*)
+begin*)
+		
+			(*end;*)
 
 				match op with
 				ADD		->
@@ -1518,10 +1513,10 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 				begin    
 					let (isconstset1,  min1, max1, empty1) = isConstSetAndSortBounds exp1 ia l sign in
 					let (isconstset2,  min2, max2, empty2) = isConstSetAndSortBounds exp2 ia l sign in
-					if empty1 || empty2 then (Printf.printf "EQ 2"  ; Boolean(false) )
-					else  
+					if empty1 || empty2 then (  Boolean(false) )
+					else   
 						if (isconstset1 && isconstset2) then 
-						begin   
+						begin    
 								if eqAllvalue min1 max1 min2 max2 then Boolean(true) 
 								else 
 								(
@@ -1530,7 +1525,7 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 								) 
 						end
 						else 
-						begin  
+						begin   
 								  
 								if isconstset1 && estDefExp val2 then 
 								begin 
@@ -1546,10 +1541,11 @@ Printf.printf"var1\n "; print_expTerm val22; new_line();
 
 						end 
 				end
-				else  ( 
+				else  (  
+
 					if estBool val1 && estBool val2 then if val1 = val2   then Boolean(true)  else Boolean (false)
 					else if estDefExp val1  &&  estDefExp val2 then
-					begin
+					begin   
 										let diff = evalexpression (Diff (val1, val2 )) in
 										if estNul diff then Boolean(true)
 										else Boolean (false)
