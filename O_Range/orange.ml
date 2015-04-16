@@ -4889,7 +4889,7 @@ let mapDocAnalyzedOntoDocToAnalyze (docAnalyzed : documentEvalue ref) (docToAnal
     ) !ifInfo);
   ()
 
-(*
+
 let printFile (result : out_channel)  (defs2 : file) need_analyse_defs =
   idBoucle := 0;
   idIf := 0;
@@ -5041,10 +5041,10 @@ idAppel:=0;
   print_newline ();
   flush ();
   result
-  end;;*)
+  end;;
 
 
-
+(*
 let printFile (result : out_channel)  (defs2 : file) need_analyse_defs=
   idBoucle := 0;	idIf := 0;
   idAppel:=0;
@@ -5102,3 +5102,4 @@ print_AssosArrayIDsize !listAssosArrayIDsize;
   flush ();
   result
   end;;
+*)
