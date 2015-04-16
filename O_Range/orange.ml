@@ -5042,3 +5042,64 @@ idAppel:=0;
   flush ();
   result
   end;;
+
+
+(*
+let printFile (result : out_channel)  (defs2 : file) need_analyse_defs=
+  idBoucle := 0;	idIf := 0;
+  idAppel:=0;
+  nbImbrications := 0;
+  out := result;
+  enTETE :=  false;
+  numAppel :=  0;
+  estNulEng :=  false;
+  estDansBoucle :=  false;
+	getOnlyBoolAssignment := true;
+  ptrInterval :=   [];
+  integerInterval :=   ["x"];
+
+  if ( !isPrint_Expression ) then exp_VERBOSE :=  true else exp_VERBOSE :=  false;
+
+  if need_analyse_defs
+  	then  analyse_defs defs2; (*step 1*)
+
+ phaseinit := false;
+  (*afficherNidDeBoucle doc;	*)
+  (*Printf.printf "les globales\n";
+  List.iter(fun x->Printf.printf "%s\t" x)!alreadyAffectedGlobales;
+  Printf.printf "les tableaux\n";
+print_AssosArrayIDsize !listAssosArrayIDsize;
+  Printf.printf "les typesdefs tableaux\n";
+  print_AssosArrayIDsize !listAssosTypeDefArrayIDsize;
+  Printf.printf "les pointeurs\n";
+ *)
+
+(*	evaluerCaseFonctionsDuDoc  doc;
+  printFuncCaseAssos !listCaseFonction;*)
+
+  flush ();
+
+
+  if !evalFunction != [] then( evaluerNbFunctionOfDoc  doc  !evalFunction []; afficherFonctionsDuDoc doc;);
+ 	if !hasCondListFile_name then
+	begin
+		condAnnotated := renameListeIF (getAbsStoreFromComp !condListFile_name) ;
+		afficherListeAS   !condAnnotated; 
+	end;
+
+ let result = (* afficherFonctionsDuDoc doc; Listener.null*)
+
+		 
+		  getOnlyBoolAssignment := false;
+		 listNotEQ := [];
+		  Printf.printf "\nEVALUATION BEGIN\n";
+		  evaluerFonctionsDuDoc doc ;
+		  listnoteqLoop		!listNotEQ;
+ 		  Printf.printf "\nEVALUATION END\n";
+  		  afficherInfoFonctionDuDocUML !docEvalue.maListeEval
+  in
+  print_newline () ;
+  flush ();
+  result
+  end;;
+*)
