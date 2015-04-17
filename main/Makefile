@@ -9,6 +9,8 @@ SOURCES = \
 OCAMLC_FLAGS += -g
 OCAMLC_LDFLAGS += -g
 
+NATIVE := 1
+
 ifdef NATIVE
 OPTIONS += native
 endif

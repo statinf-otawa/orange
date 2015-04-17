@@ -34,6 +34,36 @@ module Mappe = struct
     Format.fprintf formatter last
 end
 
+module Print = struct
+(** Printing functions for standard datatypes *)
+
+  open Format
+
+  let list
+      ?(first=("[@[":(unit,Format.formatter,unit) format))
+      ?(sep = (";@ ":(unit,Format.formatter,unit) format))
+      ?(last = ("@]]":(unit,Format.formatter,unit) format))
+      (print_elt: Format.formatter -> 'a -> unit)
+      (fmt:Format.formatter)
+      (list: 'a list)
+      : unit
+      =
+    if list=[] then begin
+      fprintf fmt first;
+      fprintf fmt last;
+    end
+    else begin
+      fprintf fmt first;
+      let rec do_sep = function
+      [e] -> print_elt fmt e
+	| e::l -> (print_elt fmt e ; fprintf fmt sep; do_sep l)
+	| [] -> failwith ""
+      in
+      do_sep list;
+      fprintf fmt last;
+    end
+end
+
 (** {3 Types} *)
 
 (** The type of total maps. *)
@@ -64,6 +94,8 @@ let special_keys m = Mappe.maptoset m.special
 *)
   
 let special_count m = Mappe.cardinal m.special
+
+let has_no_special m = Mappe.is_empty m.special
   
 (** {3 Array-like operators} *)
   
@@ -97,6 +129,22 @@ let print
   print_val fmt m.default;
   Format.fprintf fmt lastbind;
   Format.fprintf fmt last
+
+let print_list
+    ?(first : (unit, Format.formatter, unit) format = ("[@[<hv>" : (unit, Format.formatter, unit) format))
+    ?(sep : (unit, Format.formatter, unit) format = (";@ ":(unit, Format.formatter, unit) format))
+    ?(last : (unit, Format.formatter, unit) format = ("@]]":(unit, Format.formatter, unit) format))
+    ?(firstbind : (unit, Format.formatter, unit) format = ("" : (unit, Format.formatter, unit) format))
+    ?(sepbind : (unit, Format.formatter, unit) format = (" => ":(unit, Format.formatter, unit) format))
+    ?(lastbind : (unit, Format.formatter, unit) format = ("":(unit, Format.formatter, unit) format))
+    print_key key_list print_val fmt m =
+  Print.list ~first:first ~sep:sep ~last:last
+    (fun fmt key ->
+      Format.fprintf fmt firstbind;
+      print_key fmt key;
+      Format.fprintf fmt sepbind;
+      print_val fmt (get key m);
+      Format.fprintf fmt lastbind) fmt key_list
 
 (** {3 Operating on every bindings} *)
 

@@ -86,6 +86,7 @@ module CostItem = struct
     | Load -> (2., 20.)
     | Store -> (2., 20.)
     | UnknownCode -> (0., 1000.)
+  let all = [SimpleOp; Mult; Div; CondBr; UncondBr; CalcBr; Call; Return; Address; Load; Store; UnknownCode]
 end
 
 (** {3 Counting operations} *)
@@ -106,6 +107,7 @@ module ItemCount = struct
   (** {7 Basic constructions} *)
 
   let nothing = IMap.make 0
+  let is_nothing = IMap.has_no_special
   let list l = add_list l nothing
   let items items = add_items items nothing
   let one_item item = add_one_item item nothing
@@ -125,8 +127,8 @@ module ItemCount = struct
   (** {7 From count to evaluation} *)
 
   let eval cost ct = IMap.fold_special (fun item nb acc -> acc +. (float_of_int nb) *. (cost item)) ct 0.
-  let cheap_eval = eval (fun item -> fst (CostItem.cycle_range item))
-  let expen_eval = eval (fun item -> snd (CostItem.cycle_range item))
+  let cheap_eval = eval (fun item -> 0.1 *. fst (CostItem.cycle_range item))
+  let expen_eval = eval (fun item -> 10. *. snd (CostItem.cycle_range item))
 
   (** Partial ordering of two item counts. *)
   let order ct1 ct2 =
@@ -134,17 +136,28 @@ module ItemCount = struct
     let ct1rem = remove ctb ct1 in
     let ct2rem = remove ctb ct2 in
     let open Maxima.PosetOrder in
-    match expen_eval ct1rem < cheap_eval ct2rem, expen_eval ct2rem < cheap_eval ct1rem with
+    match is_nothing ct1rem, is_nothing ct2rem with (* point-wise ordering *)
     | true, true -> EQ
     | true, false -> LT
     | false, true -> GT
-    | false, false -> UN
+    | false, false ->
+      match expen_eval ct1rem < cheap_eval ct2rem, expen_eval ct2rem < cheap_eval ct1rem with (* possible-costs-based ordering *)
+      | true, true -> EQ
+      | true, false -> LT
+      | false, true -> GT
+      | false, false -> UN
       
   (** Greatest lower bound. Maybe an approximation. *)
   let glb = common
 
+  (** Least upper bound. *)
+  let lub = IMap.combine max
+
   (** Pretty printer. *)
   let print = IMap.print CostItem.print Format.pp_print_int
+
+  (** Full printing. *)
+  let print_list = IMap.print_list ~first:"" ~firstbind:">> " ~last:"" ~sep:"@\n" CostItem.print CostItem.all Format.pp_print_int
 end
 
 (** Evaluation of a piece of code. *)
@@ -169,6 +182,8 @@ module Footprint = struct
     let rem = MaxCount.map ~iso:true (ItemCount.remove common) mc in
     common, rem
 
+  let worst_case mc = MaxCount.lub mc
+
   let multiplyBy n = MaxCount.map (ItemCount.multiplyBy n)
 
   let of_loop ~header:h ~count:n ~body:b =
@@ -183,6 +198,8 @@ module Footprint = struct
     Format.printf "Basis: %a@\n" ItemCount.print common;
     List.iteri (fun i rem ->
       Format.printf "Comp %d: %a@\n" (i+1) ItemCount.print rem) remainders
+
+  let size = MaxCount.cardinal
 end
 
 (** {3 Main algorithm} *)
@@ -200,10 +217,13 @@ let analysis
     =
   
   let rec fun_eval (fname: string) : Footprint.t =
+    Format.printf "WCEE: starting evaluation of function %s@\n@?" fname;
     let bodyCost = try stmt_eval (Balance.function_def defs fname)
       with Not_found -> Footprint.one_item CostItem.UnknownCode in
     let callCost = Footprint.list [(1,CostItem.Call); (1,CostItem.Return)] in
-    Footprint.add bodyCost callCost
+    let res = Footprint.add bodyCost callCost in
+    Format.printf "%a@\nWCEE: ending evaluation of function %s with %d maximal elements@\n@?" Footprint.print res fname (Footprint.size res);
+    res
       
   and access mempen e =
     let (ecost,loc) = expr_eval e in
@@ -251,7 +271,7 @@ let analysis
       let args = Footprint.add_all (List.map read el) in
       let calling = items (Pervasives.max 0 ((List.length el) - 4), CostItem.Store) in
       let execution = fun_eval fname in
-      Format.printf "Execution of %s evaluates to:@\n%a@\n" fname Footprint.print execution;
+      if false then Format.printf "Execution of %s evaluates to:@\n%a@\n" fname Footprint.print execution;
       add_all [args; calling; execution], Reg
     | CALL _ -> failwith "cannot resolve the call"
     | VARIABLE _ -> one_item CostItem.Address, Reg (* All local assumption. *)
@@ -299,7 +319,6 @@ let analysis
       let wb = eval s_body in
       begin match ff.Balance.loop_bound stmt with
       | Some n ->
-	Format.printf "Meeting a loop looping %d times@\n" n;
 	add wi (of_loop ~header:wt ~count:n ~body:(add_all [wb; we]))
       | None -> failwith "Unbounded for loop" end
     | WHILE (e_test,s_body) ->
@@ -324,6 +343,11 @@ let analysis
 
   in
   (* Performing the analysis. *)
+  Format.printf "Starting the worst-case execution estimation analysis@\n@?";
   let eval = fun_eval entry in
   Format.printf "Estimated cost for the function:@\n%a@\n" Footprint.print eval;
+  let wc = Footprint.worst_case eval in
+  Format.printf "Worst case detail:@\n%a@\n" ItemCount.print_list wc;
+  Format.printf ">> Optimistic evaluation => %d@\n" (int_of_float (ItemCount.cheap_eval wc));
+  Format.printf ">> Pessimistic evaluation => %d@\n" (int_of_float (ItemCount.expen_eval wc));
   eval

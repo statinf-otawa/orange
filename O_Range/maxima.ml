@@ -36,6 +36,10 @@ module type POSET = sig
       The greatest value least than to values. *)
   val glb : t -> t -> t
 
+  (** Least upper bound.
+      The smallest value greater than to values. *)
+  val lub : t -> t -> t
+
   (** Pretty-printing. *)
   val print : Format.formatter -> t -> unit
 end
@@ -56,6 +60,9 @@ module Make = functor (P : POSET) -> struct
       else Format.fprintf fmt "; %a" P.print x)
       set;
     Format.pp_print_string fmt "]"
+
+  (** Size of the set. *)
+  let cardinal set = List.length set
 
   (** Lifting a value to a set. *)
   let just x = [x]
@@ -104,11 +111,6 @@ module Make = functor (P : POSET) -> struct
       else P.order x y in
     let m' = List.fold_left (extend_gen order) m1' m2' in
     let m = map_gen (fun (_,x) -> x) m' in
-    Format.printf "MAX(%a,@ %a)@ = %a@\n"
-      print m1
-      print m2
-      print m
-    ;
     m
 
   (** Greatest lower bound.
@@ -117,7 +119,14 @@ module Make = functor (P : POSET) -> struct
   let glb = function
     | x::r -> List.fold_left P.glb x r
     | [] -> failwith "empty"
-      
+
+   (** Least upper bound.
+      The least value greater than every element of the set.
+  *)
+  let lub = function
+    | x::r -> List.fold_left P.lub x r
+    | [] -> failwith "empty"     
+
   (** Combines two sets with a function [f] and a given order.
       The provided ordering must agree with [P.order].
   *)

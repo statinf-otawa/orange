@@ -4933,6 +4933,8 @@ let printFile (result : out_channel)  (defs2 : file) need_analyse_defs =
     afficherListeAS !condAnnotated;
   end;
 
+  Format.printf "Alive, somewhere in orange.ml@\n@?";
+
   (* jz: this might be kinda f*ked: we add to the ``program instructions'' the
       necessary instructions from the scenario. additionally, we compute the affectations 
       of the new statements, by supplying them to analyse_expressionaux. this call will 
@@ -5019,6 +5021,7 @@ idAppel:=0;
       )
       fctlist) 
   in
+  Format.printf "Considering performing the delta analysis@\n@?";
   if !delta && not !ghost then begin (* && not !ghost) then begin*)
     Format.printf "Computing the balance information from the %s function@\n" entry;
     let conds = Balance.analysis ff allFcts entry in 
