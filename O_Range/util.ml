@@ -11,7 +11,8 @@ open Rename
 open Printf
 
 open Xml
-
+let (estDansBoucleLast  : bool ref) = ref true (* to keep only essential rondTreatment into fixed point *)
+let (estDansBoucleE  : bool ref) = ref false
 let vDEBUG = ref false
 let  cSNPRT = ref true   (* pas d'analyse de domaine de pointeur dans util.ml de O_Range*)
 let hasCondListFile_name = ref false

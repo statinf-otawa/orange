@@ -35,8 +35,7 @@ let vEPSILONFLOAT = ref (CONSTANT (RCONST_FLOAT 0.000001(*min_float*)))
 let vEPSILONINT = ref (VARIABLE("EPSILONINT"))
 (*let vEPSILON = ref (CONSTANT (CONST_FLOAT "0.001"))*)
 
-let (estDansBoucleLast  : bool ref) = ref true (* to keep only essential rondTreatment into fixed point *)
-let (estDansBoucle  : bool ref) = ref false
+
 let torename = ref ""
 
 
@@ -4079,10 +4078,10 @@ print_expression  (exp1) 0; space();  flush() ; new_line();flush();*)
 			let evalcond = applyStore exp1 a in
 			let rescond = ( calculer  (EXP(evalcond))  !infoaffichNull [] 1) in
 
-			if  (!estDansBoucle = false &&  estTrue rescond )then  applyStore exp2 a
+			if  (!estDansBoucleE = false &&  estTrue rescond )then  applyStore exp2 a
 			else
 			begin
-				if (!estDansBoucle = false && estFalse rescond )then applyStore exp3 a
+				if (!estDansBoucleE = false && estFalse rescond )then applyStore exp3 a
 				else
 				begin
 					let valeur1 = (applyStore exp2 a) in
@@ -5942,7 +5941,7 @@ let rec evalStore i a g ptr=
 match i with
 	VAR (id, exp,l,u) -> (* struct assign by ptr *)
 
-		myCurrentPtrContext:= majPtrvarAssign id exp ptr !estDansBoucle false ;
+		myCurrentPtrContext:= majPtrvarAssign id exp ptr !estDansBoucleE false ;
 			let addList =
 				if isPtr id && ptr != [] then
 				(
@@ -6078,9 +6077,11 @@ Printf.printf"memassign as\n";	*)
 
 	| IFVF (cond, i1, i2) ->(*Printf.printf "EvalStore if then else\n";*)
 (*print_expVA cond; new_line();*)
+ 
 
-		let fc  = (localPtrAnalyse [i1]  ptr   !estDansBoucle false) in
-		let  ec= (localPtrAnalyse [i2]  ptr   !estDansBoucle false) in
+let edb = !estDansBoucleE in
+		let fc  = (localPtrAnalyse [i1]  ptr   !estDansBoucleE false) in
+		let  ec= (localPtrAnalyse [i2]  ptr   !estDansBoucleE false) in
 
 
 		let myCond =  applyStoreVA (applyStoreVA  cond a) g  in
@@ -6090,7 +6091,7 @@ Printf.printf"memassign as\n";	*)
 print_expVA myCond; new_line();*)
 
 		(*print_expTerm myTest;new_line();*)
-		if !estDansBoucle = false then
+		if not edb then
 		begin
 			if estTrue myTest then
 				(
@@ -6178,11 +6179,11 @@ Printf.printf "fin \n";*)
 		(*print_expVA myCond; new_line();
 
 		print_expTerm myTest;new_line();*)
-		let  fc = (localPtrAnalyse [i1]  ptr   !estDansBoucle false) in
+		let  fc = (localPtrAnalyse [i1]  ptr   !estDansBoucleE false) in
 
 
-		(*if !estDansBoucle = true then Printf.printf "IF DANS BOUCLE\n";*)
-		if (!estDansBoucle = false && estTrue myTest)  then
+		 
+		if (!estDansBoucleE = false && estTrue myTest)  then
 			(
 				let afterPtr=(LocalAPContext.joinSet fc ptr ) in
 				let res = evalStore i1 a g ptr in
@@ -6190,7 +6191,7 @@ Printf.printf "fin \n";*)
 				res
 
 			)
-		else if (!estDansBoucle = true) then
+		else if (!estDansBoucleE = true) then
 			begin
 
 
@@ -6513,7 +6514,7 @@ Printf.printf "EvalStore fonction pas dans boucle %s 2\n" nomFonc ;*)
 					else
 					begin
 						(*	Printf.printf "dans boucle\n";*)
-						 estDansBoucle:=true;
+						 estDansBoucleE:=true;
 						let corps =   (match corpsAbs with CORPS (BEGIN(ccc)) -> ccc | CORPS (ccc) -> [ccc] |_->[]) in
 (*let c = (match corpsAbs with CORPS(x) -> x |_ -> BEGIN([])) in*)
 						(*if corps =[] then Printf.printf "EvalStore fonction dans boucle %s appel %d corps vide...!!!!!!!\n" nomFonc n; *)
@@ -7083,7 +7084,7 @@ and evalInputFunction a entrees  globales ptr=
 
 		match entree with
 			VAR (id, exp,_,_) ->
-				let nc = majPtrvarAssign id exp ptr !estDansBoucle true in
+				let nc = majPtrvarAssign id exp ptr !estDansBoucleE true in
 (*myCurrentPtrContext:= nc ;	*)
 				let new_exp =
 
