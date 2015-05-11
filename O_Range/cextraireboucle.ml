@@ -960,7 +960,7 @@ let nombreIT id =
 	else (NOTHING)
 
 
-let getBorneBoucleFor s  borne init incr esttypeopPlus after= calculForIndependant s borne init incr esttypeopPlus after(*incInit*)
+let getBorneBoucleFor s  borne init incr esttypeopPlus after = calculForIndependant s borne init incr esttypeopPlus after(*incInit*)
 
 let afficherAssosBoucleBorne b =
 	Printf.printf "\n\t\tnombre d it boucle %d =  " (getBoucleIdB b.laBoucle) ;
@@ -1203,7 +1203,7 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 			| OR -> (NONMONOTONE , NOTHING, NOTHING, op, true, var ,BINARY(op,exp1, exp2))
 			| EQ ->
 					let (isindirect,inc,_,_,isMultiInc) =  getLoopVarIncOrCov var inst  firstcond hasAndCond in
-					if isMultiInc then isExactForm := false;
+					if isMultiInc then isExactForm := false;  
 					(*if isindirect then Printf.printf "EQ cas 2 indirect change\n";*)
 							(match  inc  with
 							NODEFINC -> (* increment not found may be condition =  boolean var *)
@@ -2755,24 +2755,28 @@ and changeExpInto0 expToChange exp  =
 
 and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple appel typeopPlusouMUL infoVar var globales =
   let isNE = infoVar.operateur = NE in
-(*	Printf.printf "getnombre d'it valeur de la condition : %s\n" var;*)
+	(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var;
+ 	print_expVA (EXP(conditionI)); new_line ();space() ;flush() ;new_line(); flush();new_line();
+*)
 	let varCond = match conditionI with VARIABLE(v)->v |_-> "NODEF" in
-	(*print_expVA (EXP(conditionI)); new_line ();space() ;flush() ;new_line(); flush();new_line();*)
-	let affect = if (conditionConstante) then  (    applyStoreVA (EXP(conditionI)) appel )
+
+	let affect = if (conditionConstante) then  (   applyStoreVA (EXP(conditionI)) appel )
 			else
-				if (existeAffectationVarListe varCond appel) then ( (* Printf.printf"cons non cte 1";*)
+				if (existeAffectationVarListe varCond appel) then (   
 					applyStoreVA(rechercheAffectVDsListeAS  varCond appel)[] )
-				else (  (*Printf.printf"cons non cte 2\n"; *) applyStoreVA (EXP(conditionI)) appel) in
+				else (   applyStoreVA (EXP(conditionI)) appel) in
 
 
    (* Printf.printf "getnombre d'it valeur de la condition : %s\n" var; print_expVA affect; new_line ();space() ;flush() ;new_line(); flush();new_line();*)
 	let const = calculer   affect !infoaffichNull  [](*appel*) 1 in
 	
+   (*print_expVA (EXP(conditionI)); new_line ();space() ;flush() ;new_line(); flush();new_line();*)
+
 
 	let isExecutedV = (match const with Boolean(b)	->  if b = false then false  else true
 										|_->if estDefExp const then if estNul const then false else true else true) in
-	(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var; print_expTerm const; new_line ();space() ;flush() ;new_line(); flush();new_line();
-	if isExecutedV  then Printf.printf "isexecuted \n" else Printf.printf "is not executed \n" ;Printf.printf "FIN...\n";*)
+	(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var; print_expTerm const; new_line ();space() ;flush() ;new_line(); flush();new_line();*)
+	(*if isExecutedV  then Printf.printf "isexecuted \n" else Printf.printf "is not executed \n" ;Printf.printf "FIN...\n";*)
 	(*let isConstructVar = if (String.length var > 4) then begin if (String.sub var  0 4) = "bIt-" then  true else   false end else false in*)
 
 	if isExecutedV then
@@ -2806,13 +2810,13 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 					match typeBoucle with
 					"for" |"while"->
 						(match const with (*estExecutee*)
-						ConstInt(i) 	-> if is_integer i && (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "0"))
+						ConstInt(i) 	->  Printf.printf (" boucle for 1\n"); if is_integer i && (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "0"))
 										   else	 if   op = EQ then   EXP(CONSTANT (CONST_INT "1"))  else EXP(NOTHING)
-						|ConstFloat (f) -> 	if is_float f &&(float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "0"))
+						|ConstFloat (f) ->  Printf.printf (" boucle for 2\n");	if is_float f &&(float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "0"))
 											else  if  op = EQ then   EXP(CONSTANT (CONST_INT "1"))  else EXP(NOTHING)
-						|RConstFloat (f) -> 	if (  f) = 0.0  then EXP(CONSTANT (CONST_INT "0"))
+						|RConstFloat (f) ->  Printf.printf (" boucle for 3\n");	if (  f) = 0.0  then EXP(CONSTANT (CONST_INT "0"))
 											else  if  op = EQ then   EXP(CONSTANT (CONST_INT "1"))  else EXP(NOTHING)
-						| _->		(*Printf.printf (" boucle for infinie\n");*)EXP(NOTHING))
+						| _->		(*Printf.printf (" boucle for infinie\n");*) EXP(NOTHING))
 					|"dowhile"->
 					(match const with
 						ConstInt(i) -> 	if is_integer i && (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "1"))
@@ -3201,7 +3205,7 @@ match op with EQ|NE->true|_->false
 				NODEFINC ->
 					if isEQoperator op then
 					begin
-					  	(*Printf.printf "cas 3 EQ peut être booleen var %s\n" var;*)
+					  	Printf.printf "cas 3 EQ peut être booleen var %s\n" var;
 						let (isAssignedOK, assign, isConditionnal, ltrue, lfalse, ifvar) = containBoolxAssignementBody var  inst inst in
 						if isAssignedOK then
 							(
@@ -3282,7 +3286,7 @@ match op with EQ|NE->true|_->false
 	initialisation := ninf;
 
 
-	(*Printf.printf "\n\ntraiterConditionBoucleFor  2\n" ;*)
+	 
 	let typeopPlusouMUL =  !opEstPlus	in
 	(*if !expressionDinitFor = NOTHING then expressionDinitFor := VARIABLE(nv);*)
 	let infoVar =   new_variation ninf nsup inc typevar  operateur indirectafter in

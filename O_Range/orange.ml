@@ -83,6 +83,15 @@ module type LISTENER =
     val concat: t -> t -> t
   end;;
 
+
+let ifCaseDecode  executed = 
+match executed with
+      1 -> (true, false)
+    | 2 -> (false, true)
+    | 3 -> (true, true)
+    | _ -> (false, false)
+
+
 module MonList = struct
   type t = string
   let tab = ref 0
@@ -138,12 +147,19 @@ let infoCondStr = function
   | None ->""
   | Some (line, file) ->   sprintf "line=\"%u\" source=\"%s\"" line file
 
+
+
 let onIf res name line source inloop executed condVa cond lt lf asL =
   let condexpStr = (*string_from_expr*) pcdata_from_expr (condVa) in
   let condexpStrInit = (*string_from_expr*) pcdata_from_expr  (cond) in
 
+
+(* Printf.printf "executed= %d  %s>\n" executed name ;*)
+  let (isexet, isexee) = ifCaseDecode  executed   in
+(*Printf.printf "executed then = %b  else =%b\n" isexet isexee ;*)
+
   (* balance: add the if statement *)
-  let newHead = (name, [true; true]) in (* worst-case, both executed *)
+  let newHead = (name, [isexet; isexee]) in  
   let newHeadRef = ref newHead in
   ifInfo := !ifInfo @ [newHeadRef];
 
@@ -272,7 +288,7 @@ let onIfF res isexe infoFalse =
   let curIfRef = Stack.top ifstack in
   (match !curIfRef with
     (id, [texec; fexec]) -> 
-      curIfRef := (id, [texec; isexe]);
+      curIfRef := (id, [texec; isexe]);  
   | _ -> ());
 
   nbLigne := !nbLigne +1;
@@ -300,13 +316,14 @@ let onIfFEnd res =
   newRes
 
 let onIfT res isexe infoThen =
+
   let text = sprintf "<case cond=\"1\" executed=\"%b\" %s>\n" isexe (infoCondStr infoThen) in
   (* balance *)
   (* ASSERT ifInfoHead != [] ... or something *)
   let curIfRef = Stack.top ifstack in
   (match !curIfRef with 
     (id, [texec; fexec]) -> 
-      curIfRef := (id, [isexe; fexec]);
+      curIfRef := (id, [isexe; fexec]); 
   | _ -> ());
 
   nbLigne := !nbLigne +1;
@@ -503,6 +520,7 @@ module PartialAdapter =
     let res = List.fold_left aux res (List.rev subtree) in
     Listener.onReturn res
   | If ((name, line, source, inloop, executed, condVa, cond, lt, lf, asL), subtree) ->
+(*Printf.printf "Try to eval IF: %s %s %d\n" name source line;*)
     let res = Listener.onIf res name line source inloop executed condVa cond lt lf asL in
     let res = List.fold_left aux res (List.rev subtree) in
     Listener.onIfEnd res
@@ -1958,7 +1976,7 @@ let rec afficherNidUML nnE  liste tab  fichier ligne lt lf(result:Listener.t) : 
       end in
 
      listeVBDEP := rond !listeVBDEP  [assignVB];
-     let result = afficherCorpsUML liste  (tab+5) result in
+     let result = afficherCorpsUML liste  (tab+5) true result in
      let result = Listener.onLoopEnd (result:Listener.t) in
 
     isExactEng := exactEng;
@@ -1990,23 +2008,20 @@ and afficherUnAppelUML exp l tab numCall isExe isInLoop fichier ligne lt lf (res
 
 (* if printer*)
 and afficherUnCallIfUML variable expr listeT listeF e1 tab isExe isInloop fichier ligne lt lf infothen infoElse asL (result:Listener.t) : Listener.t =
-  let (isexet, isexee) =
-    (match isExe with
-      1 -> (true, false)
-    | 2 -> (false, true)
-    | 3 -> (true, true)
-    | _ -> (false, false))
-  in
+  let (isexet, isexee) =   ifCaseDecode  isExe in
+   
   (* only 1 the then branch is executed, only the else branch is executed,
   3 we do not know the executed branch , neither the then or the else is executed*)
   let result = Listener.onIf result variable ligne fichier isInloop isExe expr e1 lt lf asL in
 (*print THEN*)
+
+ 
   let result = Listener.onIfT result isexet infothen  in
-  let result = (afficherCorpsUML listeT (tab+5)  (result:Listener.t))  in
+  let result = (afficherCorpsUML listeT (tab+5) isexet  (result:Listener.t))  in
   let result = Listener.onIfTEnd (result:Listener.t) in
 (*print ELSE*)
-  let result = Listener.onIfF (result:Listener.t) isexee infoElse in
-  let result = (afficherCorpsUML listeF (tab+5) (result:Listener.t))  in
+   let result = Listener.onIfF (result:Listener.t) isexee infoElse in
+  let result = (afficherCorpsUML listeF (tab+5) isexee (result:Listener.t))  in
   let result = Listener.onIfFEnd (result:Listener.t) in
   Listener.onIfEnd result
 
@@ -2015,13 +2030,13 @@ and afficherInfoFonctionUML nom corps tab numCall isExe isInLoop fichier ligne l
  (* let (fichier , ligne ) = getAssosIdCallFunctionRef numCall in*)
   let result = Listener.onCall result nom numCall ligne fichier isInLoop isExe isExtern  lt lf in
   (*let _ = Printf.printf "Go in afficherInfoFonctionUML, len(corps)=%d.\n" (List.length corps) in*)
-  let result = if (not isExtern) then (afficherCorpsUML corps (tab+5) result) else result in
+  let result = if (not isExtern) then (afficherCorpsUML corps (tab+5) true result) else result in
 (*Printf.printf "BLABLA line=\"%d\" source=\"%s\" extern=\"true\">\n" ligne fichier ;*)
   Listener.onReturn result
 
 
 
-and afficherCorpsUML lboua tab (result:Listener.t) : Listener.t =
+and afficherCorpsUML lboua tab isexecuted (result:Listener.t) : Listener.t =
           (*let _ = Printf.printf "Go in afficherCorpsUML, len(lboua)=%d.\n" (List.length lboua) in*)
   List.fold_left(
     fun result unboua ->
@@ -2046,10 +2061,12 @@ and afficherCorpsUML lboua tab (result:Listener.t) : Listener.t =
                 end;
                 afficherUnAppelUML expr liste tab numCall isExe isInLoop fichier ligne lt lf result
       | IFEVAL (expr, listeT, listeF, e1, fichier, ligne, intoloop, isExe, variable, lt, lf, infothen, infoElse, asL) ->
+		let resexe = if isexecuted =false then 4 else isExe in
+ 
         (*let c1 = calculer  expr    !infoaffichNull [] 1 in*) 
         (*isin loop i do not know if i have to add this info*)
         (* jz: let c1 = simpleCalculerConstVal (EXP(expr)) !infoaffichNull [] 1 in*)
-      afficherUnCallIfUML variable expr listeT listeF e1 tab isExe intoloop fichier ligne  lt lf  infothen infoElse asL result
+      afficherUnCallIfUML variable expr listeT listeF e1 tab resexe intoloop fichier ligne  lt lf  infothen infoElse asL result
   ) result lboua
 
 
@@ -2339,7 +2356,7 @@ let rec traiterBouclesInternes  nT (*tete nid contenant bi*)  nEC (*noeud englob
     isExeBoucle := isExeE;
     (*if !isExeBoucle then  Printf.printf "la boucle englobante est exécutée\n"
     else  Printf.printf "la boucle englobante n'est pas exécutée\n";*)
-    
+    let varIfN =  Printf.sprintf "%s-%d" "TWH" id  in
     let (nlt,nlf,exeloop) = if id = idpred then   creerLesAffectEXECUTED lt lf "Loop" id idEng !cptFunctiontestIntoLoop else (lt,lf, lcond) in
     let (lesAsf, intofunction,newlt, newlf,intocondcall) =
     ( if (!dernierAppelFct <> !predDernierAppelFct)
@@ -2420,8 +2437,8 @@ let rec traiterBouclesInternes  nT (*tete nid contenant bi*)  nEC (*noeud englob
 
     print_expVA resExptN; new_line();Printf.printf "CALCUL DE AS fin\n";*)
     let recExptMax = rechercheAffectVDsListeAS  varmax  lesAs in
-    (*if id = 62 then begin
-      print_expVA recExptMax; new_line();Printf.printf "CALCUL DE AS fin\n"; end;*)
+    let restest = rechercheAffectVDsListeAS  varIfN  lesAs in
+    
 
   isIntoIfLoop := false;
 
@@ -2592,20 +2609,23 @@ let rec traiterBouclesInternes  nT (*tete nid contenant bi*)  nEC (*noeud englob
       let ncc = List.map(fun assign -> match assign with
         ASSIGN_SIMPLE (id, e) -> ASSIGN_SIMPLE (id,applyStoreVA(applyStoreVA (applyStoreVA e !aslAux) appel) globales) |_-> assign) new_cond  in
  
-      (*Printf.printf "av traiterBouclesInternes num %d nom eng %d AVANT AR\n"  id nomE ;*)
-				 (*if id = 62 then
-				  begin
-					  Printf.printf "av traiterBouclesInternes num %d nom eng %d \n"  id nomE ;afficherListeAS appel;
-					  Printf.printf "av traiterBouclesInternes num %d nom eng %d \n"  id nomE ;afficherListeAS ncc; 
+ 
+        let next_cond = ncc in (* afficherListeAS next_cond;*)
+		 
+ 		let valrestest = calculer (applyStoreVA(applyStoreVA (applyStoreVA (restest) !aslAux) appel) globales)   !infoaffichNull  [](*appel*) 1 in
 
+ 
+		let isExecutedV = (match valrestest with Boolean(b)	->  if b = false then  false  else  true 
+										|_->if estDefExp valrestest then if estNul valrestest then  false  else  true else  true  
 
+						) in 
 
-				end;*)
-          let next_cond = ncc in (* afficherListeAS next_cond;*)
-          let isexeN = !isExeBoucle && isExecutedFunction next_cond in
+(*if isExecutedV = true then Printf.printf "!isExeBoucle= true %s" varIfN else Printf.printf "!isExeBoucle= false %s " varIfN;*)
+
+          let isexeN = !isExeBoucle && isExecutedFunction next_cond && isExecutedV in
 
         (*if isexeN = true then Printf.printf "!isExeBoucle= true" else Printf.printf "!isExeBoucle= false" ;*)
-
+		 
           if isexeN = false || !isEnd then
           begin
           (*  Printf.printf "la boucle n'est pas exécutée\n"; *)
@@ -2775,7 +2795,8 @@ let rec traiterBouclesInternesComposant     nT (*tete nid contenant bi*)  nEC (*
   let varmax =  Printf.sprintf "%s-%d" "max" id in *)
 
     let(varTN,varmax,varTni,l, output) =   creerLesAffect tN max (EXP(NOTHING)) id 0 in
- 
+	let varIfN =  Printf.sprintf "%s-%d" "TWH" id  in
+           
   isExeBoucle := isExeE;
  
   let (nlt,nlf,exeloop) = if id = idPred then   creerLesAffectEXECUTED lt lf "Loop" id idEng !cptFunctiontestIntoLoop else (lt,lf, lcond) in
@@ -2822,8 +2843,11 @@ let rec traiterBouclesInternesComposant     nT (*tete nid contenant bi*)  nEC (*
 
     let new_cond = filterIF lesAs in
     let resExptN  =    rechercheAffectVDsListeAS varTN lesAs in
-      let recExptMax = rechercheAffectVDsListeAS  varmax  lesAs in
-      isIntoIfLoop := false;
+    let recExptMax = rechercheAffectVDsListeAS  varmax  lesAs in
+
+	let restest = rechercheAffectVDsListeAS  varIfN  lesAs in
+    
+    isIntoIfLoop := false;
     isEnd := false;
     isEndNONZERO := false;
     let resauxmax = calculer max  !infoaffichNull [] 1 in
@@ -2935,8 +2959,18 @@ let rec traiterBouclesInternesComposant     nT (*tete nid contenant bi*)  nEC (*
           let ncc = List.map(fun assign -> match assign with ASSIGN_SIMPLE (id, e)->    ASSIGN_SIMPLE (id,applyStoreVA(applyStoreVA e appel) globales) |_-> assign) new_cond  in
 
           let next_cond = ncc in (* afficherListeAS next_cond;*)
+
+		let valrestest = calculer (applyStoreVA(applyStoreVA (applyStoreVA (restest) !aslAux) appel) globales)   !infoaffichNull  [](*appel*) 1 in
+
+
+		let isExecutedV = (match valrestest with Boolean(b)	->  if b = false then  false  else  true 
+										|_->if estDefExp valrestest then if estNul valrestest then  false  else  true else  true  
+
+						) in 
+         
+
           let isExe2 = !isExeBoucle &&
-            isExecutedFunction next_cond in
+            isExecutedFunction next_cond && isExecutedV in
 
           if isExe2 = false || !isEnd then
           begin
@@ -3335,7 +3369,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
             new_documentEvalue !docEvalue.maListeNidEval
             (List.append !docEvalue.maListeEval new_if);
           (*fin comp*)
-          (* Printf.printf "IDIF %s is not executed\n" var  ; *)
+            
           myCurrentPtrContext:=prevPtrct;
           (asL, globale)
         end else begin
@@ -3343,16 +3377,16 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
             TAKETHEN ->
               let fc = (localPtrAnalyse [new_instBEGIN (instthen)]  prevPtrct   !estDansBoucle false) in
               let res = endOfcontexte instthen  lastthen  ifthencontexte globalesThen, globalesThen in
-              myCurrentPtrContext := (LocalAPContext.joinSet fc prevPtrct );
+              myCurrentPtrContext := (LocalAPContext.joinSet fc prevPtrct ); 
               res
-              (*Printf.printf "IDIF %s then\n" var; *)
+              
             | TAKEELSE  ->
               let fc = (localPtrAnalyse [new_instBEGIN (instelse)]  prevPtrct   !estDansBoucle false) in
               let res = endOfcontexte instelse  lastelse  ifelsecontexte globalesElse, globalesElse in
               myCurrentPtrContext:=(LocalAPContext.joinSet fc prevPtrct );    res
-              (* Printf.printf "IDIF %s else \n" var  ; *)
+              
             | TAKEANY ->
-              (*Printf.printf "IDIF %s is executed then ou else ??\n" var ; *)
+              
               (*isExecutedOneTimeOrMore:= false;*)
               let nthen = reecrireCorpsNonExe  instthen nonexethen !numAppel in
               let nelse = reecrireCorpsNonExe  instelse nonexelse !numAppel in
@@ -3764,7 +3798,7 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEn
     Doc subtree -> Doc (List.map evalAuxBoucle subtree)
   | Function (x, subtree) ->  Function (x, List.map evalAuxBoucle subtree)
   | Call (x, subtree) -> Call (x, List.map evalAuxBoucle subtree)
-  | If (x, subtree) -> If (x, List.map evalAuxBoucle subtree)
+  | If  (( name,  line, source, inloop, executed ,condVa, cond ,lt, lf, asL), subtree)  ->   If (( name,  line, source, inloop, executed ,condVa, cond ,lt, lf, asL), List.map evalAuxBoucle subtree)
   | IfT (x, subtree) -> IfT (x,  List.map evalAuxBoucle subtree)
   | IfF (x,  subtree) -> IfF ( x,List.map evalAuxBoucle subtree)
   | Loop ((id, line, source, exact, max, total, expMax, expTotal,expinit, sens,lt,lf), subtree) ->
@@ -3818,16 +3852,19 @@ and evaluerComposant nomComp contexte isExecutedCall dansBoucle globales listeEn
     let isexeEnglobantPred = !isexeEnglobant in
 
     isexeEnglobant:= if (executed = 4) then false else isexeEnglobantPred &&  creerVarTFE elt elf;
-    let (isexe, valcond) = if !isexeEnglobant = false then (4 ,CONSTANT (CONST_INT "0")) else
+
+ 
+    let (isexe, valcond) = if !isexeEnglobant then
           begin
             let valcond =  (( applyStoreVA(applyStoreVA (EXP condVa) contexte)globales))   in
             let resaux = calculer valcond  !infoaffichNull [] 1 in
             if estDefExp resaux  then match resaux with Boolean(false)  | ConstInt("0")-> (2 ,expVaToExp valcond)| Boolean(true)  | ConstInt("1")->(1 ,expVaToExp valcond)|_-> (3 ,expVaToExp valcond)else  (3 ,expVaToExp valcond)
-          end in
-
+          end 
+		  else  (4 ,CONSTANT (CONST_INT "0")) in
+ 
      let res =
-      if !isexeEnglobant = false then  If ((name, line, source, inloop, 4, (CONSTANT (CONST_INT "0")),cond ,elt, elf, asL), List.map evalAuxPasBoucle subtree)
-        else If ((name, line, source, inloop, isexe, valcond, cond, elt, elf, asL), List.map evalAuxPasBoucle subtree)
+      if !isexeEnglobant   then     If ((name, line, source, inloop, isexe, valcond, cond, elt, elf, asL), List.map evalAuxPasBoucle subtree)
+	  else If ((name, line, source, inloop, 4, (CONSTANT (CONST_INT "0")),cond ,elt, elf, asL), List.map evalAuxPasBoucle subtree)
        in
     isexeEnglobant:= isexeEnglobantPred;
     res
@@ -4110,6 +4147,7 @@ and evalNid nid appel (*appelée pour une mere de nid*) listeEng lt lf estexeEng
     if !vDEBUG then
       Printf.eprintf "ajout dans liste corpsEval %d\n" (getBoucleIdB nid.infoNid.laBoucle);
     varDeBoucleBoucle := varDeBouclePred;
+
     estDansBoucle := false; estDansBoucleE :=!estDansBoucle;
     if isExe && isNull = false then begin
                 (*Printf.printf "est exécutée\n" ;*)
@@ -4221,14 +4259,7 @@ List.iter
     match c with
       IDBOUCLE (num,lt,lf,fic,lig) ->
        (* if !vDEBUG then Printf.eprintf "NID av sous nid de %d  dans autre boucle\n" num;*)
-(*
-         if num = 62 then 
-
-			begin
-
-				Printf.printf "evaluerSN NID av sous nid de %d  dans autre boucle\n" num;
  
-end;*)
 
 	
         (*if isExeE then Printf.printf"evaluerSN isExeE = vrai\n" else Printf.printf"evaluerSN isExeE = false\n" ;*)
@@ -4341,7 +4372,7 @@ let afficherInfoFonctionDuDocUML listeF =
               (true,false)) in
               let isExtern = (not (existeFonctionParNom !(!mainFonc) doc)) in
               let result = Listener.onFunction result !(!mainFonc) isInLoop isExe isExtern in
-              let result = if (not isExtern) then (afficherCorpsUML corps 5 result) else result in
+              let result = if (not isExtern) then (afficherCorpsUML corps 5 true result) else result in
               let result = Listener.onFunctionEnd result in
               let result = Listener.onEnd result in
               Printf.printf"\n<loopsfacts>\n";
