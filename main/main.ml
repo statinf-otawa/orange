@@ -149,7 +149,7 @@ let opts = [
 	("--up", Arg.String (fun name -> Cextraireboucle.add_use_partial name; alreadyEvalFunctionAS := List.map (fun n ->  (n,Cextraireboucle.getAbsStoreFromComp n)  )!use_partial	;),
 		"Use partial result (rpo file) for this function.");
 	("--condIF",Arg.String (fun dir ->  hasCondListFile_name :=true;	 condListFile_name  := dir),
-		"Use annotation for if into file");
+		"Use annotation for \"if\" from .rpo file (use -k on a function containing IF_x = 0|1).");
 	(* Mode options *)
 	("--auto", Arg.Set auto,
 		"Automated full analysis");
