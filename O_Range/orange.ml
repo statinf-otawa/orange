@@ -4932,7 +4932,7 @@ let mapDocAnalyzedOntoDocToAnalyze (docAnalyzed : documentEvalue ref) (docToAnal
       (match !analyzedCond with
         (id, [texec; fexec]) -> 
           let stmt = Hashtbl.find condtbl id in
-          balanceIfs := !balanceIfs @ [(stmt, [texec; fexec])];
+          balanceIfs := !balanceIfs @ [(stmt, (id,[texec; fexec]))];
       | _ -> ())
     ) !ifInfo);
   ()
@@ -5041,8 +5041,10 @@ idAppel:=0;
               (* HACK HACK HACK: quick break/return fix --
                  the problem is that it will get counted multiple times
                  in loops -- which it shouldn't be *)
-                try (List.assoc istmt !balanceIfs) with Not_found -> [true;true] 
+                try snd (List.assoc istmt !balanceIfs) with Not_found -> [true;true] 
             else (* Some *) [true; true]);
+    branch_id = (fun istmt ->
+      try fst (List.assoc istmt !balanceIfs) with Not_found -> "IF-?");
   } in
   (* to get from document to definition list we need to extract 
      for the required fct the corpsS *)
@@ -5069,9 +5071,12 @@ idAppel:=0;
   in
   if !delta && not !ghost then begin (* && not !ghost) then begin*)
     Format.printf "Computing the balance information from the %s function@\n" entry;
-    let conds = Balance.analysis ff allFcts entry in 
+    let balance = Balance.analysis ff allFcts entry in
+    let (_,eval,conds) = balance in
+    Format.printf ">>> Estimated costs of function: %d\n" eval;
     Format.printf "%d accessible conditional statements have been listed@\n" (List.length conds);
     List.iter (Format.printf "%a@\n" Balance.CondEval.print) conds; 
+    Balance.Output.to_ffx (open_out "deltas.ffx") balance;
 
     Format.printf "\nparent - child relations:\n";
     Hashtbl.iter (

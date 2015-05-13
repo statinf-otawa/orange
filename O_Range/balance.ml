@@ -50,6 +50,10 @@ let print_expr fmt (expr: Cabs.expression) =
   Cprint.commit ();
   Format.pp_print_string fmt !Cprint.line
 
+let output_expr_ffx oc (expr: Cabs.expression) =
+  let str = Format.asprintf "%a" print_expr expr in
+  output_string oc (Coutput.pcdata_from_string str)
+
 let condition_test (stmt: Cabs.statement) =
   match stmt with
   | Cabs.IF (e,_,_)
@@ -78,6 +82,11 @@ type ff_input = {
    {- Raises [Invalid_argument]: the parameter must be [IF] or [CASE]}
    }
 *)
+  branch_id: Cabs.statement -> string;
+(**
+   Associate a conditional a statement to its oRange identifier.
+   "IF-?" is used when no identifier is known.
+*)
 }
 
 (** Location in the source code. *)
@@ -93,6 +102,7 @@ module Loc = struct
     | _ -> raise (Invalid_argument "not a STAT_LINE")
   (** Prints a location. *)
   let print fmt loc = Format.fprintf fmt "%s:%d" loc.file loc.line
+  let output_ffx oc loc = Printf.fprintf oc " source=\"%s\" line=\"%d\"" loc.file loc.line
 end
 
 (** Tracks contextual information. *)
@@ -116,6 +126,13 @@ module Ctx = struct
     | Some loc -> Loc.print fmt loc) ctx.cur
     ctx.fname
     ctx.coeff
+  let output_ffx oc ctx =
+    begin match ctx.cur with
+    | None -> ()
+    | Some loc -> Loc.output_ffx oc loc
+    end;
+    ctx.coeff
+    
   (** The empty context. *)
   let empty = { cur = None; fname = "<toplevel>"; coeff = 1 }
   (** Updating the context by a function call. *)
@@ -175,6 +192,9 @@ module CtxNode = struct
       context = { ctx with Ctx.coeff = n * ctx.Ctx.coeff }
     }
   let count (node: t) = node.context.Ctx.coeff
+  let output_ffx oc n =
+    let ct = Ctx.output_ffx oc n.context in
+    ct, condition_test n.statement
 end
 
 (** Code "weight".
@@ -200,6 +220,7 @@ module CondEval = struct
   (** Result of the analysis of a conditional. *)
   type t = {
     condition: CtxNode.t;                (** The statement in the abstract syntax tree. Only [Cabs.IF] or [Cabs.SWITCH] statements. *)
+    id: string;                          (** Orange internal identifier. *)
     branches: (string * weight) list;    (** List of the feasible branches together with their respective weight.
 					     Must be non-empty. *)
     delta: weight;                       (** Difference between the heaviest and the lightest branch. *)
@@ -207,14 +228,23 @@ module CondEval = struct
   let compare e1 e2 = match e2.delta - e1.delta with
     | 0 -> Pervasives.compare e1 e2
     | n -> n
-  let make node brs n =
+  let make node id brs n =
     let low, high = min_max snd brs in
-    { condition = node; branches = brs; delta = n * (high - low) }
+    { condition = node; id = id; branches = brs; delta = n * (high - low) }
   let print fmt cond = Format.fprintf fmt "Delta %d %a : %a // %a"
     cond.delta
     Ctx.print (CtxNode.context cond.condition)
     (fun fmt -> List.iter (fun (br,w) -> Format.fprintf fmt "%s=%d; " br w)) cond.branches
     print_expr (condition_test (CtxNode.statement cond.condition))
+  let output_ffx oc pad ce =
+    Printf.fprintf oc "%s<conditional id=\"%s\"" pad ce.id;
+    let ct, expr = CtxNode.output_ffx oc ce.condition in
+    Printf.fprintf oc " delta=\"%d\">\n" ce.delta;
+    Printf.fprintf oc "%s  <condition expression=\"%a\" count=\"%d\" />\n" pad output_expr_ffx expr ct;
+    List.iter (fun (br,w) ->
+      Printf.fprintf oc "%s  <case cond=\"%c\" weight=\"%d\" />\n"
+	pad (match br with "then" -> '1' | "else" -> '0' | _ -> '?') w) ce.branches;
+    Printf.fprintf oc "%s</conditional>\n" pad
 end
 
 (** Sets of condition evaluation. *)
@@ -230,7 +260,7 @@ let analysis
     (defs: Cabs.definition list)
     (entry: string)
     :
-    (CondEval.t list)
+    (string * weight * CondEval.t list)
     =
   (* Managing a set of condition evaluations. *)
   let conds = ref CondSet.empty in
@@ -315,7 +345,7 @@ let analysis
                     [("then",s_then); ("else",s_else)] (ff.branch_feasibility stmt)
             ) 
       in
-      register_cond (CondEval.make node branches (CtxNode.count node));
+      register_cond (CondEval.make node (ff.branch_id stmt) branches (CtxNode.count node));
       (*let cev = CodeEval.of_alternatives (List.map snd branches) in 
       let res =  *)
       we + CodeEval.of_alternatives (List.map snd branches) (* in
@@ -346,6 +376,21 @@ let analysis
   in
   (* Performing the analysis. *)
   let eval = fun_eval Ctx.empty entry in
-  Format.printf ">>> Estimated costs of function: %d\n" eval;
   (* Synthesizing the list of conditionals. *)
-  CondSet.elements !conds
+  entry,eval,CondSet.elements !conds
+
+module Output = struct
+  let to_ffx
+      (oc : out_channel)
+      ((entry_point, weight, conds) : string * weight * CondEval.t list)
+      : unit
+      =
+    let print = output_string oc in
+    print "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n";
+    print "<flowfacts>\n";
+    Printf.fprintf oc "  <function name=\"%s\" weight=\"%d\">\n" entry_point weight;
+    List.iter (CondEval.output_ffx oc "    ") conds;
+    print "  </function>\n";
+    print "</flowfacts>\n";
+    
+end

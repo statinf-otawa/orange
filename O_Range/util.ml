@@ -2078,7 +2078,7 @@ let ifInfo = ref ifinfo
 let (ifstmtsinorig : Cabs.statement list) = []
 let vanillaIfStmts = ref ifstmtsinorig
 (* ds to store if<->executed *)
-let (mresifs : (Cabs.statement * (bool list)) list) = []
+let (mresifs : (Cabs.statement * (string * (bool list))) list) = []
 let balanceIfs = ref mresifs
 let tmpifcnt = 0
 let tmpIfCnt = ref tmpifcnt
