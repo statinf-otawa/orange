@@ -21,6 +21,10 @@ endif
 OCAML_INC += ../../frontc/frontc ../xml-light ../O_Range ../inst/lib/ ../graph 
 OCAML_LIB += unix str ../../frontc/frontc/frontc  ../xml-light/xml-light ../O_Range/orange ../graph/resumeforgraph 
 
+# Patch for a "missing" dependency
+main.cmx: ../O_Range/orange.cmxa
+main.cmo: ../O_Range/orange.cma
+
 $(eval $(call ocaml_prog,orange,$(SOURCES),$(OPTIONS)))
 
 VERSION=$(shell hg log -l 1 | head -1 | cut -c 14-30)

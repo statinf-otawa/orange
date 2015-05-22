@@ -5072,10 +5072,10 @@ idAppel:=0;
   if !delta && not !ghost then begin (* && not !ghost) then begin*)
     Format.printf "Computing the balance information from the %s function@\n" entry;
     let balance = Balance.analysis ff allFcts entry in
-    let (_,eval,conds) = balance in
-    Format.printf ">>> Estimated costs of function: %d\n" eval;
-    Format.printf "%d accessible conditional statements have been listed@\n" (List.length conds);
-    List.iter (Format.printf "%a@\n" Balance.CondEval.print) conds; 
+    let (_,eval) = balance in
+    Format.printf ">>> Estimated costs of function: %d\n" (Balance.CodeEval.weight eval);
+    Format.printf "%d accessible conditional statements have been listed@\n" (Balance.CodeEval.cond_count eval);
+    List.iter (Format.printf "%a@\n" Balance.CondEval.delta_print) (Balance.CodeEval.sorted_conds eval);
     Balance.Output.to_ffx (open_out "deltas.ffx") balance;
 
     Format.printf "\nparent - child relations:\n";

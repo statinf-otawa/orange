@@ -60,6 +60,11 @@ let condition_test (stmt: Cabs.statement) =
   | Cabs.SWITCH (e,_) -> e
   | _ -> raise (Invalid_argument "not a condition")
 
+let direct_location (stmt: Cabs.statement) =
+  match stmt with
+  | Cabs.STAT_LINE (_,f,l) -> Some (f,l)
+  | _ -> None
+
 (** {3 Types} *)
 
 (** The flow facts requiered for the balancing analysis. *)
@@ -103,6 +108,9 @@ module Loc = struct
   (** Prints a location. *)
   let print fmt loc = Format.fprintf fmt "%s:%d" loc.file loc.line
   let output_ffx oc loc = Printf.fprintf oc " source=\"%s\" line=\"%d\"" loc.file loc.line
+  let of_statement s = match direct_location s with
+    | None -> None
+    | Some (f,l) -> Some { file = f; line = l }
 end
 
 (** Tracks contextual information. *)
@@ -110,7 +118,6 @@ module Ctx = struct
   (** Type of the contextual information. *)
   type t = {
     cur: Loc.t option; (** A location when fresh enough. *)
-    coeff: int;
     fname: string;     (** The enclosing function name. *)
   }
 
@@ -120,23 +127,21 @@ module Ctx = struct
   | Distant  (** Denotes that the location cannot be inherited from the context. *)
 
   (** Prints a location option. None means "unknown location". *)
-  let print fmt (ctx: t) = Format.fprintf fmt "at %a in %s (total count=%d)"
+  let print fmt (ctx: t) = Format.fprintf fmt "at %a in %s"
     (fun fmt -> function
     | None -> Format.pp_print_string fmt "unknown location"
     | Some loc -> Loc.print fmt loc) ctx.cur
     ctx.fname
-    ctx.coeff
   let output_ffx oc ctx =
     begin match ctx.cur with
     | None -> ()
     | Some loc -> Loc.output_ffx oc loc
-    end;
-    ctx.coeff
+    end
     
   (** The empty context. *)
-  let empty = { cur = None; fname = "<toplevel>"; coeff = 1 }
+  let empty = { cur = None; fname = "<toplevel>" }
   (** Updating the context by a function call. *)
-  let through_function_call (ctx: t) (fname: string) = { ctx with cur = None; fname = fname }
+  let through_function_call (ctx: t) (fname: string) = { cur = None; fname = fname }
   (** Updating the context by descending in a statement.
       This might invalidate the location or not. *)
   let through_located_statement (dist: distance) (ctx: t) (stmt: Cabs.statement) =
@@ -189,9 +194,8 @@ module CtxNode = struct
   let loop_descent (n: int) (node: t) (stmt: Cabs.statement) =
     let ctx = descent_context node in
     { statement = stmt;
-      context = { ctx with Ctx.coeff = n * ctx.Ctx.coeff }
+      context = ctx;
     }
-  let count (node: t) = node.context.Ctx.coeff
   let output_ffx oc n =
     let ct = Ctx.output_ffx oc n.context in
     ct, condition_test n.statement
@@ -202,53 +206,80 @@ end
     A high value is a hint of a high contribution to the WCET. *)
 type weight = int
 
-(** Evaluation of a code fragment. *)
-module CodeEval = struct
-  (** The total weight of the code fragment (including the functions called). *)
-  type t = weight
-  (** Evaluation of a loop, providing the weights of the body and header
-      together with a bound on the number of iterations. *)
-  let of_loop ~header:h ~count:n ~body:b = h + n * (h + b)
-  (** Evaluation of a set of alternatives (at least one). *)
-  let of_alternatives = fold1 max
-  (** Sum of weights *)
-  let sum = List.fold_left ( + ) 0
-end
-
 (** Evaluation of a condition. *)
 module CondEval = struct
   (** Result of the analysis of a conditional. *)
   type t = {
     condition: CtxNode.t;                (** The statement in the abstract syntax tree. Only [Cabs.IF] or [Cabs.SWITCH] statements. *)
     id: string;                          (** Orange internal identifier. *)
-    branches: (string * weight) list;    (** List of the feasible branches together with their respective weight.
+    branches: (string * weight * Loc.t option) list;
+                                         (** List of the feasible branches together with their respective weight.
 					     Must be non-empty. *)
-    delta: weight;                       (** Difference between the heaviest and the lightest branch. *)
   }
-  let compare e1 e2 = match e2.delta - e1.delta with
-    | 0 -> Pervasives.compare e1 e2
-    | n -> n
-  let make node id brs n =
-    let low, high = min_max snd brs in
-    { condition = node; id = id; branches = brs; delta = n * (high - low) }
-  let print fmt cond = Format.fprintf fmt "Delta %d %a : %a // %a"
-    cond.delta
+  let compare = Pervasives.compare
+  let delta (n,ce) =
+    let low, high = min_max (fun (_,w,_) -> w) ce.branches in
+    n * (high - low)
+  let delta_compare a b = (delta b) - (delta a)
+  let make node id brs = { condition = node; id = id; branches = brs }
+  let delta_print fmt (n,cond) = Format.fprintf fmt "Delta %d %a : %a // %a"
+    (delta (n,cond))
     Ctx.print (CtxNode.context cond.condition)
-    (fun fmt -> List.iter (fun (br,w) -> Format.fprintf fmt "%s=%d; " br w)) cond.branches
+    (fun fmt -> List.iter (fun (br,w,_) -> Format.fprintf fmt "%s=%d; " br w)) cond.branches
     print_expr (condition_test (CtxNode.statement cond.condition))
-  let output_ffx oc pad ce =
+  let output_delta_ffx oc pad (n,ce) =
+    let d = delta (n,ce) in
     Printf.fprintf oc "%s<conditional id=\"%s\"" pad ce.id;
-    let ct, expr = CtxNode.output_ffx oc ce.condition in
-    Printf.fprintf oc " delta=\"%d\">\n" ce.delta;
-    Printf.fprintf oc "%s  <condition expression=\"%a\" count=\"%d\" />\n" pad output_expr_ffx expr ct;
-    List.iter (fun (br,w) ->
-      Printf.fprintf oc "%s  <case cond=\"%c\" weight=\"%d\" />\n"
-	pad (match br with "then" -> '1' | "else" -> '0' | _ -> '?') w) ce.branches;
+    let (), expr = CtxNode.output_ffx oc ce.condition in
+    Printf.fprintf oc " delta=\"%d\">\n" d;
+    Printf.fprintf oc "%s  <condition expression=\"%a\" count=\"%d\"/>\n" pad output_expr_ffx expr n;
+    List.iter (fun (br,w,ol) ->
+      Printf.fprintf oc "%s  <case cond=\"%c\"" pad (match br with "then" -> '1' | "else" -> '0' | _ -> '?');
+      begin match ol with
+      | None -> ()
+      | Some l -> Loc.output_ffx oc l end;
+      Printf.fprintf oc " weight=\"%d\"/>\n" w) ce.branches;
     Printf.fprintf oc "%s</conditional>\n" pad
 end
 
-(** Sets of condition evaluation. *)
-module CondSet = Set.Make(CondEval)
+(** Sets of deltas *)
+module CondSet = struct
+  module Count = TMap.Make(CondEval)
+  type t = int Count.t
+  let empty = Count.make 0
+  let add = Count.combine ( + )
+  let scale n = Count.map (fun x -> x * n)
+  let max = Count.combine max (* Trickier if keys partially overlap, eg. contextual delta *)
+  let add_cond s ce = Count.update (fun x -> x + 1) ce s
+  let cardinal = Count.special_count
+  let to_list s = Count.fold_special (fun x n acc -> (n,x)::acc) s []
+end
+
+(** Evaluation of a code fragment. *)
+module CodeEval = struct
+  (** The total weight of the code fragment (including the functions called). *)
+  type t = weight * CondSet.t
+  let of_int n = n,CondSet.empty
+  let zero = of_int 0
+  let one = of_int 1
+  let add (a,sa) (b,sb) = a+b,CondSet.add sa sb
+  let scale n (a,s) = n*a,CondSet.scale n s
+  let max (a,sa) (b,sb) = max a b,CondSet.max sa sb
+  (** Evaluation of a loop, providing the weights of the body and header
+      together with a bound on the number of iterations. *)
+  let of_loop ~header:h ~count:n ~body:b = add h (scale n (add h b))
+  (** Evaluation of a set of alternatives (at least one). *)
+  let of_alternatives n id br =
+    let w,s = fold1 max (snd (List.split br)) in
+    w, CondSet.add_cond s (CondEval.make n id (List.map (fun ((name,ol),(w,_)) -> name,w,ol) br))
+  (** Sum of weights *)
+  let sum = List.fold_left add zero
+  let weight = fst
+  let cond_count (_,s) = CondSet.cardinal s
+  let sorted_conds (_,s) =
+    let l = CondSet.to_list s in
+    List.sort CondEval.delta_compare l
+end
 
 (** {3 Main algorithm} *)
 
@@ -260,11 +291,8 @@ let analysis
     (defs: Cabs.definition list)
     (entry: string)
     :
-    (string * weight * CondEval.t list)
+    (string * CodeEval.t)
     =
-  (* Managing a set of condition evaluations. *)
-  let conds = ref CondSet.empty in
-  let register_cond c = conds := CondSet.add c !conds in
 
   (* Three mutually recursive functions : expr -> function -> statement -> expr.
      The evaluation of the functions are cached.
@@ -282,34 +310,35 @@ let analysis
       let eval = stmt_eval (CtxNode.function_call ctx fname body) in
       Hashtbl.add finfo (ctx,fname) eval;
       eval
-    with Not_found -> 10 (* Default weight when function not found failwith (fname^" is not a known function") in*)
+    with Not_found -> CodeEval.of_int 10 (* Default weight when function not found failwith (fname^" is not a known function") in*)
   
 
   (* Analysis of an expression. *)
-  and expr_eval (ctx: Ctx.t) (expr: Cabs.expression) : weight
+  and expr_eval (ctx: Ctx.t) (expr: Cabs.expression) : CodeEval.t
       =
     let eval = expr_eval ctx in (* Evaluation in the same context. *)
     let open Cabs in
+    let open CodeEval in
     match expr with
-    | NOTHING -> 0
-    | UNARY (_,e) -> 1 + eval e
-    | BINARY (_,e1,e2) -> 1 + eval e1 + eval e2
-    | QUESTION (e_if,e_then,e_else) -> eval e_if + (max (eval e_then) (eval e_else))
+    | NOTHING -> zero
+    | UNARY (_,e) -> add one (eval e)
+    | BINARY (_,e1,e2) -> sum [one; eval e1; eval e2]
+    | QUESTION (e_if,e_then,e_else) -> add (eval e_if) (max (eval e_then) (eval e_else))
     | CALL (VARIABLE fname,el) ->
       let args = CodeEval.sum (List.map eval el) in
-      let calling = List.length el in
+      let calling = of_int (List.length el) in
       let execution = fun_eval ctx fname in
-      args + calling + execution
+      sum [args; calling; execution]
     | CALL _ -> failwith "cannot resolve the call"
-    | CONSTANT _ -> 0
-    | VARIABLE _ -> 1
+    | CONSTANT _ -> zero
+    | VARIABLE _ -> one
     | EXPR_SIZEOF _
     | TYPE_SIZEOF _
-    | CAST _ -> 0
+    | CAST _ -> zero
     | COMMA el -> CodeEval.sum (List.map eval el)
-    | INDEX (e1,e2) -> 1 + (eval e1) + (eval e2)
-    | MEMBEROF (e,_) -> 0 + (eval e)
-    | MEMBEROFPTR (e,_) -> 1 + (eval e)
+    | INDEX (e1,e2) -> sum [one; eval e1; eval e2]
+    | MEMBEROF (e,_) -> eval e
+    | MEMBEROFPTR (e,_) -> add one (eval e)
     | EXPR_LINE (e,_,_) -> eval e
     | GNU_BODY _ -> failwith "cannot handle assembly code"
   (* WARNING: the evaluation of expressions is far from realistic. *)
@@ -324,16 +353,17 @@ let analysis
     let eval_close s = stmt_eval (CtxNode.close_descent node s) in
     let eval_multi s n = stmt_eval (CtxNode.loop_descent n node s) in
     let open Cabs in
+    let open CodeEval in
     match stmt with
     | STAT_LINE (sub,_,_) -> eval sub
     | COMPUTATION e
     | RETURN e -> expr_eval_here  e
-    | NOP -> 0
+    | NOP -> zero
     | BLOCK (_,sub) -> eval_close sub (* WARNING : initialisation of the declared variables is not taken into account. *)
     | SEQUENCE (sub1,sub2) ->
       let eval1 = eval_close sub1 in
       let eval2 = eval sub2 in
-      eval1 + eval2
+      add eval1 eval2
     | IF (e,s_then,s_else) ->
       let we = expr_eval_here e in
 
@@ -341,25 +371,20 @@ let analysis
             (List.map2 
                 (fun (br,sub) feasible ->
                     if not feasible then []
-                    else [(br,eval sub)])
+                    else [(br,Loc.of_statement sub),eval sub])
                     [("then",s_then); ("else",s_else)] (ff.branch_feasibility stmt)
             ) 
       in
-      register_cond (CondEval.make node (ff.branch_id stmt) branches (CtxNode.count node));
-      (*let cev = CodeEval.of_alternatives (List.map snd branches) in 
-      let res =  *)
-      we + CodeEval.of_alternatives (List.map snd branches) (* in
-      res *)
+      add we (CodeEval.of_alternatives node (ff.branch_id stmt) branches)
     | FOR (e_init,e_test,e_end,s_body) ->
         let wi = expr_eval_here e_init in
         let wt = expr_eval_under e_test in
         begin match ff.loop_bound stmt with
-        | Some 0 -> wi + wt
+        | Some 0 -> add wi wt
         | Some n ->
           	let wbody = eval_multi s_body n in
           	let we = expr_eval_under e_end in
-            Format.printf "init: %d, incr: %d, body: %d, bound: %d\n" wi we wbody n ;
-          	wi + CodeEval.of_loop ~header:we ~count:n ~body:wbody;
+          	add wi (CodeEval.of_loop ~header:we ~count:n ~body:wbody)
         | None -> failwith "Unbounded for loop" end
     | WHILE (e,s_body) ->
         let we = expr_eval_under e in
@@ -370,26 +395,27 @@ let analysis
               CodeEval.of_loop ~header:we ~count:n ~body:eval_body
           | None -> failwith "Unbounded while loop" end
     | BREAK ->
-        (* HACKHACKHACK: fix breaks -- the count for 3 ops so decrease 2 *) 0
+        (* HACKHACKHACK: fix breaks -- the count for 3 ops so decrease 2 *) zero
     | _ -> failwith "TODO"
 
   in
   (* Performing the analysis. *)
   let eval = fun_eval Ctx.empty entry in
   (* Synthesizing the list of conditionals. *)
-  entry,eval,CondSet.elements !conds
+  entry,eval
 
 module Output = struct
   let to_ffx
       (oc : out_channel)
-      ((entry_point, weight, conds) : string * weight * CondEval.t list)
+      ((entry_point, eval) : string * CodeEval.t)
       : unit
       =
+    let conds = CodeEval.sorted_conds eval in
     let print = output_string oc in
     print "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n";
     print "<flowfacts>\n";
-    Printf.fprintf oc "  <function name=\"%s\" weight=\"%d\">\n" entry_point weight;
-    List.iter (CondEval.output_ffx oc "    ") conds;
+    Printf.fprintf oc "  <function name=\"%s\" weight=\"%d\">\n" entry_point (CodeEval.weight eval);
+    List.iter (CondEval.output_delta_ffx oc "    ") conds;
     print "  </function>\n";
     print "</flowfacts>\n";
     
