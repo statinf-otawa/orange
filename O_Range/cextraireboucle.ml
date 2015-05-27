@@ -2578,7 +2578,7 @@ Printf.printf" traiterANDCOND %s\n" var;
 print_expression exp1 0; space() ;flush() ;new_line(); flush();new_line();
 print_expression exp2 0; space() ;flush() ;new_line(); flush();new_line(); *)
 	if liste = [] then
-	begin Printf.printf"cas 1 traiterANDCOND exp1  \n";	
+	begin (*Printf.printf"cas 1 traiterANDCOND exp1  \n";	*)
 		 let ((crois1,bInf1, bSup1, oper1,mult1,v1,cd1), ee11,ee12)=
 			match exp1 with
 				BINARY (op1, exp11, exp12) -> (rechercheConditionBinary init var op1 exp11 exp12 [] avant dans cte t exp1 lv l inst firstcond true, exp11, exp12)
@@ -2733,7 +2733,7 @@ and analyseCompFor  var init comp l avant dans cte t lv lvb inst firstcond hasAn
 				else begin (*Printf.printf "\nanalyseCompFor    aprs appel rechercheConditionBinary %s\n" var  ;	printSens croissant; *)	
 							borne:=borneInf; initialisation:=borneSup; (operateur,croissant, false, var)   end
 			end
-			else 	( Printf.printf "\nanalyseCompFor   NONMONOTONE \n"  ; ( op, NONMONOTONE, true, var))
+			else 	(   ( op, NONMONOTONE, true, var))
 		| VARIABLE name ->
 						analyseCompFor  var init (BINARY(NE, VARIABLE (name),  CONSTANT (CONST_INT "0")))  l avant dans cte t lv lvb inst firstcond hasAndCond;
 		| _-> 	 ( ADD, NONMONOTONE,false, var) (*pas multiple meme chose que pour unary si booleen*)
@@ -2810,12 +2810,12 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 					match typeBoucle with
 					"for" |"while"->
 						(match const with (*estExecutee*)
-						ConstInt(i) 	->  Printf.printf (" boucle for 1\n"); if is_integer i && (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "0"))
-										   else	 if   op = EQ then   EXP(CONSTANT (CONST_INT "1"))  else EXP(NOTHING)
-						|ConstFloat (f) ->  Printf.printf (" boucle for 2\n");	if is_float f &&(float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "0"))
-											else  if  op = EQ then   EXP(CONSTANT (CONST_INT "1"))  else EXP(NOTHING)
-						|RConstFloat (f) ->  Printf.printf (" boucle for 3\n");	if (  f) = 0.0  then EXP(CONSTANT (CONST_INT "0"))
-											else  if  op = EQ then   EXP(CONSTANT (CONST_INT "1"))  else EXP(NOTHING)
+						ConstInt(i) 	->   if is_integer i && (int_of_string  i) = 0  then EXP(CONSTANT (CONST_INT "0"))
+										     else	 if   op = EQ then   EXP(CONSTANT (CONST_INT "1"))  else EXP(NOTHING)
+						|ConstFloat (f) ->   	if is_float f &&(float_of_string  f) = 0.0  then EXP(CONSTANT (CONST_INT "0"))
+											    else  if  op = EQ then   EXP(CONSTANT (CONST_INT "1"))  else EXP(NOTHING)
+						|RConstFloat (f) ->  	if (  f) = 0.0  then EXP(CONSTANT (CONST_INT "0"))
+											    else  if  op = EQ then   EXP(CONSTANT (CONST_INT "1"))  else EXP(NOTHING)
 						| _->		(*Printf.printf (" boucle for infinie\n");*) EXP(NOTHING))
 					|"dowhile"->
 					(match const with
