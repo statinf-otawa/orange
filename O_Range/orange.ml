@@ -4767,7 +4767,7 @@ let listnoteqLoop l =
         "WARNING != condition => bound is either this one or infinite line %d into source %s \n"
         lig fic
   ) l
-
+(*
 
 
 let rec constructGhostInsts scenInsts decdef originalInsts =
@@ -4782,12 +4782,68 @@ let rec constructGhostInsts scenInsts decdef originalInsts =
             COMPUTATION(EXPR_LINE(h, "", 0)), "", 0), (constructGhostInsts t decdef originalInsts)))
   | _ -> originalInsts
 
+*)
+let rec constructGhostInsts scenInsts decdef originalInsts =
+  match scenInsts with
+    (h::[]) ->
+
+ Printf.printf
+        "constructGhostInsts\n";
+print_expression h 0;
+     (* analyse_expressionaux h; *)(* affectations!?! *)
+ Printf.printf
+        "Fin analyse constructGhostInsts\n";
+print_expression h 0;
+      SEQUENCE(STAT_LINE(
+               COMPUTATION(EXPR_LINE(h, "", 0)), "", 0), originalInsts)
+  | (h::t) ->
+ Printf.printf
+        "constructGhostInsts\n";
+(*print_expression h 0;*)
+      (*analyse_expressionaux h;*) (* affectations!?! A QUOI CELA LUI SERT ???? *)
+
+ Printf.printf
+        "Fin analyse constructGhostInsts\n"; 
+     (* BLOCK(decdef, *)SEQUENCE(STAT_LINE(
+            COMPUTATION(EXPR_LINE(h, "", 0)), "", 0), (constructGhostInsts t (*decdef*)[] originalInsts))(* ...)... *)
+  | _ -> originalInsts
+
+let rec constructSenaInstaux scenInsts =
+		( match scenInsts with
+				(h::[]) ->
+					Printf.printf "constructSenaInst\n";			print_expression h 0;
+				  	analyse_expressionaux h; (* affectations!?! *)
+			 		Printf.printf 	"Fin analyse constructSenaInst\n";
+			 
+			
+			  | (h::t) ->
+			 		Printf.printf "constructSenaInst\n";			print_expression h 0;
+				  	analyse_expressionaux h; (* affectations!?! *)
+			 		Printf.printf 	"Fin analyse constructSenaInst\n"; constructSenaInstaux t;
+				 
+			  | _ ->if !vDEBUG then  Printf.printf 	"Fin analyse constructSenaInst\n"; 
+        )
+
+	 
+
+
+let   constructSenaInst scenInsts =
+	let scenInstsPred = !listeDesInstCourantes in
+    listeDesInstCourantes := [];
+	
+	constructSenaInstaux scenInsts;	 
+
+	let res = !listeDesInstCourantes in
+	listeDesInstCourantes := scenInstsPred;
+	res
+
+
 
 (* jz: will target main first iterates over list of functions,
        when we find main, we fixup the scenario annots as instructions.
        (!! we also do that for the global variable assignments, as they're merged into the scenario.)
 *)
-let rec fixupScenarioInFunction functionName functionList =
+let rec fixupScenarioInFunction functionName functionList senainst =
   match functionList with
     [] -> []
   | ((someint, h)::t) ->
@@ -4799,10 +4855,11 @@ let rec fixupScenarioInFunction functionName functionList =
                 (match stmts with
                   BLOCK(decdef, seq) ->
                     (* generic: do for all *)
-                    let newblock = constructGhostInsts !scenarioAsDocInsts decdef seq in
+                    let newblock = BLOCK(decdef,constructGhostInsts !scenarioAsDocInsts decdef seq) in
                     let laffwobeg =
                       (match d with
-                        [BEGIN(lesaff)] -> [BEGIN(!listeDesInstCourantes @ lesaff)]
+						
+                        [BEGIN(lesaff)] -> let affectations = List.append !listeDesInstCourantes  senainst in [BEGIN(affectations @ lesaff)]
                       | _ -> d)
                     in
                     (someint, {nom = functionName; declaration = b;
@@ -4811,7 +4868,7 @@ let rec fixupScenarioInFunction functionName functionList =
                 | _ -> (someint, h))
             ) (*| _ -> (someint, h))*)
           in
-            newmain::(fixupScenarioInFunction functionName t)
+            newmain::(fixupScenarioInFunction functionName t senainst)
      ) (* | {nom = no; declaration = b; corps = c; lesAffectations = d; listeES = e} ->
          (someint, h)::(fixupScenarioInFunction functionName t)) *)
 
@@ -5006,14 +5063,14 @@ let printFile (result : out_channel)  (defs2 : file) need_analyse_defs =
      merging them with scenario notes, scenario has precedence *)
   let globalAsgnsAsGhost = globAsgnsToInst globalInst [] in
   scenarioAsDocInsts := globalAsgnsAsGhost @ !scenarioAsDocInsts;
-
+  let senainst = constructSenaInst !scenarioAsDocInsts in
   let scenarioDoc =
     match !doc with
       {laListeDesBoucles = a; laListeDesFonctions = b;
        laListeDesAssosBoucleBorne = c; laListeDesNids = d} ->
         ref {laListeDesBoucles = a;
              (* JZ: fix entry point: laListeDesFonctions = (fixupScenarioInFunction "main" b); *)
-             laListeDesFonctions = (fixupScenarioInFunction !(!mainFonc) b);
+             laListeDesFonctions = (fixupScenarioInFunction !(!mainFonc) b senainst);
              laListeDesAssosBoucleBorne = c;
              laListeDesNids = d}
   in
@@ -5095,5 +5152,65 @@ idAppel:=0;
   flush ();
   result
   end;;
+(*
 
- 
+
+
+let printFile (result : out_channel)  (defs2 : file) need_analyse_defs=
+  idBoucle := 0;	idIf := 0;
+  idAppel:=0;
+  nbImbrications := 0;
+  out := result;
+  enTETE :=  false;
+  numAppel :=  0;
+  estNulEng :=  false;
+  estDansBoucle :=  false;
+	getOnlyBoolAssignment := true;
+  ptrInterval :=   [];
+  integerInterval :=   ["x"];
+
+  if ( !isPrint_Expression ) then exp_VERBOSE :=  true else exp_VERBOSE :=  false;
+
+  if need_analyse_defs
+  	then  analyse_defs defs2; (*step 1*)
+
+ phaseinit := false;
+  (*afficherNidDeBoucle doc;	*)
+  (*Printf.printf "les globales\n";
+  List.iter(fun x->Printf.printf "%s\t" x)!alreadyAffectedGlobales;
+  Printf.printf "les tableaux\n";
+print_AssosArrayIDsize !listAssosArrayIDsize;
+  Printf.printf "les typesdefs tableaux\n";
+  print_AssosArrayIDsize !listAssosTypeDefArrayIDsize;
+  Printf.printf "les pointeurs\n";
+ *)
+
+(*	evaluerCaseFonctionsDuDoc  doc;
+  printFuncCaseAssos !listCaseFonction;*)
+
+  flush ();
+
+
+  if !evalFunction != [] then( evaluerNbFunctionOfDoc  doc  !evalFunction []; afficherFonctionsDuDoc doc;);
+ 	if !hasCondListFile_name then
+	begin
+		condAnnotated := renameListeIF (getAbsStoreFromComp !condListFile_name) ;
+		afficherListeAS   !condAnnotated; 
+	end;
+
+ let result = (* afficherFonctionsDuDoc doc; Listener.null*)
+
+		 
+		  getOnlyBoolAssignment := false;
+		 listNotEQ := [];
+		  Printf.printf "\nEVALUATION BEGIN\n";
+		  evaluerFonctionsDuDoc doc ;
+		  listnoteqLoop		!listNotEQ;
+ 		  Printf.printf "\nEVALUATION END\n";
+  		  afficherInfoFonctionDuDocUML !docEvalue.maListeEval
+  in
+  print_newline () ;
+  flush ();
+  result
+  end;;
+ *)
