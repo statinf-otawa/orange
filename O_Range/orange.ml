@@ -4787,22 +4787,22 @@ let rec constructGhostInsts scenInsts decdef originalInsts =
   match scenInsts with
     (h::[]) ->
 
- Printf.printf
-        "constructGhostInsts\n";
-print_expression h 0;
-     (* analyse_expressionaux h; *)(* affectations!?! *)
- Printf.printf
-        "Fin analyse constructGhostInsts\n";
-print_expression h 0;
+			 Printf.printf
+					"constructGhostInsts\n";
+			print_expression h 0;
+				 (* analyse_expressionaux h; *)(* affectations!?! *)
+			 Printf.printf
+					"Fin analyse constructGhostInsts\n";
+			print_expression h 0;
       SEQUENCE(STAT_LINE(
                COMPUTATION(EXPR_LINE(h, "", 0)), "", 0), originalInsts)
   | (h::t) ->
- Printf.printf
-        "constructGhostInsts\n";
-(*print_expression h 0;*)
-      (*analyse_expressionaux h;*) (* affectations!?! A QUOI CELA LUI SERT ???? *)
+			 Printf.printf
+					"constructGhostInsts\n";
+			(*print_expression h 0;*)
+				  (*analyse_expressionaux h;*) (* affectations!?! A QUOI CELA LUI SERT ???? *)
 
- Printf.printf
+			 Printf.printf
         "Fin analyse constructGhostInsts\n"; 
      (* BLOCK(decdef, *)SEQUENCE(STAT_LINE(
             COMPUTATION(EXPR_LINE(h, "", 0)), "", 0), (constructGhostInsts t (*decdef*)[] originalInsts))(* ...)... *)
@@ -4855,7 +4855,7 @@ let rec fixupScenarioInFunction functionName functionList senainst =
                 (match stmts with
                   BLOCK(decdef, seq) ->
                     (* generic: do for all *)
-                    let newblock = BLOCK(decdef,constructGhostInsts !scenarioAsDocInsts decdef seq) in
+                  (*  let newblock = BLOCK(decdef,constructGhostInsts !scenarioAsDocInsts decdef seq) in *)
                     let laffwobeg =
                       (match d with
 						
@@ -4863,7 +4863,7 @@ let rec fixupScenarioInFunction functionName functionList senainst =
                       | _ -> d)
                     in
                     (someint, {nom = functionName; declaration = b;
-                               corps = {boucleOuAppel = boua; corpsS = newblock};
+                               corps = {boucleOuAppel = boua; corpsS = (*newblock*) stmts };
                      lesAffectations = laffwobeg; listeES = e})
                 | _ -> (someint, h))
             ) (*| _ -> (someint, h))*)

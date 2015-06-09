@@ -168,10 +168,10 @@ let opts = [
     ("--debug",  Arg.Set Util.vDEBUG  ,
 		"Print on stderr debug information");
 	(* graph   *)
-	("-g", Arg.Unit (fun _ ->args := (Frontc.LINE_RECORD true)::!args; calipso_rrec := true; run_calipso := true;args := USE_CPP :: !args;onlyGraphe := true),
+	("-g", Arg.Unit (fun _ ->args := (Frontc.LINE_RECORD true)::!args;   calipso_rrec := true; run_calipso := true;args := USE_CPP :: !args;onlyGraphe := true),
 		"Generate informations to draw call graph for given functions.");
 	(* Frontc input options *)
-	("--nogcc",  Arg.Unit (fun _ ->args := (Frontc.LINE_RECORD true)::!args; calipso_rrec := true; run_calipso := true;args := USE_CPP :: !args ;args := (GCC_SUPPORT false) :: !args),
+	("--nogcc",  Arg.Unit (fun _ ->args := (Frontc.LINE_RECORD true)::!args;   calipso_rrec := true; run_calipso := true;args := USE_CPP :: !args ;args := (GCC_SUPPORT false) :: !args),
 		"Do not use the GCC extensions.");
 	(*"--pp", Arg.Unit (fun _ -> args := (Frontc.LINE_RECORD true)::!args; calipso_rrec := true; run_calipso := true;args := USE_CPP :: !args ),
 		"Preprocess the input files.");
@@ -337,6 +337,30 @@ let analysePartielle file =
 	print_string "OK, fini.\n"
 
 
+(* GetSortRecStatus as an exemple  *)
+let getSortRecStatus fp =
+			let out = open_out ".rec_status" in
+			Sortrec.test out fp fp;
+			let outputstatut = (Sortrec.applicationRecursivityClass fp fp) in
+
+			let strToP =
+				if outputstatut = 0 then 
+          			Printf.sprintf "Application is : not recursive\n"
+				else if outputstatut = 1 then 
+          			Printf.sprintf "Application containts only simple recursivity\n"
+		    		else 
+		      			Printf.sprintf "Application containts complex recursivity\n" in
+						output_string  out strToP;
+					close_out out;
+
+			if outputstatut = 2 then 
+			begin
+				Printf.eprintf "Application containts complex recursivity : oRange cannot be applied\n" ;
+                exit 1;
+			end
+
+ 	
+
 (* === Main program === *)
 let _ =
 	(* Set needed output variables *)
@@ -460,10 +484,15 @@ let _ =
 					Calipso.RemoveReturn;
 					Calipso.RemoveSwitch(Reduce.RAW);
 				] @ (if (!calipso_rrec && !frontc_frec = false)
-					then [Calipso.RemoveRecursive]
+					then
+						begin 
+							
+							 [Calipso.RemoveRecursive]
+							 
+						end
 					else []
 				) in (List.map
-					(fun defs -> (Calipso.process_remove defs calipso_opts))
+					(fun defs ->  getSortRecStatus defs; (Calipso.process_remove defs calipso_opts))
 					cfiles
 				)
 			else
