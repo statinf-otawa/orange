@@ -65,7 +65,9 @@ let banner =
 	"\torange [options] --frec files... [functions...|--funlist listfile] [--outdir dir]\n" ^
 	"\torange [options] --frec -- [functions...|--funlist listfile] [--outdir dir]\n"^
 	"Call for debug info:\n" ^
-	"\torange [options] --debug"
+	"\torange [options] --debug\n"^
+	"\torange [options]  --resume listOfFunction  : count number of function call from the entry point. The first function of the list is the entry the other are resumed \n"^
+    "\torange [options] --multitree listOfFunction make the tree of each function of a list"
 
 (* ^
 	Recurcivity application class : (0: no recursivity, 1: only single recursivity (that may be change into loop by calypso using --crec option), 2:others cases\n^
@@ -122,6 +124,8 @@ let onlyGraphe = ref false
 let completeGraphe = ref false
 let existsPartialResult _ = false
 let withoutGlobalAndStaticInit = ref false
+let multiTree = ref false
+let resume = ref false
 
 (* mettre une option pour mode trace trace:= true*)
 
@@ -167,6 +171,10 @@ let opts = [
 		"Without initial global and static values");
     ("--debug",  Arg.Set Util.vDEBUG  ,
 		"Print on stderr debug information");
+    ("--resume",  Arg.Set resume  ,
+		"count number of function call from the entry point. The first function of the list is the entry the other are resume");
+    ("--multitree", Arg.Set multiTree  ,
+		"Make the tree of each function of a list");
 	(* graph   *)
 	("-g", Arg.Unit (fun _ ->args := (Frontc.LINE_RECORD true)::!args;   calipso_rrec := true; run_calipso := true;args := USE_CPP :: !args;onlyGraphe := true),
 		"Generate informations to draw call graph for given functions.");
@@ -223,7 +231,8 @@ let rec getComps = function
         printf "Evalue le resultat partiel pour: %s\n" fn.nom;
 			(*alreadyEvalFunctionAS := List.map (fun n ->  (n,Cextraireboucle.getAbsStoreFromComp n)  )!use_partial	;
 						List.iter(fun (n,_) ->Printf.printf "%s " n)!alreadyEvalFunctionAS;*)
-  			TO.docEvalue := TO.new_documentEvalue [] [];
+            
+  			TO.docEvalue := TO.new_documentEvalue [] []  ;
   			compEvalue := [];
   			listeAppels := [];
   			TO.varDeBoucleBoucle := "";
@@ -305,7 +314,7 @@ let rec getComps = function
   				| _ -> ()
   			);*)
   			Printf.printf "Longueur de l'arbre: %d.\n" (List.length !TO.docEvalue.TO.maListeEval);
-  			let (result, _) = TO.afficherInfoFonctionDuDocUML !TO.docEvalue.TO.maListeEval in
+  			let (result, _) = TO.afficherInfoFonctionDuDocUML !TO.docEvalue.TO.maListeEval  in
   			listeAssosPtrNameType := initListAssosPtrNameType ;
   			listAssocIdType := initistAssocIdType;
   			listAssosIdTypeTypeDec:= initlistAssosIdTypeTypeDec;
@@ -628,16 +637,18 @@ let _ =
       else
         XO.isPrint_Expression := false;
     	XO.notwithGlobalAndStaticInit := !withoutGlobalAndStaticInit;
-    	XO.docEvalue :=  XO.new_documentEvalue [] [];
+	 
+    	XO.docEvalue :=  XO.new_documentEvalue [] []  ;
+    	 
       compEvalue := [];
     	listeAppels :=  [];
-
-      let result = XO.printFile stdout secondParse false in
+      let myMode = if !resume then "resume" else if !multiTree then "multitree" else "nothing" in
+      let result = XO.printFile stdout secondParse false myMode in
     	(if !out_file = "" then 
-        print_string result
+        List.iter (fun s-> print_string (s ^"\n") ) result
     	else
     		let out = open_out !out_file in
-    		output_string out result;
+    		List.iter (fun s-> output_string out (s ^"\n")) result;
     		close_out out;
     	);
 
@@ -652,19 +663,20 @@ let _ =
       XO.notwithGlobalAndStaticInit := !withoutGlobalAndStaticInit;
       (*Resumeforgraph.get_intervals secondParse;*)
       (*let result = XO.printFile stdout secondParse (*true si pas Resumeforgraph.get_intervals secondParse;*) (*false*) true  in*)
+        let myMode = if !resume then "resume" else if !multiTree then "multitree" else "nothing" in
   		let result =
   		if !cSNPRT then
-  		  XO.printFile stdout secondParse
-        (*true si pas Resumeforgraph.get_intervals secondParse;*) true
+  		  XO.printFile stdout secondParse 
+        (*true si pas Resumeforgraph.get_intervals secondParse;*) true myMode
       else
         (Resumeforgraph.get_intervals secondParse;
-  		  XO.printFile stdout secondParse (*true si pas Resumeforgraph.get_intervals secondParse;*) false)
+  		  XO.printFile stdout secondParse (*true si pas Resumeforgraph.get_intervals secondParse;*) false myMode)
       in
       if !out_file = "" then
-        print_string result
+         List.iter (fun s-> print_string (s ^"\n")) result
       else
         let out = open_out !out_file in
-        output_string out result;
+        List.iter (fun s-> output_string out (s ^"\n")) result;
   			close_out out
   		end
     end

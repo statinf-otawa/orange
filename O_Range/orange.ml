@@ -109,6 +109,7 @@ module MonList = struct
       indent_aux res (!tab)
 
   let onBegin res =
+    predListener:="";
     let text = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<flowfacts>\n" in
     nbLigne := !nbLigne +1;
   let resaux =
@@ -706,7 +707,7 @@ let new_documentEvalue  listeN listeF =
     maListeNidEval = listeN;
     maListeEval = listeF;
 }
-
+(*let docEvalueCour  = ref (new_documentEvalue  [] [])*)
 let docEvalue = ref (new_documentEvalue  [] [])
 let appelcourant = ref  []
 
@@ -4432,7 +4433,7 @@ let evaluerFonctionsDuDoc doc =
             Printf.printf"GLOBALE\n";
             afficherLesAffectations (!listeDesEnum) ;new_line () ;new_line () ;flush(); space();
             Printf.printf"FIN GLOBALE\n";*)
-
+   (* Printf.printf"Dans evaluerFonction %s  \nLES AFFECTATIONS" !(!mainFonc);*)
     let globalInst(*TMP*) =
       if !notwithGlobalAndStaticInit = false then
         (myCurrentPtrContext := (localPtrAnalyse [new_instBEGIN (!listeDesInstGlobales)] [] false true);
@@ -4721,7 +4722,8 @@ let initref (result : out_channel) (defs : file) =
   print_AssosIdLoopRef  !listLoopIdRef;
   print_listIdCallFunctionRef !listIdCallFunctionRef*)
 
-let initorange =
+let initorange verbose =
+if verbose then Printf.printf "reset initorange";
   compEvalue := [];
   listeAppels := [];
   cptFunctiontestIntoLoop :=  0;
@@ -4994,20 +4996,163 @@ let mapDocAnalyzedOntoDocToAnalyze (docAnalyzed : documentEvalue ref) (docToAnal
     ) !ifInfo);
   ()
 
+let initPrint blabla =
+	  idBoucle := 0;
+	  idIf := 0;
+	  idAppel:=0;
+	  nbImbrications := 0;
+	  
+	  enTETE := false;
+	  numAppel := 0;
+	  estNulEng := false;
+	  estDansBoucle := false; estDansBoucleE :=!estDansBoucle;
+	  getOnlyBoolAssignment := true;
+	  ptrInterval := [];
+	  integerInterval := ["x"]
 
-let printFile (result : out_channel)  (defs2 : file) need_analyse_defs =
-  idBoucle := 0;
-  idIf := 0;
-  idAppel:=0;
-  nbImbrications := 0;
+
+
+let evalOneTree senainst globalInst globalAsgnsAsGhost funct =
+ 	  let scenarioDoc =
+				match !doc with
+				  {laListeDesBoucles = a; laListeDesFonctions = b;
+				   laListeDesAssosBoucleBorne = c; laListeDesNids = d} ->
+					ref {laListeDesBoucles = a;
+						 
+						 laListeDesFonctions = (fixupScenarioInFunction funct b senainst);
+						 laListeDesAssosBoucleBorne = c;
+						 laListeDesNids = d}
+	in 
+
+(*Printf.printf "evalOneTree!!!! main =%s\n" funct ;*)
+			  idAppel:=0;
+			   (* afficherFonctionsDuDoc doc; Listener.null*)
+				getOnlyBoolAssignment := false;
+				listNotEQ := [];
+				Printf.printf "\nEVALUATION BEGIN %s\n" funct;  
+
+(*docEvalueCour*)
+				evaluerFonctionsDuDoc scenarioDoc;(*scenAndGlobalDoc;*)
+				(* jz: balanced *)
+				docToAnalyze := !scenarioDoc;
+				listnoteqLoop !listNotEQ;
+				Printf.printf "\nEVALUATION END\n";
+				(* jz: balanced *)
+				docAnalyzed := !docEvalue;
+				(* continue doing stuff ... *)
+
+
+				let res = (afficherInfoFonctionDuDocUML !docEvalue.maListeEval) in
+			   
+			  mapDocAnalyzedOntoDocToAnalyze docAnalyzed docToAnalyze;
+			  let ff = { 
+				loop_bound = (function lstmt -> Some (List.assoc lstmt !balanceLoops));
+				branch_feasibility = 
+				   (function istmt -> 
+						if !balanceIfs != [] then 
+						  (* HACK HACK HACK: quick break/return fix --
+						     the problem is that it will get counted multiple times
+						     in loops -- which it shouldn't be *)
+						    try snd (List.assoc istmt !balanceIfs) with Not_found -> [true;true] 
+						else (* Some *) [true; true]);
+				branch_id = (fun istmt ->
+				  try fst (List.assoc istmt !balanceIfs) with Not_found -> "IF-?");
+			  } in
+			  (* to get from document to definition list we need to extract 
+				 for the required fct the corpsS *)
+			  (* JZ: fix entry point: let entry = "main" in *)
+			  let entry = funct in 
+			  let fctlist = !docToAnalyze.laListeDesFonctions in
+			  (* reconstruct frontc output from doc *)
+			  let allFcts =
+				(List.map
+				  (fun fct ->
+					(match fct with
+					  (someint, f) ->
+						(match f with
+						  {nom = entry; declaration = decls;
+						   corps = body; lesAffectations = d; listeES = e} -> 
+						    (match body with
+						      {boucleOuAppel = boua; corpsS = stmts} ->
+						        FUNDEF(decls, ([], stmts))
+						   )
+						)
+					)  
+				  )
+				  fctlist) 
+			  in
+			  if !delta && not !ghost then begin (* && not !ghost) then begin*)
+					Format.printf "Computing the balance information from the %s function@\n" entry;
+					let balance = Balance.analysis ff allFcts entry in
+					let (_,eval) = balance in
+					Format.printf ">>> Estimated costs of function: %d\n" (Balance.CodeEval.weight eval);
+					Format.printf "%d accessible conditional statements have been listed@\n" (Balance.CodeEval.cond_count eval);
+					List.iter (Format.printf "%a@\n" Balance.CondEval.delta_print) (Balance.CodeEval.sorted_conds eval);
+                    let output =  open_out ("deltas_"^funct^".ffx") in
+					Balance.Output.to_ffx (output) balance;
+
+					Format.printf "\nparent - child relations:\n";
+					Hashtbl.iter (
+					  fun parent children ->
+						Format.printf "\t%s: " parent;
+						List.iter (fun child -> Format.printf "%s " child) children;
+						Format.printf "\n"
+					) parents;
+
+                  		
+		 
+					close_out output;
+			  end ;
+			  if !wcee then begin
+				Format.printf "Now performing the worst case execution estimation@\n";
+				let _ = Wcee.analysis ff allFcts entry in
+				()
+			  end ;
+res
+
+
+ 
+
+
+let rec applyToOthersTREE liste memscenarioAsDocInsts senainst globalAsgnsAsGhost globalInst=
+ 
+	let result =			
+		(match liste with 
+			[] ->  []
+			| a::b ->
+						let hd = !(a)in
+    					let tl = b in
+					setMainFct hd;
+					(*Printf.printf "applyToOthersTREE!!!! main =%s\n" !(!mainFonc) ;*)
+               
+
+			 	 	dernierAppelFct:= (TFONCTION(!(!mainFonc),0,[], [], [], [],[], [], true,false,"",0));
+			 		predDernierAppelFct  :=  (TFONCTION(!(!mainFonc),0,[], [], [], [],[],[], true, false,"",0));
+					 
+					(*Printf.printf "applyToOthersTREE!!!! main =%s\n" !(!mainFonc) ;*)
+					scenarioAsDocInsts := memscenarioAsDocInsts ;
+		            initorange false ;
+					initPrint "blabla";
+					(*Printf.printf "!!!! main =%s" !(!mainFonc) ;*)
+					let first =  ( evalOneTree senainst globalInst globalAsgnsAsGhost !(!mainFonc)  ) in
+					 
+  					flush();
+         			 space();
+      				
+  					new_line();
+		            List.append [ first] 
+		               (applyToOthersTREE tl memscenarioAsDocInsts senainst globalAsgnsAsGhost globalInst  )
+		           
+		)
+in
+result
+
+
+
+let printFile (result : out_channel)  (defs2 : file) need_analyse_defs mode =
+  initPrint "blabla";
   out := result;
-  enTETE := false;
-  numAppel := 0;
-  estNulEng := false;
-  estDansBoucle := false; estDansBoucleE :=!estDansBoucle;
-  getOnlyBoolAssignment := true;
-  ptrInterval := [];
-  integerInterval := ["x"];
+ 
 
   if (!isPrint_Expression) then
     exp_VERBOSE := true
@@ -5018,25 +5163,16 @@ let printFile (result : out_channel)  (defs2 : file) need_analyse_defs =
     analyse_defs defs2; (*step 1*)
 
   phaseinit := false;
-    (*afficherNidDeBoucle doc;  *)
-    (*Printf.printf "les globales\n";
-      List.iter(fun x->Printf.printf "%s\t" x)!alreadyAffectedGlobales;
-      Printf.printf "les tableaux\n";
-      print_AssosArrayIDsize !listAssosArrayIDsize;
-      Printf.printf "les typesdefs tableaux\n";
-      print_AssosArrayIDsize !listAssosTypeDefArrayIDsize;
-      Printf.printf "les pointeurs\n";
-    *)
-    (* evaluerCaseFonctionsDuDoc doc;
-       printFuncCaseAssos !listCaseFonction;*)
+   
   flush ();
-  if !evalFunction != [] then
+  if mode = "resume" && !evalFunction != [] then
     (evaluerNbFunctionOfDoc doc !evalFunction [];
      afficherFonctionsDuDoc doc;);
   if !hasCondListFile_name then begin
     condAnnotated := renameListeIF (getAbsStoreFromComp !condListFile_name) ;
     afficherListeAS !condAnnotated;
   end;
+  if mode = "nothing" && !evalFunction != [] then Printf.eprintf "They are more than one function name but only the first one is taken into account. See --resume / --multiTree options.\n";
 
   (* jz: this might be kinda f*ked: we add to the ``program instructions'' the
       necessary instructions from the scenario. additionally, we compute the affectations 
@@ -5063,154 +5199,22 @@ let printFile (result : out_channel)  (defs2 : file) need_analyse_defs =
      merging them with scenario notes, scenario has precedence *)
   let globalAsgnsAsGhost = globAsgnsToInst globalInst [] in
   scenarioAsDocInsts := globalAsgnsAsGhost @ !scenarioAsDocInsts;
+  let memscenarioAsDocInsts = !scenarioAsDocInsts in
   let senainst = constructSenaInst !scenarioAsDocInsts in
-  let scenarioDoc =
-    match !doc with
-      {laListeDesBoucles = a; laListeDesFonctions = b;
-       laListeDesAssosBoucleBorne = c; laListeDesNids = d} ->
-        ref {laListeDesBoucles = a;
-             (* JZ: fix entry point: laListeDesFonctions = (fixupScenarioInFunction "main" b); *)
-             laListeDesFonctions = (fixupScenarioInFunction !(!mainFonc) b senainst);
-             laListeDesAssosBoucleBorne = c;
-             laListeDesNids = d}
-  in
-idAppel:=0;
-  let result = (* afficherFonctionsDuDoc doc; Listener.null*)
-    getOnlyBoolAssignment := false;
-    listNotEQ := [];
-    Printf.printf "\nEVALUATION BEGIN\n";  
-    evaluerFonctionsDuDoc scenarioDoc;(*scenAndGlobalDoc;*)
-    (* jz: balanced *)
-    docToAnalyze := !scenarioDoc;
-    listnoteqLoop !listNotEQ;
-    Printf.printf "\nEVALUATION END\n";
-    (* jz: balanced *)
-    docAnalyzed := !docEvalue;
-    (* continue doing stuff ... *)
-    afficherInfoFonctionDuDocUML !docEvalue.maListeEval;
-  in
-  mapDocAnalyzedOntoDocToAnalyze docAnalyzed docToAnalyze;
-  let ff = { 
-    loop_bound = (function lstmt -> Some (List.assoc lstmt !balanceLoops));
-    branch_feasibility = 
-       (function istmt -> 
-            if !balanceIfs != [] then 
-              (* HACK HACK HACK: quick break/return fix --
-                 the problem is that it will get counted multiple times
-                 in loops -- which it shouldn't be *)
-                try snd (List.assoc istmt !balanceIfs) with Not_found -> [true;true] 
-            else (* Some *) [true; true]);
-    branch_id = (fun istmt ->
-      try fst (List.assoc istmt !balanceIfs) with Not_found -> "IF-?");
-  } in
-  (* to get from document to definition list we need to extract 
-     for the required fct the corpsS *)
-  (* JZ: fix entry point: let entry = "main" in *)
-  let entry = !(!mainFonc) in 
-  let fctlist = !docToAnalyze.laListeDesFonctions in
-  (* reconstruct frontc output from doc *)
-  let allFcts =
-    (List.map
-      (fun fct ->
-        (match fct with
-          (someint, f) ->
-            (match f with
-              {nom = entry; declaration = decls;
-               corps = body; lesAffectations = d; listeES = e} -> 
-                (match body with
-                  {boucleOuAppel = boua; corpsS = stmts} ->
-                    FUNDEF(decls, ([], stmts))
-               )
-            )
-        )  
-      )
-      fctlist) 
-  in
-  if !delta && not !ghost then begin (* && not !ghost) then begin*)
-    Format.printf "Computing the balance information from the %s function@\n" entry;
-    let balance = Balance.analysis ff allFcts entry in
-    let (_,eval) = balance in
-    Format.printf ">>> Estimated costs of function: %d\n" (Balance.CodeEval.weight eval);
-    Format.printf "%d accessible conditional statements have been listed@\n" (Balance.CodeEval.cond_count eval);
-    List.iter (Format.printf "%a@\n" Balance.CondEval.delta_print) (Balance.CodeEval.sorted_conds eval);
-    Balance.Output.to_ffx (open_out "deltas.ffx") balance;
 
-    Format.printf "\nparent - child relations:\n";
-    Hashtbl.iter (
-      fun parent children ->
-        Format.printf "\t%s: " parent;
-        List.iter (fun child -> Format.printf "%s " child) children;
-        Format.printf "\n"
-    ) parents
-  end ;
-  if !wcee then begin
-    Format.printf "Now performing the worst case execution estimation@\n";
-    let _ = Wcee.analysis ff allFcts entry in
-    ()
-  end ;
-  print_newline ();
-  flush ();
-  result
+  (*Printf.printf"MODE !!!!! mode %s\n" mode;*)
+
+  let result =   (evalOneTree senainst globalInst globalAsgnsAsGhost  !(!mainFonc)) in
+  flush();
+          space();
+      
+  new_line();
+  (*Printf.printf"MODE !!!!! mode %s\n" mode;*)
+	let resultList = if  mode = "multitree"  && !evalFunction != []  then
+	( let liste = !evalFunction in
+	  let suite =  (applyToOthersTREE liste memscenarioAsDocInsts senainst globalAsgnsAsGhost globalInst) in
+       List.append [result] suite)
+		else [result] in
+ resultList 
   end;;
-(*
-
-
-
-let printFile (result : out_channel)  (defs2 : file) need_analyse_defs=
-  idBoucle := 0;	idIf := 0;
-  idAppel:=0;
-  nbImbrications := 0;
-  out := result;
-  enTETE :=  false;
-  numAppel :=  0;
-  estNulEng :=  false;
-  estDansBoucle :=  false;
-	getOnlyBoolAssignment := true;
-  ptrInterval :=   [];
-  integerInterval :=   ["x"];
-
-  if ( !isPrint_Expression ) then exp_VERBOSE :=  true else exp_VERBOSE :=  false;
-
-  if need_analyse_defs
-  	then  analyse_defs defs2; (*step 1*)
-
- phaseinit := false;
-  (*afficherNidDeBoucle doc;	*)
-  (*Printf.printf "les globales\n";
-  List.iter(fun x->Printf.printf "%s\t" x)!alreadyAffectedGlobales;
-  Printf.printf "les tableaux\n";
-print_AssosArrayIDsize !listAssosArrayIDsize;
-  Printf.printf "les typesdefs tableaux\n";
-  print_AssosArrayIDsize !listAssosTypeDefArrayIDsize;
-  Printf.printf "les pointeurs\n";
- *)
-
-(*	evaluerCaseFonctionsDuDoc  doc;
-  printFuncCaseAssos !listCaseFonction;*)
-
-  flush ();
-
-
-  if !evalFunction != [] then( evaluerNbFunctionOfDoc  doc  !evalFunction []; afficherFonctionsDuDoc doc;);
- 	if !hasCondListFile_name then
-	begin
-		condAnnotated := renameListeIF (getAbsStoreFromComp !condListFile_name) ;
-		afficherListeAS   !condAnnotated; 
-	end;
-
- let result = (* afficherFonctionsDuDoc doc; Listener.null*)
-
-		 
-		  getOnlyBoolAssignment := false;
-		 listNotEQ := [];
-		  Printf.printf "\nEVALUATION BEGIN\n";
-		  evaluerFonctionsDuDoc doc ;
-		  listnoteqLoop		!listNotEQ;
- 		  Printf.printf "\nEVALUATION END\n";
-  		  afficherInfoFonctionDuDocUML !docEvalue.maListeEval
-  in
-  print_newline () ;
-  flush ();
-  result
-  end;;
- *)
+ 

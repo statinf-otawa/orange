@@ -76,6 +76,8 @@ let is_in_use_partial name =
 let (mainFonc :string ref ref) =ref( ref "")
 let (evalFunction:( string ref) list ref)= (ref [])
 
+let setMainFct name = mainFonc := ref name
+
 let maj hd tl =
 	begin
     mainFonc := ref hd;
