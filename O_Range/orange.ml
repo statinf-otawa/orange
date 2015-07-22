@@ -29,6 +29,8 @@ open Constante
 
 
 let exp_VERBOSE = ref false
+let print_EnTETE = ref true
+let print_FIN = ref true
 module type LISTENER =
   sig
     type t
@@ -110,7 +112,7 @@ module MonList = struct
 
   let onBegin res =
     predListener:="";
-    let text = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<flowfacts>\n" in
+    let text = if !print_EnTETE then "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<flowfacts>\n" else "" in
     nbLigne := !nbLigne +1;
   let resaux =
     if !nbLigne >= 50 then (nbLigne := 0; predListener := concat !predListener res;"") else res in
@@ -120,7 +122,7 @@ module MonList = struct
       newRes
 
   let onEnd res =
-    let text = "</flowfacts>\n" in
+    let text = if  !print_FIN then "</flowfacts>\n" else "\n" in
   left ();
     let newRes =(indent res)^text in
   concat !predListener newRes
@@ -5119,8 +5121,9 @@ let rec applyToOthersTREE liste memscenarioAsDocInsts senainst globalAsgnsAsGhos
 	let result =			
 		(match liste with 
 			[] ->  []
-			| a::b ->
-						let hd = !(a)in
+                        	                
+			| a::b ->      if b = [] then print_FIN := true;
+					let hd = !(a)in
     					let tl = b in
 					setMainFct hd;
 					(*Printf.printf "applyToOthersTREE!!!! main =%s\n" !(!mainFonc) ;*)
@@ -5202,7 +5205,11 @@ let printFile (result : out_channel)  (defs2 : file) need_analyse_defs mode =
   let memscenarioAsDocInsts = !scenarioAsDocInsts in
   let senainst = constructSenaInst !scenarioAsDocInsts in
 
-  (*Printf.printf"MODE !!!!! mode %s\n" mode;*)
+  (*Printf.printf"MODE !!!!! mode %s\n" mode;*) 
+  if  mode = "multitree"  && !evalFunction != [] then ( print_FIN := false; print_EnTETE := true) ;
+    
+
+
 
   let result =   (evalOneTree senainst globalInst globalAsgnsAsGhost  !(!mainFonc)) in
   flush();
@@ -5212,6 +5219,8 @@ let printFile (result : out_channel)  (defs2 : file) need_analyse_defs mode =
   (*Printf.printf"MODE !!!!! mode %s\n" mode;*)
 	let resultList = if  mode = "multitree"  && !evalFunction != []  then
 	( let liste = !evalFunction in
+          print_EnTETE := false;
+
 	  let suite =  (applyToOthersTREE liste memscenarioAsDocInsts senainst globalAsgnsAsGhost globalInst) in
        List.append [result] suite)
 		else [result] in
