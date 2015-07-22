@@ -1895,7 +1895,7 @@ let rec   addAInstEachVarOfListAssign   listOfCovariantVar  instructiontoadd ins
  * ------------------------------------------------------------------------ *)
 
 (* arguments *)
-let delta = ref false
+let delta : [ `Skip | `Run of [ `OutDir of string ] ] ref = ref `Skip
 let wcee = ref false
 let ghost = ref false
 let in_ffx_file = ref ""

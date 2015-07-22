@@ -5092,38 +5092,34 @@ let evalOneTree senainst globalInst globalAsgnsAsGhost funct =
 				  )
 				  fctlist) 
 			  in
-			  if !delta && not !ghost then begin (* && not !ghost) then begin*)
-					Format.printf "Computing the balance information from the %s function@\n" entry;
-					let balance = Balance.analysis ff allFcts entry in
-					let (_,eval) = balance in
-					Format.printf ">>> Estimated costs of function: %d\n" (Balance.CodeEval.weight eval);
-					Format.printf "%d accessible conditional statements have been listed@\n" (Balance.CodeEval.cond_count eval);
-					List.iter (Format.printf "%a@\n" Balance.CondEval.delta_print) (Balance.CodeEval.sorted_conds eval);
-                    let output =  open_out ("deltas_"^funct^".ffx") in
-					Balance.Output.to_ffx (output) balance;
-
-					Format.printf "\nparent - child relations:\n";
-					Hashtbl.iter (
-					  fun parent children ->
-						Format.printf "\t%s: " parent;
-						List.iter (fun child -> Format.printf "%s " child) children;
-						Format.printf "\n"
-					) parents;
-
-                  		
-		 
-					close_out output;
+			  begin match !delta, !ghost with
+			  | `Skip, _ -> ()
+			  | `Run _, true ->
+			    Format.printf "Skipping the balance analysis (ghost instructions)@\n"
+			  | `Run (`OutDir dir), false ->
+			    Format.printf "Computing the balance information from the %s function@\n" entry;
+			    let balance = Balance.analysis ff allFcts entry in
+			    let (_,eval) = balance in
+			    Format.printf ">>> Estimated costs of function: %d\n" (Balance.CodeEval.weight eval);
+			    Format.printf "%d accessible conditional statements have been listed@\n" (Balance.CodeEval.cond_count eval);
+			    List.iter (Format.printf "%a@\n" Balance.CondEval.delta_print) (Balance.CodeEval.sorted_conds eval);
+			    let output = open_out (dir^"/"^"deltas_"^funct^".ffx") in
+			    Balance.Output.to_ffx (output) balance;
+			    Format.printf "\nparent - child relations:\n";
+			    Hashtbl.iter (
+			      fun parent children ->
+				Format.printf "\t%s: " parent;
+				List.iter (fun child -> Format.printf "%s " child) children;
+				Format.printf "\n"
+			    ) parents;
+			    close_out output;
 			  end ;
 			  if !wcee then begin
-				Format.printf "Now performing the worst case execution estimation@\n";
-				let _ = Wcee.analysis ff allFcts entry in
-				()
+			    Format.printf "Now performing the worst case execution estimation@\n";
+			    let _ = Wcee.analysis ff allFcts entry in
+			    ()
 			  end ;
-res
-
-
- 
-
+			  res
 
 let rec applyToOthersTREE liste memscenarioAsDocInsts senainst globalAsgnsAsGhost globalInst=
  

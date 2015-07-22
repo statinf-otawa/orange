@@ -142,8 +142,10 @@ let opts = [
 		"Input flow facts from the given file (effect of global assigns).");
 	("--iffxg", Arg.Set ghost,
 		"Input flow facts from the given file (instrumented 'ghost' instructions). Use with --iffx");
-	("--delta", Arg.Set delta,
+	("--delta", Arg.Unit (fun () -> delta := `Run (`OutDir ".") ),
 		"Perform delta analysis. Don't use with --iffxg");
+	("--odelta", Arg.String (fun dir -> delta := `Run (`OutDir dir)),
+		"Perform delta analysis and put the output in the specified directory. Don't use with --iffxg");
 	("--wcee", Arg.Set wcee,
 		"Perform worst case execution estimation. Don't use with --iffxg");
 	("--", Arg.Set from_stdin,
