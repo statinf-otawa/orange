@@ -3173,6 +3173,7 @@ and ajouteFonctionDansDocument proto body =
 
 	let nouInfoFonc = new_Infofonction  nom proto nouCorpsFonction [] !listeRes in
 	let nouListe = add_fonction ( num,  nouInfoFonc ) !doc.laListeDesFonctions in
+	(*Printf.printf "ajouteFonctionDansDocument add list fonc doc %s\n " nom ;*)
 	doc := new_document !doc.laListeDesBoucles nouListe  !doc.laListeDesAssosBoucleBorne  !doc.laListeDesNids
 
 let isEQoperator op=
@@ -5595,7 +5596,7 @@ and majFonctionDansDocument proto body initPtrList=
 	if !listeDesInstCourantes != [] && List.mem_assoc nom !alreadyDefFunction = false then
     add_list_body (nom, !listeDesInstCourantes);
 
-
+(*Printf.printf "majFonctionDansDocument ddadd list fonc doc %s\n " nom ;*)
 		doc := new_document !doc.laListeDesBoucles   res !doc.laListeDesAssosBoucleBorne !doc.laListeDesNids;
 listeDesInstCourantes:= listeP
 

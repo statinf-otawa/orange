@@ -180,7 +180,7 @@ let  getInfoFunctions  docu	= (* from each function or only from an entry point 
 List.iter(fun (_,info) -> let name = info.nom in
 		let assign = if info.lesAffectations = [] then    get_fct_body name else info.lesAffectations in
 		let (n1ifn, n1ln, n1cl,n1an, n1clist, n1onlyonecall,_,_, cinl,cini ) = getFunctionNumbers  assign 0 0 0 0 [] [] false false [] [] in
-			if assign = [] then Printf.printf "%s corps vide \n" name;
+			(*if assign = [] then Printf.printf "%s corps vide \n" name;*)
 			let (typeF, color ) = getTypeAndBoxColor n1ifn n1ln n1cl n1an (cinl=[]) in
 		let fontColor =  if typeF = OTHERCALLORLOOP && n1ln != 0 then  ( if List.mem name !listOfFunctionWithLoop = false then listOfFunctionWithLoop := List.append [name] !listOfFunctionWithLoop; getColorValue RED )
 							else getColorValue BLACK in (*NFontColor*)

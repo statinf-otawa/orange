@@ -237,21 +237,23 @@ let onIf res name line source inloop executed condVa cond lt lf asL =
   ) asL;
 
   (* jz: added variable ranges and backward-reachable-conds *)
+  
   let text =
-    (* jz: added id=%s(==name) as attribute in conditional + name param in both cases *)
-    if (!exp_VERBOSE = true) then
-      sprintf "<conditional id=\"%s\"> <condition varcond=\"%s\" line=\"%u\" source=\"%s\" isexecuted=\"%b\" expcond=\"%s\" expcondinit=\"%s\"> %s</condition>\n"
-              name name line source (executed != 4) condexpStr condexpStrInit ""
-              (* jz: DISABLED !variableRanges *)
-      (*sprintf "<conditional id=\"%s\"> <condition varcond=\"%s\" line=\"%u\" source=\"%s\" isexecuted=\"%b\" expcond=\"%s\" expcondinit=\"%s\"> %s<reaching-conds>%s</reaching-conds></condition>\n"
-          name name line source (executed != 4) condexpStr condexpStrInit !variableRanges !reaching
-      *)
-    else
-      sprintf "<conditional id=\"%s\"> <condition line=\"%u\" source=\"%s\" executed=\"%b\"> %s</condition>\n"
-              name line source (executed != 4) "" (* DISABLED !variableRanges *)
+		(* jz: added id=%s(==name) as attribute in conditional + name param in both cases *)
+		if (!exp_VERBOSE = true) then
+		  sprintf "<conditional id=\"%s\"> <condition varcond=\"%s\" line=\"%u\" source=\"%s\" isexecuted=\"%b\" expcond=\"%s\" expcondinit=\"%s\"> %s</condition>\n"
+				  name name line source (executed != 4) condexpStr condexpStrInit ""
+				  (* jz: DISABLED !variableRanges *)
+		  (*sprintf "<conditional id=\"%s\"> <condition varcond=\"%s\" line=\"%u\" source=\"%s\" isexecuted=\"%b\" expcond=\"%s\" expcondinit=\"%s\"> %s<reaching-conds>%s</reaching-conds></condition>\n"
+			  name name line source (executed != 4) condexpStr condexpStrInit !variableRanges !reaching
+		  *)
+		else
+		  sprintf "<conditional id=\"%s\"> <condition line=\"%u\" source=\"%s\" executed=\"%b\"> %s</condition>\n"
+				  name line source (executed != 4) "" (* DISABLED !variableRanges *)
+ 
   in
 
-  nbLigne := !nbLigne +1;
+   nbLigne := !nbLigne +1;
   let resaux =
     if !nbLigne >= 50 then
       (nbLigne := 0; predListener := concat !predListener res; "")
@@ -267,8 +269,8 @@ let onIfEnd res =
   (* gathering info for balance *)
   ignore (Stack.pop ifstack);
 
-  let text = "</conditional>\n" in
-  nbLigne := !nbLigne +1;
+  let text =   "</conditional>\n"  in
+   nbLigne := !nbLigne +1;
   let resaux =
     if !nbLigne >= 50 then
       (nbLigne := 0; predListener := concat !predListener res;"")
@@ -1096,6 +1098,7 @@ let nomFonctionDansDeclaration dec =
   s
 
 let existeFonctionParNom nom doc =
+
   (not (Cextraireboucle.is_in_use_partial nom))
   && (List.exists (
         fun (_, f) ->
@@ -4416,7 +4419,7 @@ let afficherInfoFonctionDuDocUML listeF =
 
 
 let evaluerFonctionsDuDoc doc =
-  (* jz FIXME :: should be done only once!! should be reset afterwards ??? *)
+  (* jz FIXME :: should be done only once!! should be reset afterwards NO becose partial anyse??? *)
   List.iter (fun (_, f) -> allFunctionNames := !allFunctionNames @ [f.nom] ; () ) !doc.laListeDesFonctions;
 
   if !doc.laListeDesFonctions <> [] then begin
@@ -4790,24 +4793,29 @@ let rec constructGhostInsts scenInsts decdef originalInsts =
 let rec constructGhostInsts scenInsts decdef originalInsts =
   match scenInsts with
     (h::[]) ->
-
-			 Printf.printf
-					"constructGhostInsts\n";
-			print_expression h 0;
-				 (* analyse_expressionaux h; *)(* affectations!?! *)
-			 Printf.printf
-					"Fin analyse constructGhostInsts\n";
-			print_expression h 0;
+			if !vDEBUG then 
+			begin
+				 Printf.printf
+						"constructGhostInsts\n";
+				print_expression h 0;
+					 (* analyse_expressionaux h; *)(* affectations!?! *)
+				 Printf.printf
+						"Fin analyse constructGhostInsts\n";
+				print_expression h 0;
+			end;
       SEQUENCE(STAT_LINE(
                COMPUTATION(EXPR_LINE(h, "", 0)), "", 0), originalInsts)
   | (h::t) ->
-			 Printf.printf
-					"constructGhostInsts\n";
-			(*print_expression h 0;*)
-				  (*analyse_expressionaux h;*) (* affectations!?! A QUOI CELA LUI SERT ???? *)
+			if !vDEBUG then 
+			begin
+				 Printf.printf
+						"constructGhostInsts\n";
+				(*print_expression h 0;*)
+					  (*analyse_expressionaux h;*) (* affectations!?! A QUOI CELA LUI SERT ???? *)
 
-			 Printf.printf
-        "Fin analyse constructGhostInsts\n"; 
+				 Printf.printf
+				"Fin analyse constructGhostInsts\n"; 
+			end;
      (* BLOCK(decdef, *)SEQUENCE(STAT_LINE(
             COMPUTATION(EXPR_LINE(h, "", 0)), "", 0), (constructGhostInsts t (*decdef*)[] originalInsts))(* ...)... *)
   | _ -> originalInsts
@@ -4815,15 +4823,16 @@ let rec constructGhostInsts scenInsts decdef originalInsts =
 let rec constructSenaInstaux scenInsts =
 		( match scenInsts with
 				(h::[]) ->
-					Printf.printf "constructSenaInst\n";			print_expression h 0;
+					if !vDEBUG then begin Printf.printf "constructSenaInst\n";			print_expression h 0; end;
 				  	analyse_expressionaux h; (* affectations!?! *)
-			 		Printf.printf 	"Fin analyse constructSenaInst\n";
+			 		if !vDEBUG then Printf.printf 	"Fin analyse constructSenaInst\n";
 			 
 			
 			  | (h::t) ->
-			 		Printf.printf "constructSenaInst\n";			print_expression h 0;
+			 		if !vDEBUG then begin Printf.printf "constructSenaInst\n";			print_expression h 0; end;
 				  	analyse_expressionaux h; (* affectations!?! *)
-			 		Printf.printf 	"Fin analyse constructSenaInst\n"; constructSenaInstaux t;
+			 		if !vDEBUG then Printf.printf 	"Fin analyse constructSenaInst\n"; 
+			 		constructSenaInstaux t;
 				 
 			  | _ ->if !vDEBUG then  Printf.printf 	"Fin analyse constructSenaInst\n"; 
         )
@@ -5151,7 +5160,7 @@ in
 result
 
 
-
+(*
 let printFile (result : out_channel)  (defs2 : file) need_analyse_defs mode =
   initPrint "blabla";
   out := result;
@@ -5226,4 +5235,166 @@ let printFile (result : out_channel)  (defs2 : file) need_analyse_defs mode =
 		else [result] in
  resultList 
   end;;
+ 
+*)
+
+(*
+let printFile (result : out_channel)  (defs2 : file) need_analyse_defs mode =
+  initPrint "blabla";
+  out := result;
+ 
+
+  if (!isPrint_Expression) then
+    exp_VERBOSE := true
+  else
+    exp_VERBOSE := false;
+
+  if need_analyse_defs then
+    analyse_defs defs2; (*step 1*)
+
+  phaseinit := false;
+   
+  flush ();
+  if mode = "resume" && !evalFunction != [] then
+    (evaluerNbFunctionOfDoc doc !evalFunction [];
+     afficherFonctionsDuDoc doc;);
+  if !hasCondListFile_name then begin
+    condAnnotated := renameListeIF (getAbsStoreFromComp !condListFile_name) ;
+    afficherListeAS !condAnnotated;
+  end;
+  if mode = "nothing" && !evalFunction != [] then Printf.eprintf "They are more than one function name but only the first one is taken into account. See --resume / --multiTree options.\n";
+
+  (* jz: this might be kinda f*ked: we add to the ``program instructions'' the
+      necessary instructions from the scenario. additionally, we compute the affectations 
+      of the new statements, by supplying them to analyse_expressionaux. this call will 
+      put the affects of the stmts into Cvarabs.listeDesInst (listeDesInstCourantes).
+        from there, we take them and merge them into the data we already have in ``doc''
+     FIXME/TODO :: (0) first find main function and add it ONLY there
+                   (1) parse the scenario information to the requirements
+                   (2) do it for every scenario information
+  *)
+
+  (* translate global assignments to ghost instruction: first acquire global assignments *)
+  let globalInst =
+    if !notwithGlobalAndStaticInit = false then
+      (myCurrentPtrContext := (localPtrAnalyse [new_instBEGIN (!listeDesInstGlobales)] [] false true);
+      ptrInterval := !myCurrentPtrContext;
+      !listeDesInstGlobales)
+    else
+      (myCurrentPtrContext := (localPtrAnalyse [new_instBEGIN (!listeLocalStatic)] [] false true);
+      ptrInterval := !myCurrentPtrContext;
+      List.append (!listeLocalStatic) (!listeDesEnum))
+  in
+  (* now construct construct ghost instrs from global assignments by
+     merging them with scenario notes, scenario has precedence *)
+  let globalAsgnsAsGhost = globAsgnsToInst globalInst [] in
+  scenarioAsDocInsts := globalAsgnsAsGhost @ !scenarioAsDocInsts;
+  let memscenarioAsDocInsts = !scenarioAsDocInsts in
+  let senainst = constructSenaInst !scenarioAsDocInsts in
+
+  (*Printf.printf"MODE !!!!! mode %s\n" mode;*)
+
+  let result =   (evalOneTree senainst globalInst globalAsgnsAsGhost  !(!mainFonc)) in
+  flush();
+          space();
+      
+  new_line();
+  (*Printf.printf"MODE !!!!! mode %s\n" mode;*)
+	let resultList = if  mode = "multitree"  && !evalFunction != []  then
+	( let liste = !evalFunction in
+	  let suite =  (applyToOthersTREE liste memscenarioAsDocInsts senainst globalAsgnsAsGhost globalInst) in
+       List.append [result] suite)
+		else [result] in
+ resultList 
+  end;;
+*)
+
+let printFile (result : out_channel)  (defs2 : file) need_analyse_defs mode=
+if (!doc.laListeDesFonctions = []) then 
+	Printf.printf "printFile liste fonction vide 1\n"
+else  Printf.printf "printFile liste fonction NON vide 1\n";
+
+  idBoucle := 0;	idIf := 0;
+  idAppel:=0;
+  nbImbrications := 0;
+  out := result;
+  enTETE :=  false;
+  numAppel :=  0;
+  estNulEng :=  false;
+  estDansBoucle :=  false;
+	getOnlyBoolAssignment := true;
+  ptrInterval :=   [];
+  integerInterval :=   ["x"];
+
+  if ( !isPrint_Expression ) then exp_VERBOSE :=  true else exp_VERBOSE :=  false;
+
+  if need_analyse_defs
+  	then  
+  	begin Printf.printf "orange step1\n";
+
+		analyse_defs defs2; (*step 1*)
+	end;
+ phaseinit := false;
+  (*afficherNidDeBoucle doc;	*)
+  (*Printf.printf "les globales\n";
+  List.iter(fun x->Printf.printf "%s\t" x)!alreadyAffectedGlobales;
+  Printf.printf "les tableaux\n";
+print_AssosArrayIDsize !listAssosArrayIDsize;
+  Printf.printf "les typesdefs tableaux\n";
+  print_AssosArrayIDsize !listAssosTypeDefArrayIDsize;
+  Printf.printf "les pointeurs\n";
+ *)
+
+(*	evaluerCaseFonctionsDuDoc  doc;
+  printFuncCaseAssos !listCaseFonction;*)
+  
+   
+
+
+
+
+  flush ();
+
+
+ (* if !evalFunction != [] then( evaluerNbFunctionOfDoc  doc  !evalFunction []; afficherFonctionsDuDoc doc;);
+ 	if !hasCondListFile_name then
+	begin
+		condAnnotated := renameListeIF (getAbsStoreFromComp !condListFile_name) ;
+		afficherListeAS   !condAnnotated; 
+	end;
+	*)
+	
+	if mode = "resume" && !evalFunction != [] then
+    (evaluerNbFunctionOfDoc doc !evalFunction [];
+     afficherFonctionsDuDoc doc;);
+  if !hasCondListFile_name then begin
+    condAnnotated := renameListeIF (getAbsStoreFromComp !condListFile_name) ;
+    afficherListeAS !condAnnotated;
+  end;
+  if mode = "nothing" && !evalFunction != [] then 
+  Printf.eprintf "They are more than one function name but only the first one is taken into account. See --resume / --multiTree options.\n";
+
+if (!doc.laListeDesFonctions = []) then Printf.printf "liste fonction vide\n"
+else  Printf.printf "liste fonction non vide\n";
+ 
+
+ let result = (* afficherFonctionsDuDoc doc; Listener.null*)
+
+		 
+		  getOnlyBoolAssignment := false;
+		 listNotEQ := [];
+		  Printf.printf "\nEVALUATION BEGIN\n";
+		  evaluerFonctionsDuDoc doc ;
+		  listnoteqLoop		!listNotEQ;
+ 		  Printf.printf "\nEVALUATION END\n";
+  		  afficherInfoFonctionDuDocUML !docEvalue.maListeEval
+  in
+  print_newline () ;
+  flush ();
+ [result]
+  end;;
+  
+  
+  
+  
  

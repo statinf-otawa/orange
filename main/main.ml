@@ -224,11 +224,14 @@ let isComponent comp =
  * @return The list of computed partial results (in the same order)
  *)
 let rec getComps = function
-	| [] -> ()
+	| [] ->   () 
 	| (_, fn)::r ->
       getComps r;
+     (* printf "Evalue le resultat partiel pour: %s\n" fn.nom;*)
+     
       if (isComponent fn.nom) then begin
-        printf "Evalue le resultat partiel pour: %s\n" fn.nom;
+      
+        printf "Evalue le resultat partiel pour:%s\n" fn.nom;
 			(*alreadyEvalFunctionAS := List.map (fun n ->  (n,Cextraireboucle.getAbsStoreFromComp n)  )!use_partial	;
 						List.iter(fun (n,_) ->Printf.printf "%s " n)!alreadyEvalFunctionAS;*)
             
@@ -266,7 +269,7 @@ let rec getComps = function
         TO.isPartialisation := true;
         TO.isPrint_Expression := true;
   			listeASCourant := [];
-  			(*Printf.printf "Longueur de l'arbre: avant %d.\n" (List.length !TO.docEvalue.TO.maListeEval);*)
+  			Printf.printf "Longueur de l'arbre: avant %d.\n" (List.length !TO.docEvalue.TO.maListeEval);
   
         (* jz: input ffx treated as the effect of global assignments *)
   			let globales = !alreadyAffectedGlobales in
@@ -320,6 +323,7 @@ let rec getComps = function
   			listAssosIdTypeTypeDec:= initlistAssosIdTypeTypeDec;
         let fName = (Filename.concat !out_dir ((fn.nom)^".rpo")) in
         printf "Stockage dans %s\n" fName;
+        Printf.printf "Stockage dans %s\n" fName;
   			(* TO.afficherCompo	   result; *)
   			let chan = Unix.out_channel_of_descr (Unix.openfile fName [Unix.O_WRONLY;Unix.O_TRUNC;Unix.O_CREAT] 0o644) in
         let partialResult = {name=fn.nom; absStore=compAS; compES=(fn.listeES); expBornes=result} in
@@ -330,8 +334,63 @@ let rec getComps = function
   		end
 
 (* Start a partial analysis on file *)
+
+(* Start a partial analysis on file *)           
 let analysePartielle file =
+	 
+
+ TO.ptrInterval :=   [];
+  TO.integerInterval :=   ["x"];
+
+
+
 	printf "Lance analyse_defs ...\n";
+	TO.numAppel := 0;
+	idBoucle := 0;	idIf := 0;
+	idAppel:=0;
+	nbImbrications := 0;
+	TO.enTETE :=  false;
+	TO.estNulEng :=  false;  TO.isPartialisation := true; TO.isPrint_Expression := true; 
+	TO.estDansBoucle :=  false;getOnlyBoolAssignment := true;
+	     
+
+	analyse_defs file;getOnlyBoolAssignment := false; phaseinit := false;
+	   
+
+	printf "analyse_defs OK, maintenant lance evaluation des composants.\n";
+	Resumeforgraph.endForPartial "analyse_defs OK, maintenant lance evaluation des composants.\n" ;
+
+	    
+          		 
+
+	getComps !doc.laListeDesFonctions;
+ 
+		print_string "OK, fini.\n"
+		
+	
+	
+(*let analysePartielle file =
+
+  if (!doc.laListeDesFonctions = []) then 
+			Printf.printf "MAIN SECOND liste fonction vide 1\n"
+		else  Printf.printf "MAIN SECOND liste fonction NON vide 1\n";
+
+
+
+	printf "Lance analyse_defs ...\n";
+	
+  TO.ptrInterval :=   [];
+  TO.integerInterval :=   ["x"];
+
+  (*if need_analyse_defs
+  	then  
+  	begin Printf.printf "orange step1\n";
+
+		analyse_defs defs2; (*step 1*)
+	end;
+*)	
+	
+	
 	TO.numAppel := 0;
 	idBoucle := 0;	idIf := 0;
 	idAppel:=0;
@@ -339,11 +398,27 @@ let analysePartielle file =
 	TO.enTETE :=  false;
 	TO.estNulEng :=  false;  TO.isPartialisation := true; TO.isPrint_Expression := true;
 	TO.estDansBoucle :=  false;getOnlyBoolAssignment := true;
-	analyse_defs file;getOnlyBoolAssignment := false; phaseinit := false;
+	    
+          			  if (!doc.laListeDesFonctions = []) then 
+			Printf.printf "MAIN SECOND liste fonction vide 1\n"
+		else  Printf.printf "MAIN SECOND liste fonction NON vide 1\n";
+
+
+	(*analyse_defs file;*)
+	
+	getOnlyBoolAssignment := false; phaseinit := false;
+	
+	
+	if (!doc.laListeDesFonctions = []) then 
+	Printf.printf "printFile liste fonction vide 1\n"
+else  Printf.printf "printFile liste fonction NON vide 1\n";
+
+   let liste = !doc.laListeDesFonctions in
+ 
 	printf "analyse_defs OK, maintenant lance evaluation des composants.\n";
-	Resumeforgraph.endForPartial "analyse_defs OK, maintenant lance evaluation des composants.\n" ;
-	getComps !doc.laListeDesFonctions;
-	print_string "OK, fini.\n"
+	(*Resumeforgraph.endForPartial "analyse_defs OK, maintenant lance evaluation des composants.\n" ;*)
+	getComps liste;
+	print_string "OK, fini.\n"*)
 
 
 (* GetSortRecStatus as an exemple  *)
@@ -472,7 +547,7 @@ let _ =
       | _ -> true)
 		a1
 	) in
-
+if (!vDEBUG	) then Printf.printf "Begin Merge\n" ;
 	(* Merge given files into one with MergeC *)
 	let getMergedFile args =
 		let cfiles = (List.map
@@ -482,7 +557,7 @@ let _ =
 					| PARSING_OK(defs) -> defs
 			) !Cextraireboucle.files
 		) in
-
+if (!vDEBUG	) then Printf.printf "End Merge => Calipso\n" ;
 		(* Calipso processing *)
 		let cfiles = if (!run_calipso) then 
       let calipso_opts =
@@ -514,17 +589,17 @@ let _ =
           failwith "Recursivity within the application. Orange cannot be applied.";
           merge_file 
   in
-
+if (!vDEBUG	) then Printf.printf "End Calipso\n" ;
 	(* First parse *)
 	let firstParse =
 		let merge_file = (getMergedFile a1) in
 		Rename.go (Frontc.trans_old_fun_defs merge_file) in
-
+if (!vDEBUG	) then Printf.printf "cons merge file => .merge.cm\n" ;
 		(* cons merge file *)
 		let out = open_out ".merge.cm" in
 		Cprint.print out firstParse;
 		close_out out;
-
+if (!vDEBUG	) then Printf.printf "get rec\n" ;
 		(* get recursivity*)
 		if (!frontc_frec) then begin
 			let out = open_out ".rec_status" in
@@ -542,118 +617,137 @@ let _ =
 			close_out out;
 		end else begin
 		(* *)
+ if (!vDEBUG	) then Printf.printf " rec OK\n" ;		
+ if (!vDEBUG	) then  Printf.printf "first path end => go to orange\n" ;
       if ((!partial) || (!auto)) then
-        (TO.initref stdout firstParse)
+         TO.initref stdout firstParse
       else 
-        (XO.initref stdout firstParse);
+         XO.initref stdout firstParse;
 
 	(* Second parse *)
 	let secondParse =
 		let merge_file = (getMergedFile a2) in
     Rename.go (Frontc.trans_old_fun_defs merge_file) in
+if (!vDEBUG	) then Printf.printf "  second path begin\n" ; 
+
 
 	if !onlyGraphe then	(* Call graph mode *)
 		if (!completeGraphe) then 
-      Resumeforgraph.resume secondParse true
-    else 
-      Resumeforgraph.resume secondParse false
-	else begin
-    (* Analysis mode *)
-    if (!auto) (* automated full analysis *) then begin
-      (* apply a partialization strategy *)
-		 	let rec auto_part strategy =
-				match strategy with
-          | [(level, _)] ->
-            begin
-              (* never partialize the last (main) level... *)
-              printf "Last level (%d) reached. Stop partializing.\n" level;
-            end
-          | (level, []) :: t ->
-            begin
-              printf "Nothing to partialize at level %d.\n" level;
-              auto_part t;
-            end
-          | (level, fun_list) :: t ->
-            let names = (List.map (fun (n, size) -> n) fun_list) in
-            begin
-              printf "Partializing level %d:\n" level;
-              printf "\t%s\n" (List.fold_left (fun p n -> p ^ " " ^ n) "" names);
-              Cextraireboucle.names := [];
-              List.iter (fun n ->
-                (* init the environment *)
-                Cextraireboucle.sort_list_file_and_name [n];
-              ) names;
-              TO.numAppel := 0;
-  						idBoucle := 0;
-              idIf := 0;
-  						idAppel:= 0;
-              nbImbrications := 0;
-  						TO.enTETE := false;
-  						TO.estNulEng := false;
-  						TO.estDansBoucle := false;
-  						(* start the partialization *)
-  						getComps !doc.laListeDesFonctions;
-  						(* update environment for the next level *)
-              List.iter (fun n -> Cextraireboucle.add_use_partial n) names;
-              alreadyEvalFunctionAS :=
-                List.map (
-                  fun n -> (n, Cextraireboucle.getAbsStoreFromComp n)
-                ) !use_partial;
-  
-              auto_part t;
-            end
-          | [] ->
-            printf "Partializing level fin:\n"; ()
-      in
+			Resumeforgraph.resume secondParse true
+		else 
+		Resumeforgraph.resume secondParse false
+	else 
+	begin
+			(* Analysis mode *)		
+			 
+				
+			if (!auto) (* automated full analysis *) then begin
+			  (* apply a partialization strategy *)
+					let rec auto_part strategy =
+						match strategy with
+				  | [(level, _)] ->
+					begin
+					  (* never partialize the last (main) level... *)
+					  printf "Last level (%d) reached. Stop partializing.\n" level;
+					end
+				  | (level, []) :: t ->
+					begin
+					  printf "Nothing to partialize at level %d.\n" level;
+					  auto_part t;
+					end
+				  | (level, fun_list) :: t ->
+					let names = (List.map (fun (n, size) -> n) fun_list) in
+					begin
+					  printf "Partializing level %d:\n" level;
+					  printf "\t%s\n" (List.fold_left (fun p n -> p ^ " " ^ n) "" names);
+					  Cextraireboucle.names := [];
+					  List.iter (fun n ->
+						(* init the environment *)
+						Cextraireboucle.sort_list_file_and_name [n];
+					  ) names;
+					  TO.numAppel := 0;
+								idBoucle := 0;
+					  idIf := 0;
+								idAppel:= 0;
+					  nbImbrications := 0;
+								TO.enTETE := false;
+								TO.estNulEng := false;
+								TO.estDansBoucle := false;
+								(* start the partialization *)
+			
+						 
 
-      (* get the strategy *)
-    	let _ = Cextraireboucle.names := [] in
-    	let _ = Cextraireboucle.sort_list_file_and_name [!(!Cextraireboucle.mainFonc)] in
-    	let strategy = 
-        List.hd (
-          if !allow_pessimism then
-            (Resumeforgraph.get_all_big_strategy secondParse)
-          else
-            (Resumeforgraph.get_only_without_pessimism_strategy secondParse)
-        )
-      in
-      (*let strategy = [(0, [("WriteMemory", 42); ("DelayAwhile", 42)]); (1, ["", 42])] in*)
-      (* partialize each level *)
-      (*TO.initref stdout firstParse;*)
-      (*analyse_defs secondParse;*)
-    	auto_part strategy;
-  
-    	(* do a full analysis using all partialized functions *)
-    	printf "Compute the final analysis\n";
-    	Cextraireboucle.names := [];
-    	list_file_and_name := !list_file_and_name @ (get_fun_list !fun_list_file);
-    	Cextraireboucle.sort_list_file_and_name !list_file_and_name;
-    	let hd = (!(List.hd (!Cextraireboucle.names)))
-    	and tl = (List.tl (!Cextraireboucle.names))
-    	in Cextraireboucle.maj hd tl;
-      (*XO.initref stdout firstParse;*)
-    	if !print_exp then
-        XO.isPrint_Expression := true
-      else
-        XO.isPrint_Expression := false;
-    	XO.notwithGlobalAndStaticInit := !withoutGlobalAndStaticInit;
-	 
-    	XO.docEvalue :=  XO.new_documentEvalue [] []  ;
-    	 
-      compEvalue := [];
-    	listeAppels :=  [];
-      let myMode = if !resume then "resume" else if !multiTree then "multitree" else "nothing" in
-      let result = XO.printFile stdout secondParse false myMode in
-    	(if !out_file = "" then 
-        List.iter (fun s-> print_string (s ^"\n") ) result
-    	else
-    		let out = open_out !out_file in
-    		List.iter (fun s-> output_string out (s ^"\n")) result;
-    		close_out out;
-    	);
+								getComps !doc.laListeDesFonctions;
+								(* update environment for the next level *)
+					  List.iter (fun n -> Cextraireboucle.add_use_partial n) names;
+					  alreadyEvalFunctionAS :=
+						List.map (
+						  fun n -> (n, Cextraireboucle.getAbsStoreFromComp n)
+						) !use_partial;
+		  
+					  auto_part t;
+					end
+				  | [] ->
+					printf "Partializing level fin:\n"; ()
+			  in
 
+			  (* get the strategy *)
+				let _ = Cextraireboucle.names := [] in
+				let _ = Cextraireboucle.sort_list_file_and_name [!(!Cextraireboucle.mainFonc)] in
+				let strategy = 
+				List.hd (
+				  if !allow_pessimism then
+					(Resumeforgraph.get_all_big_strategy secondParse)
+				  else
+					(Resumeforgraph.get_only_without_pessimism_strategy secondParse)
+				)
+			  in
+			  (*let strategy = [(0, [("WriteMemory", 42); ("DelayAwhile", 42)]); (1, ["", 42])] in*)
+			  (* partialize each level *)
+			  (*TO.initref stdout firstParse;*)
+			  (*analyse_defs secondParse;*)
+				auto_part strategy;
+		  
+				(* do a full analysis using all partialized functions *)
+				printf "Compute the final analysis\n";
+				Cextraireboucle.names := [];
+				list_file_and_name := !list_file_and_name @ (get_fun_list !fun_list_file);
+				Cextraireboucle.sort_list_file_and_name !list_file_and_name;
+				let hd = (!(List.hd (!Cextraireboucle.names)))
+				and tl = (List.tl (!Cextraireboucle.names))
+				in Cextraireboucle.maj hd tl;
+			  (*XO.initref stdout firstParse;*)
+				if !print_exp then
+					XO.isPrint_Expression := true
+				else
+					XO.isPrint_Expression := false;
+				
+							  if (!doc.laListeDesFonctions = []) then 
+					Printf.printf "MAIN liste fonction vide 3\n"
+				else  Printf.printf "MAIN liste fonction NON vide 3\n";
+				
+				
+				XO.notwithGlobalAndStaticInit := !withoutGlobalAndStaticInit;
+			 
+				XO.docEvalue :=  XO.new_documentEvalue [] []  ;
+				 
+			  compEvalue := [];
+				listeAppels :=  [];
+				
+				
+			  let myMode = if !resume then "resume" else if !multiTree then "multitree" else "nothing" in
+			  let result = XO.printFile stdout secondParse false myMode in
+				(if !out_file = "" then 
+				List.iter (fun s-> print_string (s ^"\n") ) result
+				else
+					let out = open_out !out_file in
+					List.iter (fun s-> output_string out (s ^"\n")) result;
+					close_out out;
+				);
+    end 
+    else if (!partial) (* partial analysis *) then begin 
+         
 
-    end else if (!partial) (* partial analysis *) then begin
       analysePartielle secondParse
     end else (* full analysis *) begin
       if !print_exp then
@@ -663,6 +757,9 @@ let _ =
       XO.notwithGlobalAndStaticInit := !withoutGlobalAndStaticInit;
       (*Resumeforgraph.get_intervals secondParse;*)
       (*let result = XO.printFile stdout secondParse (*true si pas Resumeforgraph.get_intervals secondParse;*) (*false*) true  in*)
+      
+      			   
+      
         let myMode = if !resume then "resume" else if !multiTree then "multitree" else "nothing" in
   		let result =
   		if !cSNPRT then

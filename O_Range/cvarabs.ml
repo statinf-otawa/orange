@@ -3143,8 +3143,8 @@ begin
 				begin
 					if  (sensVariReel = true) then
 					begin (*Printf.printf"negatif croissant\n";*)
-						if getDefValue mbSuraSup > 0.0 then
-							calculer  (EXP (expressionEvalueeToExpression (remplacerVpM var (mini mbSuraSup  max) exprea) ))  !infoaffichNull  [] 1
+						if getDefValue mbSuraInf > 0.0 then
+							calculer  (EXP (expressionEvalueeToExpression (remplacerVpM var (mini mbSuraInf  max) exprea) ))  !infoaffichNull  [] 1
 						else  begin (*Printf.printf "CAS6\n";*) ConstInt("0")  	end
 					end
 					else
