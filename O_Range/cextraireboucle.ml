@@ -629,7 +629,7 @@ and get_baseinittype typ =
 
 
 let	rec creerListeParamES (pars : single_name list) =
-  if pars = [] then begin if !vDEBUG then Printf.eprintf"aucun param \n";()end
+  if pars = [] then begin (*if !vDEBUG then Printf.eprintf"aucun param \n";*)()end
   else
   begin	(*	Printf.printf"parameters creerListeParamES\n";*)
 			let courant = List.hd pars in
@@ -4314,6 +4314,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 			relierLesNoeudsEnglobesAuNoeudCourant num varBoucleIfN !listeNoeudCourant !listeBouclesImbriquees exp2
 		end;
 		(* si la boucle est au départ d'un noeud*)
+		if !vDEBUG then  Printf.eprintf "\n\nAnalyse statement : la boucle %d apres if \n" num;
 		if (idBoucleEngPred = 0) then
 		begin
 			doc := 	new_document !doc.laListeDesBoucles !doc.laListeDesFonctions 	res
@@ -4333,7 +4334,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		listeDesInstCourantes :=  List.append( List.append listePred (List.append !listADD !listeDesInstCourantes)) !listeNextExp;
 		nbImbrications := degPred;
 
-
+if !vDEBUG then  Printf.eprintf "\n\nAnalyse statement : la boucle %d fin boucle \n" num;
 		listeBoucleOuAppelCourante :=  maListeDesBoucleOuAppelPred
 
 	| BREAK 
@@ -4826,9 +4827,20 @@ and analyse_expressionaux exp =
 							end
 						| _->
 								nouvExp := exp)
-				|_ -> 		
-					if !vDEBUG then ( Printf.eprintf "not implemented\n";(*print_expression e 0; *)new_line(); );
-				    analyse_expressionaux e;	 let ne = !nouvExp in  nouvExp := UNARY (op, ne) 
+				
+			
+				|	MINUS -> 	    analyse_expressionaux e;	 let ne = !nouvExp in     nouvExp := UNARY (op, ne) 
+				| PLUS ->   analyse_expressionaux e;	 let ne = !nouvExp in    nouvExp := UNARY (op, ne) 
+				| NOT ->   analyse_expressionaux e;	 let ne = !nouvExp in    nouvExp := UNARY (op, ne) 
+				| BNOT ->   analyse_expressionaux e;	 let ne = !nouvExp in  new_line();   nouvExp := UNARY (op, ne) 
+				| MEMOF ->   analyse_expressionaux e;	 let ne = !nouvExp in    nouvExp := UNARY (op, ne) 
+	 (*
+				|_ -> 		(* ! not ???*)
+					if !vDEBUG then ( Printf.eprintf "analyse_expressionaux not implemented\n";(*print_expression e 0; *)new_line(); );
+					Printf.printf "blabla of...\n";print_expression exp 0; new_line();  
+					Printf.printf "blabla of...\n";print_expression e 0; new_line();  
+				    analyse_expressionaux e;	 let ne = !nouvExp in  Printf.printf "blabla of...\n";print_expression ne 0; new_line();   nouvExp := UNARY (op, ne) *)
+		 
 			);
 	| BINARY (op, exp11, exp2) -> let exp1 = simplifierValeur exp11 in
       (*analyse_expressionaux exp1 ; let ne1 = !nouvExp in
@@ -5356,7 +5368,7 @@ and analyse_def def =
   		let (_, _, fct ) = proto in
   		let (name, _, _, _) = fct in
   		(*let fonction = rechercheFonction name in*)
-  		(*Printf.printf "dans analyse_def  %s\n" name ;*)
+  		if !vDEBUG then Printf.printf "dans analyse_def  %s\n" name ;
 
   		let (input, used) =
         if AFContext.mem !myAF name = false then
@@ -5386,7 +5398,7 @@ and analyse_def def =
 		(*let fonction = rechercheFonction name in*)
 		(*Printf.printf "dans analyse_def  %s\n" name ;*)
 
-
+	if !vDEBUG then Printf.printf "OLDFUNDEF ans analyse_def  %s\n" name ;
 		let (input, used) =   if AFContext.mem  !myAF name = false then  ([],[])
 				 			  else
 							  begin
@@ -5404,7 +5416,8 @@ and analyse_def def =
 		majFonctionDansDocument proto body initPtrList;
 		estGlobale := true;
 		listeBoucleOuAppelCourante := listeBoucleOuAppelPred	;(*Printf.printf "end  analyse_def  %s\n" nom ;*)	()
-	| DECDEF (n) -> (*TRAITERPTR*)
+	| DECDEF (n) -> (*TRAITERPTR*) if !vDEBUG then Printf.printf "  analyse_def  DECDEF debut\n"  ;	
+ 
 			let listPred = !listeDesInstCourantes in
 			listeDesInstCourantes := [];
 			let (typ, sto, namelist) = n in
@@ -5433,7 +5446,7 @@ and analyse_def def =
 			end
 			else   (false,false)  in
 			if estProto typ =false then   (* variable declaration*) varDefList  typ namelist isPtr show;
-
+ 	
 				enumCour := NO_TYPE;
 			let baseType = match  get_base_typeEPS  typ  with TYPEDEF_NAME(id) ->   id |_-> "" in
 
@@ -5452,6 +5465,7 @@ and analyse_def def =
 							end
 							else (false , true,isCharType typ,false)
 					|_-> (false, false, isCharType typ,false) )in
+				 
 			if namelist <> [] then
 			List.iter
 			(fun name ->
@@ -5472,14 +5486,14 @@ and analyse_def def =
 
 									in
 
-
+				 
 				if exp <> NOTHING ||( eststatic && estDejaDecl = false) (*|| !estGlobale*)  then
 				begin
 					if isArray = false then begin analyse_expression (BINARY(ASSIGN,VARIABLE(id),exp)) end
 								(*else  creerInitTab id 0 (dim-1) exp estChar*)
 				end	;
 
-
+				 
 				if estProto tt && existeFonction id =false  then ajouteNomDansListeNomFonction id tt false;
 				if (isProto =false && estProto tt= false)then
 				  if (!estGlobale || eststatic) then
@@ -5488,7 +5502,34 @@ and analyse_def def =
 
 			) namelist;
 			consEnum typenum;
+			
+			
+				 
 			if estDejaDecl then begin listeDesInstCourantes := listPred; consEnum typenum end
+			else 
+			begin
+				if eststatic =false && !estGlobale = false  then listeDesInstCourantes := List.append listPred !listeDesInstCourantes
+				else 
+				begin 
+					if  eststatic then
+					begin
+							listeDesInstGlobales := List.append !listeDesInstGlobales !listeDesInstCourantes;
+						    listeLocalStatic := List.append !listeLocalStatic !listeDesInstCourantes;
+							listeDesInstCourantes := listPred
+					end ;
+					if !estGlobale    then
+					begin  
+						if !vDEBUG then Printf.printf "  analyse_def  DECDEF   globales %d\n" ( List.length  !listeDesInstGlobales);	
+							if !vDEBUG then Printf.printf "  analyse_def  DECDEF   a ajouter %d\n" (List.length   !listeDesInstCourantes);	
+								listeDesInstGlobales := List.append !listeDesInstGlobales !listeDesInstCourantes;
+					 	
+								listeDesInstCourantes := listPred
+					end ;
+						
+				end;
+			end;
+			
+			(*if estDejaDecl then begin listeDesInstCourantes := listPred; consEnum typenum end
 			else if eststatic =false then listeDesInstCourantes := List.append listPred !listeDesInstCourantes
 				 else if !estGlobale = false  && estDejaDecl = false then
 					  begin
@@ -5502,10 +5543,11 @@ and analyse_def def =
 					listeDesInstGlobales := List.append !listeDesInstGlobales !listeDesInstCourantes;
 
 					listeDesInstCourantes := listPred
-			end ;
-(*Printf.printf "end analyse_def  DECDEF\n"  ;	*)
+			end ;*)
+if !vDEBUG then Printf.printf "end analyse_def  DECDEF\n"  ;	
 			()
 	| TYPEDEF (n, _) ->
+	if !vDEBUG then Printf.printf "DEBUT analyse_def  TYPEDEF\n"  ;	
 		let (typi, sto, namelist) = n in
 			let listPred = !listeDesInstCourantes in listeDesInstCourantes:= [];
 		List.iter  (fun name ->
@@ -5517,9 +5559,10 @@ and analyse_def def =
 										|_->());()
 					) namelist;
 		listeDesInstCourantes :=  List.append listPred !listeDesInstCourantes;
-
+if !vDEBUG then Printf.printf "end analyse_def  TYPEDEF\n"  ;	
 		()
 	| ONLYTYPEDEF n ->
+		if !vDEBUG then Printf.printf "DEBUT analyse_def  ONLYTYPEDEF\n"  ;	
 		let (typi, sto, namelist) = n in
 			let listPred = !listeDesInstCourantes in listeDesInstCourantes:= [];
 		(match typi with  ENUM(_,_)->consEnum typi;listeDesEnum := List.append !listeDesInstCourantes !listeDesEnum;()|_->());
@@ -5532,7 +5575,7 @@ and analyse_def def =
 |_->());()
 					) namelist;
 		listeDesInstCourantes :=  List.append listPred !listeDesInstCourantes;
-
+	if !vDEBUG then Printf.printf "FIN analyse_def  ONLYTYPEDEF\n"  ;	
 		()
 
 
@@ -5589,6 +5632,7 @@ and majFonctionDansDocument proto body initPtrList=
 	let (nom,_,_,_) = fct in
 	let nomPred = !nomFctCour in
   nomFctCour := nom;
+	if !vDEBUG then  Printf.printf "majFonctionDansDocument avant list fonc doc %s\n " nom ;
 	let (decs, stat) = body in analyse_statement (BLOCK (decs, stat));
 	nomFctCour := nomPred;
 	listeDesInstCourantes := [ new_instBEGIN  !listeDesInstCourantes];
@@ -5596,7 +5640,7 @@ and majFonctionDansDocument proto body initPtrList=
 	if !listeDesInstCourantes != [] && List.mem_assoc nom !alreadyDefFunction = false then
     add_list_body (nom, !listeDesInstCourantes);
 
-(*Printf.printf "majFonctionDansDocument ddadd list fonc doc %s\n " nom ;*)
+	if !vDEBUG then  Printf.printf "majFonctionDansDocument apres list fonc doc %s\n " nom ;
 		doc := new_document !doc.laListeDesBoucles   res !doc.laListeDesAssosBoucleBorne !doc.laListeDesNids;
 listeDesInstCourantes:= listeP
 

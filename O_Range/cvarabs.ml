@@ -7319,7 +7319,7 @@ match assign with
 								let (isTruecteArg1, _) =isTrueConstant (expVaToExp e2)  in
 								if isTruecteArg1 then
 								begin
-									Printf.printf "truecte\n";
+									(*Printf.printf "truecte\n";*)
 									[ASSIGN_MEM (id, e1, EXP(CALL (VARIABLE("SET") ,
 											List.append [UNARY(MEMOF, BINARY(ADD,VARIABLE(id), expVaToExp e1))]
 

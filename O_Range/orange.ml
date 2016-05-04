@@ -5334,6 +5334,8 @@ else  Printf.printf "printFile liste fonction NON vide 1\n";
 
 		analyse_defs defs2; (*step 1*)
 	end;
+	
+	 Printf.printf "orange step1 analyse_defs terminé\n";
  phaseinit := false;
   (*afficherNidDeBoucle doc;	*)
   (*Printf.printf "les globales\n";
