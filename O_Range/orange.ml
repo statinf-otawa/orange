@@ -21,7 +21,6 @@ open Printf
 open ExtractinfoPtr
 open Util
 
-open Balance
 (*open Cevalexpression*)
 open Cextraireboucle
 open TreeList
@@ -5056,7 +5055,7 @@ let evalOneTree senainst globalInst globalAsgnsAsGhost funct =
 				let res = (afficherInfoFonctionDuDocUML !docEvalue.maListeEval) in
 			   
 			  mapDocAnalyzedOntoDocToAnalyze docAnalyzed docToAnalyze;
-			  let ff = { 
+			  let ff = let open Balance in { 
 				loop_bound = (function lstmt -> Some (List.assoc lstmt !balanceLoops));
 				branch_feasibility = 
 				   (function istmt -> 
