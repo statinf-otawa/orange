@@ -598,9 +598,9 @@ if (!vDEBUG	) then Printf.printf "End Calipso\n" ;
 		Rename.go (Frontc.trans_old_fun_defs merge_file) in
 if (!vDEBUG	) then Printf.printf "cons merge file => .merge.cm\n" ;
 		(* cons merge file *)
-		let out = open_out ".merge.cm" in
+		(*let out = open_out ".merge.cm" in
 		Cprint.print out firstParse;
-		close_out out;
+		close_out out;*)
 if (!vDEBUG	) then Printf.printf "get rec\n" ;
 		(* get recursivity*)
 		if (!frontc_frec) then begin

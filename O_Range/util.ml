@@ -17,7 +17,7 @@ let vDEBUG = ref false
 let  cSNPRT = ref true   (* pas d'analyse de domaine de pointeur dans util.ml de O_Range*)
 let hasCondListFile_name = ref false
 let (alreadyAffectedGlobales: string list ref) = ref []
-
+let  (listeDesVolatiles: string list ref)  = ref []
 let (listEnumId: string list ref) = ref []
 
 let is_integer s =
@@ -458,6 +458,8 @@ let (btype, isdeftype) =
 
 
 (* fonction de recherche booleenne *)
+ 
+		
 	let rec estProto typ =
 
 		match typ with
@@ -474,6 +476,16 @@ let (btype, isdeftype) =
 	| GNU_TYPE (_, typ) ->estPtrOuTableau typ 
 	| NAMED_TYPE id ->    false  
 	| _ -> false
+	
+	let rec estVolatile typ  =
+	  match typ with
+	  PTR _| RESTRICT_PTR _ | ARRAY (_, _) -> false
+	| CONST typ -> estVolatile typ 
+	| VOLATILE typ ->true
+	| GNU_TYPE (_, typ) ->estVolatile typ 
+	| NAMED_TYPE id ->    false  
+	| _ -> false
+	
 
 	let rec estPtrOuTableauAux typ teps =
 		let rep = estPtrOuTableau typ    in
@@ -611,8 +623,14 @@ let suite = List.tl l in
 	|	ASSIGN_DOUBLE (s,_, _) 
 	| ASSIGN_MEM (s, _, _)	-> s::getAllVARAssign suite
 
-
-
+let rec getDecVarList   namelist =
+		if namelist <> [] then
+							begin
+								let (id,_,_,_) = (List.hd namelist) in
+								id::  getDecVarList (List.tl  namelist)
+								   
+							end
+		else []
 
 
 

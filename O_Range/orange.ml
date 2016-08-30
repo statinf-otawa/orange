@@ -4428,6 +4428,7 @@ let evaluerFonctionsDuDoc doc =
     let (_, f) = (rechercherFonctionParNom !(!mainFonc) doc) in
     listeASCourant := [];
     globalesVar := !alreadyAffectedGlobales;
+    (*!listeDesVolatiles;*)
             (*Printf.printf"GLOBALE\n";
             List.iter(fun var->Printf.printf "%s  "var)!globalesVar;*)
             (*Printf.printf"Dans evaluerFonction %s  \nLES AFFECTATIONS" !(!mainFonc);

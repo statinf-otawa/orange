@@ -131,7 +131,7 @@ let add_list_comp   v =
 
 type listeDesInst = inst list
 
-
+(*
 
 let rec getListIntVar l n globalesVar=
 if l = [] then ([],[])
@@ -153,7 +153,7 @@ begin
 
 	else (g, o)
 end
-
+*)
 
 
 type sens =	CROISSANT|   DECROISSANT|   NONMONOTONE|   CONSTANTE
@@ -3395,7 +3395,7 @@ let listeDesVarDependITitcour = ref [] (* as changed durind fixed point operator
 
 
 let  (globalesVar:string list ref) = ref[]
-
+let  (volatilesVar:string list ref) = ref[]
 
 
 
@@ -3929,14 +3929,20 @@ let estFalse myTest = if  myTest = Boolean(false) || myTest = ConstInt ("0")  ||
 let rec applyStore e a =
 match e with
 	NOTHING  -> NOTHING
-	| VARIABLE name ->
-(*Printf.printf " expression applystore  name\n"; *)
+	| VARIABLE name -> (*if List.mem name !listeDesVolatiles then Printf.printf "blabla"; (*Printf.printf " %s est volatile multiple" name ;*)
+Printf.printf " expression applystore  name\n"; *)
 		if (existeAffectationVarListe name a ) then
 		begin
 			let newassign = (ro name a) in
 
 			match newassign with
-				ASSIGN_SIMPLE  (_,EXP(va)) ->isRenameVar := true;  va
+				ASSIGN_SIMPLE  (_,EXP(va)) ->
+				  if List.mem name !listeDesVolatiles then begin
+					isRenameVar := true; boolAS:= true;NOTHING
+				  end
+				  else begin
+						isRenameVar := true;  va
+					end;
 				|ASSIGN_SIMPLE  (_,MULTIPLE) ->isRenameVar := true; boolAS:= true;NOTHING
 				|_->e
 

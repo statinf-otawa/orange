@@ -98,6 +98,7 @@ let aUneFctNotDEf = ref false
 	let listeDesInstCourantes = ref []
   let listeDesEnum = ref []
 	let listeDesInstGlobales = ref []
+	
 
 	let listeLocalStatic = ref []
 	(*let alreadyAffectedGlobales = ref [] *)(* pas chez Clément*)
@@ -5513,6 +5514,9 @@ and analyse_def def =
 				begin 
 					if  eststatic then
 					begin
+					        if estVolatile typ then begin
+								listeDesVolatiles := List.append !listeDesVolatiles (getDecVarList namelist) ;
+							end;
 							listeDesInstGlobales := List.append !listeDesInstGlobales !listeDesInstCourantes;
 						    listeLocalStatic := List.append !listeLocalStatic !listeDesInstCourantes;
 							listeDesInstCourantes := listPred
@@ -5521,8 +5525,11 @@ and analyse_def def =
 					begin  
 						if !vDEBUG then Printf.printf "  analyse_def  DECDEF   globales %d\n" ( List.length  !listeDesInstGlobales);	
 							if !vDEBUG then Printf.printf "  analyse_def  DECDEF   a ajouter %d\n" (List.length   !listeDesInstCourantes);	
+								
+								if estVolatile typ then begin
+									listeDesVolatiles := List.append !listeDesVolatiles (getDecVarList namelist) ;
+								end;
 								listeDesInstGlobales := List.append !listeDesInstGlobales !listeDesInstCourantes;
-					 	
 								listeDesInstCourantes := listPred
 					end ;
 						
