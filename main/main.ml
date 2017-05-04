@@ -28,6 +28,7 @@ open Xml
 
 module TO = Orange.Maker(Orange.PartialAdapter(Cextraireboucle.TreeList))
 module XO = Orange.Maker(Orange.PartialAdapter(Orange.MonList))
+module EO = Orange.Maker(Flowfacts.Coarse)
 
 (* === Utility functions === *)
 
@@ -751,7 +752,24 @@ if (!vDEBUG	) then Printf.printf "  second path begin\n" ;
          
 
       analysePartielle secondParse
-    end else (* full analysis *) begin
+    end else if !wcee
+      then (* worst case event count analysis *) begin
+	Printf.eprintf "PERFORMING the worst case event count analysis\n";
+	let result = match EO.printFile stdout secondParse true "nothing" with
+	  | [x] -> x
+	  | _ -> failwith "unexpected number of analysis results" in
+	Flowfacts.Coarse.dump stderr result;
+	let ff = Flowfacts.LoopInfo.(to_ff_input (make secondParse result)) in
+	let entry = match !names with
+	  | [x] -> !x
+	  | l -> failwith (Printf.sprintf "unexpected number of entry points (%d)"
+			     (List.length l)) in
+	Printf.eprintf "Running the analysis with entry point \"%s\".\n" entry;
+	let wcee = Wcee.analysis ff secondParse entry in
+	Printf.eprintf "Worst case event count analysis DONE\n";
+	()
+      end
+      else (* full analysis *) begin
       if !print_exp then
         XO.isPrint_Expression := true
       else

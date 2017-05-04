@@ -17,6 +17,7 @@ SOURCES = \
 	cextraireboucle.ml \
 	tMap.ml \
 	maxima.ml \
+	flowfacts.ml \
 	balance.ml \
 	wcee.ml \
 	orange.ml 
