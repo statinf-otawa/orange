@@ -2859,25 +2859,48 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 
 					print_expression infoVar.increment 0; space() ;flush() ;new_line(); flush();new_line();
 					print_expression  une 0; space() ;flush() ;new_line(); flush();new_line();
-					Printf.printf "getNombreIt recherche de affect : \n";*)
-
+					Printf.printf "getNombreIt recherche de affect : \n";
+*)
 					let expune= evalArrayTravel  bs  appel globales une bu in
 					let isInt = if  ( typeInf = INTEGERV && typeSup  = INTEGERV && typeInc  = INTEGERV)   then true else false in
-
-
-				if isNE then
+				let isOk =
+				if  (estDefExp   borneinf  && estDefExp   bornesup )  then
 				begin
-					if isInt then 	 (applyStoreVA(applyStoreVA   (EXP(  remplacerValPar  "EPSILON" !vEPSILONINT expune)) appel)globales)
-
-					else	(applyStoreVA(applyStoreVA   (EXP(   expune)) appel)globales)
-				end
+					let diff = evalexpression (Diff( evalexpression bornesup, borneinf)) in
+					if ( estNul diff ) then false
+					else begin 
+						let sensVariReel  =
+							(	if estPositif bornesup && estPositif borneinf then estPositif (diff)
+								  else if estPositif bornesup && (estPositif borneinf =false) then  true
+										else
+											if (estPositif bornesup =false) && (estPositif borneinf) then  false
+											else ( estPositif ( evalexpression (Diff( evalexpression bornesup, borneinf))) = false) ) 
+							in
+							
+							
+						 
+						if (sensinc == POS && sensVariReel|| sensinc == NEG && sensVariReel==false) then true else false
+										
+					end
+				end else (   true) in
+								 
+						 
+				if isOk==false then EXP(NOTHING)
 				else
-					if isInt then 	 (applyStoreVA(applyStoreVA   (EXP(  remplacerValPar  "EPSILON" !vEPSILONINT expune)) appel)globales)
-					(*if sensinc = NDEF || (op != NE) then  *)
-					else	(applyStoreVA(applyStoreVA   (EXP(   expune)) appel)globales)
+				begin   Printf.printf "OK %b\n" isOk;
+					if isNE then
+					begin
+						if isInt then 	 (applyStoreVA(applyStoreVA   (EXP(  remplacerValPar  "EPSILON" !vEPSILONINT expune)) appel)globales)
 
-
+						else	(applyStoreVA(applyStoreVA   (EXP(   expune)) appel)globales)
+					end
+					else
+						if isInt then 	 (applyStoreVA(applyStoreVA   (EXP(  remplacerValPar  "EPSILON" !vEPSILONINT expune)) appel)globales)
+						(*if sensinc = NDEF || (op != NE) then  *)
+						else	(applyStoreVA(applyStoreVA   (EXP(   expune)) appel)globales)
 				end
+
+			end
 		end
 	end
 	else
