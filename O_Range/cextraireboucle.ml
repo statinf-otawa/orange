@@ -2382,13 +2382,14 @@ and construireCondition crois1 bInf1  bSup1  oper1 mult1 v1 cd1 crois2  bInf2  b
 
 	let (nb2, inc2, indirect2,b2) = traiterUn  crois2 bInf2  bSup2 oper2 mult2 v2 cd2 avant dans cte t inst in
 
-
+  
+        
 
 	(*if inc1 = NOTHING  &&  inc2 = NOTHING then    Printf.printf"construireCondition inc1 && 2 not def\n";*)
-	if inc1 = NOTHING  then begin (* Printf.printf"construireCondition inc1 not def \n";*)
+	if inc1 = NOTHING  || oper1 = NE then begin (* Printf.printf"construireCondition inc1 not def \n";*)
 			isExactForm := false; (crois2, bInf2, bSup2, oper2,mult2, v2, BINARY(AND, cd1,cd2)) end
 	else
-		if  inc2 = NOTHING then begin
+		if  inc2 = NOTHING  || oper2 = NE then begin
 		(*  Printf.printf"construireCondition inc 2 not def\n";*) isExactForm := false;(crois1, bInf1, bSup1, oper1,mult1, v1, BINARY(AND, cd1,cd2 )) end
 		else
 			if v1 = v2 then
@@ -2575,6 +2576,7 @@ firstcond true,(VARIABLE name),(CONSTANT (CONST_INT "0")) )
 	end*)
 
 and traiterANDCOND init var exp1 exp2 liste avant dans cte t c lv l inst firstcond=
+
 (*
 
 Printf.printf" traiterANDCOND %s\n" var;
@@ -2887,7 +2889,7 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 						 
 				if isOk==false then EXP(NOTHING)
 				else
-				begin   Printf.printf "OK %b\n" isOk;
+				begin   
 					if isNE then
 					begin
 						if isInt then 	 (applyStoreVA(applyStoreVA   (EXP(  remplacerValPar  "EPSILON" !vEPSILONINT expune)) appel)globales)
