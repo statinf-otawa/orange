@@ -547,7 +547,30 @@ let (btype, isdeftype) =
 					else (false)
 				else (rep)
 
-
+let rec getArrayInfo exp x =
+	match exp with
+		  
+		  UNARY ( op ,e)-> 
+		  
+			(match op with
+			   ADDROF ->
+				(match e with
+					VARIABLE (v)->  if v = x then (NOTHING , true, true) else (  exp, false, false)
+					| _-> (  exp, false, false)
+				)
+				|_->		 
+					let (  e1, ok1, r) = getArrayInfo e x in
+					( UNARY(op,e1), false, r)
+			)
+		| BINARY (op, exp1, exp2) ->  
+			let (  e1, ok1, r1) = getArrayInfo exp1 x in
+			let (  e2, ok2, r2) = getArrayInfo exp2 x in
+			 				
+			if ok1 = true then(  (  e2, false, true))
+			else if ok2 = true then (   (e1,false, true))
+				else (exp, false, false)
+		 
+		|_ ->(  exp, false, false)
 
 
 let rec getArrayNameOfexp exp =
@@ -566,6 +589,8 @@ let rec getArrayNameOfexp exp =
 		| VARIABLE name -> (name, [], exp)
 		| INDEX (exp1, idx) ->let (tab,lidx) = analyseArray exp []  in (tab,lidx, exp)
 		|_ ->("", [], NOTHING)
+		
+
 
 and analyseArray exp lidx =
 	match exp with 
@@ -1283,10 +1308,6 @@ and  remplacerValPar  var nouexp expr =
 
 
 
-
-
-
-
 let rec remplacerPtrParTab  var nouexp expr =
 (*Printf.printf "remplacerPtrParTab :  %s 11 \n"  var;*)
 	match expr with
@@ -1354,12 +1375,6 @@ let rec remplacerExpPar0   nouexp expr =
 		| EXPR_LINE (expr, _, _) ->
 				remplacerExpPar0 nouexp  expr
 		| _ 						-> 	expr
-
-
-
-
-
-
 
 	
 let rec remplacerValPar0  var expr =
@@ -1632,16 +1647,6 @@ let rec consGlobal l=
 List.map (fun x->
  ASSIGN_SIMPLE (x,MULTIPLE)
 	)l
-
- (*
-let isPtrMemAssign x=
- let fid = 	if  String.length x > 1 then 
-										if (String.sub x  0 1)="*" then  String.sub x 1 ((String.length x)-1) else x
-									else x  in List.mem fid !alreadyAffectedGlobales )used in
-if List.mem_assoc x !listeAssosPtrNameType  then true else false
-
-*)
-
 
 
 let rec getconsCommaExpType  t  champlistLookingFor  =
