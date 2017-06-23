@@ -215,10 +215,24 @@ let analysis
     :
     Footprint.t
     =
+  let input_ff =
+    let filename = "loop.ffx" in
+    if Sys.file_exists filename
+    then InputFacts.of_ffx filename
+    else InputFacts.none in
+
+  let find_loop_bound (loc, stmt) =
+    match ff.Balance.loop_bound stmt with
+    | Some n -> n
+    | None -> match loc with
+      | None -> failwith "Unbounded loop (unlocated)"
+      | Some loc -> match InputFacts.upper_bound input_ff loc with
+	| None -> failwith (Format.asprintf "Unbounded loop (%a)" InputFacts.Loc.print loc)
+	| Some n -> n in
   
   let rec fun_eval (fname: string) : Footprint.t =
     Format.printf "WCEE: starting evaluation of function %s@\n@?" fname;
-    let bodyCost = try stmt_eval (Balance.function_def defs fname)
+    let bodyCost = try stmt_eval None (Balance.function_def defs fname)
       with Not_found -> Footprint.one_item CostItem.UnknownCode in
     let callCost = Footprint.list [(1,CostItem.Call); (1,CostItem.Return)] in
     let res = Footprint.add bodyCost callCost in
@@ -287,12 +301,12 @@ let analysis
     | COMMA le -> add_all (List.map read le), Reg
     | GNU_BODY _ -> failwith "cannot handle assembly code"
 
-  and stmt_eval (stmt: Cabs.statement) : Footprint.t =
-    let eval = stmt_eval in
+  and stmt_eval (loc: InputFacts.Loc.t option) (stmt: Cabs.statement) : Footprint.t =
+    let eval = stmt_eval loc in
     let open Footprint in
     let open Cabs in
     match stmt with
-    | STAT_LINE (sub,_,_) -> eval sub
+    | STAT_LINE (sub,file,line) -> stmt_eval (Some (InputFacts.Loc.make file line)) sub
     | COMPUTATION e
     | RETURN e -> read e
     | NOP -> nothing
@@ -317,29 +331,25 @@ let analysis
       let wt = read e_test in
       let we = read e_end in
       let wb = eval s_body in
-      begin match ff.Balance.loop_bound stmt with
-      | Some n ->
-	add wi (of_loop ~header:wt ~count:n ~body:(add_all [wb; we]))
-      | None -> failwith "Unbounded for loop" end
+      let n = find_loop_bound (loc, stmt) in
+      add wi (of_loop ~header:wt ~count:n ~body:(add_all [wb; we]))
     | WHILE (e_test,s_body) ->
       let wt = read e_test in
       let wb = eval s_body in
-      begin match ff.Balance.loop_bound stmt with
-      | Some n -> of_loop ~header:wt ~count:n ~body:wb
-      | None -> failwith "Unbounded while loop" end
+      let n = find_loop_bound (loc, stmt) in
+      of_loop ~header:wt ~count:n ~body:wb
     | DOWHILE (e_test,s_body) ->
       let wt = read e_test in
       let wb = eval s_body in
-       begin match ff.Balance.loop_bound stmt with
-      | Some n -> of_loop ~header:nothing ~count:(n+1) ~body:(add wb wt)
-      | None -> failwith "Unbounded do while loop" end
+      let n =  find_loop_bound (loc, stmt) in
+      of_loop ~header:nothing ~count:(n + 1) ~body:(add wb wt)
     | BREAK -> nothing (* ignored *)
     | CONTINUE -> nothing (* ignored *)
     | GOTO _ -> failwith "unhandled statement: GOTO"
     | LABEL (_,sub) -> eval sub
-    | ASM _ -> failwith "unhandled statement: ASM"
-    | GNU_ASM _ -> failwith "unhandled statement: GNU ASM"
-    | GNU_ASM_VOLATILE _ -> failwith "unhandled statement: GNU ASM VOLATILE"
+    | ASM _ -> nothing (* ignored *)
+    | GNU_ASM _ -> nothing (* ignored *)
+    | GNU_ASM_VOLATILE _ -> nothing (* ignored *)
 
   in
   (* Performing the analysis. *)
