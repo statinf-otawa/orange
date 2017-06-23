@@ -19,6 +19,7 @@ SOURCES = \
 	maxima.ml \
 	flowfacts.ml \
 	balance.ml \
+	inputFacts.ml \
 	wcee.ml \
 	orange.ml 
 

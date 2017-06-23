@@ -546,7 +546,7 @@ let _ =
 	let a2 = (List.filter
 		(fun e ->
       match e with 
-        LINE_RECORD _-> false 
+        LINE_RECORD _-> true
       | _ -> true)
 		a1
 	) in
@@ -754,18 +754,20 @@ if (!vDEBUG	) then Printf.printf "  second path begin\n" ;
       analysePartielle secondParse
     end else if !wcee
       then (* worst case event count analysis *) begin
-	Printf.eprintf "PERFORMING the worst case event count analysis\n";
-	let result = match EO.printFile stdout secondParse true "nothing" with
+	let defs = secondParse in
+	Printf.eprintf "PERFORMING the worst case event count analysis\n%!";
+	let result = match EO.printFile stdout defs true "nothing" with
 	  | [x] -> x
 	  | _ -> failwith "unexpected number of analysis results" in
 	Flowfacts.Coarse.dump stderr result;
-	let ff = Flowfacts.LoopInfo.(to_ff_input (make secondParse result)) in
+	let ff = Flowfacts.LoopInfo.(to_ff_input (make defs result)) in
 	let entry = match !names with
 	  | [x] -> !x
 	  | l -> failwith (Printf.sprintf "unexpected number of entry points (%d)"
 			     (List.length l)) in
 	Printf.eprintf "Running the analysis with entry point \"%s\".\n" entry;
-	let wcee = Wcee.analysis ff secondParse entry in
+	let wcee = Wcee.analysis ff defs entry in
+	ignore wcee;
 	Printf.eprintf "Worst case event count analysis DONE\n";
 	()
       end
