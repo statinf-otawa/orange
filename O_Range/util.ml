@@ -461,11 +461,10 @@ let (btype, isdeftype) =
  
 		
 	let rec estProto typ =
-
 		match typ with
 		  PROTO (_, _, _) | OLD_PROTO (_, _, _) ->	true
 		| GNU_TYPE (_, typ) ->estProto typ
-		| TYPE_LINE (_, _, _typ) -> estProto typ
+		| TYPE_LINE (_, _, typ) -> estProto typ
 		| _ -> false
 	
 	let rec estPtrOuTableau typ  =
@@ -513,6 +512,7 @@ let (btype, isdeftype) =
 	| VOLATILE typ -> isPtrType typ  
 	| GNU_TYPE (_, typ) ->isPtrType typ  
 	| ARRAY (typ, _) -> isPtrType typ  
+	| TYPE_LINE (_,_,typ) -> isPtrType typ
 	| NAMED_TYPE id -> 
 				 
 					(*let baseType = match  teps  with TYPEDEF_NAME(id) ->   id |_-> "" in

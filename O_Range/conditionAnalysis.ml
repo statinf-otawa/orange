@@ -151,7 +151,8 @@ module CondUtils = struct
 	      | _ -> failwith "unhandled argument"
 	    in
 	    Some (e,i)
-	  with Failure("int_of_string") -> None
+	  with Failure f as e ->
+	    if f = "int_of_string" then None else raise e
 	end
       | _ when not justFlipped -> rifc true (flip cmp) right left
       | _ -> None in

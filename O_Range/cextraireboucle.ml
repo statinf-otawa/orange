@@ -4380,6 +4380,7 @@ print_substatement newStatement;*)
 	| GOTO (*name*)_ ->				()
 	| ASM (*desc*)_ ->				()
 	| GNU_ASM ((*desc, output, input, mods*)_,_,_,_) -> 	()
+	| STAT_LINE (stat, _, _) -> analyse_statement stat
 	| _ -> ()
 
 and  construireListesES listeDesES arg   =

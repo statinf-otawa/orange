@@ -232,8 +232,9 @@ let analysis
   
   let rec fun_eval (fname: string) : Footprint.t =
     Format.printf "WCEE: starting evaluation of function %s@\n@?" fname;
-    let bodyCost = try stmt_eval None (Balance.function_def defs fname)
-      with Not_found -> Footprint.one_item CostItem.UnknownCode in
+    let bodyCost = match Balance.function_def defs fname with
+      | None -> Footprint.one_item CostItem.UnknownCode
+      | Some body -> stmt_eval None body in
     let callCost = Footprint.list [(1,CostItem.Call); (1,CostItem.Return)] in
     let res = Footprint.add bodyCost callCost in
     Format.printf "%a@\nWCEE: ending evaluation of function %s with %d maximal elements@\n@?" Footprint.print res fname (Footprint.size res);
@@ -306,7 +307,9 @@ let analysis
     let open Footprint in
     let open Cabs in
     match stmt with
-    | STAT_LINE (sub,file,line) -> stmt_eval (Some (InputFacts.Loc.make file line)) sub
+    | STAT_LINE (sub,file,line) ->
+      let loc = InputFacts.Loc.make file line in
+      stmt_eval (Some loc) sub
     | COMPUTATION e
     | RETURN e -> read e
     | NOP -> nothing
