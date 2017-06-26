@@ -218,8 +218,14 @@ let analysis
   let input_ff =
     let filename = "loop.ffx" in
     if Sys.file_exists filename
-    then InputFacts.of_ffx filename
-    else InputFacts.none in
+    then begin
+      Format.printf "File \"%s\" found. Used when oRange cannot determine a loop bound.@\n" filename;
+      InputFacts.of_ffx filename
+    end
+    else begin
+      Format.printf "File \"%s\" not found. No fallback when oRange cannot determine a loop bound.@\n" filename;
+      InputFacts.none
+    end in
 
   let find_loop_bound (loc, stmt) =
     match ff.Balance.loop_bound stmt with
