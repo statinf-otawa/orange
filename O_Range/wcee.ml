@@ -233,8 +233,16 @@ let analysis
     | None -> match loc with
       | None -> failwith "Unbounded loop (unlocated)"
       | Some loc -> match InputFacts.upper_bound input_ff loc with
-	| None -> failwith (Format.asprintf "Unbounded loop (%a)" InputFacts.Loc.print loc)
-	| Some n -> n in
+	| None -> begin
+	  let defmax = 4 in
+	  Format.printf "WARNING: unbounded loop (%a). Treated as max=%d.@\n" InputFacts.Loc.print loc defmax;
+	  defmax
+	end
+	| Some n -> begin
+	  Format.printf "WARNING: loop (%a) was bounded using external information. max=%d.@\n" InputFacts.Loc.print loc n;
+	  n
+	  end
+  in
   
   let rec fun_eval (fname: string) : Footprint.t =
     Format.printf "WCEE: starting evaluation of function %s@\n@?" fname;
