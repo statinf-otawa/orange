@@ -16,10 +16,10 @@
 (** {7 General utilities} *)
 
 let rec extract f = function
-  | [] -> raise Not_found
+  | [] -> None
   | e::r -> match f e with
     | None -> extract f r
-    | Some x -> x
+    | x -> x
 
 let rec min_max f = function
   | [] -> raise (Invalid_argument "empty list")
@@ -40,6 +40,11 @@ let function_def (defs: Cabs.definition list) (fname: string) =
     | Cabs.OLDFUNDEF ((_,_,(name,_,_,_)),_,(_,body)) when name = fname -> Some body
     | _ -> None) defs
   in body
+
+let function_def_exn defs fname =
+  match function_def defs fname with
+  | None -> raise Not_found
+  | Some x -> x
 
 let print_expr fmt (expr: Cabs.expression) =
   Cprint.current := "";
@@ -306,7 +311,7 @@ let analysis
     try Hashtbl.find finfo (ctx,fname)
     with Not_found -> try 
       let body = 	
-	function_def defs fname in
+	function_def_exn defs fname in
       let eval = stmt_eval (CtxNode.function_call ctx fname body) in
       Hashtbl.add finfo (ctx,fname) eval;
       eval
