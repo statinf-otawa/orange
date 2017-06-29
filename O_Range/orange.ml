@@ -5305,6 +5305,9 @@ let printFile (result : out_channel)  (defs2 : file) need_analyse_defs mode =
   end;;
 *)
 
+
+(* main function of orange.ml*)
+
 let printFile (result : out_channel)  (defs2 : file) need_analyse_defs mode=
 if (!doc.laListeDesFonctions = []) then 
 	Printf.printf "printFile liste fonction vide 1\n"

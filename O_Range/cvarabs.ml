@@ -3901,10 +3901,10 @@ match e with
 										end
 										else  UNARY (op, exp1e  )
 									| UNARY (ADDROF, next) ->  Printf.printf "les as rofilter*&\n" ;  applyStore next a
-									|_->   (match exp1e with 	 UNARY (ADDROF, next) ->    applyStore next a
+									|_->   UNARY (op, exp1e  ) (* JUIN 2017 match exp1e with 	 UNARY (ADDROF, next) ->  Printf.printf "les as **&\n" ;   applyStore next a
 											|_->
 												(*if (existeAffectationVarListe tab1 a ) then   UNARY (op,  applyStore exp1e  [ro tab1 a] )
-												else*) UNARY (op, exp1e  ))
+												else*) UNARY (op, exp1e  )*)
 
 							end
 						end
@@ -5798,11 +5798,18 @@ match i with
 						if value = NOTHING then [new_assign_simple x exp2]
 						else ( 
 							let (e,_,ok) =getArrayInfo value x in 
+							(*print_expression e 0;  new_line ();Printf.printf"\n";flush(); space(); new_line();*)
 							if ok then
+							
 							(  let eeval = evalexpression(calculer  (EXP(  e)) !infoaffichNull  [] 1) in
-							    if estNoComp eeval then [new_assign_simple x MULTIPLE]
-								else 	if (estNul  eeval)  then [new_assign_simple x exp2]  
+							
+							
+							(*print_expTerm eeval;*)
+							    if estDefExp eeval then 
+										if (estNul  eeval)  then ([new_assign_simple x exp2]  )
 										else [] (*the variable is not modified*)
+										
+								else 	[new_assign_simple x MULTIPLE]
 							)
 							else  [new_assign_simple x MULTIPLE] 
 						)

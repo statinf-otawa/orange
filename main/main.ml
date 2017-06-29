@@ -161,8 +161,8 @@ let opts = [
 	("--auto", Arg.Set auto,
 		"Automated full analysis");
 	("--print_exp", Arg.Set print_exp, "print_expression of bounds or conditions");
-	("--allow-pessimism", Arg.Set allow_pessimism,
-		"Allow to automatically partialize even function that imply pessimism (faster)");
+	("--without-global-initial",  Arg.Set withoutGlobalAndStaticInit  , "Without initial global and static values");
+	("--allow-pessimism", Arg.Set allow_pessimism, "Allow to automatically partialize even function that imply pessimism (faster)");
 	("-k", Arg.Set partial,
 		"Perform partial analysis on the given functions");
 	(* Output options *)
@@ -170,8 +170,7 @@ let opts = [
 		"Output flow facts to the given file.");
 	("--outdir", Arg.String (fun dir -> out_dir := dir; Cextraireboucle.set_out_dir dir;),
 		"Output directory for partial results (rpo files) or graphs (dot files).");
-	("--without-global-initial",  Arg.Set withoutGlobalAndStaticInit  ,
-		"Without initial global and static values");
+	
     ("--debug",  Arg.Set Util.vDEBUG  ,
 		"Print on stderr debug information");
     ("--resume",  Arg.Set resume  ,
