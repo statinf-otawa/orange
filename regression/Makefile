@@ -13,6 +13,7 @@
 M := Makefile
 C := $(wildcard calipso/*.c)
 STATUS := $(C:calipso/%.c=%.status)
+CMD := ../main/orange --no-control-reduction --print_exp
 
 .PHONY: all
 all: $(STATUS)
@@ -26,7 +27,13 @@ diff/%.diff: reference/%.extract current/%.extract $(M)
 
 current/%.ffx: calipso/%.c $(M)
 	@mkdir -p $(dir $@)
-	../main/orange --no-control-reduction --print_exp -o $@ $< main > /dev/null
+	$(CMD) -o $@ $< main > /dev/null
+
+reference/%.ffx:
+	@echo "# No reference FFX for test $*."
+	@echo "# If this this test was just introduced, you can run:"
+	@echo "$(CMD) -o $@ calipso/$*.c main"
+	@false
 
 .PHONY: %.status
 %.status: diff/%.diff
