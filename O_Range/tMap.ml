@@ -130,7 +130,7 @@ let print
   Format.fprintf fmt lastbind;
   Format.fprintf fmt last
 
-let print_list
+let print_only
     ?(first : (unit, Format.formatter, unit) format = ("[@[<hv>" : (unit, Format.formatter, unit) format))
     ?(sep : (unit, Format.formatter, unit) format = (";@ ":(unit, Format.formatter, unit) format))
     ?(last : (unit, Format.formatter, unit) format = ("@]]":(unit, Format.formatter, unit) format))
