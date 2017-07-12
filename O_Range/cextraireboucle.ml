@@ -1202,7 +1202,8 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 			| LE -> (CROISSANT,  init ,  ne2 ,  LE, false, var,ne) (*i <= exp2 i in [init, exp2 ]  *)
 			| GT -> (DECROISSANT, BINARY (ADD, ne2, !vEPSILON), init , GT,false , var, ne) (* i>exp2, i in [exp2+1, init ]*)
 			| GE -> (DECROISSANT,  ne2  ,  init , GE,false, var, ne) (*>= i =inf, i in [exp2, init ]  *)
-			| AND ->	 traiterANDCOND init var exp1 exp2 liste avant dans cte t  (BINARY(op,exp1, exp2)) lv l inst firstcond
+			| AND ->	(*Printf.printf "rechercheConditionBinary cas 2\n";*)
+			 traiterANDCOND init var exp1 exp2 liste avant dans cte t  (BINARY(op,exp1, exp2)) lv l inst firstcond
 			| OR -> (NONMONOTONE , NOTHING, NOTHING, op, true, var ,BINARY(op,exp1, exp2))
 			| EQ ->
 					let (isindirect,inc,_,_,isMultiInc) =  getLoopVarIncOrCov var inst  firstcond hasAndCond in
@@ -1221,7 +1222,7 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 			| NE -> let (isindirect,inc,_,_,isMultiInc) =  getLoopVarIncOrCov var inst  firstcond hasAndCond in
 					if isMultiInc then isExactForm := false;
 					(*if isindirect then Printf.printf "NE cas 2 indirect change\n";*)
-
+					(*Printf.printf "rechercheConditionBinary cas 3\n";*)
 					(match  inc  with
 							NODEFINC -> (* increment not found may be condition =  boolean var *)
 
@@ -2468,122 +2469,15 @@ and traiterARRAYANDCOND init var testA op exp1 exp2  liste avant dans cte t c lv
 		begin isExactForm := false; (*Printf.printf "only tab %s\n" v2;*)(crois2, bInf2, bSup2, oper2,mult2,v2, cd2)end
 		else construireCondition crois1 bInf1  bSup1  oper1 mult1 v1 cd1 crois2  bInf2  bSup2  oper2 mult2 v2 cd2 lv  avant    dans cte t  inst
 
-
-(*and traiterANDCOND init var exp1 exp2 liste avant dans cte t c lv l inst firstcond=
-
-(*
-Printf.printf" traiterANDCOND %s\n" var;
-print_expression exp1 0; space() ;flush() ;new_line(); flush();new_line();
-print_expression exp2 0; space() ;flush() ;new_line(); flush();new_line(); *)
-	if liste = [] then
-	begin (*Printf.printf"cas 1 traiterANDCOND exp1  \n";	*)
-		 let ((crois1,bInf1, bSup1, oper1,mult1,v1,cd1), ee11,ee12)=
-			match exp1 with
-				BINARY (op1, exp11, exp12) -> (rechercheConditionBinary init var op1 exp11 exp12 [] avant dans cte t exp1 lv l inst firstcond true, exp11, exp12)
-				| VARIABLE name ->
-					(rechercheConditionBinary (VARIABLE name)  name NE (VARIABLE name) (CONSTANT (CONST_INT "0")) [] avant dans cte t exp1 lv l inst
-					firstcond true,(VARIABLE name), (CONSTANT (CONST_INT "0")))
-				| UNARY (op, exp) ->
-							(match op with
-								NOT ->
-									(rechercheConditionBinary init var EQ exp (CONSTANT (CONST_INT "0")) [] avant dans cte t c lv l inst firstcond true, exp, (CONSTANT (CONST_INT "0")) )
-							 	|_-> 	((  NONMONOTONE , NOTHING, NOTHING, XOR, true, var , c), NOTHING, NOTHING) (*pas multiple voir pour les booleens*))
-				|_-> (*Printf.printf"cas 1 traiterANDCOND exp1 is not Binary boolean ???\n";	*)((NONMONOTONE , NOTHING, NOTHING, XOR, true, var, c), NOTHING, NOTHING) in
-
-
-
-
-		let ((crois2, bInf2, bSup2, oper2,mult2,v2, cd2), ee21,ee22) =
-			match exp2 with
-				BINARY (op2, exp21, exp22) ->  (rechercheConditionBinary init var op2 exp21 exp22 [] avant dans  cte t exp2  lv l inst firstcond true, exp21, exp22)
-				| VARIABLE name ->
-					(rechercheConditionBinary (VARIABLE(name))  name NE (VARIABLE (name)) (CONSTANT (CONST_INT "0")) [] avant dans cte t exp2 lv l inst
-						firstcond true,(VARIABLE (name)), (CONSTANT (CONST_INT "0")))
-				| UNARY (op, exp) ->
-							(match op with
-								NOT ->
-									(rechercheConditionBinary init var EQ exp (CONSTANT (CONST_INT "0")) [] avant dans cte t c lv l inst firstcond true, exp ,(CONSTANT (CONST_INT "0")))
-							 	|_-> 	(  (NONMONOTONE , NOTHING, NOTHING, XOR, true, var , c), NOTHING ,NOTHING) (*pas multiple voir pour les booleens*))
-				|_-> (*Printf.printf"cas 1 traiterANDCOND exp2 is not Binary boolean ???\n";	*)((NONMONOTONE , NOTHING, NOTHING, XOR, true, var, c), NOTHING, NOTHING) in
-
-		if crois2 = NONMONOTONE ||crois1 = NONMONOTONE then isExactForm := false;
-
-
-		construireCondition crois1 bInf1  bSup1  oper1 mult1 v1 cd1 crois2  bInf2  bSup2  oper2 mult2 v2 cd2 lv avant dans cte t inst
-
-(*recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1 isLoopCtee2 inst firstcond hasAndCond*)
-	end
-	else
-	begin (* Printf.printf"cas 2 traiterANDCOND exp1 is not Binary boolean ???\n";*)
-
-		let lv1 =  (listeDesVarsDeExpSeules exp1) in
-		let lv2 =  (listeDesVarsDeExpSeules exp2) in
-		let (var1, suite1,var2, suite2 ) = if List.mem var  lv1  && List.mem var  lv2 then (var,liste,var,liste) else
-										   if (List.hd lv1) = var &&  (List.tl lv1) = [] then   (var,liste,List.hd liste, List.tl liste) else (List.hd liste, List.tl liste,List.hd liste, List.tl liste) in
-
-
-		(*Printf.printf"cas 2 traiterANDCOND exp1 is not Binary boolean ??? %s %s\n" var1 var2;*)
-		let ((crois1,bInf1, bSup1, oper1,mult1,v1, c1), ee11,ee12)=
-					match exp1 with
-						BINARY (op, e1, e2) ->
-							(rechercheConditionBinary (VARIABLE(var1))  var1 op e1 e2 suite1 avant dans cte t c lv l inst firstcond true, e1, e2)
-						| VARIABLE name ->
-						(rechercheConditionBinary (VARIABLE name) name NE (VARIABLE name) (CONSTANT (CONST_INT "0")) liste avant dans cte t c lv l inst
-									firstcond true,(VARIABLE name), (CONSTANT (CONST_INT "0")) )
-						| UNARY (op, exp) ->
-							(match op with
-								NOT ->
-									(rechercheConditionBinary (VARIABLE(var1))  var1 EQ exp (CONSTANT (CONST_INT "0"))  liste avant dans cte t c lv l inst firstcond true,exp,(CONSTANT (CONST_INT "0")) )
-							 	|_-> 	((  NONMONOTONE , NOTHING, NOTHING, XOR, true, var , c),NOTHING, NOTHING) (*pas multiple voir pour les booleens*))
-						|_-> 	(* Printf.printf"cas 2 traiterANDCOND exp1 is not Binary boolean ???\n";	*)
-								((  NONMONOTONE , NOTHING, NOTHING, XOR, true, var , c),NOTHING, NOTHING) in
-		(*Printf.printf"cas 2 traiterANDCOND exp1 is not Binary boolean ??? v1 %s\n" v1;*)
-
-		let ((crois2, bInf2, bSup2, oper2,mult2,v2, c2), ee21,ee22) =
-					match exp2 with
-						BINARY (op, e1, e2) ->  (rechercheConditionBinary (VARIABLE(var2))  var2 op e1 e2 suite2 avant dans cte t c lv l inst firstcond true, e1, e2)
-						| VARIABLE name ->
-							(rechercheConditionBinary (VARIABLE name) name NE (VARIABLE name) (CONSTANT (CONST_INT "0")) liste avant dans cte t c lv l inst
-firstcond true,(VARIABLE name),(CONSTANT (CONST_INT "0")) )
-						| UNARY (op, exp) ->
-							(match op with
-								NOT ->
-									(rechercheConditionBinary (VARIABLE(var2))  var2  EQ exp (CONSTANT (CONST_INT "0")) liste avant dans cte t c lv l inst firstcond true,exp ,(CONSTANT (CONST_INT "0")) )
-							 	|_-> 	((  NONMONOTONE , NOTHING, NOTHING, XOR, true, var , c),NOTHING, NOTHING)(*pas multiple voir pour les booleens*))
-						|_->  (* Printf.printf"cas 2 traiterANDCOND exp2 is not Binary boolean ???\n";	*)
-							((  NONMONOTONE , NOTHING, NOTHING, XOR, true, var, c), NOTHING, NOTHING) in
-		(*Printf.printf"cas 2 traiterANDCOND exp1 is not Binary boolean ??? v2 %s\n" v2;*)
-
-
-		if crois2 = NONMONOTONE ||crois1 = NONMONOTONE then isExactForm := false;
-		if ( intersection (listeDesVarsDeExpSeules exp1)  l) = [] then
-		begin
-			isExactForm := false;			(* cond ne dépend que de exp2*) (crois2, bInf2, bSup2, oper2,mult2,v2, c2)
-		end
-		else
-			if ( intersection (listeDesVarsDeExpSeules exp2)  l) = []   then
-			begin
-				isExactForm := false;
-				(* cond ne dépend que de exp1*)  (crois1,bInf1, bSup1, oper1,mult1,v1, c1)
-			end
-			else
-			(
-				if crois2 = NONMONOTONE then
-				(
-					recherchePow (VARIABLE(var2)) var2 oper2 ee21 ee22 suite2 avant dans cte t c lv lv2  false false inst firstcond true )
-				else if crois1 = NONMONOTONE then recherchePow (VARIABLE(var1)) var1 oper1 ee11 ee12 suite1 avant dans cte t c lv lv1  false false inst firstcond true
-				else construireCondition crois1 bInf1  bSup1  oper1 mult1 v1 c1 crois2  bInf2  bSup2  oper2 mult2 v2 c2 lv avant dans cte t inst			)
-	end*)
+ 
 
 and traiterANDCOND init var exp1 exp2 liste avant dans cte t c lv l inst firstcond=
-
-(*
-
-Printf.printf" traiterANDCOND %s\n" var;
+(*Printf.printf" traiterANDCOND %s\n" var;
+ 
 print_expression exp1 0; space() ;flush() ;new_line(); flush();new_line();
 print_expression exp2 0; space() ;flush() ;new_line(); flush();new_line(); *)
 	if liste = [] then
-	begin (*Printf.printf"cas 1 traiterANDCOND exp1  \n";	*)
+	begin(* Printf.printf"cas 1 traiterANDCOND exp1  \n";	*)
 		 let ((crois1,bInf1, bSup1, oper1,mult1,v1,cd1), ee11,ee12)=
 			match exp1 with
 				BINARY (op1, exp11, exp12) -> (rechercheConditionBinary init var op1 exp11 exp12 [] avant dans cte t exp1 lv l inst firstcond true, exp11, exp12)
@@ -2622,7 +2516,10 @@ print_expression bSup1 0; space() ;flush() ;new_line(); flush();new_line();*)
  
 	print_expression bInf2 0; space() ;flush() ;new_line(); flush();new_line();
 print_expression bSup2 0; space() ;flush() ;new_line(); flush();new_line();*)
-		construireCondition crois1 bInf1  bSup1  oper1 mult1 v1 cd1 crois2  bInf2  bSup2  oper2 mult2 v2 cd2 lv avant dans cte t inst
+
+		if oper2 = NE && oper1 != NE then (isExactForm := false;	 (crois1,bInf1, bSup1, oper1,mult1,v1,  exp2))
+		else if oper1 = NE && oper2 != NE  then (  isExactForm := false;	 (crois2, bInf2, bSup2, oper2,mult2,v2, exp1 ))
+		else (  construireCondition crois1 bInf1  bSup1  oper1 mult1 v1 cd1 crois2  bInf2  bSup2  oper2 mult2 v2 cd2 lv avant dans cte t inst)
 
 (*recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1 isLoopCtee2 inst firstcond hasAndCond*)
 	end
@@ -2861,17 +2758,21 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 
 					print_expression infoVar.increment 0; space() ;flush() ;new_line(); flush();new_line();
 					print_expression  une 0; space() ;flush() ;new_line(); flush();new_line();
-					Printf.printf "getNombreIt recherche de affect : \n";
-*)
+					Printf.printf "getNombreIt recherche de affect : \n";*)
+
 					let expune= evalArrayTravel  bs  appel globales une bu in
 					let isInt = if  ( typeInf = INTEGERV && typeSup  = INTEGERV && typeInc  = INTEGERV)   then true else false in
 				let isOk =
 				if  (estDefExp   borneinf  && estDefExp   bornesup )  then
 				begin
 					let diff = evalexpression (Diff( evalexpression bornesup, borneinf)) in
-					if ( estNul diff ) then false
-					else begin 
-						let sensVariReel  =
+					if ( estNul diff ) then
+					begin
+						if typeopPlusouMUL then ( 					 false)
+						else true (* TO SEE *)
+					end
+					else begin true
+						(*VOIR  POURQUOI let sensVariReel  =
 							(	if estPositif bornesup && estPositif borneinf then estPositif (diff)
 								  else if estPositif bornesup && (estPositif borneinf =false) then  true
 										else
@@ -2882,11 +2783,16 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 							
 						 
 						if (sensinc == POS && sensVariReel|| sensinc == NEG && sensVariReel==false) then true else false
-										
+							*)			
 					end
 				end else (   true) in
-								 
+				
+				
+				
+				(*if isOk==false	then Printf.printf "non OK : \n"	
+				else Printf.printf " OK : \n";					*) 
 						 
+				
 				if isOk==false then EXP(NOTHING)
 				else
 				begin   

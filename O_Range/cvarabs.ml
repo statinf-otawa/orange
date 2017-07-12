@@ -3519,7 +3519,7 @@ let rec traiterChampOfstructAux lid valeur id btype e a=
 						|  UNARY (op, ex) ->
 							(match op with
 								ADDROF ->
-										Printf.printf "traiterChampOfstruct &assign\n";
+										(*Printf.printf "traiterChampOfstruct &assign\n";*)
 									(match ex with
 										CONSTANT cst ->
 											(match cst with
@@ -3536,7 +3536,7 @@ let rec traiterChampOfstructAux lid valeur id btype e a=
 										|_-> begin (*Printf.printf "traiterChampOfstruct MEMBEROFPTRcas 1 %s\n" id;     *)
 										remplacerValPar  id  ( UNARY (op, ex)) e end
 									)
-								| MEMOF -> Printf.printf "traiterChampOfstruct *assign id : %s\n" id; 
+								| MEMOF -> (*Printf.printf "traiterChampOfstruct *assign id : %s\n" id; *)
 									let (value,trouve, direct) =
 										if existeAffectationVarListe id a  then
 											(expVaToExp (rechercheAffectVDsListeAS (id) a ), true, true)
@@ -3900,7 +3900,7 @@ match e with
 											else  UNARY (op, exp1e  )
 										end
 										else  UNARY (op, exp1e  )
-									| UNARY (ADDROF, next) ->  Printf.printf "les as rofilter*&\n" ;  applyStore next a
+									| UNARY (ADDROF, next) ->  (*Printf.printf "les as rofilter*&\n" ;*)  applyStore next a
 									|_->   UNARY (op, exp1e  ) (* JUIN 2017 match exp1e with 	 UNARY (ADDROF, next) ->  Printf.printf "les as **&\n" ;   applyStore next a
 											|_->
 												(*if (existeAffectationVarListe tab1 a ) then   UNARY (op,  applyStore exp1e  [ro tab1 a] )
@@ -3965,7 +3965,7 @@ match e with
 	| TYPE_SIZEOF _ 				->	(e)
 	| INDEX (exp, idx) 				->
 
-Printf.printf "applystore index\n";
+		(*Printf.printf "applystore index\n";*)
 		 let index = (applyStore idx a) in
 		(	match exp with
 			VARIABLE name ->
@@ -4007,7 +4007,7 @@ Printf.printf "applystore index\n";
 						else (INDEX (applyStore exp a, index))
 
 		| CONSTANT (CONST_COMPOUND expsc) ->
-		Printf.printf "applystore cte 2\n";
+				(*Printf.printf "applystore cte 2\n";*)
 					let indexx = (calculer (EXP( index )) !infoaffichNull  [] 1 )in
 					let conpound = applyStore exp a in
 
@@ -4031,7 +4031,7 @@ Printf.printf "applystore index\n";
 					else  res
 
 
-			| _->	Printf.printf "applystore other\n";
+			| _->	(*Printf.printf "applystore other\n";*)
 				let (tab1,lidx1) =analyseArray e [] in
 				if tab1 = "" then
 
@@ -4846,10 +4846,10 @@ else begin (*Printf.printf "closeForm =other\n" ; afficherListeAS [assign] ;new_
 let rec majexpaux var e	=
  match e with
 	 	UNARY (op, exp) 		-> 	
-	 	(match op with	
+	 	(*match op with	
 			| ADDROF	->Printf.printf "majexpaux =ADDROF\n"
 			|_ -> Printf.printf "majexpaux =other\n"
-			);		
+			);*)		
 			  UNARY (op, (majexpaux var exp))
 	| 	BINARY (op, exp1, exp2) ->    BINARY (op, (majexpaux var exp1),  (majexpaux var exp2))
 	| 	QUESTION (exp1, exp2, exp3)-> QUESTION ((majexpaux var exp1), (majexpaux var exp2), (majexpaux var exp3))
@@ -4873,11 +4873,6 @@ let majexpauxaux varB e = match e with MULTIPLE -> MULTIPLE |EXP  (expr) ->  EXP
 let  rec majexpauxInit var e	init =
  match e with
 	 	UNARY (op, exp) 		-> 
-	 	 
-			(match op with	
-			| ADDROF	->Printf.printf "majexpauxInit =ADDROF\n"
-			|_ -> Printf.printf "majexpauxInit =other\n"
-			);		
 	 	 UNARY (op, (majexpauxInit var exp init)) 
 	| 	BINARY (op, exp1, exp2) -> 	
 		BINARY (op, (majexpauxInit var exp1 init),  (majexpauxInit var exp2 init))
@@ -5106,7 +5101,7 @@ let isVarTrue  var e=
 
 let consSETASSIGN var firstAssign secondAssign =
 
-Printf.printf "consSETASSIGN %s\n" var;
+	(*Printf.printf "consSETASSIGN %s\n" var;*)
 	match firstAssign with
 		ASSIGN_SIMPLE (var, EXP(valeur1)) ->
 				(match secondAssign with

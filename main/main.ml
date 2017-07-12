@@ -28,7 +28,6 @@ open Xml
 
 module TO = Orange.Maker(Orange.PartialAdapter(Cextraireboucle.TreeList))
 module XO = Orange.Maker(Orange.PartialAdapter(Orange.MonList))
-module EO = Orange.Maker(Flowfacts.Coarse)
 
 (* === Utility functions === *)
 
@@ -161,8 +160,8 @@ let opts = [
 	("--auto", Arg.Set auto,
 		"Automated full analysis");
 	("--print_exp", Arg.Set print_exp, "print_expression of bounds or conditions");
-	("--without-global-initial",  Arg.Set withoutGlobalAndStaticInit  , "Without initial global and static values");
-	("--allow-pessimism", Arg.Set allow_pessimism, "Allow to automatically partialize even function that imply pessimism (faster)");
+	("--allow-pessimism", Arg.Set allow_pessimism,
+		"Allow to automatically partialize even function that imply pessimism (faster)");
 	("-k", Arg.Set partial,
 		"Perform partial analysis on the given functions");
 	(* Output options *)
@@ -170,7 +169,8 @@ let opts = [
 		"Output flow facts to the given file.");
 	("--outdir", Arg.String (fun dir -> out_dir := dir; Cextraireboucle.set_out_dir dir;),
 		"Output directory for partial results (rpo files) or graphs (dot files).");
-	
+	("--without-global-initial",  Arg.Set withoutGlobalAndStaticInit  ,
+		"Without initial global and static values");
     ("--debug",  Arg.Set Util.vDEBUG  ,
 		"Print on stderr debug information");
     ("--resume",  Arg.Set resume  ,
@@ -545,7 +545,7 @@ let _ =
 	let a2 = (List.filter
 		(fun e ->
       match e with 
-        LINE_RECORD _-> true
+        LINE_RECORD _-> false 
       | _ -> true)
 		a1
 	) in
@@ -751,26 +751,7 @@ if (!vDEBUG	) then Printf.printf "  second path begin\n" ;
          
 
       analysePartielle secondParse
-    end else if !wcee
-      then (* worst case event count analysis *) begin
-	let defs = secondParse in
-	Printf.eprintf "PERFORMING the worst case event count analysis\n%!";
-	let result = match EO.printFile stdout defs true "nothing" with
-	  | [x] -> x
-	  | _ -> failwith "unexpected number of analysis results" in
-	Flowfacts.Coarse.dump stderr result;
-	let ff = Flowfacts.LoopInfo.(to_ff_input (make defs result)) in
-	let entry = match !names with
-	  | [x] -> !x
-	  | l -> failwith (Printf.sprintf "unexpected number of entry points (%d)"
-			     (List.length l)) in
-	Printf.eprintf "Running the analysis with entry point \"%s\".\n" entry;
-	let wcee = Wcee.analysis ff defs entry in
-	ignore wcee;
-	Printf.eprintf "Worst case event count analysis DONE\n";
-	()
-      end
-      else (* full analysis *) begin
+    end else (* full analysis *) begin
       if !print_exp then
         XO.isPrint_Expression := true
       else
