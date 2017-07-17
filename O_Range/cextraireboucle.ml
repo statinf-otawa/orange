@@ -5842,14 +5842,17 @@ and  onlyAexpressionaux exp =
 									onlyAexpressionaux exp2;	 let ne = !nouvExp in
 									let (v,expres, isstruct) = getVarPtrOrArrayDep  exp1 in
 
-									if v = "" then 	 (match e with MEMBEROF (ex, c)  | MEMBEROFPTR (ex, c) 		->		let lid =	getInitVarFromStruct e  in
-																														let id = if lid != [] then List.hd lid else (Printf.printf "not id 3876\n"; "noid") in
+									if v = "" then 	 
+										(match e with 
+											MEMBEROF (ex, c)  | MEMBEROFPTR (ex, c) ->	
+												let lid =	getInitVarFromStruct e  in
+												let id = if lid != [] then List.hd lid else (Printf.printf "not id 3876\n"; "noid") in
 
-																				if isstruct = false then
-																						listeDesInstCourantes := List.append !listeDesInstCourantes [ new_instVarAndPtr  id   (EXP(NOTHING))]
-																					else
-																						listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instMem ("*"^id) (EXP(!nouvExp)) (EXP(NOTHING))]
-																|_->             Printf.printf "array expr not found\n"; print_expression exp1 0 ;flush();space() ;flush();space() ; ())
+												if isstruct = false then
+													listeDesInstCourantes := List.append !listeDesInstCourantes [ new_instVarAndPtr  id   (EXP(NOTHING))]
+												else
+													listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instMem ("*"^id) (EXP(!nouvExp)) (EXP(NOTHING))]
+											|_->    Printf.eprintf "array expr not found\n"; print_expression exp1 0 ;flush();space() ;flush();space() ; ())
 
 									else
 									begin

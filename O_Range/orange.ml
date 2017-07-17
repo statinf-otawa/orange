@@ -3464,43 +3464,62 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
         if myCall <> [] then begin
           match List.hd myCall with
           APPEL (n,e,nomFonc, s,CORPS c,v,r,u) ->
+            let sorties = (match s with BEGIN(sss)-> sss |_->[]) in
             if ((existeFonctionParNom nomFonction doc)
                 && (not (Cextraireboucle.is_in_use_partial nomFonction))) then begin
               let (_, func) = (rechercherFonctionParNom nomFonction doc) in
               let ne = (match e with BEGIN(eee)-> (List.append listeInputInstruction eee) |_->listeInputInstruction) in
               (* Printf.printf "evalUneBoucleOuAppel FONCTION %s: num appel EXISTE %d \n" nomFonction numf;*)
-              ([APPEL (n,e,nomFonc,s,CORPS(BEGIN(func.lesAffectations)),v,r,u)], ne,func.lesAffectations, false,[])
+              ([APPEL (n,e,nomFonc,s,CORPS(BEGIN(func.lesAffectations)),v,r,u)], ne,func.lesAffectations, false,sorties)
             end else
               (let corps = (match c with BEGIN(ccc)-> ccc |ccc-> [ccc] ) in
                let ne = (match e with BEGIN(eee)-> (List.append listeInputInstruction eee) |_->listeInputInstruction) in
                if corps != [] then begin
                  (*Printf.printf "evalUneBoucleOuAppel Eval appel FONCTION %s: num appel EXISTE VOIR COMPO %d \n" nomFonction numf;*)
                  if (Cextraireboucle.is_in_use_partial nomFonc) then
-                   ([APPEL (n,e,nomFonc,s,ABSSTORE (Cextraireboucle.getAbsStoreFromComp nomFonc),v,r,u)], ne, [],true,[])
+                   ([APPEL (n,e,nomFonc,s,ABSSTORE (Cextraireboucle.getAbsStoreFromComp nomFonc),v,r,u)], ne, [],true,sorties)
                  else
                    ([APPEL (n,e,nomFonc,s,CORPS c,v,r,u)], ne,[], false,[])
                end else
                  (* jz: ::TODO:: this could also be a call via a fct ptr ::TODO:: *)
                  ((*Printf.printf "evalUneBoucleOuAppel Eval appel FONCTION %s: num appel EXTERN %d \n" nomFonction numf;*)
                   if (Cextraireboucle.is_in_use_partial nomFonc) then
-                    ([APPEL (n,e,nomFonc,s,ABSSTORE (Cextraireboucle.getAbsStoreFromComp nomFonc),v,r,u)], ne, [],true,[])
+                    ([APPEL (n,e,nomFonc,s,ABSSTORE (Cextraireboucle.getAbsStoreFromComp nomFonc),v,r,u)], ne, [],true,sorties)
                   else begin
                    let sorties = (match s with BEGIN(sss)-> sss |_->[]) in ([],listeInputInstruction,[], false,sorties)
                   end
                  )
               )
           | APPEL (n,e,nomFonc,s,ABSSTORE a,v,r,u) ->
+            let sorties = (match s with BEGIN(sss)-> sss |_->[]) in
             let ne = (match e with BEGIN(eee)-> (List.append listeInputInstruction eee) |_->listeInputInstruction) in
             (*Printf.printf "evalUneBoucleOuAppel Eval appel FONCTION %s: num appel COMPOSANT %d \n" nomFonction numf; *)
-            ([APPEL (n,e,nomFonc,s,ABSSTORE a,v,r,u)], ne, [],true,[])  | _ -> failwith "function type error (component, extern...)"
+            ([APPEL (n,e,nomFonc,s,ABSSTORE a,v,r,u)], ne, [],true,sorties)  | _ -> failwith "function type error (component, extern...)"
           end else ([], listeInputInstruction,[], false,[]) in
 
-      (* non le contexte de l'appel se réduit à la valeur des *)
+      (* non le contexte de l'appel se réduit à la valeur des *)  
+      let outputsVar =  
+		List.map (fun inout -> match inout with VAR (id, _,_,_) | TAB (id, _, _,_,_) |MEMASSIGN (id, _,_,_,_)->
+		
+	
+														let fid = 	if  String.length id > 1 then
+														if (String.sub id  0 1)="*" then  String.sub id 1 ((String.length id)-1) else id
+														else id  in
+	Printf.printf "Sortie %s\n" fid;
+															 fid
+													|_->Printf.printf "Sortie vide  \n" ; "")output in
+			
+			
+			 
+
+				
+						
       let (asLAppel,others, globalesBefore, input) =
       ( if dansBoucle = false then
          begin
-          let (gc,others) = filterGlobalesAndOthers contexteAvantAppel !globalesVar in
-          let newGlobales = rond globale gc in
+          let (gc,others) = filterGlobalesAndOthers contexteAvantAppel !globalesVar  in
+          let (output,_) = filterGlobalesAndOthers contexteAvantAppel outputsVar  in
+          let newGlobales = rond globale (List.append output gc) in (*TO SEE*)
           let (input, xx) = evalInputFunction others   entrees newGlobales prevPtrct in
 
           ( input ,others, newGlobales, entrees )
@@ -3511,17 +3530,22 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
    let (vt, vf) =  if dansBoucle = false then  creerVarTF lt lf contexteAvantAppel []
           else  (( CONSTANT(CONST_INT("1")))) , (( CONSTANT(CONST_INT("0")))) in
 
-(*  Printf.printf "evalUneBoucleOuAppel  appel FONCTION %s \n" nomFonction ;
-  Printf.printf "isExecuted : list of true conditions variables\n"; List.iter (fun e-> Printf.printf "%s "e) lt;
+  (*Printf.printf "evalUneBoucleOuAppel  appel FONCTION %s \n" nomFonction ;*)
+  (*Printf.printf "isExecuted : list of true conditions variables\n"; List.iter (fun e-> Printf.printf "%s "e) lt;
   Printf.printf "isExecuted : list of false conditions variables\n"; List.iter (fun e-> Printf.printf "%s "e) lf;*)
 
 
   let isExecutedCall =  if dansBoucle = false then   estexeEng && isExecuted lt lf contexteAvantAppel [] [] true else estexeEng in
   (* if depends on before context but not global because of instruction order is not ok*)
-  (*if isExecuted lt lf contexteAvantAppel [] []  false then Printf.printf "est exécutée %s\n" nomFonction
-  else  Printf.printf "n'est exécutée%s\n"nomFonction;*)
+ (* if isExecuted lt lf contexteAvantAppel [] []  false then Printf.printf "est exécutée %s\n" nomFonction
+  else  Printf.printf "n'est exécutée%s\n"nomFonction;
 
-  (*Printf.printf "evalUneBoucleOuAppel  appel FONCTION %s:\n Globales :\n" nomFonction ;afficherListeAS( globalesBefore);new_line () ;*)
+  Printf.printf "evalUneBoucleOuAppel  appel FONCTION %s:\n Globales :\n" nomFonction ;afficherListeAS( globalesBefore);new_line () ;
+  Printf.printf "evalUneBoucleOuAppel  appel FONCTION %s:\n FIN Globales :\n" nomFonction ;*)
+  
+  (* Printf.printf "evalUneBoucleOuAppel  appel FONCTION %s:\n INPUTS :\n" nomFonction ;afficherListeAS( asLAppel);new_line () ;
+  Printf.printf "evalUneBoucleOuAppel  appel FONCTION %s:\n FIN INPUTS :\n" nomFonction ;*)
+
 
   if  lappel <> [] && isCompo = false then
   begin
@@ -3560,7 +3584,7 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
                 if sorties <> [] then
                 begin
 
-(*afficherLesAffectations func.lesAffectations ;
+				(*afficherLesAffectations func.lesAffectations ;
                 Printf.printf "evalUneBoucleOuAppel var SORTIE %s \n" nomFonction ;afficherListeAS( rc);new_line () ; *)
                 List.iter (
                   fun sortie ->
