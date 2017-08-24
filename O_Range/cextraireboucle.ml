@@ -5193,6 +5193,7 @@ and ajouterReturn nomF lesAffectations =
 
 
 and getPartialResult nom =
+Printf.printf "getPartialResult name : %s :" nom; 
     let nom = (Filename.concat !out_dir (nom^".rpo")) in
     let chan = Unix.in_channel_of_descr (Unix.openfile nom [Unix.O_RDONLY] 0) in
     let (partialResult : compInfo) = Marshal.from_channel chan in
@@ -5207,6 +5208,7 @@ and getESFromComp nom =
 
 
 and getAbsStoreFromComp nom =
+Printf.printf "getAbsStoreFromComp name : %s :" nom; 
     (getPartialResult nom).absStore
 
 and expBornesToListeAffect expBornes =

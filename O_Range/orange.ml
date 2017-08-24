@@ -3505,9 +3505,9 @@ and evalUneBoucleOuAppel elem affectations contexte listeEng estexeEng lastLoopO
 														let fid = 	if  String.length id > 1 then
 														if (String.sub id  0 1)="*" then  String.sub id 1 ((String.length id)-1) else id
 														else id  in
-	Printf.printf "Sortie %s\n" fid;
+	(*Printf.printf "Sortie %s\n" fid;*)
 															 fid
-													|_->Printf.printf "Sortie vide  \n" ; "")output in
+													|_->(*Printf.printf "Sortie vide  \n" ; *)"")output in
 			
 			
 			 

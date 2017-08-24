@@ -167,8 +167,8 @@ let opts = [
 	(* Output options *)
 	("-o", Arg.Set_string out_file,
 		"Output flow facts to the given file.");
-	("--outdir", Arg.String (fun dir -> out_dir := dir; Cextraireboucle.set_out_dir dir;),
-		"Output directory for partial results (rpo files) or graphs (dot files).");
+	("--rpo_iodir", Arg.String (fun dir -> out_dir := dir; Cextraireboucle.set_out_dir dir;),
+		"Output(Input) directory for partial results (rpo files) or graphs (dot files).");
 	("--without-global-initial",  Arg.Set withoutGlobalAndStaticInit  ,
 		"Without initial global and static values");
     ("--debug",  Arg.Set Util.vDEBUG  ,
@@ -212,11 +212,26 @@ let opts = [
 (* Return if the given component is in the list of to be partialised
 	components *)
 let isComponent comp =
+ 
 	let rec aux = function
 		| [] -> false
 		| (comp_name) :: r ->
 			if (comp = !comp_name)
-				then (true)
+				then 
+				begin
+					try(
+							
+							let nom = (Filename.concat !out_dir (comp^".rpo")) in
+							let chan = Unix.in_channel_of_descr (Unix.openfile nom [Unix.O_RDONLY] 0) in
+							close_in chan;
+							 printf "Resultat partiel pour:%s déjà présent \n" comp;
+							false (* it is already partialised *)
+						)
+					 with  Unix.Unix_error(Unix.ENOENT, _, _)->
+					(* or if the partial result do not exists *)
+				
+					(true)
+				end
 				else (aux r)
 		in aux !Cextraireboucle.names
 
