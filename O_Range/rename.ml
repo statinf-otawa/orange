@@ -199,7 +199,7 @@ and convert_expression (exp : expression) =
 					
 			| EXPR_SIZEOF exp ->		EXPR_SIZEOF (convert_expression exp)
 			| TYPE_SIZEOF typ ->		TYPE_SIZEOF typ
-			| INDEX (exp, idx) ->		INDEX ((convert_expression exp), idx)
+			| INDEX (exp, idx) ->		INDEX ((convert_expression exp), (convert_expression idx))
 			| MEMBEROF (exp, fld) ->	MEMBEROF ((convert_expression exp), fld)
 			| MEMBEROFPTR (exp, fld) ->	MEMBEROFPTR ((convert_expression exp), fld)
 			| EXPR_LINE (exp, file, line)->EXPR_LINE ((convert_expression exp), file, line)

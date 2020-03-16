@@ -345,13 +345,10 @@ let new_variation i s inc d op b=
 
 
 	type typeCorpsFonction =
-	{
-		(*listeDesBouclesDansCorps: listeDesIdDeBoucle;	*)
+	{ 
 		boucleOuAppel : elementCorpsFonction list;
-		corpsS : statement;
-		(*listeDesAppelDeFonctionsDansCorps : typeListeAppels ;*)
+		corpsS : statement; 
 	}
-
 
 	type listeDesES = typeES list
 
@@ -389,8 +386,6 @@ let new_variation i s inc d op b=
 
 	let add_fonction  (n,f) liste= if (List.mem_assoc n liste)= false then begin 	List.append liste [(n,f)] 	end else liste
 	let doc = ref (new_document [] [] [] [])
-
-
 
 (* last parameters of Call, Loop and If are list true and false expressions *)
 module TreeList = struct
@@ -484,8 +479,7 @@ open TreeList
 type compInfo = {name:string; absStore: typeListeAS; compES:listeDesES; expBornes:TreeList.tree}
 
 
-(* pour les fonctions *)
-
+(* for functions *)
 let rec reecrireCAll var liste =
   List.map (fun e ->
 	match e with
@@ -499,7 +493,7 @@ let rec reecrireCAll var liste =
 
 let nomFonctionDeExp exp = match exp with  VARIABLE (s)->s  | _->""
 
-(* pour les boucles *)
+(* for loops *)
 let new_ListeDesBoucles oldList newBoucle = List.append oldList newBoucle
 let aBoucleEnglobante bInfo = if bInfo.degreb != 1 then true else false
 
@@ -523,7 +517,6 @@ let existeBoucle id =
 		List.find (fun bou ->	 (getBoucleIdB bou.laBoucle) = id) !doc.laListeDesAssosBoucleBorne
 
 (* for the functions *)
-
 	let new_CorpsFonction bloc lbOa  =
 	{
 		boucleOuAppel = lbOa;
@@ -537,8 +530,6 @@ let existeBoucle id =
 		declaration = dec;
 		corps = c;
 		lesAffectations = l;
-
-
 		listeES = liste;
 	}
 
@@ -552,21 +543,14 @@ let existeBoucle id =
 		let nl = List.map(fun (i,info)->  (i, new_Infofonction info.nom info.declaration info.corps (get_fct_body   info.nom) info.listeES) )!doc.laListeDesFonctions in
 		doc := new_document !doc.laListeDesBoucles nl  !doc.laListeDesAssosBoucleBorne  !doc.laListeDesNids
 
-
-
 (* we have to show how to consider union and struct type *)
    let setAssosIDTYPEINIT = ref []
 	let setAssosIDBasetype name typ =
 	if (List.mem_assoc name !listAssocIdType)= false then
-	begin
-			(*if name = "pageptr" then  (Printf.printf "not mem\n"; print_base_type typ true);*)
+	begin 
 			listAssocIdType := List.append !listAssocIdType [(name, get_base_typeEPS typ)]   ;
-
-
 			setAssosIDTYPEINIT := List.append  [(name,  typ)]  !setAssosIDTYPEINIT;
 	end
-
-
 
 let rec getItemType dec result =
   if dec = [] then
@@ -620,8 +604,6 @@ and get_baseinittype typ =
 							else  Printf.sprintf "* %d"  (List.hd liste)
 						end
 						else "" ) in
-
-
 			get_baseinittype t ^nbelt
 	| CONST typ -> get_baseinittype typ
 	| VOLATILE typ -> get_baseinittype typ
@@ -632,7 +614,7 @@ and get_baseinittype typ =
 let	rec creerListeParamES (pars : single_name list) =
   if pars = [] then begin (*if !vDEBUG then Printf.eprintf"aucun param \n";*)()end
   else
-  begin	(*	Printf.printf"parameters creerListeParamES\n";*)
+  begin	 
 			let courant = List.hd pars in
 			let (typ, _, name) = courant in
 			let (nom, estPtrOuTab) = traiter_single_name name typ in
@@ -642,16 +624,11 @@ let	rec creerListeParamES (pars : single_name list) =
 
 			end;
 
-		(*	Printf.printf "variables and their type list\n";
-			List.iter (fun (id,typ) -> Printf.printf "VARIABLE %s " id ; Printf.printf "type "; printfBaseType typ; new_line()) !listAssocIdType;
-			Printf.printf "end variable list\n";*)
 			if	(estPtrOuTab= false) then
 				listeRes :=  List.append !listeRes [new_entree nom]
 			else
 			begin
-				(*if isPtrType typ then  *)
-				begin
-					(*Printf.printf "add tab\n";*)
+				begin			 
 					if existAssosPtrNameType  nom = false then begin setAssosPtrNameType  nom (get_base_typeEPS typ);  end;
 				end	;
 				listeRes :=  List.append !listeRes [new_ES nom]	;
@@ -662,7 +639,6 @@ let	rec creerListeParamES (pars : single_name list) =
 	and traiter_single_name name typ =
 		let (id, typeAux, _, _) = name in
 		(id, (estPtrOuTableauAux typeAux (get_base_typeEPS  typeAux)) || (estPtrOuTableauAux typ (get_base_typeEPS  typ)) )
-
 
 	let creerListeES proto  =
 		let (typ,_,name) = proto in	(*(typ, sto, name)*)
@@ -696,7 +672,6 @@ let	rec creerListeParamES (pars : single_name list) =
 		if  (existeNomFonctionDansListe nom = false) then (* new function name *)
 		begin
 			idFonction := !idFonction + 1;
-
 			listeRes := [];
 			creerListeESBase proto;
 			if isdef then
@@ -704,12 +679,11 @@ let	rec creerListeParamES (pars : single_name list) =
 			else
 			begin
 				isempty := true;
-
 				let nl =
 					List.filter(fun premier->
 						match premier with
 						ENTREE (_)| SORTIE (_)  ->	true
-						| ENTREESORTIE (x) ->(*Printf.printf "ajouteNomDansListeNomFonction %s %snot empty\n"nom x;*) isempty:= false ;true
+						| ENTREESORTIE (x) ->  isempty:= false ;true
 					)!listeRes in
  				if !isempty = false then
 				listeDesNomsDeFonction := (List.append !listeDesNomsDeFonction [(!idFonction, nom,proto, nl)] )
@@ -767,8 +741,7 @@ print_expression b 0;new_line()
 
 
 let rec isPowCte name expr = (* return isPow, contante pow, sign cte mul (CONSTANT (CONST_INT "1")) plus*)
-	(*Printf.printf "call ofisPowCte %s\n" name ; print_expression expr 0;new_line();*)
-	match expr with
+ 	match expr with
 		NOTHING -> (false, NOTHING, NOTHING, NOTHING)
 		| UNARY (op, exp) ->
 				let (rep, n,c,a) = isPowCte name exp in
@@ -904,20 +877,14 @@ let rec isPowCte name expr = (* return isPow, contante pow, sign cte mul (CONSTA
 
 
 let 	calculForIndependant typeB borne init inc esttypeopPlus  afterindirect=
-(*Printf.printf "calculForIndependant\n" ;*)
-(*if afterindirect then Printf.printf "maj after indirect %s\n" typeB;*)
-if borne = NOTHING then
-begin
-	(*Printf.printf "loop bound not def\n";*)
-	NOTHING
-end
+
+if borne = NOTHING then NOTHING
 else
 begin
 	let 	expBorne =
 	 	(if 	esttypeopPlus then
 		 begin
-			let exp2 =   (*CALL(VARIABLE("partieEntiereInf"),  [*)borne (*])*) in
-			(*if typeB != "dowhile"   then*)
+			let exp2 =   borne   in
 			BINARY (	DIV, (BINARY	(SUB,exp2, init)), inc)
 		 end
 		 else
@@ -926,8 +893,6 @@ begin
 			let expinf =   CALL(VARIABLE("log"),  [ CALL(VARIABLE("partieEntiereSup"),[init ] ) ]) in
 			let expinc =   CALL(VARIABLE("log"),  [inc ]) in
 			BINARY (	DIV, (BINARY (SUB,expsup,expinf)), expinc)
-
-
 		 end) in
 		let exp = (CALL	(VARIABLE("partieEntiereInf"), [(BINARY (ADD, expBorne, (CONSTANT (CONST_INT "1")))) ])) in
 		if afterindirect then 	BINARY	(ADD, exp, (CONSTANT (CONST_INT "1")))	else exp
@@ -1018,7 +983,6 @@ let lesVarBoucle num =( listeDesVarsDeExpSeules (nombreIT num))
 
 (* looking loop var*)
 let rec rechercheVarBoucleFor var init  =
-(*	Printf.printf  "\n analyseInitFor \n"; print_expression init 1 ;new_line ();*)
 match init	with
 NOTHING ->   ()
 | UNARY (op, n) ->
@@ -1075,14 +1039,8 @@ let traiterNEQ init borne var c isBOOL=(*WARNING MAY BE INFINI*)
 
 		match !estPosInc with
 			INCVIDE  -> (CONSTANTE , NOTHING, NOTHING, NE, false, var, c)(* case constant = 1 then if init = borne 1 else 0*)
-			|POS ->
-
-(CROISSANT , init,   BINARY (SUB, borne, !vEPSILON) , NE, false, var, BINARY(NE, VARIABLE(var), borne))
-
-			(* case constant > 1  if init = borne else  0*)
-			|NEG ->  (*isExactForm := false;(NONMONOTONE , NOTHING, NOTHING, NE, true, var, c)*)
-
-(DECROISSANT , BINARY (ADD, borne, !vEPSILON) ,   init , NE, false, var, BINARY(NE, VARIABLE(var), borne))
+			|POS ->(CROISSANT , init,   BINARY (SUB, borne, !vEPSILON) , NE, false, var, BINARY(NE, VARIABLE(var), borne))
+			|NEG ->   (DECROISSANT , BINARY (ADD, borne, !vEPSILON) ,   init , NE, false, var, BINARY(NE, VARIABLE(var), borne))
 			|_ ->   (CROISSANT , init, borne, NE, true, var, c)
 		(*end*)
 
@@ -1112,10 +1070,10 @@ let isDivInc exp =
 let listADD = ref []
 let listADDInc = ref []
 let rec rechercheListeDesVarDeBoucle listeVCond aS =
-if listeVCond = [] then begin (*Printf.printf "fin liste variable \n"	;*) [] end
+if listeVCond = [] then begin   [] end
 else
 begin
-(*Printf.printf "variable courante :%s\n"	(List.hd listeVCond);*)
+
 	if (estDef (List.hd listeVCond)  aS)	then  List.append [List.hd listeVCond]  (rechercheListeDesVarDeBoucle (List.tl listeVCond) aS)
 	else rechercheListeDesVarDeBoucle (List.tl listeVCond) aS
 end
@@ -1138,12 +1096,10 @@ if power  =  getLessSignifiantBit intvalue (-1) then (true,power) else (false ,p
 
 
 let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans cte t c lv l inst firstcond hasAndCond=
-	(*Printf.printf "rechercheConditionBinary\n";	 print_expression (BINARY (op, exp1, exp2)) 0; new_line();*)
-	let l2 =  (listeDesVarsDeExpSeules exp2) in
+ 	let l2 =  (listeDesVarsDeExpSeules exp2) in
 	let inter2 =  intersection l2  l  in
 
-(*List.iter(fun x-> Printf.printf"%s\n" x)l2;*)
-	let l1 =  (listeDesVarsDeExpSeules exp1) in
+ 	let l1 =  (listeDesVarsDeExpSeules exp1) in
 	let inter1 =  intersection l1 l  in
 	let (var, liste) =
 		if List.mem varinit l1 || List.mem varinit l2 then
@@ -1151,24 +1107,20 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 		else 	if  listeinit = [] then  (varinit,listeinit)
 				else ((List.hd listeinit), (List.tl listeinit)) in
 
-(*List.iter(fun x-> Printf.printf"%s\n" x)l1;			*)
-	let (isLoopCtee2, isOnlyVare2) =  if inter2 = [] then (true, false) else if  List.tl inter2 = [] then (false, true) else (false, false) in
+ 	let (isLoopCtee2, isOnlyVare2) =  if inter2 = [] then (true, false) else if  List.tl inter2 = [] then (false, true) else (false, false) in
 	let (isLoopCtee1, isOnlyVare1) =  if inter1 = [] then (true, false) else if  List.tl inter1 = [] then (false, true) else (false, false) in
-(*Printf.printf "rechercheConditionBinary\n";	 print_expression (BINARY (op, exp1, exp2)) 0; new_line();*)
+ 
 	let (sens1, a1,b1, unitairea1, b1nul) = traiterAffineForm  exp1 var l in
-	(*print_affine sens1 a1 b1 var;*)
 	let (sens2, a2,b2,unitairea2, b2nul) = traiterAffineForm  exp2 var l in
-	(*print_affine sens2 a2 b2 var;*)
-(*Printf.printf "rechercheConditionBinary\n";	 print_expression (BINARY (op, exp1, exp2)) 0; new_line();*)
+ 
 	if isLoopCtee2 && isLoopCtee1 || sens1 =  NONMONOTONE || sens2 = NONMONOTONE || (isLoopCtee2 = false && isLoopCtee1 =false)  then
 	begin
-(*Printf.printf "rechercheConditionBinary cas 1\n";	 *)
-		if op = AND then ((*Printf.printf "rechercheConditionBinary cas 1\n";*)	  traiterANDCOND init var exp1 exp2  liste avant dans cte t (BINARY(op,exp1, exp2)) lv l inst firstcond )
+ 		if op = AND then (  traiterANDCOND init var exp1 exp2  liste avant dans cte t (BINARY(op,exp1, exp2)) lv l inst firstcond )
 		else
 		begin
 
 			let testA = if !arrayShown = false then
-						begin arrayShown := true ; (*Printf.printf "traiterTab\n"; *)traiterArray  exp1 exp2 liste avant dans cte t c lv l inst end
+						begin arrayShown := true ;  traiterArray  exp1 exp2 liste avant dans cte t c lv l inst end
 						else NOTHING in
 			if testA = NOTHING then
 			begin
@@ -1176,8 +1128,7 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 				recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1 isLoopCtee2 inst firstcond hasAndCond
 			end
 			else
-			begin
-			(*Printf.printf"pas recPow\n";*)
+			begin			(*Printf.printf"pas recPow\n";*)
 				isExactForm := false;
 				traiterARRAYANDCOND init var testA op exp1 exp2  liste avant dans cte t c lv l isLoopCtee1 isLoopCtee2 inst firstcond
 			end
@@ -1186,8 +1137,7 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 	else
 	begin
 		if isLoopCtee2 then
-		begin
-			(*Printf.printf "rechercheConditionBinary cas 2\n";	*)
+		begin 
 			let nop = if sens1 = CROISSANT then op else changeCompOp op in
 			let ne2 =
 				if  b1nul then
@@ -1202,35 +1152,26 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 			| LE -> (CROISSANT,  init ,  ne2 ,  LE, false, var,ne) (*i <= exp2 i in [init, exp2 ]  *)
 			| GT -> (DECROISSANT, BINARY (ADD, ne2, !vEPSILON), init , GT,false , var, ne) (* i>exp2, i in [exp2+1, init ]*)
 			| GE -> (DECROISSANT,  ne2  ,  init , GE,false, var, ne) (*>= i =inf, i in [exp2, init ]  *)
-			| AND ->	(*Printf.printf "rechercheConditionBinary cas 2\n";*)
-			 traiterANDCOND init var exp1 exp2 liste avant dans cte t  (BINARY(op,exp1, exp2)) lv l inst firstcond
+			| AND -> traiterANDCOND init var exp1 exp2 liste avant dans cte t  (BINARY(op,exp1, exp2)) lv l inst firstcond
 			| OR -> (NONMONOTONE , NOTHING, NOTHING, op, true, var ,BINARY(op,exp1, exp2))
 			| EQ ->
 					let (isindirect,inc,_,_,isMultiInc) =  getLoopVarIncOrCov var inst  firstcond hasAndCond in
 					if isMultiInc then isExactForm := false;  
 					(*if isindirect then Printf.printf "EQ cas 2 indirect change\n";*)
-							(match  inc  with
-							NODEFINC -> (* increment not found may be condition =  boolean var *)
-
+					(match  inc  with
+						 NODEFINC -> (* increment not found may be condition =  boolean var *)
 								let (isAssignedOK, assign, isConditionnal, ltrue, lfalse, ifvar) = containBoolxAssignementBody var  inst inst in
-								if isAssignedOK then
-
-								(CROISSANT , NOTHING, NOTHING, EQ, true, var, ne) else traiterEQ init ne2  var ne
-
-							|_->(*Printf.printf "rechercheConditionBinary cas 4\n";	*) traiterEQ init ne2  var ne)
+								if isAssignedOK then (CROISSANT , NOTHING, NOTHING, EQ, true, var, ne) else traiterEQ init ne2  var ne
+						 |_->traiterEQ init ne2  var ne)
 
 			| NE -> let (isindirect,inc,_,_,isMultiInc) =  getLoopVarIncOrCov var inst  firstcond hasAndCond in
-					if isMultiInc then isExactForm := false;
-					(*if isindirect then Printf.printf "NE cas 2 indirect change\n";*)
-					(*Printf.printf "rechercheConditionBinary cas 3\n";*)
+					if isMultiInc then isExactForm := false; 
 					(match  inc  with
 							NODEFINC -> (* increment not found may be condition =  boolean var *)
-
 								let (isAssignedOK, assign, isConditionnal, ltrue, lfalse , ifvar) = containBoolxAssignementBody var  inst inst in
 								if isAssignedOK then
 									(CROISSANT , NOTHING, NOTHING, NE, true, var, ne) else traiterNEQ init ne2  var ne true
-
-							|_->(*Printf.printf "rechercheConditionBinary cas 3\n";	*) traiterNEQ init ne2  var ne false)
+							|_-> traiterNEQ init ne2  var ne false)
 			| BAND ->
 					let (isindirect,inc,_,_,isMultiInc) =  getLoopVarIncOrCov var inst  firstcond hasAndCond in
 					if isMultiInc then isExactForm := false;
@@ -1239,7 +1180,6 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 					if bound > 0 then
 					begin
 						(match  inc  with
-
 								INC(MULTI,ee) ->
 									let maxbound =   getMostSignifiantBit bound 0  in
 									let (ispower, power) = istwopower (getIntVal (calculer (EXP (ee)) !infoaffichNull [] (-1))) in
@@ -1255,17 +1195,12 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 										rechercheConditionBinary  (VARIABLE(vardeux)) vardeux LE (VARIABLE(vardeux))
 											(CONSTANT (CONST_INT (Printf.sprintf "%d"  maxbound)))  [vardeux]  newavant newdans cte t
 											(BINARY(LE,  VARIABLE(vardeux),CONSTANT(CONST_INT (Printf.sprintf "%d"  maxbound) ) ))  lv (List.append [vardeux] l) newinst firstcond hasAndCond
-
 									end
 									else  (NONMONOTONE , NOTHING, NOTHING, BAND,true, var, BINARY(op,exp1, exp2))
-
-	(*rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans cte t c lv l inst=*)
 								| INC(DIVI,ee) ->
 									let minbound =   getLessSignifiantBit bound (-1)  in
 									let eeb = BINARY (DIV,CONSTANT((CONST_INT "1")), ee) in
 									let (ispower, power)  = istwopower (getIntVal (calculer (EXP (eeb)) !infoaffichNull [] (-1))) in
-
-
 									if ispower then
 									begin (*REVOIR*)
 										listADD := (VAR(vardeux,  EXP(CONSTANT  (CONST_INT "0")),[],[])):: !listADD ;
@@ -1280,9 +1215,6 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 										 rechercheConditionBinary  (VARIABLE(vardeux)) vardeux LE (VARIABLE(vardeux))
 											numberOfBit  [vardeux]  newavant newdans cte t
 											(BINARY(LE,  VARIABLE(vardeux),numberOfBit ))  lv (List.append [vardeux] l) newinst  firstcond hasAndCond
-										(*NONMONOTONE , NOTHING, NOTHING, XOR,true, var, BINARY(op,exp1, exp2)*)
-
-
 									end
 									 else (NONMONOTONE , NOTHING, NOTHING, BAND,true, var, BINARY(op,exp1, exp2))
 								|_-> (NONMONOTONE , NOTHING, NOTHING, BAND,true, var, BINARY(op,exp1, exp2)))
@@ -1296,8 +1228,7 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 		else
 		begin
 			if isLoopCtee1 then
-			begin
-				(*Printf.printf "rechercheConditionBinary cas 3\n";	*)
+			begin 
 				let nop = if sens2 = CROISSANT then op else changeCompOp op in
 				let ne1 =
 					if  b2nul then
@@ -1317,46 +1248,29 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 					| OR -> (NONMONOTONE , NOTHING, NOTHING, OR, true, var, BINARY(op,exp1, exp2))
 					| EQ -> let ((*isindirect,inc,var, before*)isindirect,inc,_,_,isMultiInc) =  getLoopVarIncOrCov var inst  firstcond hasAndCond in
 							if isMultiInc then isExactForm := false;
-
-							(*if isindirect then Printf.printf "EQ cas 2 indirect change\n";*)
 							(match  inc  with
-							NODEFINC -> (* increment not found may be condition =  boolean var *)
-								(*Printf.printf "cas 3 EQ peut être booleen\n";*)
+							NODEFINC -> 
 								let (isAssignedOK, assign, isConditionnal, ltrue, lfalse, ifvar) = containBoolxAssignementBody var  inst inst in
 								if isAssignedOK then
-
 								(CROISSANT , NOTHING, NOTHING, EQ, true, var, ne) else traiterEQ init ne1 var ne
-
 							|_->traiterEQ init ne1 var ne)
-
 
 					| NE ->  let (isindirect,inc,_,_,isMultiInc) =  getLoopVarIncOrCov var inst  firstcond hasAndCond in
 							 if isMultiInc then isExactForm := false;
-
-						   (* if isindirect then Printf.printf "NE cas 3 indirect change\n";*)
 							(match  inc  with
 							NODEFINC -> (* increment not found may be condition =  boolean var *)
-								(*Printf.printf "cas 3 NE may be boolean\n";*)
 								let (isAssignedOK, assign, isConditionnal, ltrue, lfalse , ifvar) = containBoolxAssignementBody var  inst inst in
-								if isAssignedOK then
-
-										(CROISSANT , NOTHING, NOTHING, NE, true, var, ne) else traiterNEQ init ne1 var ne true
-
+								if isAssignedOK then (CROISSANT , NOTHING, NOTHING, NE, true, var, ne) else traiterNEQ init ne1 var ne true
 							|_->traiterNEQ init ne1 var ne false)
 
 					| BAND ->
-
 						let (isindirect,inc,_,_,isMultiInc) =  getLoopVarIncOrCov var inst  firstcond hasAndCond in
 						if isMultiInc then isExactForm := false;
-
-
-
-					let bound = getIntVal (calculer (EXP (exp1)) !infoaffichNull [] (-1))  in
-					let vardeux =  Printf.sprintf "BAND-%s" varinit   in
-					if bound > 0 then
-					begin
+						let bound = getIntVal (calculer (EXP (exp1)) !infoaffichNull [] (-1))  in
+						let vardeux =  Printf.sprintf "BAND-%s" varinit   in
+						if bound > 0 then
+						begin
 						(match  inc  with
-
 								INC(MULTI,ee) ->
 									let maxbound =   getMostSignifiantBit bound 0  in
 									let (ispower, power) = istwopower (getIntVal (calculer (EXP (ee)) !infoaffichNull [] (-1))) in
@@ -1372,17 +1286,13 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 										rechercheConditionBinary  (VARIABLE(vardeux)) vardeux LE (VARIABLE(vardeux))
 											(CONSTANT (CONST_INT (Printf.sprintf "%d"  maxbound)))  [vardeux]  newavant newdans cte t
 											(BINARY(LE,  VARIABLE(vardeux),CONSTANT(CONST_INT (Printf.sprintf "%d"  maxbound) ) ))  lv (List.append [vardeux] l) newinst firstcond hasAndCond
-
 									end
 									else  (NONMONOTONE , NOTHING, NOTHING, op,true, var, BINARY(op,exp1, exp2))
 
-	(*rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans cte t c lv l inst=*)
-								| INC(DIVI,ee) ->
+ 								| INC(DIVI,ee) ->
 									let minbound =   getLessSignifiantBit bound (-1)  in
 									let eeb = BINARY (DIV,CONSTANT((CONST_INT "1")), ee) in
 									let (ispower, power)  = istwopower (getIntVal (calculer (EXP (eeb)) !infoaffichNull [] (-1))) in
-
-
 									if ispower then
 									begin (*REVOIR*)
 										listADD := (VAR(vardeux,  EXP(CONSTANT  (CONST_INT "0")),[],[])):: !listADD ;
@@ -1397,9 +1307,6 @@ let rec  rechercheConditionBinary init varinit op exp1 exp2 listeinit avant dans
 										 rechercheConditionBinary  (VARIABLE(vardeux)) vardeux LE (VARIABLE(vardeux))
 											numberOfBit  [vardeux]  newavant newdans cte t
 											(BINARY(LE,  VARIABLE(vardeux),numberOfBit ))  lv (List.append [vardeux] l) newinst  firstcond hasAndCond
-										(*NONMONOTONE , NOTHING, NOTHING, XOR,true, var, BINARY(op,exp1, exp2)*)
-
-
 									end
 									else (NONMONOTONE , NOTHING, NOTHING, op,true, var, BINARY(op,exp1, exp2))
 									|_-> (NONMONOTONE , NOTHING, NOTHING, op,true, var, BINARY(op,exp1, exp2)))
@@ -1418,23 +1325,15 @@ end
 
 
 and containBoolxAssignementBody x  body completList =
-(* x isAssignedOk ? assignement, isConditionnalAssignment, conditionTrueList, conditionFalseList, ifVar *)
-				(*getOnlyBoolAssignment := true;*)
-
-
-			let (isAssigned, onlyIntoIf, exp, listTrue, listFalse, ifVar) =
-						containBoolxAssignementIntoConditionnal x  body completList		in
-			if isAssigned
-								&&  onlyIntoIf
-								&& ( exp <> NOTHING) then 	(true, exp, true, listTrue, listFalse, ifVar)
+			let (isAssigned, onlyIntoIf, exp, listTrue, listFalse, ifVar) = containBoolxAssignementIntoConditionnal x  body completList		in
+			if isAssigned &&  onlyIntoIf && ( exp <> NOTHING) then 	(true, exp, true, listTrue, listFalse, ifVar)
 			else
 			begin
 				let prev = !getOnlyIncrement in
 				getOnlyIncrement :=true ;
 				let las = evalStore (new_instBEGIN(body)) [] [] !myCurrentPtrContext in
 
-				getOnlyIncrement := prev;
-				(*getOnlyBoolAssignment := false;*)
+				getOnlyIncrement := prev; 
 				if existAffectVDsListeAS x las then
 				begin
 					let extinc =  rechercheAffectVDsListeAS x las  in
@@ -1444,7 +1343,7 @@ and containBoolxAssignementBody x  body completList =
 						 | EXP (e) ->
 							if e = NOTHING then
 								(false, NOTHING,false, [],[],"")
-							else ((*Printf.printf "%s isassigned into as  \n" x;*) (true, e ,false, [],[],""))
+							else (  (true, e ,false, [],[],""))
 					)
  				end
 				else (false,NOTHING ,false, [],[],"")
@@ -1452,24 +1351,18 @@ and containBoolxAssignementBody x  body completList =
 
 and getBooleanAssignementInc  assign isConditionnal ltrue lfalse  init var o e1 e2 liste avant dans cte t c lv l inst ifvar firstcond hasAndCond=(* voir indirect*)
 	let isBoolEq = (match o with EQ-> false |_-> true) in
-	(*getOnlyBoolAssignment := true;*)
-	(*Printf.printf "getBooleanAssignementInc  \n"; *)
+ 
 	(* ici il faudra tester si l'operateur est EQ ou NE*)
 	let prev = !getOnlyIncrement in
 	getOnlyIncrement :=true ;
 
 	let cas =evalStore (new_instBEGIN(inst)) [] [] !myCurrentPtrContext in
 	getOnlyIncrement := prev;
-
-	(*getOnlyBoolAssignment := false;*)
-	(*afficherListeAS cas;*)
 	opEstPlus:= true;
 
 	if isConditionnal = false then
 		match assign with
-		BINARY(op, exp1, exp2)-> (*Printf.printf "getBooleanAssignementInc : binary a etudier\n";*) (* forme x= i>10*)
-
-	(*print_expression assign 0;flush(); new_line();space(); new_line();*)
+		BINARY(op, exp1, exp2)-> 
 			let listeVCond =  listeDesVarsDeExpSeules  assign in
 			let listeVDeBoucle =  	rechercheListeDesVarDeBoucle  listeVCond 	dans in
 
@@ -1477,20 +1370,13 @@ and getBooleanAssignementInc  assign isConditionnal ltrue lfalse  init var o e1 
 			let comp = BINARY (AND, BINARY ( o, e1, e2) ,BINARY (nop, exp1, exp2))  in
 
 			let varCond1 = if listeVDeBoucle = [] then var else List.hd listeVDeBoucle in
-			let (assign,after)= rechercheAffectVDsListeASAndWhere varCond1 var cas false in
-	(*print_expression (BINARY(nop, exp1, exp2)) 0;flush(); new_line();space(); new_line();*)
+			let (assign,after)= rechercheAffectVDsListeASAndWhere varCond1 var cas false in 
 
 			let (croissant,borneInf,borneSup,operateur,multiple,nnvar,nexp)=
 				rechercheConditionBinary (VARIABLE(varCond1)) varCond1 nop exp1 exp2 (union l listeVDeBoucle) avant dans cte t comp lv (union l listeVDeBoucle) inst firstcond hasAndCond in
 			(*Printf.printf " getBooleanAssignementInc after rechercheConditionBinary new var  %s + indirect %s\n" nnvar var;*)
-
-
 			let (inc, before, isplus,iscomp,varDep)=
 					analyseIncFor varCond1 (BINARY(ASSIGN,VARIABLE(varCond1),assign)) inst  true inst [] in
-
-
-
-	(*Printf.printf " getBooleanAssignementInc after rechercheConditionBinary  new var  %s if false + indirect %s if varDep %s \n" nnvar ifvar varDep;*)
 			let (inc, before) =
 			if varDep = varCond1 then
 				if inc = NOTHING then (NOTHING, after=false) else ( inc,after=false )
@@ -1503,15 +1389,7 @@ and getBooleanAssignementInc  assign isConditionnal ltrue lfalse  init var o e1 
 					end
 					else begin  borne:=borneInf; initialisation:=borneSup; end;
 
-			(*if (croissant = NONMONOTONE) then Printf.printf "more than one var is change ??? \n"
-			else
-			begin
-				print_expression borneInf 0;flush(); new_line();space(); new_line();
-				print_expression borneSup 0;flush(); new_line();space(); new_line();
-				print_expression inc 0;flush(); new_line();space(); new_line();
-				if before then Printf.printf "before\n" else Printf.printf "after\n";
-				print_expression assign 0;flush(); new_line();space(); new_line();
-			end; *)(croissant,borneInf,borneSup,op,multiple,varDep,nexp, inc,before)
+		 (croissant,borneInf,borneSup,op,multiple,varDep,nexp, inc,before)
 		|_-> (*Printf.printf "NO LOOP BOUND EXPRESSION sans if\n"; *)(NONMONOTONE , NOTHING, NOTHING, o, true, var, BINARY ( o, e1, e2), NOTHING, true)
 	else
 	begin
@@ -1520,9 +1398,7 @@ and getBooleanAssignementInc  assign isConditionnal ltrue lfalse  init var o e1 
 		begin
 			let ass = rechercheAffectVDsListeAS ifvar cas in
 			match (*List.hd lfalse*)ass with
-			EXP(BINARY(op, exp1, exp2))-> (*Printf.printf "getBooleanAssignementInc : \n";*) (* forme x= i>10*)
-
-			(*print_expression (BINARY(op, exp1, exp2)) 0;flush(); new_line();space(); new_line();*)
+			EXP(BINARY(op, exp1, exp2))-> 
 			let listeVCond =  listeDesVarsDeExpSeules  (List.hd lfalse) in
 			let listeVDeBoucle =  	rechercheListeDesVarDeBoucle  listeVCond 	dans in
 			let nop = if isBoolEq then changeCompOp op else op in
@@ -1536,7 +1412,6 @@ and getBooleanAssignementInc  assign isConditionnal ltrue lfalse  init var o e1 
 			let (croissant,borneInf,borneSup,operateur,multiple,nnvar,nexp)=
 				rechercheConditionBinary (VARIABLE(varCond1)) varCond1 nop exp1 exp2 (union l listeVDeBoucle) avant dans cte t comp lv
 				(union l listeVDeBoucle)  inst firstcond hasAndCond in
-			(*Printf.printf " getBooleanAssignementInc apres rechercheConditionBinary nouvelle variable %s if false + indirect %s if\n" nnvar ifvar;*)
 
 			let  (inc, before, isplus,iscomp,varDep)=
 				analyseIncFor varCond1 (BINARY(ASSIGN,VARIABLE(varCond1),assign)) inst  true inst [] in
@@ -1553,15 +1428,7 @@ and getBooleanAssignementInc  assign isConditionnal ltrue lfalse  init var o e1 
 					end
 					else begin  borne:=borneInf; initialisation:=borneSup; end;
 
-			(*if (croissant = NONMONOTONE) then Printf.printf "more than one var is change?? \n"
-			else
-			begin
-				print_expression borneInf 0;flush(); new_line();space(); new_line();
-				print_expression borneSup 0;flush(); new_line();space(); new_line();
-				print_expression inc 0;flush(); new_line();space(); new_line();
-				if before then Printf.printf "before\n" else Printf.printf "after\n";
-					print_expression assign 0;flush(); new_line();space(); new_line();
-			end;*)
+		 
 			 (croissant,borneInf,borneSup,op,multiple,varDep,nexp, inc,before)
 		|_->  (*Printf.printf "NO LOOP BOUND EXPRESSION avec if false\n"; *)(NONMONOTONE , NOTHING, NOTHING, o, true, var, BINARY ( o, e1, e2), NOTHING, true)
 
@@ -1571,8 +1438,7 @@ and getBooleanAssignementInc  assign isConditionnal ltrue lfalse  init var o e1 
 			let ass = rechercheAffectVDsListeAS ifvar cas in
 
 			(match (*List.hd ltrue*)ass with
-				EXP(BINARY(op, exp1, exp2))-> (*Printf.printf "getBooleanAssignementInc : binary \n"; *)(* form x= i>10*)
-	(*print_expression (BINARY(op, exp1, exp2)) 0;flush(); new_line();space(); new_line();*)
+				EXP(BINARY(op, exp1, exp2))-> 
 				let listeVCond =  listeDesVarsDeExpSeules  (List.hd ltrue) in
 				let listeVDeBoucle =  	rechercheListeDesVarDeBoucle  listeVCond 	dans in
 				let varCond1 = if listeVDeBoucle = [] then var else List.hd listeVDeBoucle in
@@ -1585,7 +1451,7 @@ and getBooleanAssignementInc  assign isConditionnal ltrue lfalse  init var o e1 
 
 				let (inc, before, isplus,iscomp,varDep)=
 					analyseIncFor varCond1 (BINARY(ASSIGN,VARIABLE(varCond1),assign)) inst  true inst [] in
-				(*Printf.printf " getBooleanAssignementInc after rechercheConditionBinary new var %s if false + indirect %s if varCond1 %s \n" nnvar ifvar varCond1;*)
+
 				let (inc, before) =
 				if varDep = varCond1 then
 					if inc = NOTHING then (NOTHING, after=false) else ( inc,after=false )
@@ -1595,17 +1461,7 @@ and getBooleanAssignementInc  assign isConditionnal ltrue lfalse  init var o e1 
 					begin
 						borne:=borneSup; initialisation:=borneInf;
 					end
-					else begin  borne:=borneInf; initialisation:=borneSup; end;
-
-				(*if (croissant = NONMONOTONE) then Printf.printf "two var of the condition are loop var ??? \n"
-				else
-				begin
-					Printf.printf "borneinf\n" ;print_expression borneInf 0;flush(); new_line();space(); new_line();
-					Printf.printf "bornesup\n"  ;print_expression borneSup 0;flush(); new_line();space(); new_line();
-					Printf.printf "increment\n" ;print_expression inc 0;flush(); new_line();space(); new_line();
-					if before then Printf.printf "before\n" else Printf.printf "after\n";
-		print_expression assign 0;flush(); new_line();space(); new_line();
-				end;*)
+					else begin  borne:=borneInf; initialisation:=borneSup; end;				 
 				(croissant,borneInf,borneSup,op,multiple,varDep,nexp, inc,before)
 			|_->
 				 (*Printf.printf "NO LOOP BOUND EXPRESSION avec if true\n"; *)
@@ -1625,7 +1481,6 @@ and getBooleanAssignementInc  assign isConditionnal ltrue lfalse  init var o e1 
 	*)
 
 end
-
 
 
 and containBoolxAssignementIntoConditionnal x  iList completList  =
@@ -1703,8 +1558,6 @@ and containBoolxAssignementIntoConditionnal x  iList completList  =
 				let prev = !getOnlyIncrement in
 				getOnlyIncrement :=true ;
 
-
-
 				let las1 = evalStore i1 [] [] !myCurrentPtrContext in
 				getOnlyIncrement := prev;
 				if existAffectVDsListeAS x las1  then
@@ -1716,13 +1569,11 @@ and containBoolxAssignementIntoConditionnal x  iList completList  =
 						| EXP (e) ->
 							if e = NOTHING then  (true, false, NOTHING,[],[],"")
 							else
-							begin (*Printf.printf "containBoolxAssignementIntoConditionnal\n";*)
-							(*	print_expVA cond; flush(); new_line();space(); Printf.printf "containBoolxAssignementIntoConditionnal fin\n";*)
+							begin 
 								let (isAssigned1, _, _, _, _,_) = containBoolxAssignementIntoConditionnal x  nextInst completList  in
 								if isAssigned1 = false then
 								(	let idif = match  cond with EXP(VARIABLE(varIfN)) ->varIfN|_->"" in
 									let  (_,cond2) = getCondIntoList idif completList in (*print_expVA cond2; flush(); new_line();space(); new_line();*)
-									(*Printf.printf "containBoolxAssignementIntoConditionnal fin2 pour variable %s\n" idif; *)
 									(true, true, e ,[expVaToExp cond2],[],idif)
 								)
 								else (true, false, NOTHING ,[],[],"")
@@ -1778,12 +1629,9 @@ and print_affine sens a b var=
 and traiterArray  exp1 exp2 liste avant dans cte t c lv l inst =
 	let  (res1, _)  = isTabDependCond exp1  liste avant dans cte t c lv l inst in
 	let (res2, _)  = isTabDependCond exp2  liste avant dans cte t c lv l inst in
-	(*Printf.printf " dans traiter array \n"; print_expression res1 0; new_line(); print_expression res2 0; new_line();*)
 	if res1 = NOTHING then res2  else if res2 = NOTHING then res1  else	BINARY(AND, res1, res2)
 
-and isTabDependCond exp1 liste avant dans cte t c lv l inst =
-(* the condition depend on a element of an array but the element is not alway the same*)
-(*Printf.printf "isTabDependCond\n"; print_expression exp1 0; new_line();*)
+and isTabDependCond exp1 liste avant dans cte t c lv l inst = (* the condition depend on a element of an array but the element is not alway the same*)
 	 match exp1 with
 		NOTHING 			-> (NOTHING, NOTHING)
 		| UNARY (op, exp)	->let (res1, e1) = isTabDependCond exp liste avant dans cte t c lv l inst in
@@ -1831,8 +1679,7 @@ and isTabDependCond exp1 liste avant dans cte t c lv l inst =
 				let size = getAssosArrayIDsize tab in
 				match size with
 					NOSIZE -> (NOTHING, exp1)
-					| SARRAY (v) ->
-								(*Printf.printf "simgle size array\n"; 		*)
+					| SARRAY (v) -> (* f "simgle size array\n"; 		*)
 							let inter2 =  intersection (listeDesVarsDeExpSeules idx)  l in
 
 							let  isOnlyVar =  if inter2 = [] then false else if List.tl inter2 = [] then true else false in
@@ -1867,17 +1714,12 @@ and isTabDependCond exp1 liste avant dans cte t c lv l inst =
 		| VARIABLE name ->  let b=  existAssosPtrNameType  name   in (* AMAJ*)
 
 					if b = true then
-					begin
-					(*	Printf.printf"mane %s is tabptr\n" name;*)
-						opEstPlus:= true;
-
-						(*Printf.printf"expression : \n"; print_expression affect 0; new_line();*)
+					begin 
+						opEstPlus:= true; 
 						let ((*isindirect,inc,var, before*)isindirect,_,_,_,isMultiInc) =  getLoopVarIncOrCov name inst NOTHING false in
-(*BOOL pas pour le moment ???*)
+						(*BOOL pas pour le moment ???*)
 						if isindirect then  expressionIncFor := NOTHING;
 						if isMultiInc then isExactForm := false;
-
-
 						let valinc = calculer (applyStoreVA   (EXP(!expressionIncFor)) [])  !infoaffichNull  [](*appel*) (-1) in
 						let sensinc =
 									if !opEstPlus (*op +or -*) then
@@ -1890,9 +1732,7 @@ and isTabDependCond exp1 liste avant dans cte t c lv l inst =
 
 						let expCroi = BINARY(LE, exp1,BINARY(SUB,appel, CONSTANT(CONST_INT "1"))) in
 						let expDec =  BINARY(GE,exp1, CONSTANT(CONST_INT "0")) in
-					(*	print_expression appel 0; new_line();
-						print_expression expCroi 0; new_line();
-						print_expression expDec 0; new_line();	*)
+					 
 						match sensinc with
 						 POS ->(*Printf.printf"inc pos\n"; *) (expCroi, exp1)
 						| NEG ->(*Printf.printf"inc neg\n";*) (expDec, exp1)
@@ -1926,7 +1766,7 @@ and setIndexWithSize lidx lsize liste avant dans cte t c lv l inst=
 		begin
 			let var = List.hd inter2 in
 			let ((*isindirect,inc,var, before*)isindirect,_,_,_,isMultiInc) =  getLoopVarIncOrCov var inst NOTHING false in
-(*BOOL*)
+			(*BOOL*)
 			if isMultiInc then isExactForm := false;
 			expressionIncFor := if isindirect then  NOTHING else !expressionIncFor ;
 
@@ -1956,11 +1796,7 @@ and setIndexWithSize lidx lsize liste avant dans cte t c lv l inst=
 
 
 and recherchePow init var op exp1 exp2 liste avant dans cte t c lv l isLoopCtee1 isLoopCtee2 inst firstcond hasAndCond =
-(*
-Printf.printf" recherchePow %s\n" var;
-print_expression (BINARY(op, exp1, exp2)) 0; space() ;flush() ;new_line(); flush();new_line();
-print_expression exp2 0; space() ;flush() ;new_line(); flush();new_line();
-Printf.printf "Inside  recherchePow %s var\n" var ; Printf.printf "deux variables ou plus non const %d \n" (List.length l) ;*)
+ 
 	let (ninit,nv, nop,ne1,ne2,nl , fin)=
 	if isLoopCtee1 then (* exp1 is loop constant *)
 	begin (*Printf.printf "traitement de exp1 cte exp1  pow ???\n";	*)
@@ -1989,9 +1825,7 @@ Printf.printf "Inside  recherchePow %s var\n" var ; Printf.printf "deux variable
 	end
 	else
 		if isLoopCtee2  then (* exp2 is loop constant *)
-		begin
-			(*Printf.printf "traitement de exp2 cte exp1  pow ???\n";	*)
-			(*Printf.printf "traitement de exp2 cte exp1  pow ???\n";	*)
+		begin 
 			let (ispow, k,a,b) = isPowCte var exp1 in
 			if ispow then
 			begin
@@ -2019,21 +1853,14 @@ Printf.printf "Inside  recherchePow %s var\n" var ; Printf.printf "deux variable
 				 else  (VARIABLE(List.hd liste), (List.hd liste), op, exp1, exp2,  (List.tl liste), true)
 		in
 
-		(*Printf.printf "deux variables ou plus non const %d  avant test fin\n" (List.length l) ;*)
-
 		if fin = false then
-		((*Printf.printf "deux variables ou plus non const %d  apres test fin\n" (List.length l) ;*)
+		( 
 			if (List.length l) = 2 then
-			begin
-				(*Printf.printf "deux variables ou plus non const %d \n" (List.length l) ;*)
+			begin 
 				let ( isindirect1,inc1,vari1, before1,isMultiInc1) =  getLoopVarIncOrCov (List.hd l) inst  firstcond hasAndCond in
 				let ( isindirect2,inc2,vari2, before2,isMultiInc2) =  getLoopVarIncOrCov (List.hd (List.tl l)) inst  firstcond hasAndCond in
 				let (typeinc1, typeinc2)= (getIncType inc1,getIncType inc2) in
-					(*	Printf.printf "deux variables ou plus non const %s %s\n" vari1 vari2 ;
-		 				print_expression exp1 0; new_line();
-	 					print_expression exp2 0; new_line();
-						print_intType (getIncType inc1); print_expression (getIncValue inc1) 0; new_line();
-						print_intType (getIncType inc2); print_expression (getIncValue inc2) 0; new_line();*)
+				
 				let isLeft1 = List.mem (List.hd l) (listeDesVarsDeExpSeules exp1) in
 				let isLeft2 = List.mem (List.hd (List.tl l)) (listeDesVarsDeExpSeules exp1) in
 				let oppose =  (isLeft1 &&  isLeft2 = false) || (isLeft2 &&  isLeft1 = false) in
@@ -2052,7 +1879,6 @@ Printf.printf "Inside  recherchePow %s var\n" var ; Printf.printf "deux variable
 								let newexp =
 									remplacerValPar (List.hd (List.tl l)) (getIncValue inc2) (remplacerValPar (List.hd l) (getIncValue inc1) exp1) in
 									calculer (EXP(newexp))  !infoaffichNull [] 1
-
 							end
 							else
 							begin
@@ -2060,11 +1886,10 @@ Printf.printf "Inside  recherchePow %s var\n" var ; Printf.printf "deux variable
 									remplacerValPar (List.hd (List.tl l)) (getIncValue inc2) (remplacerValPar (List.hd l) (getIncValue inc1) exp2)) in
 								calculer  (EXP(newexp))   !infoaffichNull [] 1
 							end
-
 						else calculer (EXP(BINARY(DIV,getIncValue inc1,getIncValue inc2)))  !infoaffichNull [] 1 in
-		 			(*Printf.printf " result inc : > %f\n"( getDefValue value);*)
+		 	
 				if isOK &&(typeinc1 =POSITIV||typeinc1 =NEGATIV) && (typeinc2 =POSITIV||typeinc2 =NEGATIV) && isindirect1=false && isindirect2==false then
-				begin (*Printf.printf "1 result inc 0 : > %f\n"( getDefValue value);*)
+				begin  
 					let vardeux =  Printf.sprintf "%s-%s" (List.hd l) (List.hd (List.tl l))  in
 					let (stringinc,estNul,estPos, constval)=
 						match value with
@@ -2076,8 +1901,7 @@ Printf.printf "Inside  recherchePow %s var\n" var ; Printf.printf "deux variable
 						| RConstFloat (i) ->(Printf.sprintf "%g" i, (  i = 0.0),(  i > 0.0),CONSTANT(RCONST_FLOAT (i)) )
 						| _->("",true,false,CONSTANT  (CONST_INT "0")) in
 							if estPos then
-							begin
-								(*Printf.printf "deux variables ou plus non const %s %s %s  %s ++\n" vari1 vari2 vardeux stringinc ;*)
+							begin 
 								let newinst =  List.append inst [new_instVar  vardeux  (EXP(BINARY (ADD,VARIABLE(vardeux), constval))) ] in
 								let newdans =  List.append dans
 												[ASSIGN_SIMPLE(vardeux,  EXP(BINARY (ADD,VARIABLE(vardeux), constval)))]	 in
@@ -2182,11 +2006,6 @@ Printf.printf "Inside  recherchePow %s var\n" var ; Printf.printf "deux variable
 										covvarAssign:=     EXP(BINARY (SUB,exp2, exp1));
 										covvarLoop :=  true;
 
-
-										(*Printf.printf "G deux variables ou plus non const inc1 dive%s %s %s  \n" vari1 vari2 vardeux  ;
-										Printf.printf "vector  \n"   ;
-										List.iter(fun x-> Printf.printf "%s "   x)lvc;Printf.printf "coef  \n"   ;
-										List.iter(fun (v,x)-> Printf.printf " %s %f "   v x )assocVectorVar;Printf.printf "\nend vector  \n"   ;*)
 										let (indirect, inc,var, after,multiple,coef) =
 											getcovariance  assocVectorVar  lvc  newinst newinst (BINARY(op, CONSTANT(CONST_INT "0"),
 												VARIABLE(vardeux))) [] vardeux firstcond hasAndCond in
@@ -2206,12 +2025,10 @@ Printf.printf "Inside  recherchePow %s var\n" var ; Printf.printf "deux variable
 										let newinst1 =  addInstEachVarOfListAssign  lvc (new_instVar  vardeux  (EXP(BINARY (SUB,exp1, exp2))) ) inst    in (*listOfCoupleVectorAddCoef*)
 										covvarAssign:=     EXP(BINARY (SUB,exp1, exp2));
  										covvarLoop :=  true;
-
-
-										Printf.printf "L deux variables ou plus non const inc1 dive%s %s %s  \n" vari1 vari2 vardeux  ;
+										(*Printf.printf "L deux variables ou plus non const inc1 dive%s %s %s  \n" vari1 vari2 vardeux  ;
 										Printf.printf "vector  \n"   ;
 										List.iter(fun x-> Printf.printf "%s "   x)lvc;Printf.printf "coef  \n"   ;
-										List.iter(fun (v,x)-> Printf.printf " %s %f "   v x )assocVectorVar;Printf.printf "\nend vector  \n"   ;
+										List.iter(fun (v,x)-> Printf.printf " %s %f "   v x )assocVectorVar;Printf.printf "\nend vector  \n"   ;*)
 
 										let (indirect, inc,var, after,multiple, coef) =
 											getcovariance  assocVectorVar  lvc  newinst1 newinst1 (BINARY(op, CONSTANT(CONST_INT "0"),
@@ -2225,7 +2042,7 @@ Printf.printf "Inside  recherchePow %s var\n" var ; Printf.printf "deux variable
 										)
 
 
-									|_-> 	Printf.printf "AND L deux variables ou plus non const inc1  \n"    ;("", [],BINARY (SUB,exp2, exp1), NODEFINC,op,NOTHING )) in
+									|_-> 	("", [],BINARY (SUB,exp2, exp1), NODEFINC,op,NOTHING )) in
 
 								covvarAssign:=     MULTIPLE;
 								listADD := (VAR(vardeux, EXP(cvas),[],[])):: !listADD ;
@@ -2296,12 +2113,7 @@ begin
 				else begin if (estNul var1) then  (CROISSANT,1)  else (DECROISSANT,-1)  end
 			end
 		else (NONMONOTONE,0) in
-	(*Printf.printf "same sens inc1\n"  ;
-(isCroissant inc1 ); if vsens1 = 1 then Printf.printf "croissant\n"  else Printf.printf "decroissant\n" ;
-
-
-	Printf.printf "same sens inc2\n"  ;
-(isCroissant inc2 ); if vsens2 = 1 then Printf.printf "croissant\n"  else Printf.printf "decroissant\n" ;*)
+ 
 
 
 	let realSens1 = if oppose = false then (isCroissant inc1 ) * vsens1 else (isCroissant inc1 ) * vsens1  in
@@ -2355,48 +2167,27 @@ and traiterUn croissant  borneInf borneSup operateur multiple var  cond avant da
 			(match  inc  with
 				NODEFINC ->   (* 1+*)
 				(NOTHING,NOTHING, false,NOTHING)
-			|_->	(*print_expression borneInf 0; space() ;flush() ;new_line(); flush();new_line(); *)
-(*Printf.printf"traiterUn v = %s vari = %s\n" v vari;
-print_expression inf 0; space() ;flush() ;new_line(); flush();new_line();
-	print_expression sup 0; space() ;flush() ;new_line(); flush();new_line();
-print_expression incr 0; space() ;flush() ;new_line(); flush();new_line();
-			*)
+			|_->	 
 
-	let infoVar =   new_variation borneInf borneSup  incr typevar  operateur false in
-
-(*if operateur != NE *)
-
-	let nb = expVaToExp (getNombreIt sup (typevar=CONSTANTE||cte) t cond multiple [] (getIsAddInc inc)  infoVar v []) in
-	let borne = (getBorneBoucleFor t nb inf incr (getIsAddInc inc) isindirect) in
-(*Printf.printf"traiterUn v = %s vari = %s\n" v vari;
-print_expression nb 0; space() ;flush() ;new_line(); flush();new_line();
-	print_expression borne 0; space() ;flush() ;new_line(); flush();new_line(); *)
-
-	(nb, incr, false,borne))
+				let infoVar =   new_variation borneInf borneSup  incr typevar  operateur false in
+				let nb = expVaToExp (getNombreIt sup (typevar=CONSTANTE||cte) t cond multiple [] (getIsAddInc inc)  infoVar v []) in
+				let borne = (getBorneBoucleFor t nb inf incr (getIsAddInc inc) isindirect) in
+				(nb, incr, false,borne))
 
 
 
 and construireCondition crois1 bInf1  bSup1  oper1 mult1 v1 cd1 crois2  bInf2  bSup2  oper2 mult2 v2 cd2 lv avant dans cte t inst=
-
-  (*Printf.printf"construireCondition 0\n";*)
 	let (nb1, inc1, indirect1,b1) = traiterUn  crois1 bInf1 bSup1  oper1 mult1 v1 cd1 avant dans cte t  inst in
-
 	let (nb2, inc2, indirect2,b2) = traiterUn  crois2 bInf2  bSup2 oper2 mult2 v2 cd2 avant dans cte t inst in
-
-  
-        
-
-	(*if inc1 = NOTHING  &&  inc2 = NOTHING then    Printf.printf"construireCondition inc1 && 2 not def\n";*)
 	if inc1 = NOTHING  || oper1 = NE then begin (* Printf.printf"construireCondition inc1 not def \n";*)
 			isExactForm := false; (crois2, bInf2, bSup2, oper2,mult2, v2, BINARY(AND, cd1,cd2)) end
 	else
-		if  inc2 = NOTHING  || oper2 = NE then begin
-		(*  Printf.printf"construireCondition inc 2 not def\n";*) isExactForm := false;(crois1, bInf1, bSup1, oper1,mult1, v1, BINARY(AND, cd1,cd2 )) end
+		if  inc2 = NOTHING  || oper2 = NE then begin  isExactForm := false;(crois1, bInf1, bSup1, oper1,mult1, v1, BINARY(AND, cd1,cd2 )) end
 		else
 			if v1 = v2 then
-			begin (*Printf.printf"construireCondition egal %s\n" v1;*)
+			begin  
 				match crois1 with
-					CROISSANT | DECROISSANT-> (*Printf.printf"construireCondition egal crois 1 ok %s\n" v1;	*)
+					CROISSANT | DECROISSANT-> 
 						if crois2 = CROISSANT || crois2 = DECROISSANT then
 						begin
 							let bInf =  if bInf1 != NOTHING && bInf2 != NOTHING then
@@ -2407,47 +2198,33 @@ and construireCondition crois1 bInf1  bSup1  oper1 mult1 v1 cd1 crois2  bInf2  b
 											else CALL (VARIABLE("MAXIMUM") , (List.append [bInf1] [bInf2]))
 										end
 										else if bInf1 = NOTHING then bInf2 else bInf1 in
-(*Printf.printf"construireCondition binfs\n"  ;
-							print_expression bInf1 0; space() ;flush() ;new_line(); flush();new_line();
-	print_expression bInf2 0; space() ;flush() ;new_line(); flush();new_line();
-
-print_expression bInf 0; space() ;flush() ;new_line(); flush();new_line(); *)
+ 
 							let bSup =  if bSup2 != NOTHING  && bSup1 != NOTHING then
 										begin if bSup2 = bSup1 then bSup1 else (CALL (VARIABLE("MINIMUM") , (List.append [bSup1] [bSup2] ))) end
 										else if bSup1 = NOTHING then begin isExactForm := false; bSup2 end else begin isExactForm := false; bSup1 end in
 
-(*Printf.printf"construireCondition bsups\n"  ;
-							print_expression bSup1 0; space() ;flush() ;new_line(); flush();new_line();
-	print_expression bSup2 0; space() ;flush() ;new_line(); flush();new_line();
-
-print_expression bSup 0; space() ;flush() ;new_line(); flush();new_line(); *)
 
 							if bSup != NOTHING && bInf!= NOTHING then (crois1, bInf, bSup, oper1,false,v1, BINARY(AND, cd1,cd2))
 							else	begin isExactForm := false; (NONMONOTONE , NOTHING, NOTHING, XOR,true,v1,BINARY (AND, cd1,cd2)) end
 						end
-						else
-							(* if crois2 = NONMONOTONE || (crois2 = CONSTANTE && bSup2 = NOTHING) (*revoir*)
-							 then *)
+						else 
 						begin
-								(*Printf.printf"construireCondition egal crois1 croissant ou decroissant, crois2 non monoto%s\n" v1;*)
-								isExactForm := false;
+ 								isExactForm := false;
 								(crois1, bInf1, bSup1, oper1,mult1, v1, BINARY(AND, cd1,cd2))
-						end(*
-							 else begin isExactForm := false; (CONSTANTE, NOTHING, bSup2, oper1,false,v2 , BINARY(AND, cd1,cd2) ) end*)
+						end 
 					| NONMONOTONE ->isExactForm := false; (crois2, bInf2, bSup2, oper2,mult2, v2, BINARY(AND, cd1,cd2))
 					| CONSTANTE -> isExactForm := false;
-								  (* if bSup2 = NOTHING then  (CONSTANTE, NOTHING, bSup1, oper2,false, v1, BINARY(AND, cd1,cd2) )
-								   else *)(crois2, bInf2, bSup2, oper2,mult2, v2, BINARY(AND, cd1,cd2))
+								   (crois2, bInf2, bSup2, oper2,mult2, v2, BINARY(AND, cd1,cd2))
 				end
 			else
-			begin (*Printf.printf"construireCondition diff\n";*)
+			begin  
 				if  nb1 = NOTHING || oper1 = NE then
 				begin isExactForm := false; (crois2, bInf2, bSup2, oper2,mult2, v2, BINARY(AND, cd1,cd2)) end
 				else
 				begin
 					if  nb2 = NOTHING || oper2 = NE then
 					begin expressionIncFor := inc1;  isExactForm := false;(crois1, bInf1, bSup1, oper1,mult1, v1, BINARY(AND, cd1,cd2 )) end
-					else((*Printf.printf"construireCondition diff\n";*) (	CROISSANT, CONSTANT (CONST_INT "0"), (*CONSTANT (CONST_INT "1")*)
+					else(  (	CROISSANT, CONSTANT (CONST_INT "0"), (*CONSTANT (CONST_INT "1")*)
 							BINARY (SUB, CALL (VARIABLE("MINIMUM") , List.append [ b1] [b2] ), CONSTANT (CONST_INT "1")),
 							  LT,mult2, lv, BINARY(AND, cd1,cd2)))
 				end
@@ -2463,8 +2240,6 @@ and traiterARRAYANDCOND init var testA op exp1 exp2  liste avant dans cte t c lv
 						(BINARY (AND, testA,(BINARY (op, exp1, exp2)) ))  lv l inst firstcond true
 				|_-> 	(NONMONOTONE , NOTHING, NOTHING, op, true, var, c) in
 
-
-
 		if crois1 = NONMONOTONE then
 		begin isExactForm := false; (*Printf.printf "only tab %s\n" v2;*)(crois2, bInf2, bSup2, oper2,mult2,v2, cd2)end
 		else construireCondition crois1 bInf1  bSup1  oper1 mult1 v1 cd1 crois2  bInf2  bSup2  oper2 mult2 v2 cd2 lv  avant    dans cte t  inst
@@ -2472,12 +2247,9 @@ and traiterARRAYANDCOND init var testA op exp1 exp2  liste avant dans cte t c lv
  
 
 and traiterANDCOND init var exp1 exp2 liste avant dans cte t c lv l inst firstcond=
-(*Printf.printf" traiterANDCOND %s\n" var;
  
-print_expression exp1 0; space() ;flush() ;new_line(); flush();new_line();
-print_expression exp2 0; space() ;flush() ;new_line(); flush();new_line(); *)
 	if liste = [] then
-	begin(* Printf.printf"cas 1 traiterANDCOND exp1  \n";	*)
+	begin 
 		 let ((crois1,bInf1, bSup1, oper1,mult1,v1,cd1), ee11,ee12)=
 			match exp1 with
 				BINARY (op1, exp11, exp12) -> (rechercheConditionBinary init var op1 exp11 exp12 [] avant dans cte t exp1 lv l inst firstcond true, exp11, exp12)
@@ -2489,15 +2261,10 @@ print_expression exp2 0; space() ;flush() ;new_line(); flush();new_line(); *)
 								NOT ->
 									(rechercheConditionBinary init var EQ exp (CONSTANT (CONST_INT "0")) [] avant dans cte t c lv l inst firstcond true, exp, (CONSTANT (CONST_INT "0")) )
 							 	|_-> 	((  NONMONOTONE , NOTHING, NOTHING, XOR, true, var , c), NOTHING, NOTHING) (*pas multiple voir pour les booleens*))
-				|_-> (*Printf.printf"cas 1 traiterANDCOND exp1 is not Binary boolean ???\n";	*)((NONMONOTONE , NOTHING, NOTHING, XOR, true, var, c), NOTHING, NOTHING) in
+				|_-> ((NONMONOTONE , NOTHING, NOTHING, XOR, true, var, c), NOTHING, NOTHING) in
 
-(*
-Printf.printf"traiterANDCOND var = %s v1 = %s\n" var v1;
- 
-	print_expression bInf1 0; space() ;flush() ;new_line(); flush();new_line();
-print_expression bSup1 0; space() ;flush() ;new_line(); flush();new_line();*)
 
-		let ((crois2, bInf2, bSup2, oper2,mult2,v2, cd2), ee21,ee22) =
+			let ((crois2, bInf2, bSup2, oper2,mult2,v2, cd2), ee21,ee22) =
 			match exp2 with
 				BINARY (op2, exp21, exp22) ->  (rechercheConditionBinary init var op2 exp21 exp22 [] avant dans  cte t exp2  lv l inst firstcond true, exp21, exp22)
 				| VARIABLE name ->
@@ -2508,14 +2275,10 @@ print_expression bSup1 0; space() ;flush() ;new_line(); flush();new_line();*)
 								NOT ->
 									(rechercheConditionBinary init var EQ exp (CONSTANT (CONST_INT "0")) [] avant dans cte t c lv l inst firstcond true, exp ,(CONSTANT (CONST_INT "0")))
 							 	|_-> 	(  (NONMONOTONE , NOTHING, NOTHING, XOR, true, var , c), NOTHING ,NOTHING) (*pas multiple voir pour les booleens*))
-				|_-> (*Printf.printf"cas 1 traiterANDCOND exp2 is not Binary boolean ???\n";	*)((NONMONOTONE , NOTHING, NOTHING, XOR, true, var, c), NOTHING, NOTHING) in
+				|_->((NONMONOTONE , NOTHING, NOTHING, XOR, true, var, c), NOTHING, NOTHING) in
 
 		if crois2 = NONMONOTONE ||crois1 = NONMONOTONE then isExactForm := false;
-
-(*Printf.printf"traiterANDCOND var = %s v2 = %s\n" var v2;
  
-	print_expression bInf2 0; space() ;flush() ;new_line(); flush();new_line();
-print_expression bSup2 0; space() ;flush() ;new_line(); flush();new_line();*)
 
 		if oper2 = NE && oper1 != NE then (isExactForm := false;	 (crois1,bInf1, bSup1, oper1,mult1,v1,  exp2))
 		else if oper1 = NE && oper2 != NE  then (  isExactForm := false;	 (crois2, bInf2, bSup2, oper2,mult2,v2, exp1 ))
@@ -2528,13 +2291,9 @@ print_expression bSup2 0; space() ;flush() ;new_line(); flush();new_line();*)
 
 		let lv1 =  (listeDesVarsDeExpSeules exp1) in
 		let lv2 =  (listeDesVarsDeExpSeules exp2) in
-
-
 		let inter1 =  intersection lv1 liste  in
 		let inter2 =  intersection lv2 liste  in
-
 		let varCommunes =  intersection inter1 inter2  in
-
 		let (var1, suite1,var2, suite2 ) = if List.mem var  inter1   && List.mem var  inter2 then (  (var,liste,var,liste) )
 										   else
 											   if List.mem var  inter1  && (List.tl inter1) = []   then  
@@ -2638,7 +2397,7 @@ and analyseCompFor  var init comp l avant dans cte t lv lvb inst firstcond hasAn
 			else 	(   ( op, NONMONOTONE, true, var))
 		| VARIABLE name ->
 						analyseCompFor  var init (BINARY(NE, VARIABLE (name),  CONSTANT (CONST_INT "0")))  l avant dans cte t lv lvb inst firstcond hasAndCond;
-		| _-> 	 ( ADD, NONMONOTONE,false, var) (*pas multiple meme chose que pour unary si booleen*)
+		| _-> 	   ( ADD, NONMONOTONE,false, var) (*pas multiple meme chose que pour unary si booleen*)
 
 and changeExpInto0 expToChange exp  =
 	if exp = expToChange then CONSTANT (CONST_INT "0")
@@ -2657,38 +2416,28 @@ and changeExpInto0 expToChange exp  =
 
 and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple appel typeopPlusouMUL infoVar var globales =
   let isNE = infoVar.operateur = NE in
-	(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var;
- 	print_expVA (EXP(conditionI)); new_line ();space() ;flush() ;new_line(); flush();new_line();
-*)
 	let varCond = match conditionI with VARIABLE(v)->v |_-> "NODEF" in
-
+	 
+ (*conditionI*)
+ 
 	let affect = if (conditionConstante) then  (   applyStoreVA (EXP(conditionI)) appel )
 			else
 				if (existeAffectationVarListe varCond appel) then (   
 					applyStoreVA(rechercheAffectVDsListeAS  varCond appel)[] )
 				else (   applyStoreVA (EXP(conditionI)) appel) in
 
-
-   (* Printf.printf "getnombre d'it valeur de la condition : %s\n" var; print_expVA affect; new_line ();space() ;flush() ;new_line(); flush();new_line();*)
 	let const = calculer   affect !infoaffichNull  [](*appel*) 1 in
 	
-   (*print_expVA (EXP(conditionI)); new_line ();space() ;flush() ;new_line(); flush();new_line();*)
-
-
 	let isExecutedV = (match const with Boolean(b)	->  if b = false then false  else true
 										|_->if estDefExp const then if estNul const then false else true else true) in
-	(*Printf.printf "getnombre d'it valeur de la condition : %s\n" var; print_expTerm const; new_line ();space() ;flush() ;new_line(); flush();new_line();*)
-	(*if isExecutedV  then Printf.printf "isexecuted \n" else Printf.printf "is not executed \n" ;Printf.printf "FIN...\n";*)
-	(*let isConstructVar = if (String.length var > 4) then begin if (String.sub var  0 4) = "bIt-" then  true else   false end else false in*)
-
+ 				
 	if isExecutedV then
 	begin
-
 		if (conditionMultiple) then   EXP(NOTHING)
 		else
 		begin
 			let (valinc, op, sensinc) = analyseInc infoVar appel typeopPlusouMUL globales in
-			(*Printf.printf "NON MULTIPLE\n";*)
+			 
 			match sensinc with
 			 NOVALID ->	Printf.printf "NON NOVALID\n"; EXP(NOTHING)
 			| INCVIDE ->
@@ -2749,16 +2498,7 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
  					let bs = applyStoreVA(applyStoreVA   (EXP ( infoVar.borneSup)) appel)globales in
 					(*let bi = applyStoreVA(applyStoreVA   (EXP ( infoVar.borneInf)) appel)globales in*)
 					let bu = applyStoreVA(applyStoreVA   (EXP ( une )) appel)globales in
-					(*print_expVA bs; new_line();*)
-(*if sensinc  = NEG then
-				begin Printf.printf "getNombreIt recherche de affect : \n";print_expression  une 0; space() ;flush() ;new_line(); flush();new_line(); end;*)
-					(*Printf.printf "getNombreIt recherche de affect : \n";
-					print_expression infoVar.borneSup 0; space() ;flush() ;new_line(); flush();new_line();
-					print_expression infoVar.borneInf 0; space() ;flush() ;new_line(); flush();new_line();
-
-					print_expression infoVar.increment 0; space() ;flush() ;new_line(); flush();new_line();
-					print_expression  une 0; space() ;flush() ;new_line(); flush();new_line();
-					Printf.printf "getNombreIt recherche de affect : \n";*)
+ 
 
 					let expune= evalArrayTravel  bs  appel globales une bu in
 					let isInt = if  ( typeInf = INTEGERV && typeSup  = INTEGERV && typeInc  = INTEGERV)   then true else false in
@@ -2771,27 +2511,9 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 						if typeopPlusouMUL then ( 					 false)
 						else true (* TO SEE *)
 					end
-					else begin true
-						(*VOIR  POURQUOI let sensVariReel  =
-							(	if estPositif bornesup && estPositif borneinf then estPositif (diff)
-								  else if estPositif bornesup && (estPositif borneinf =false) then  true
-										else
-											if (estPositif bornesup =false) && (estPositif borneinf) then  false
-											else ( estPositif ( evalexpression (Diff( evalexpression bornesup, borneinf))) = false) ) 
-							in
-							
-							
-						 
-						if (sensinc == POS && sensVariReel|| sensinc == NEG && sensVariReel==false) then true else false
-							*)			
+					else begin true 		
 					end
 				end else (   true) in
-				
-				
-				
-				(*if isOk==false	then Printf.printf "non OK : \n"	
-				else Printf.printf " OK : \n";					*) 
-						 
 				
 				if isOk==false then EXP(NOTHING)
 				else
@@ -2813,9 +2535,10 @@ and getNombreIt une conditionConstante typeBoucle  conditionI conditionMultiple 
 	end
 	else
 	begin
+	
 		match typeBoucle with
 			"for" |"while"->  EXP(CONSTANT (CONST_INT "0") )
-			|"dowhile"-> 	  EXP(CONSTANT (CONST_INT "1"))
+			|"dowhile"->  EXP(CONSTANT (CONST_INT "1"))
 			|_-> 	 EXP(NOTHING)
 	end
 
@@ -2920,20 +2643,13 @@ and analyse_defPB def =
 		FUNDEF (proto, body) ->	ajouteFonctionDansDocument proto body ;()
 		| OLDFUNDEF (proto, (*decs*)_, body) ->	ajouteFonctionDansDocument proto body ;()
 		| DECDEF n ->
-			let (baseType, _, namelist) = n in
-			(*if estProto baseType then
-
-
-				(*List.iter (fun (n, _ , _,_)-> ajouteNomDansListeNomFonction n baseType) namelist*)
-			else*)
+			let (baseType, _, namelist) = n in			 
 			begin
-
 				if namelist <> [] then
 				List.iter
 				(fun name ->
 					let (_,_, _, exp) = name in
 					consRefexpression   exp ;
-
 				) namelist
 			end;
 
@@ -2947,9 +2663,7 @@ and analyse_defPB def =
 						let (id, _, _, _) = (List.hd names) in
 						id
 					end
-				;
-				(*Printf.printf "id name typedef %s\n " !nonamedForTypeDef;*)
-				(*let baseT = (get_base_typeEPS typ) in*)
+				; 
 				typeDefList (*baseT*)typ names []  ;()
 		| ONLYTYPEDEF n -> 	(* Definition of lonely "struct", "union" or "enum". *)   (*get_name_group n ;*)()
 
@@ -3012,8 +2726,7 @@ and  consRefstatement   stat =
 	| WHILE (exp, statbdy) ->  	(*analyse_expression  exp ;rien condition sans effet de bord*)
       idBoucle := !idBoucle + 1;
       let (num, fic, numl) = (!idBoucle, !fileCour, !numLine) in
-      consRefexpression exp;
-      (*Printf.printf"Boucle %d fichier %s ligne %d \n" num, fic, numl;*)
+      consRefexpression exp; 
       (* jz: balance -- register ("loopID", for-stmt)
              renamed stat->statbdy in pattern *)
       Hashtbl.add looptbl !idBoucle stat;
@@ -3022,8 +2735,7 @@ and  consRefstatement   stat =
       consRefexpression exp; ()
 	| DOWHILE (exp, statbdy) ->
   		idBoucle := !idBoucle + 1;
-  		let (num, fic, numl) = (!idBoucle,!fileCour , !numLine) in
-  		(*Printf.printf"Boucle %d fichier %s ligne %d \n" num, fic, numl;*)
+  		let (num, fic, numl) = (!idBoucle,!fileCour , !numLine) in 
       (* jz: balance -- register ("loopID", for-stmt)
              renamed stat->statbdy in pattern *)
       Hashtbl.add looptbl !idBoucle stat;
@@ -3035,8 +2747,7 @@ and  consRefstatement   stat =
   		idBoucle := !idBoucle + 1;
   		let (num, fic, numl) = (!idBoucle,!fileCour , !numLine) in
   		consRefexpression exp1;
-  		consRefexpression exp2;
-  		(*Printf.printf"Boucle %d fichier %s ligne %d \n" num, fic, numl;*)
+  		consRefexpression exp2; 
       (* jz: balance -- register ("loopID", for-stmt)
              renamed stat->statbdy in pattern *)
       Hashtbl.add looptbl !idBoucle stat;
@@ -3060,7 +2771,7 @@ and  consRefstatement   stat =
       fileCour := file;
       numLine := line;
       consRefstatement stat; ()
-	| _ ->			(*Printf.printf "DEFAUT STATEMENT\n";*)	()
+	| _ ->			(* "DEFAUT STATEMENT\n";*)	()
 
 
 and  consRefexpression exp =
@@ -3070,9 +2781,8 @@ and  consRefexpression exp =
 	| QUESTION (exp1, exp2, exp3) -> consRefexpression exp1 ; consRefexpression exp2; consRefexpression exp3;()
 	| CAST (_, e) 		 ->  consRefexpression e ; ()
 	| CALL (e , args) 				->		idAppel := !idAppel+1;
-				setAssosIdCallFunctionRef !idAppel (!fileCour , !numLine );(*Printf.printf "setAssosIdCallFunctionRef functiuon %s numAppel %d \n" (nomFonctionDeExp e) !idAppel;*)
-				List.iter (fun ep -> consRefexpression ep) args;
-				(* Printf.printf "setAssosIdCallFunctionRef functiuon %s numAppel %d \n" (nomFonctionDeExp e) !idAppel;*) ()
+				setAssosIdCallFunctionRef !idAppel (!fileCour , !numLine ); 
+				List.iter (fun ep -> consRefexpression ep) args;  ()
 	| COMMA e 				->    List.iter (fun ep -> consRefexpression ep) e; ()
 	| MEMBEROF (e , _)
 	| MEMBEROFPTR (e , _) 	->		consRefexpression e ; ()
@@ -3096,16 +2806,11 @@ and ajouteFonctionDansDocument proto body =
 	consRefstatement (BLOCK (decs, stat));
 	let nouCorpsFonction = new_CorpsFonction    (BLOCK (decs, stat)) [] (*!laListeDesAppelsDsFctCourante *)in
 	listeRes := [];
-
-	(*Printf.printf"ajouteFonctionDansDocument %s\n"nom;*)
-	creerListeES proto ;
-	(*Printf.printf "liste des variables et leur type\n";
-			List.iter (fun (id,typ) -> Printf.printf "VARIABLE %s " id ; Printf.printf "de type "; printfBaseType typ; new_line()) !listAssocIdType;
-			Printf.printf "fin liste des variables et leur type\n";*)
+ 
+	creerListeES proto ; 
 
 	let nouInfoFonc = new_Infofonction  nom proto nouCorpsFonction [] !listeRes in
 	let nouListe = add_fonction ( num,  nouInfoFonc ) !doc.laListeDesFonctions in
-	(*Printf.printf "ajouteFonctionDansDocument add list fonc doc %s\n " nom ;*)
 	doc := new_document !doc.laListeDesBoucles nouListe  !doc.laListeDesAssosBoucleBorne  !doc.laListeDesNids
 
 let isEQoperator op=
@@ -3114,11 +2819,8 @@ match op with EQ|NE->true|_->false
 
 
  let traiterConditionBoucleFor t nom nbIt cond eng (*exp*) (*init*) inc var cte var2 listLoopVar avant dans lvb vcond inst =
-(*Printf.printf "traiterConditionBoucleFor\n" ;*)
-(*afficherLesAffectations inst;*)
 	let listeV = listeDesVarsDeExpSeules cond in
-	(*let listeV = listeDesVarsDeExpSeules init in*)
-	listADD := [];listADDInc := [];covvarAssign:=   MULTIPLE;  covvarAfter :=  false;
+ 	listADD := [];listADDInc := [];covvarAssign:=   MULTIPLE;  covvarAfter :=  false;
  	covvarLoop :=  false;
 
 	expressionIncFor:= NOTHING;
@@ -3139,32 +2841,16 @@ match op with EQ|NE->true|_->false
 			(match  inc  with
 				NODEFINC ->
 					if isEQoperator op then
-					begin
-					  	Printf.printf "cas 3 EQ peut être booleen var %s\n" var;
+					begin 
 						let (isAssignedOK, assign, isConditionnal, ltrue, lfalse, ifvar) = containBoolxAssignementBody var  inst inst in
 						if isAssignedOK then
-							(
-
-								(*expressionDinitFor := (VARIABLE(var));*)
+							(					 
 								let (exp1, exp2) = match cond with   BINARY (op, exp1, exp2) -> (exp1, exp2)|_->(NOTHING, NOTHING) in
 								let (croissant,borneInf,borneSup,o,m,varDep,nexp, inc,b) =
 								getBooleanAssignementInc
 									assign isConditionnal ltrue lfalse
 									(VARIABLE(var)) var op exp1 exp2 listLoopVar avant dans cte t cond var2 lvb  inst ifvar cond false in
-
-								(* 	let initialvar =expVaToExp(rechercheAffectVDsListeAS varDep avant) in
-									if  initialvar  = NOTHING then   VARIABLE(varDep)   else initialvar );*)
-
 								expressionIncFor := inc;
-
-								(*Printf.printf "cas 3 EQ peut être booleen vari %s\n" vari;
-								print_expression borneInf 0;flush(); new_line();space(); new_line();
-								print_expression borneSup 0;flush(); new_line();space(); new_line();
-								Printf.printf "cas 3 EQ peut être booleen ifvar %s\n" ifvar;*)
-								(*Printf.printf "cas 3 EQ peut être booleen var2 %s\n" var2;*)
-
-								(*print_expression inc 0;flush(); new_line();space(); new_line();*)
-								(*if before then Printf.printf "before\n" else Printf.printf "after\n";*)
 								(true,		varDep	,"dowhile", b = false, croissant, m, o)
 							)
 						else  (false, v, t, false,typev,multi,op)
@@ -3173,9 +2859,7 @@ match op with EQ|NE->true|_->false
 				|_-> expressionIncFor := getIncValue inc ;
 					if isMultiInc || !covvarLoop then isExactForm := false;
 					if isindirect || !covvarAfter then
-					begin
-						(*if before then Printf.printf "before\n" else Printf.printf "after\n";*)
-
+					begin 
 						expressionDinitFor :=
 							( 	let initialvar =expVaToExp(rechercheAffectVDsListeAS vari avant) in
 								if  initialvar  = NOTHING then   VARIABLE(vari)   else initialvar );
@@ -3202,12 +2886,9 @@ match op with EQ|NE->true|_->false
 		 		else  (!borne,!initialisation,!expressionIncFor) in
 
 	expressionIncFor := inc;
-
 	let isConstructVar = if (String.length nv > 4) then begin if (String.sub nv  0 4) = "bIt-" then  true else   false end else false in
 	let isIntVar = 	if isConstructVar = false &&  List.mem_assoc nv !listAssocIdType then
 		( match getBaseType (List.assoc nv !listAssocIdType) with INT_TYPE-> true|_-> false) else  false in
-
-
 	let ( ninf ,nsup) =
 	if  isIntVar then
 	begin
@@ -3216,20 +2897,15 @@ match op with EQ|NE->true|_->false
     end
 	else ( inf, sup) in
 
-
 	borne := nsup;
 	initialisation := ninf;
-
-
 	 
 	let typeopPlusouMUL =  !opEstPlus	in
-	(*if !expressionDinitFor = NOTHING then expressionDinitFor := VARIABLE(nv);*)
-	let infoVar =   new_variation ninf nsup inc typevar  operateur indirectafter in
+ 	let infoVar =   new_variation ninf nsup inc typevar  operateur indirectafter in
 	let nc = if (typevar=CONSTANTE||cte) then cond else vcond in
 	let nb = expVaToExp (getNombreIt nsup (typevar=CONSTANTE||cte) t nc multiple [] typeopPlusouMUL  infoVar nv []) in
 	listeBoucleOuAppelCourante := reecrireCAll var2 !listeBoucleOuAppelCourante;
 
- 
 	let info = (new_boucleInfo t nom listeV nbIt eng (typevar=CONSTANTE||cte) nc multiple !listeBoucleOuAppelCourante
 				( new_variation !expressionDinitFor nb inc typevar operateur indirectafter) typeopPlusouMUL) in
 
@@ -3246,21 +2922,13 @@ match op with EQ|NE->true|_->false
 	(borne, indirect)
 
 and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) var2 listLoopVar avant dans lvb vcond inst =
-	(*Printf.printf "\n\ntraiterConditionBoucleFor  analyseCompFor\n" ;*)
 
 	listADD := [];listADDInc := [];covvarAssign:=   MULTIPLE;  covvarAfter :=  false;
  	covvarLoop :=  false;
  	let (op, typev,multi,v) = analyseCompFor    var  (VARIABLE(var)) cond listLoopVar  avant dans cte t var2 lvb inst cond false in
-
-		(*
-		Printf.printf "\n\ntraiterConditionBoucleFor  analyseCompFor %d\n" nom ;
-		printSens typev;*)
-
-
 	let liste = listeDesVarsDeExpSeules  cond in
 	expressionIncFor:= NOTHING;
-	(*Printf.printf "\n\ntraiterConditionBoucleFor  analyseCompFor\n" ;*)
-	let ( indirect,nv,nt, indirectafter,typevar,multiple,operateur)=
+ 	let ( indirect,nv,nt, indirectafter,typevar,multiple,operateur)=
 
 		if v != var2 then
 		begin
@@ -3271,10 +2939,9 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 			opEstPlus:= true;
 			let (isindirect,inc,var, before,isMultiInc) =  getLoopVarIncOrCov v (List.append inst !listADDInc) cond false in
 			(match  inc  with
-				NODEFINC -> (*Printf.printf "NODEFINC\n";*)
+				NODEFINC ->  
 					if isEQoperator op then
-					begin
-						(*Printf.printf "cas 3 EQ peut être booleen\n";*)
+					begin 
 						let (isAssignedOK, assign, isConditionnal, ltrue, lfalse, ifvar) = containBoolxAssignementBody var  inst inst in
 						if isAssignedOK then
 							(
@@ -3283,24 +2950,14 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 								getBooleanAssignementInc
 									assign isConditionnal ltrue lfalse
 									(VARIABLE(var)) var op exp1 exp2 listLoopVar avant dans cte t cond var2 lvb  inst ifvar cond false in
-							    (*expressionDinitFor :=
-								( 	let initialvar =expVaToExp(rechercheAffectVDsListeAS varDep avant) in
-									if  initialvar  = NOTHING then   VARIABLE(varDep)   else initialvar );*)
-
-								(*Printf.printf "while...  boolean\n";
-								print_expression borneInf 0;flush(); new_line();space(); new_line();
-								print_expression borneSup 0;flush(); new_line();space(); new_line();
-								print_expression inc 0;flush(); new_line();space(); new_line();*)
-								(*Printf.printf "while...  boolean\n";*)
-								expressionIncFor := inc;
-								(*if before then Printf.printf "before\n" else Printf.printf "after\n";*)
+							   
+								expressionIncFor := inc; 
 								(true,		varDep	,"dowhile", b = false, croissant, multiple, o)
 							)
 						else  (false, v, t, false,typev,multi,op)
 					end
 					else (false, v, t, false,typev,multi,op)
-				|_->
-					(*Printf.printf "OTHER NODEF\n";*)
+				|_-> 
 					expressionIncFor := getIncValue inc ;
 					if isMultiInc || !covvarLoop then isExactForm := false;
 					if isindirect || !covvarAfter then
@@ -3332,44 +2989,28 @@ and traiterConditionBoucle t nom nbIt cond eng  var cte (*inc typeopPlusouMUL*) 
 		 		else  (!borne,!initialisation,!expressionIncFor) in
 
 
-	expressionIncFor := inc;
-(*Printf.printf "cas 4 EQ may be boolean vari \n" ;
-
-								print_expression inc 0;flush(); new_line();space(); new_line();
-								print_expression sup 0;flush(); new_line();space(); new_line();*)
+	expressionIncFor := inc; 
 
 	let isConstructVar = if (String.length nv > 4) then begin if (String.sub nv  0 4) = "bIt-" then  true else   false end else false in
 	let isIntVar = 	if isConstructVar = false &&  List.mem_assoc nv !listAssocIdType then   ( match getBaseType (List.assoc nv !listAssocIdType) with INT_TYPE-> true|_-> false) else  false in
-
-
-	let ( ninf ,nsup) =
-	if  isIntVar then
-	begin
-
-		( remplacerValPar  "EPSILON" !vEPSILONINT  inf,  remplacerValPar  "EPSILON" !vEPSILONINT sup)
-    end
-	else ( inf, sup) in
-
+	let ( ninf ,nsup) = if  isIntVar then ( remplacerValPar  "EPSILON" !vEPSILONINT  inf,  remplacerValPar  "EPSILON" !vEPSILONINT sup)
+		else ( inf, sup) in
 
 	borne := nsup;
 	initialisation := ninf;
 
- 
-
-
-
  	let infoVar =   new_variation ninf nsup inc typevar  operateur indirectafter in
-
-	let nc = if (typevar=CONSTANTE||cte) then cond else vcond in
-	let nb = expVaToExp (getNombreIt nsup (typevar=CONSTANTE||cte) t nc multiple [] !opEstPlus   infoVar v []) in
+	let nc = if (typevar=CONSTANTE||cte)  then cond else vcond in
+	let nb =   expVaToExp (getNombreIt nsup (typevar=CONSTANTE||cte) t nc multiple [] !opEstPlus   infoVar v [] ) in
+	
 	listeBoucleOuAppelCourante := reecrireCAll var2 !listeBoucleOuAppelCourante;
-
 	let b = new_boucleWhileOuDoWhile
 				(new_boucleInfo t nom liste nbIt eng (typevar=CONSTANTE||cte)  nc  multiple !listeBoucleOuAppelCourante
-				(new_variation (VARIABLE(nv)) nb inc typevar operateur indirectafter) !opEstPlus ) [] []  in
+				(new_variation (VARIABLE(nv)) nb inc typevar operateur indirectafter) !opEstPlus ) [] []  
+				in
 	let ba = (new_boucleA b )  in
-	let borne = (getBorneBoucleFor t nb ninf inc !opEstPlus indirectafter) in
-	if (!isExactForm && ((getIsMultipleIncrement !expressionIncFor) =false)) then setAssosExactLoopInit  nom borne;
+	let borne =   (getBorneBoucleFor t nb ninf inc !opEstPlus indirectafter) in
+	if ((!isExactForm && ((getIsMultipleIncrement !expressionIncFor) =false)) ) then setAssosExactLoopInit  nom borne;
 	doc := new_document 	(new_ListeDesBoucles !doc.laListeDesBoucles  [ba])  !doc.laListeDesFonctions
 							(new_ListeDesBoucles !doc.laListeDesAssosBoucleBorne
 								[ new_infoBorneDeBoucle ba borne [] (!isExactForm &&( (getIsMultipleIncrement !expressionIncFor) =false))] )
@@ -3437,8 +3078,7 @@ let rec relierAux num 	varDeBoucle listeTraitee listeAtraiter listeDesFils=
 			Printf.eprintf "relierAux :next %d into nid %d\n" idTeteSousNid num;
 			Printf.eprintf "num eng %d num courant%d\n"
 				(getBoucleInfoB(n.infoNid.laBoucle)).nomEnglobante	 num
-		end;
-		(*if (List.mem idTeteSousNid listeDesFils) then*)
+		end; 
 		if (getBoucleInfoB(n.infoNid.laBoucle)).nomEnglobante	= num then
 		begin (* n est imbriqué sous num*)
 			if !vDEBUG then Printf.eprintf "n imbrique sous num relierAux :à %d  fils  %d\n" idTeteSousNid num;
@@ -3454,11 +3094,11 @@ let rec relierAux num 	varDeBoucle listeTraitee listeAtraiter listeDesFils=
 		end
 		else (* se sont des noeuds de même niveau d'imbrication *)
 		begin
-			if !vDEBUG then  Printf.eprintf "relierAux:pas fils nid %d %d\n" num		idTeteSousNid;
-				(*listeTraitee = ( List.append [n] listeTraitee)	;ERREUR A290*)
+			if !vDEBUG then  Printf.eprintf "relierAux:pas fils nid %d %d\n" num		idTeteSousNid; 
 				relierAux num varDeBoucle (List.append [n] listeTraitee) suite listeDesFils		;
 				listeNoeudCourant	:=	( List.append  [n] !listeNoeudCourant )
 		end;
+		if !vDEBUG then Printf.eprintf "n imbrique sous num relierAux :à %d  fils  2 %d\n" idTeteSousNid num;
 	end
 
 let 	relierLesNoeudsEnglobesAuNoeudCourant num varDeBoucle listeNC listeBouclesImbriquees cond =
@@ -3468,6 +3108,7 @@ let 	relierLesNoeudsEnglobesAuNoeudCourant num varDeBoucle listeNC listeBouclesI
 		if !vDEBUG then Printf.eprintf "DANS RELIER APPEL A RELIER AUX\n";
 		listeNoeudCourant := [];
 		relierAux num 	varDeBoucle listeRes listeNC listeBouclesImbriquees ;
+		if !vDEBUG then Printf.eprintf "DANS RELIER APPEL A RELIER AUX N\n";
 		noeudCourant := new_NidDeBoucle  cond	(rechercheAssosBoucleBorne num)  varDeBoucle !listeDesInstCourantes !listeTripletNidCourant ;
 		listeTripletNidCourant := !listeTripletNidCourantPred
 
@@ -3511,24 +3152,7 @@ let rec analyseCase stat listeCond vtest  =
 	| _ ->	listeCond
 
 
-(*let isFindCase = ref false
-let isFindCaseEnd = ref false
-let rec listeCasestatbreak  stat prev=
-	match stat with
-	| BREAK  -> 			isFindCaseEnd := true; prev
-	| SEQUENCE (s1, s2) ->	let res = listeCasestatbreak  s1 prev in
-							if !isFindCaseEnd then res else listeCasestatbreak  s2 res
-	| _ -> 	List.append prev [stat]
-
-
-let rec listeCasestatbegin   case stat =
-	match stat with
-	| SEQUENCE (s1, s2) ->	let res = listeCasestatbegin   case s1 in
-							if !isFindCase then List.append	res [s2] else   listeCasestatbegin   case s2
-	| CASE (exp, stat) ->	if exp = case then
-							begin isFindCase := true 	; [stat] end
-							else []
-	| _ -> 	[]*)
+ 
 
 
 let listeCasestatbegin  case statL boolean=
@@ -3605,64 +3229,53 @@ let rec cons_list_of_cond_impact_statement_from constraints =
 
 						| _ ->assert false 
 
-(*let rec cons_list_of_cond_impact_statement_from constraints =
-	 List.map (fun (var, (low, high))->
-			match var with
-				| Cabs.VARIABLE v ->  
-					 new_instVar v
-											(EXP	( CALL 
-													( VARIABLE("ABSTRACTINTER") ,
-														[var; CALL(VARIABLE("SET"), 
-																		[CONSTANT ( CONST_INT(string_of_int low)) ; 
-																			CONSTANT ( CONST_INT(string_of_int  high))
-																		] )
-																	]
-													)
-												))
-				| _ ->assert false 
-			)constraints 
-*)
+ 
 
 
 let rec analyse_statement   stat =
 	match stat with
-    NOP -> 						()
-	| COMPUTATION exp ->		analyse_expression  exp
-	| BLOCK (defs, stat) ->
+    NOP -> 			if !vDEBUG then Printf.eprintf "\nAnalyse statement : NOP";			()
+	| COMPUTATION exp ->	if !vDEBUG then Printf.eprintf "\nAnalyse statement : computation";	analyse_expression  exp
+	| BLOCK (defs, stat) -> if !vDEBUG then Printf.eprintf "\nAnalyse statement : BLOCK";
       let listePred = !listeDesInstCourantes in
       listeDesInstCourantes := [];
       analyse_defs defs;
+      if !vDEBUG then Printf.eprintf "\nAnalyse statement : Block";
       if stat <> NOP then analyse_statement  stat ;
+      if !vDEBUG then Printf.eprintf "\nAnalyse statement : Block end";
       listeDesInstCourantes :=  List.append listePred  !listeDesInstCourantes
-	| SEQUENCE (s1, s2) ->
-		(*let prevPtrct = !myCurrentPtrContext in*)
-		let listePred = !listeDesInstCourantes in
+	| SEQUENCE (s1, s2) ->if !vDEBUG then Printf.eprintf "\nAnalyse statement : SEQUENCE";
+ 		let listePred = !listeDesInstCourantes in
 		listeDesInstCourantes := [];
+		if !vDEBUG then Printf.eprintf "\nAnalyse statement : Sequence 1\n";
 		analyse_statement   s1;
+		if !vDEBUG then Printf.eprintf "\nAnalyse statement : Sequence 1 fin\n";
 		let listePred2 = List.append listePred  !listeDesInstCourantes in
 		listeDesInstCourantes := [];
+		if !vDEBUG then Printf.eprintf "\nAnalyse statement : Sequence 2";
 		analyse_statement   s2;
- (*localPtrAnalyse liste beforePtr  !intoLoopCurrent *)
+		if !vDEBUG then Printf.eprintf "\nAnalyse statement : Sequence end";
 		listeDesInstCourantes :=List.append listePred2  !listeDesInstCourantes
-	| IF (exp, s1, s2) ->
+	| IF (exp, s1, s2) ->if !vDEBUG then Printf.eprintf "\nAnalyse statement : IF\n";
 		let prevPtrct = !myCurrentPtrContext in
 		(*ICI IDIF (var,instthen, treethen,insteles, treeelse,lt,lf)*)
 		let trueListPred = !trueList in
 		let falseListPred = !falseList in
 		idIf := !idIf + 1;
-
+		if !vDEBUG then Printf.eprintf "\nAnalyse statement : IF analyse_expression\n";
 
 		analyse_expression   exp ;
 		let ne = !nouvExp in
 		let varIfN =  Printf.sprintf "%s-%d" "IF" !idIf  in
     (* jz: balance -- register ("IF-n", if-statement) *)
     (* FIXME/TODO :: this is kinda strange because ifs get named twice ???? *)
-
-
     (* store the statement of ``old'' id *)
 		tmpIfCnt := !tmpIfCnt + 1;
 		let tblVarIfN =  Printf.sprintf "%s-%d" "IF" !tmpIfCnt in
-    Hashtbl.add condtbl varIfN (Hashtbl.find condtbl tblVarIfN);
+		if !vDEBUG then Printf.eprintf "\nAnalyse statement : IF hash\n";
+
+		if Hashtbl.mem condtbl tblVarIfN then Hashtbl.add condtbl varIfN (Hashtbl.find condtbl tblVarIfN);
+		if !vDEBUG then Printf.eprintf "\nAnalyse statement : IF hash\n";
 
 		let newaffect = new_instVar varIfN (EXP(ne)) in
 		listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect];
@@ -3672,24 +3285,19 @@ let rec analyse_statement   stat =
 		listeDesInstCourantes := [];
 		trueList := List.append !trueList [varIfN];
 
-		
-
 		(* evaluating the impact of the condition*)
+		if !vDEBUG then Printf.eprintf "\nAnalyse statement : IF cons analyse\n";
+
 		let (condStatementsThen, condStatementsElse) = 
 			let constraintsThen = ConditionAnalysis.constraints_from_condition exp true in
 			let constraintsElse = ConditionAnalysis.constraints_from_condition exp false in
 			(cons_list_of_cond_impact_statement_from constraintsThen, (cons_list_of_cond_impact_statement_from constraintsElse))
 
 		 in 
-
-		(*Printf.printf"analyse statement if %s %d \n" varIfN  lig;	
-		Printf.printf "condition   dans fichier %s\n" fic ; print_expression exp 0;new_line();flush(); new_line();space(); new_line();
-		new_line();flush(); new_line();space(); new_line();new_line();flush(); new_line();space(); new_line();new_line();flush(); new_line();space(); new_line();new_line();flush(); new_line();space(); new_line();*)
+		if !vDEBUG then Printf.eprintf "\nAnalyse statement : then";
 		analyse_statement (SEQUENCE (condStatementsThen, s1));
-	 
-		let listeThen = !listeDesInstCourantes in
-
-		(*afficherLesAffectations !listeDesInstCourantes;*)
+		if !vDEBUG then Printf.eprintf "\nAnalyse statement : then fin";
+		let listeThen = !listeDesInstCourantes in 
 		let bouavrai = !listeBoucleOuAppelCourante in
 		trueList := trueListPred ;
 		
@@ -3698,7 +3306,6 @@ let rec analyse_statement   stat =
 				begin
 					 
 					let  fc = (localPtrAnalyse [new_instBEGIN (listeThen)]  prevPtrct   !intoLoopCurrent false) in  
-							
 					myCurrentPtrContext:=(LocalAPContext.joinSet fc prevPtrct );
 
 					listeDesInstCourantes :=  List.append listePred  [ new_instIFV (EXP(VARIABLE(varIfN))) (new_instBEGIN ((*condStatements@*)listeThen)) ];
@@ -3709,12 +3316,11 @@ let rec analyse_statement   stat =
 					listeBoucleOuAppelCourante := [];
 					listeDesInstCourantes := [];
 					falseList := List.append !falseList [varIfN]; 
+					if !vDEBUG then Printf.eprintf "\nAnalyse statement : else";
 					analyse_statement   (SEQUENCE (condStatementsElse, s2));
 					let listeElse = !listeDesInstCourantes in
-
-						(*Printf.printf"analyse statement else\n";
-						afficherLesAffectations !listeDesInstCourantes;
-						print_statement  s2 ;*)
+					if !vDEBUG then Printf.eprintf "\nAnalyse statement : elsefin";
+						(*Printf.printf"analyse statement else\n";						afficherLesAffectations !listeDesInstCourantes; print_statement  s2 ;*)
 					 
 					let fc  = (localPtrAnalyse [new_instBEGIN (listeThen)]  prevPtrct   !intoLoopCurrent false) in
 					let  ec= (localPtrAnalyse [new_instBEGIN (listeElse)]  prevPtrct   !intoLoopCurrent false) in
@@ -3724,21 +3330,22 @@ let rec analyse_statement   stat =
 					falseList := falseListPred;
 					(listeThen,bouavrai,listeElse,!listeBoucleOuAppelCourante)
 				end in
+				if !vDEBUG then Printf.eprintf "\nAnalyse statement : if end";
+		
 		let (fic,lig, infothen, infoelse)=getAssosIdIFRef varIfN in
 		listeBoucleOuAppelCourante	:=
 			List.append  maListeDesBoucleOuAppelPred   [IDIF(varIfN , instthen,treethen, instelse,treeelse,trueListPred,falseListPred,fic,lig, infothen, infoelse,ne)]
 
-	| WHILE (exp, stat) ->  	(*analyse_expression  exp ;rien condition sans effet de bord*)
+	| WHILE (exp, stat) ->  	if !vDEBUG then Printf.eprintf "\nAnalyse statement : WHILE\n";(*analyse_expression  exp ;rien condition sans effet de bord*)
+		
 		let prevPtrct = !myCurrentPtrContext in
-
 	    let degPred = !nbImbrications in
 		nbImbrications := !nbImbrications + 1;
 		let deg = !nbImbrications in
 		if !nbImbrications >= !nbImbricationsMaxAppli then nbImbricationsMaxAppli := !nbImbrications;
 
 		listeNextExp := [];
-		aUneFctNotDEf := false;
-		(*analyse_expressionaux exp ;*)
+		aUneFctNotDEf := false; 
 		analyse_expressionaux   exp ;
 		let ne = !nouvExp in
 		idBoucle := !idBoucle +1;
@@ -3761,49 +3368,38 @@ let rec analyse_statement   stat =
 		let maListeDesBoucleOuAppelPred = 	!listeBoucleOuAppelCourante		in
 
 		listeBoucleOuAppelCourante := [];
-
 		let listeBouclesInbriqueesPred = !listeDesBouclesDuNidCourant in
 		listeDesBouclesDuNidCourant := List.append  !listeDesBouclesDuNidCourant [numBoucle];
 		listeBouclesImbriquees := [];
 
 		if (idBoucleEngPred = 0) then
 		begin
-
-					upperLoop := numBoucle;
-					(*if into = false then  upperLoop := a;*)
-
+				upperLoop := numBoucle;
 				let (ida,nbi,idb,id_if,l) = (!idAppel,!nbImbrications , !idBoucle,!idIf,!listeDesInstCourantes) in
 				let maListeDesBoucleOuAppelPredP = !listeBoucleOuAppelCourante in
 				listeDesInstCourantes := []; onlyAexpression   exp ; onlyAstatement stat;onlyAexpression   exp ;
-(*Printf.printf "\n\nAnalyse statement : la boucle while %d  ap \n" numBoucle;*)
+ 
 				let  fc = (localPtrAnalyse [new_instBEGIN (!listeDesInstCourantes)]  prevPtrct   true false) in
 				memAssign !listeDesInstCourantes;
-				myChangeUpperLoopPtr := !myChangePtr;(*List.iter(fun x -> Printf.printf "ptr %s  " x)!myChangePtr ;*)
+				myChangeUpperLoopPtr := !myChangePtr;
 				myCurrentPtrContext:=(LocalAPContext.joinSet fc prevPtrct );
 							if !myChangePtr != [] then
-							begin
-									(*LocalAPContext.print !myCurrentPtrContext;Printf.printf "\n\n" ;*)
-									(*Printf.printf "\nstatement\n" ;*)
+							begin 
 									let _= LocalAPContext.getAllOfAllPtrAdress !myCurrentPtrContext !myChangePtr false in
-									 ()
-									(*Printf.printf "\n\n" ;
-									List.iter(fun (name,l) -> Printf.printf "\n%s  : [" name ;List.iter(fun x -> Printf.printf "%s  "x) l;Printf.printf "]\n" )!assocPtrChangeVar *)
-
+									 ()	 
 							end
 							else myChangeVar := [];
-(*afficherLesAffectations !listeDesInstCourantes;*)
+ 
 				idAppel := ida; nbImbrications :=nbi;idBoucle:=idb;idIf:=id_if;listeDesInstCourantes := l;
-
 				listeBoucleOuAppelCourante := 	maListeDesBoucleOuAppelPredP
-
-
 		end;
+		
 		let (mcv, apcv) = (!myChangeVar, !assocPtrChangeVar) in
-		analyse_statement  stat;
+		if !vDEBUG then Printf.eprintf "\nAnalyse statement : while";
 
-		myChangeVar:= mcv; assocPtrChangeVar:= apcv;
-		listeNextExp := [];
-		(*analyse_expressionaux exp ;*)
+		analyse_statement  stat;
+ 		myChangeVar:= mcv; assocPtrChangeVar:= apcv;
+		listeNextExp := []; 
 		analyse_expressionaux   exp ;
 
 		idBoucleEng := idBoucleEngPred;
@@ -3811,13 +3407,11 @@ let rec analyse_statement   stat =
 		idBoucleEng := idBoucleEngPred;
 
 			let li = if !aUneFctNotDEf = true then
-			begin
-				(*Printf.printf "traitement particulier boucle\n";*)
+			begin 
 				let (ida,nbi,idb,id_if) = (!idAppel,!nbImbrications , !idBoucle,!idIf) in
 				let maListeDesBoucleOuAppelPredP = !listeBoucleOuAppelCourante in
 				listeDesInstCourantes := []; onlyAexpression   exp ; onlyAstatement stat;onlyAexpression   exp ;
 				idAppel := ida; nbImbrications :=nbi;idBoucle:=idb;idIf:=id_if;
-				(*Printf.printf "traitement particulier boucle FIN\n";  *)
 				listeBoucleOuAppelCourante := 	maListeDesBoucleOuAppelPredP;
 				!listeDesInstCourantes
 			end
@@ -3830,12 +3424,8 @@ let rec analyse_statement   stat =
 			memAssign li;
 			if !myChangePtr != [] then
 			begin
-				(*LocalAPContext.print !myCurrentPtrContext;Printf.printf "\n\n" ;*)
-				(*Printf.printf "\nstatement\n" ;*)
+			 
 				let _= LocalAPContext.getAllOfAllPtrAdress !myCurrentPtrContext !myChangePtr false in ()
-
-				(*Printf.printf "\n\n" ;
-				List.iter(fun (name,l) -> Printf.printf "\n%s  : [" name ;List.iter(fun x -> Printf.printf "%s  "x) l;Printf.printf "]\n" )!assocPtrChangeVar *)
 
 				end
 			else myChangeVar := []
@@ -3862,13 +3452,9 @@ let rec analyse_statement   stat =
 
 		let listeASC = (*evalStore (new_instBEGIN (listePred)) [] []*) [] in
 		isExactForm := (hasMultiOuputInst stat = false) && (!trueList = []) && (!falseList = []);
-		(*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" numBoucle;
-
-afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
-(*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" numBoucle;
-if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*)
+ 
 		let (nb, addtest) = traiterConditionBoucle "while" numBoucle deg ne(*exp*) idBoucleEngPred  varDeB constante varBoucleIfN lVB listeASC  asna (*aS*) listeVDeBoucle (VARIABLE(varIfN)) na in
-(*Printf.printf "\n\nAnalyse statement : la boucle %d   ap\n" numBoucle;*)
+ 
 		let ppc = if idBoucleEngPred = 0 then !myChangeUpperLoopPtr else !myChangePtr in
 		listeDesInstCourantes :=
 				[	new_instFOR numBoucle varBoucleIfN	(EXP(NOTHING)) (EXP(ne(*exp*))) (EXP(NOTHING))
@@ -3888,6 +3474,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 			relierLesNoeudsEnglobesAuNoeudCourant 	numBoucle varBoucleIfN !listeNoeudCourant !listeBouclesImbriquees exp
 		end;
 		(* si la boucle est au départ d'un noeud*)
+			if !vDEBUG then Printf.eprintf "\nAnalyse statement : la boucle %d contient boucles appel relierLesNoeudsEnglobesAuNoeudCourant bla\n" numBoucle;
 
 		if (idBoucleEngPred = 0) then
 		begin
@@ -3902,24 +3489,27 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 			listeNoeudCourant := List.append 	[!noeudCourant] !listeNoeudCourant ;
 			doc := 	new_document !doc.laListeDesBoucles !doc.laListeDesFonctions 	res	   (List.append [!noeudCourant] !doc.laListeDesNids)
 		end;
+					if !vDEBUG then Printf.eprintf "\nAnalyse statement : la boucle %d  2\n" numBoucle;
+
 		listeBouclesImbriquees :=  List.append [numBoucle] !listeBouclesImbriquees;
 		listeBouclesImbriquees :=  List.append listeBouclesInbriqueesPred !listeBouclesImbriquees ;
 		listeDesInstCourantes :=  List.append( List.append listePred (List.append !listADD !listeDesInstCourantes)) !listeNextExp;
 		nbImbrications := degPred;
+		if !vDEBUG then Printf.eprintf "\nAnalyse statement : la boucle %d  3\n" numBoucle;
 		listeBoucleOuAppelCourante :=  maListeDesBoucleOuAppelPred
 
-	| DOWHILE (exp, stat) ->
+	| DOWHILE (exp, stat) ->if !vDEBUG then Printf.eprintf "\nAnalyse statement : DOWHILE\n";
+	 
 		let prevPtrct = !myCurrentPtrContext in
    		let degPred = !nbImbrications in
 
 		nbImbrications := !nbImbrications + 1;
 		let deg = !nbImbrications in
 		if !nbImbrications >= !nbImbricationsMaxAppli then nbImbricationsMaxAppli := !nbImbrications;
-	(*	analyse_expression   exp ;*)
-		idBoucle := !idBoucle +1;
+ 		idBoucle := !idBoucle +1;
 		let numBoucle = !idBoucle in
 		let varBoucleIfN =  Printf.sprintf "%s-%d" "bIt" !idBoucle in
-		let listePred = !listeDesInstCourantes in
+ 		let listePred = !listeDesInstCourantes in
 		listeDesInstCourantes := [];
 		listAssocIdType := List.append !listAssocIdType [(varBoucleIfN, INT_TYPE)] ;
 		let (fic,lig)=getAssosIdLoopRef numBoucle in
@@ -3940,19 +3530,14 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 				let (ida,nbi,idb,id_if,l) = (!idAppel,!nbImbrications , !idBoucle,!idIf,!listeDesInstCourantes) in
 				let maListeDesBoucleOuAppelPredP = !listeBoucleOuAppelCourante in
 				listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp ;
-(*Printf.printf "\n\nAnalyse statement : la boucle do %d  ap \n" numBoucle;*)
+ 
 				let  fc = (localPtrAnalyse [new_instBEGIN (!listeDesInstCourantes)]  prevPtrct   true false) in
 				memAssign !listeDesInstCourantes;
-				myChangeUpperLoopPtr := !myChangePtr;(*List.iter(fun x -> Printf.printf "ptr %s  " x)!myChangePtr ;*)
+				myChangeUpperLoopPtr := !myChangePtr; 
 				myCurrentPtrContext:=(LocalAPContext.joinSet fc prevPtrct );
 							if !myChangePtr != [] then
-							begin
-									(*LocalAPContext.print !myCurrentPtrContext;Printf.printf "\n\n" ;*)
-									(*Printf.printf "\nstatement\n" ;*)
+							begin 
 									let _= LocalAPContext.getAllOfAllPtrAdress !myCurrentPtrContext !myChangePtr false in ()
-
-									(*Printf.printf "\n\n" ;
-									List.iter(fun (name,l) -> Printf.printf "\n%s  : [" name ;List.iter(fun x -> Printf.printf "%s  "x) l;Printf.printf "]\n" )!assocPtrChangeVar *)
 
 							end
 							else myChangeVar := []  ;
@@ -3967,8 +3552,9 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		intoLoopCurrent:=true;
 		aUneFctNotDEf := false;
 		let (mcv, apcv) = (!myChangeVar, !assocPtrChangeVar) in
+		if !vDEBUG then Printf.eprintf "\nAnalyse statement :dowhile";
 		analyse_statement  stat;
-
+		if !vDEBUG then Printf.eprintf "\nAnalyse statement :dowhile end";
 		myChangeVar:= mcv; assocPtrChangeVar:= apcv;
 
 
@@ -3976,7 +3562,7 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 
 
 		listeNextExp := [];
-		(*analyse_expressionaux exp ;*)
+	 
 		analyse_expressionaux   exp ;
 		let ne = !nouvExp in
 		let varIfN =  Printf.sprintf "%s-%d" "TWH" numBoucle  in
@@ -3987,11 +3573,10 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
  		let lesInstDeLaBoucle = !listeDesInstCourantes in
 
 		let li = if !aUneFctNotDEf = true then
-		begin
-		(*	Printf.printf "traitement particuloier boucle\n";*)
+		begin 
 			let maListeDesBoucleOuAppelPredP = !listeBoucleOuAppelCourante in
 			let (ida,nbi,idb,id_if) = (!idAppel,!nbImbrications , !idBoucle,!idIf) in
-			listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp ; idAppel := ida; nbImbrications :=nbi;idBoucle:=idb;idIf:=id_if; (*Printf.printf "traitement particulier boucle FIN\n";  *)
+			listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp ; idAppel := ida; nbImbrications :=nbi;idBoucle:=idb;idIf:=id_if; 
 			listeBoucleOuAppelCourante := 	maListeDesBoucleOuAppelPredP;
 			!listeDesInstCourantes
 		end
@@ -4005,13 +3590,8 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		begin
 			memAssign li;
 			if !myChangePtr != [] then
-			begin
-				(*LocalAPContext.print !myCurrentPtrContext;Printf.printf "\n\n" ;*)
-				(*Printf.printf "\nstatement\n" ;*)
+			begin 
 				let _= LocalAPContext.getAllOfAllPtrAdress !myCurrentPtrContext !myChangePtr false in ()
-
-				(*Printf.printf "\n\n" ;
-				List.iter(fun (name,l) -> Printf.printf "\n%s  : [" name ;List.iter(fun x -> Printf.printf "%s  "x) l;Printf.printf "]\n" )!assocPtrChangeVar *)
 
 				end
 			else myChangeVar := []
@@ -4021,14 +3601,11 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 
 		let listeVCond =  listeDesVarsDeExpSeules  exp in
 		let na = extractVarCONDAffectForInc  li listeVCond in
-				let prev = !getOnlyIncrement in
-				getOnlyIncrement :=true ;
+		let prev = !getOnlyIncrement in
+		getOnlyIncrement :=true ;
 
-				let asna = evalStore (new_instBEGIN (na)) [] [] !myCurrentPtrContext in
-				getOnlyIncrement := prev;
-
-
-
+		let asna = evalStore (new_instBEGIN (na)) [] [] !myCurrentPtrContext in
+		getOnlyIncrement := prev;
 		let listeVDeBoucle =  	rechercheListeDesVarDeBoucle  listeVCond 	asna in
 
 		let (varDeB, constante, lVB) =
@@ -4040,15 +3617,11 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 
 		let las =(* evalStore (new_instBEGIN (listePred)) [] [] *)[] in
 		isExactForm := (hasMultiOuputInst stat = false) && (!trueList = []) && (!falseList = []);
-		(*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" numBoucle;
-
-afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
-
-
-		(*if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*)
-		let (nb,_) =  traiterConditionBoucle "do" numBoucle deg ne(*exp*) idBoucleEngPred  varDeB constante  varBoucleIfN lVB las asna listeVDeBoucle  (VARIABLE(varIfN)) na in
+ 
+ 
+		let (nb,_) =  traiterConditionBoucle "dowhile" numBoucle deg ne(*exp*) idBoucleEngPred  varDeB constante  varBoucleIfN lVB las asna listeVDeBoucle  (VARIABLE(varIfN)) na in
 		let ppc = if idBoucleEngPred = 0 then !myChangeUpperLoopPtr else !myChangePtr in
-	(*Printf.printf "\n\nAnalyse statement : la boucle %d   ap\n" numBoucle;*)
+ 
 		listeDesInstCourantes :=  [new_instFOR numBoucle varBoucleIfN (EXP(NOTHING)) (EXP(ne(*exp*))) (EXP(NOTHING)) (EXP( nb))
 									(new_instBEGIN (lesInstDeLaBoucle )) ppc];
 
@@ -4085,7 +3658,7 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 		nbImbrications := degPred;
 		listeBoucleOuAppelCourante :=  maListeDesBoucleOuAppelPred
 
-	| FOR (exp1, exp2, exp3, stat) ->
+	| FOR (exp1, exp2, exp3, stat) ->if !vDEBUG then Printf.eprintf "\nAnalyse statement : FOR\n";
 		let prevPtrct = !myCurrentPtrContext in
 		let degPred = !nbImbrications in
 
@@ -4101,9 +3674,7 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 		intoLoopCurrent:=true;
 		let idBoucleEngPred = !idBoucleEng in
 		aUneFctNotDEf := false;
-		idBoucleEng := num;
-
-		(*analyse_expressionaux  exp2;*)
+		idBoucleEng := num; 
 		analyse_expressionaux   exp2 ;
 		let ne = !nouvExp in
 		let varIfN =  Printf.sprintf "%s-%d" "TWH" num  in
@@ -4130,19 +3701,15 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 				let (ida,nbi,idb,id_if,l) = (!idAppel,!nbImbrications , !idBoucle,!idIf,!listeDesInstCourantes) in
 				let maListeDesBoucleOuAppelPredP = !listeBoucleOuAppelCourante in
 				listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp3 ;onlyAexpression   exp2;
-				(*Printf.printf "\n\nAnalyse statement : la boucle %d  for ap \n" num;*)
+				 
 				let  fc = (localPtrAnalyse [new_instBEGIN (!listeDesInstCourantes)]  prevPtrct   true false) in
 				memAssign !listeDesInstCourantes;
-				myChangeUpperLoopPtr := !myChangePtr;(*List.iter(fun x -> Printf.printf "ptr %s  " x)!myChangePtr ;Printf.printf "\n\n" ;*)
+				myChangeUpperLoopPtr := !myChangePtr; 
 				myCurrentPtrContext:=(LocalAPContext.joinSet fc prevPtrct );
 							if !myChangePtr != [] then
-							begin
-									(*LocalAPContext.print !myCurrentPtrContext;Printf.printf "\n\n" ;*)
-									(*Printf.printf "\nstatement\n" ;*)
-									let _= LocalAPContext.getAllOfAllPtrAdress !myCurrentPtrContext !myChangePtr false in (*()*)
-
-								    (*Printf.printf "\n\n" ;
-									List.iter(fun (name,l) -> Printf.printf "\n%s  : [" name ;List.iter(fun x -> Printf.printf "%s  "x) l;Printf.printf "]\n" )!assocPtrChangeVar *)()
+							begin 
+									let _= LocalAPContext.getAllOfAllPtrAdress !myCurrentPtrContext !myChangePtr false in  
+									()
 
 							end
 							else myChangeVar := [] ;
@@ -4150,12 +3717,13 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 
 				listeBoucleOuAppelCourante := 	maListeDesBoucleOuAppelPredP;
 
-			(*	LocalAPContext.print !myCurrentPtrContext*)
+			 
 		end;
 
 		let (mcv, apcv) = (!myChangeVar, !assocPtrChangeVar) in
+		if !vDEBUG then Printf.eprintf "\nAnalyse statement : for 1";
 		analyse_statement  stat;
-
+		if !vDEBUG then Printf.eprintf "\nAnalyse statement : for end";
 		myChangeVar:= mcv; assocPtrChangeVar:= apcv;
 
 		idBoucleEng := idBoucleEngPred;
@@ -4163,7 +3731,7 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 		(* recherche des variables de la condition qui sont dans le aS cad modifiées par la boucle*)
 		analyse_expression  exp3;
 		listeNextExp := [];
-		(*analyse_expressionaux  exp2;*)
+		 
 		analyse_expressionaux   exp2 ;
 		let lesInstDeLaBoucle = !listeDesInstCourantes in
 		listeASCourant := [];
@@ -4171,8 +3739,8 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 		begin
 			let (ida,nbi,idb,id_if) = (!idAppel,!nbImbrications , !idBoucle,!idIf) in
 			let maListeDesBoucleOuAppelPredP = 	!listeBoucleOuAppelCourante		in
-			(*Printf.printf "traitement particulier boucle \n";*)
-			listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp3 ;onlyAexpression   exp2; idAppel := ida; nbImbrications :=nbi;idBoucle:=idb;idIf:=id_if; (*Printf.printf "traitement particulier boucle FIN\n"; *)
+			 
+			listeDesInstCourantes := []; onlyAstatement stat;onlyAexpression   exp3 ;onlyAexpression   exp2; idAppel := ida; nbImbrications :=nbi;idBoucle:=idb;idIf:=id_if; 
 			listeBoucleOuAppelCourante := 	maListeDesBoucleOuAppelPredP;
 			!listeDesInstCourantes
 		end
@@ -4186,13 +3754,9 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 		begin
 			memAssign li;
 			if !myChangePtr != [] then
-			begin
-				(*LocalAPContext.print !myCurrentPtrContext;Printf.printf "\n\n" ;*)
-				(*Printf.printf "\nstatement\n" ;*)
+			begin 
 				let _= LocalAPContext.getAllOfAllPtrAdress !myCurrentPtrContext !myChangePtr false in ()
-
-				(*Printf.printf "\n\n" ;
-				List.iter(fun (name,l) -> Printf.printf "\n%s  : [" name ;List.iter(fun x -> Printf.printf "%s  "x) l;Printf.printf "]\n" )!assocPtrChangeVar *)
+ 
 
 				end
 			else myChangeVar := []
@@ -4220,13 +3784,10 @@ afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
 
 		let las=  (*evalStore (new_instBEGIN (listePred)) [] []*) [] in
 				isExactForm := (hasMultiOuputInst stat = false) && (!trueList = []) && (!falseList = []);
-(*Printf.printf "\n\nAnalyse statement : la boucle %d   \n" num;
-afficherLesAffectations (  lesInstDeLaBoucle) ;new_line () ;*)
-(*
-if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*)
+ 
 		let (nb,addtest) = traiterConditionBoucleFor 	"for" num deg ne(*exp2*)
 					idBoucleEngPred (*exp1*) exp3  varDeBoucle constante varBoucleIfN listeVB las asna listeVDeBoucle (VARIABLE(varIfN)) na in
-		(*Printf.printf "\n\nAnalyse statement : la boucle %d  ap \n" num;*)
+	 
 		let ppc = if idBoucleEngPred = 0 then !myChangeUpperLoopPtr else !myChangePtr in
 		listeDesInstCourantes :=
 				[	new_instFOR num varBoucleIfN	(EXP(exp1)) (EXP(ne(*exp2*))) (EXP(exp3))  (EXP( nb)) (new_instBEGIN lesInstDeLaBoucle ) ppc ];
@@ -4266,14 +3827,13 @@ if !isExactForm then Printf.printf "exact\n" else Printf.printf "non exact\n" ;*
 		listeDesInstCourantes :=  List.append( List.append listePred (List.append !listADD !listeDesInstCourantes)) !listeNextExp;
 		nbImbrications := degPred;
 
-if !vDEBUG then  Printf.eprintf "\n\nAnalyse statement : la boucle %d fin boucle \n" num;
+		if !vDEBUG then  Printf.eprintf "\n\nAnalyse statement : la boucle %d fin boucle \n" num;
 		listeBoucleOuAppelCourante :=  maListeDesBoucleOuAppelPred
 
 	| BREAK 
-  | CONTINUE ->	()
-	| RETURN (exp) ->	if exp = NOTHING	then ()	else
-							begin
-								(*analyse_expression  exp ;*)
+	| CONTINUE ->if !vDEBUG then Printf.eprintf "\nAnalyse statement : BREAK\n";	()
+	| RETURN (exp) ->	if !vDEBUG then Printf.eprintf "\nAnalyse statement : RETURN\n";if exp = NOTHING	then ()	else
+							begin 
 								listeNextExp := [];
 								analyse_expressionaux  exp ;
 								let ne = !nouvExp in
@@ -4281,37 +3841,31 @@ if !vDEBUG then  Printf.eprintf "\n\nAnalyse statement : la boucle %d fin boucle
 								let newaffect = new_instVar  (nouvarres)  (EXP(ne))in
 								listeDesInstCourantes := List.append (List.append !listeDesInstCourantes [newaffect]) !listeNextExp
 							end
-	| SWITCH (exp, stat) ->			analyse_expression   exp ;
+	| SWITCH (exp, stat) ->			if !vDEBUG then Printf.eprintf "\nAnalyse statement : SWICTH\n";analyse_expression   exp ;
 									let ne = !nouvExp in
 									idSwitch := !idSwitch + 1;
 									let varIfNaux =  Printf.sprintf "%s-%d" "SW" !idSwitch  in
 									let newaffect =new_instVar  varIfNaux  (EXP(ne)) in
 									listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect];
 									listOfCase := [];
-(*Printf.printf "odl statement\n";
-print_substatement stat;*)
+ 
 									let listOfStat = listeSwitchStatement  stat in
 									analyseSwitchStatement stat varIfNaux listOfStat;
 
 									let newStatement = buildSwitchStatement !listOfCase !listOfDefault in
 
-(*Printf.printf "new statement\n";
-print_substatement newStatement;*)
-
-									(*let isPred = !isIntoSwithch in*)
-									(*isIntoSwithch := true;*)
+									if !vDEBUG then Printf.eprintf "\nAnalyse statement : switch";
 									analyse_statement    newStatement (* à traiter *);
-
-								(*	isIntoSwithch := isPred*)
-
-	| CASE (exp, stat) ->			analyse_expression   exp ;
-									analyse_statement    stat (* a traiter *);
-	| DEFAULT stat ->				analyse_statement    stat
-	| LABEL ((*name*)_, stat) ->	analyse_statement    stat
+									if !vDEBUG then Printf.eprintf "\nAnalyse statement : switch end";
+						
+	| CASE (exp, stat) ->		if !vDEBUG then Printf.eprintf "\nAnalyse statement : CASE\n";	analyse_expression   exp ;
+									if !vDEBUG then Printf.eprintf "\nAnalyse statement : case";analyse_statement    stat (* a traiter *);
+	| DEFAULT stat ->				if !vDEBUG then Printf.eprintf "\nAnalyse statement : label";analyse_statement    stat
+	| LABEL ((*name*)_, stat) ->	if !vDEBUG then Printf.eprintf "\nAnalyse statement : goto";analyse_statement    stat
 	| GOTO (*name*)_ ->				()
 	| ASM (*desc*)_ ->				()
-	| GNU_ASM ((*desc, output, input, mods*)_,_,_,_) -> 	()
-	| STAT_LINE (stat, _, _) -> analyse_statement stat
+	| GNU_ASM ((*desc, output, input, mods*)_,_,_,_) -> if !vDEBUG then Printf.eprintf "\nAnalyse statement : ASM\n";	()
+	| STAT_LINE (stat, _, _) ->if !vDEBUG then Printf.eprintf "\nAnalyse statement : stat"; analyse_statement stat
 	| _ -> ()
 
 and  construireListesES listeDesES arg   =
@@ -4320,8 +3874,6 @@ and  construireListesES listeDesES arg   =
 	begin
 		let valeurParam = match List.hd arg with BINARY (ASSIGN, exp111, exp21) -> exp21 |_-> List.hd arg  in
 
-
-		(*analyse_expression  valeurParam; (*VOIR*) *)
 		let premier = List.hd listeDesES in
 			match premier with
 			ENTREE (nom) ->	(* le type de nom n'est pas pointeur *)
@@ -4366,10 +3918,11 @@ and  construireListesES listeDesES arg   =
 						|CAST(ty,ex) -> instPourVarDeExpEnSortie (UNARY (op , ex)) expressionAffectation nom n t false
 
 						| INDEX (t, i) ->
+						   
 							 let (tab1,_, _) =getArrayNameOfexp  e  in
 							 let (indexexp , _) = consArrayFromPtrExp e  tab1 in
 							 (match t with
-								VARIABLE(y)->[new_instTab tab1 (EXP(indexexp)) (EXP (VARIABLE(nom)))]
+								VARIABLE(y)->[new_instTab tab1 (EXP(indexexp)) (EXP (VARIABLE(nom)))] (*ICI*)
 								|_->	(*Printf.eprintf "WARNING != output param    %s \n" tab1; *)
 										[new_instTab tab1 MULTIPLE (EXP (VARIABLE(nom)))]	)
 
@@ -4397,7 +3950,7 @@ and  construireListesES listeDesES arg   =
 										(EXP (UNARY(MEMOF, expressionAffectation)))]
 								else
 								(
-								 Printf.eprintf "WARNING ! identification output param  Multi into cextraireboucle.ml instPourVarDeExpEnSortie  %s \n" nom; 								(*	print_expression valeurParam 0;*)
+								 Printf.eprintf "WARNING ! identification output param  Multi into cextraireboucle.ml instPourVarDeExpEnSortie  %s \n" nom; 		
 									List.map (fun x->
 											if  existAssosArrayType x   then new_instTab x MULTIPLE (EXP (VARIABLE(nom)))
 									else new_instMem ("*"^x) (EXP(BINARY (ADD, VARIABLE x, VARIABLE "_ALL-")) )
@@ -4451,7 +4004,7 @@ and  construireListesES listeDesES arg   =
 							if List.mem_assoc id !listeAssosPtrNameType then (getBaseType (List.assoc id !listeAssosPtrNameType), true)
 							else (INT_TYPE, false) in
 				 let ne = consCommaExp (VARIABLE(id)) btype [id] lid (BINARY(ASSIGN, valeurParam, expressionAffectation)) false NOTHING in
-(*Printf.eprintf "WARNING != identification output param  %s ptr \n" nom; print_expression valeurParam 0;*)
+				(*Printf.eprintf "WARNING != identification output param  %s ptr \n" nom; print_expression valeurParam 0;*)
 				[new_instVarAndPtr id (EXP(ne) )  ]
 
  				(*[new_instMem ("*"^(id)) (EXP(VARIABLE(n))) (EXP (UNARY(MEMOF, expressionAffectation)))]*)
@@ -4465,7 +4018,7 @@ and  construireListesES listeDesES arg   =
 										(EXP (UNARY(MEMOF, expressionAffectation)))]
 								else
 								(
-								 Printf.eprintf "WARNING ! identification output param  Multi into cextraireboucle.ml instPourVarDeExpEnSortie  %s \n" nom; 								(*	print_expression valeurParam 0;*)
+								 Printf.eprintf "WARNING ! identification output param  Multi into cextraireboucle.ml instPourVarDeExpEnSortie  %s \n" nom; 							 
 									List.map (fun x->
 											if  existAssosArrayType x   then new_instTab x MULTIPLE (EXP (VARIABLE(nom)))
 									else new_instMem ("*"^x) (EXP(BINARY (ADD, VARIABLE x, VARIABLE "_ALL-")) )
@@ -4483,37 +4036,7 @@ and  construireListesES listeDesES arg   =
 
 
 	 end
-(*	and instPourVarDeExpEnSortie valeurParam expressionAffectation nom =
-		match valeurParam with
-		VARIABLE n -> (*Printf.printf "construireListesES tableau ou pointeur \n";*)
-					  [new_instMem ("*"^n) (EXP(VARIABLE(n))) (EXP (UNARY(MEMOF, expressionAffectation)))]
-					(* on peut avoir p = ptr pointeur ou tableau*)
-			(*  cas ou on passe ptr car hypothèse code OK *)
-		| UNARY (op , e)->
-			(	match op with
-				ADDROF	->
-				(	match e with
-					(*on a &exp mais exp peut être une variable, un tableau ou un champ de struct*)
-					VARIABLE v ->(* Printf.printf "construireListesES &v \n";*) let nas = [new_instVar v  (EXP (VARIABLE(nom)))] in (*afficherLesAffectations  nas;*)nas
-
-					| INDEX (t, i) ->
-						( 	match t with
-							VARIABLE v ->
-								[new_instTab v (EXP(i)) (EXP (VARIABLE(nom)))]
-							| _-> if !vDEBUG then Printf.printf "exp pour tab avec nom tab pas variable non traité\n";
-							[])
-					| MEMBEROF (_, _) ->
-						[new_instVar (expressionToString "" e 0)(EXP (VARIABLE(nom)))]
-					| MEMBEROFPTR (_, _) ->
-						[new_instVar (expressionToString "" e 0) (EXP (VARIABLE(nom)))]
-					| _->if !vDEBUG then  Printf.printf "error lvalue"; []
-				)
-				| _->if !vDEBUG then  Printf.printf "error lvalue"; []
-			)
-		| BINARY (_,_,_)-> (* on peut avoir en paramètre ptr +i*)
-			[new_instVar 	(expressionToString  "" valeurParam 0) (EXP (VARIABLE(nom)))]
-		|_-> if !vDEBUG then
-				Printf.printf "error lvalue is need (impossible because code OK)";[]*)
+ 
 
 and auxsimplifierValeur e =
   let e1 = simplifierValeur e in
@@ -4663,8 +4186,7 @@ let liste =
 			PROTO (t, pars, _) -> List.map( fun pc ->numPar:= !numPar + 1; let (_, _, n) = pc in let (id, _, _, _) = n in if id = "" then Printf.sprintf "par-%s-%d"  nom !numPar else id)  pars
 			| OLD_PROTO (_, pars, _) ->	pars
 			| _ -> []) in
-(*Printf.printf "fonction externe %s\n" nom;
-	List.iter (fun x-> Printf.printf "%s " x)liste;Printf.printf "fonction externe fin %s\n" nom;*)
+(*Printf.printf "fonction externe %s\n" nom; *)
  	match appel with
 	 	CALL (_, args) ->	contruireAux liste args | _-> ()
 
@@ -4673,6 +4195,34 @@ and  analyse_expression exp =
 listeNextExp := [];
 analyse_expressionaux exp ;
 listeDesInstCourantes := List.append !listeDesInstCourantes !listeNextExp
+
+and analyseAllIndex id   morethanonechange (*if morethanonechange = true NOTHING too difficult*)= 
+( match id with
+			[]->  []
+			|i ::next ->
+					let lgListInst = List.length !listeDesInstCourantes in
+					let lgListInstNext = List.length !listeNextExp in
+					(*listeDesInstCourantes := [];*) analyse_expressionaux i;
+					if  lgListInst < List.length !listeDesInstCourantes || lgListInstNext< List.length !listeNextExp then 
+					( (*i contient une affectation ou preoupost inc ou dec*)
+						let ne = !nouvExp in  
+ 						if morethanonechange then (
+							let _ = analyseAllIndex next   morethanonechange in
+							[NOTHING]
+						)
+						else (
+								let   ni = analyseAllIndex next true in
+								  ne::ni
+						)
+					)	 
+					else ( (*pas d'affectation dans les index*)
+						let   ni =  analyseAllIndex next    morethanonechange in
+						 i::ni
+					)				
+) 
+and analyseAllIndexInit index   (*eval assign effect of index and rewrite index*) =
+   analyseAllIndex index false 
+	 
 
 and treatStruct exp1 exp2 i t isStruct =
 	let lid =	getInitVarFromStruct exp1  in
@@ -4690,39 +4240,26 @@ and treatStruct exp1 exp2 i t isStruct =
 			if isTruecteArg then
 			begin 
 				let tid = if lid != [] then List.hd (List.rev lid) else (Printf.eprintf "not id 3876\n"; "noid") in
-				(*print_expression exp1 0 ; flush();space() ;flush();space() ;  Printf.eprintf "array of array expr not implemented %s\n" id ;*)
 				if (List.mem_assoc tid !listAssosTypeDefArrayIDsize) then (*ajouter une option pour struct détaillé*)
 				begin
 					let size = getAssosTypeDefArrayIDsize tid in
 					match size with
 						NOSIZE ->  consCommaExp (VARIABLE(id)) btype [id] lid NOTHING false NOTHING
-						| SARRAY (v) -> (*let realSize = expressionEvalueeToExpression (prodListSize nextSize) in*)
+						| SARRAY (v) ->  
 								let val1 = int_of_float(getDefValue (calculer (EXP(i ))  !infoaffichNull [] 1 )) in
-
-
-
 								analyse_expressionaux exp2;	 let ne = !nouvExp in
-
 								let expn = CONSTANT(CONST_COMPOUND (creerInitTabStruct   0 (v-1) t  val1 ne))  in
-								(*print_expression expn 0 ; flush();space() ;*)
-								consCommaExp (VARIABLE(id)) btype [id] lid expn(* NOTHING *)false NOTHING
+								consCommaExp (VARIABLE(id)) btype [id] lid expn false NOTHING
 						| MSARRAY (lsize) -> consCommaExp (VARIABLE(id)) btype [id] lid NOTHING false NOTHING
 				end else  consCommaExp (VARIABLE(id)) btype [id] lid NOTHING false NOTHING
 			end
 			else consCommaExp (VARIABLE(id)) btype [id] lid NOTHING false NOTHING
 		in
-
 		let newaffect =   if  List.mem_assoc id !listeAssosPtrNameType then new_instMem  (rid) (EXP(VARIABLE(id))) (EXP(nee))
 											  else  new_instVarAndPtr id (EXP(nee) ) in
-
-
-		(*if id = "c" then
-			(Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression exp2 0 ; flush();space() ; flush();space() ;
-			Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression nee 0 ; flush();space() ;new_line(); );*)
-		(*let newaffect =   (*new_instVar rid (EXP(nee) ) in*) new_instMem  (rid) (EXP(VARIABLE(id))) (EXP(nee)) in*)
-
 		  [newaffect];
 	end else []
+
 
 
 and analyse_expressionaux exp =
@@ -4746,91 +4283,78 @@ and analyse_expressionaux exp =
 								listeDesInstCourantes := p;
 				| ADDROF	->(** "&" . nouvExp :=VARIABLE("&"^v)*)
 					(match e with
-						INDEX (t,i) ->
-							(*Printf.printf "adress of...\n";print_expression e 0; new_line(); print_expression t 16;print_expression i 0;*)
-
+						INDEX (t,i) -> (*ARRAYINDEX *)
 							let (tab,lidx) = analyseArray e []  in
+							let nindex = analyseAllIndexInit  lidx in (*NEW 2020*)		
 							if tab = "" then nouvExp := exp
 							else
-							begin
-								let sygmaIndex = (*(CONSTANT(CONST_INT("0"))) in*)
-										if lidx = [] then (CONSTANT(CONST_INT("0"))) else if (List.tl lidx) = [] then i else NOTHING in
+							begin			  
+								let sygmaIndex =  	if lidx = [] then (CONSTANT(CONST_INT("0"))) else if (List.tl lidx) = [] then List.hd nindex (*NEW 2020 before i*)else NOTHING in
 								nouvExp := BINARY (ADD, (VARIABLE(tab)), sygmaIndex) ;
-
 							end
 						| _->
 								nouvExp := exp)
-				
 			
 				|	MINUS -> 	    analyse_expressionaux e;	 let ne = !nouvExp in     nouvExp := UNARY (op, ne) 
 				| PLUS ->   analyse_expressionaux e;	 let ne = !nouvExp in    nouvExp := UNARY (op, ne) 
 				| NOT ->   analyse_expressionaux e;	 let ne = !nouvExp in    nouvExp := UNARY (op, ne) 
 				| BNOT ->   analyse_expressionaux e;	 let ne = !nouvExp in  new_line();   nouvExp := UNARY (op, ne) 
 				| MEMOF ->   analyse_expressionaux e;	 let ne = !nouvExp in    nouvExp := UNARY (op, ne) 
-	 (*
-				|_ -> 		(* ! not ???*)
-					if !vDEBUG then ( Printf.eprintf "analyse_expressionaux not implemented\n";(*print_expression e 0; *)new_line(); );
-					Printf.printf "blabla of...\n";print_expression exp 0; new_line();  
-					Printf.printf "blabla of...\n";print_expression e 0; new_line();  
-				    analyse_expressionaux e;	 let ne = !nouvExp in  Printf.printf "blabla of...\n";print_expression ne 0; new_line();   nouvExp := UNARY (op, ne) *)
+	 
 		 
 			);
 	| BINARY (op, exp11, exp2) -> let exp1 = simplifierValeur exp11 in
-      (*analyse_expressionaux exp1 ; let ne1 = !nouvExp in
-        analyse_expressionaux exp2;	 let ne = !nouvExp in   *)
-		  (match op with
+      (match op with
         ASSIGN ->
           (match exp1 with
-            VARIABLE n -> analyse_expressionaux exp2;
-            let ne = !nouvExp in
-            let newaffect =
-              match ne with
-                BINARY (ASSIGN, exp111, exp21) ->
-                  new_instVarAndPtr n (EXP(exp21))
-              | _ ->
-                  new_instVarAndPtr n (EXP(ne)) in
-                  (* afficherUneAffect newaffect; flush(); new_line(); *)
-                  listeDesInstCourantes := List.append !listeDesInstCourantes [newaffect]
-				|INDEX (t,i)->
+             VARIABLE n -> analyse_expressionaux exp2;
+				let ne = !nouvExp in
+				let newaffect = match ne with
+						BINARY (ASSIGN, exp111, exp21) ->  new_instVarAndPtr n (EXP(exp21))
+						| _ -> new_instVarAndPtr n (EXP(ne)) in               
+                listeDesInstCourantes := List.append !listeDesInstCourantes [newaffect]
+			 |INDEX (t,i)->  (*ARRAYINDEX *) 
+					let (tab,lidx) = analyseArray exp1 []  in(*NEW 2020*)
+					let nindex = analyseAllIndexInit  lidx in (*NEW 2020*)
+					
 					( match t with
-						VARIABLE v ->
-								analyse_expressionaux exp2;	 let ne = !nouvExp in
-								listeDesInstCourantes := List.append !listeDesInstCourantes [new_instTab v (EXP(i))	(EXP(ne))]
-						| UNARY (opr,e) ->
-							(
-								match e with
-								VARIABLE v ->
-								(
-									match opr with
-									MEMOF	-> analyse_expressionaux exp2;
-                  let ne = !nouvExp in
-										(** "*" operator. *)(* revoir e n'est pas forcement une variable *)
-										listeDesInstCourantes :=
-											List.append !listeDesInstCourantes
-														[new_instTab ("*"^v) (EXP(i))	(EXP(ne))]
+						VARIABLE v -> (* bug index to see MDM fixed 2020*)			
+ 						let sygmaIndex =  	if lidx = [] then (CONSTANT(CONST_INT("0"))) else if (List.tl lidx) = [] then List.hd nindex (*NEW 2020 before i*)else NOTHING in
 
+						(*if sygmaIndex != NOTHING then Printf.printf "next exp %s \n" v ;print_expression sygmaIndex 0;new_line();flush();space() ; flush();space() ;new_line();flush();space() ; flush();space() ;
+*)
+						analyse_expressionaux exp2;	 let ne = !nouvExp in
+						listeDesInstCourantes := List.append !listeDesInstCourantes [new_instTab v (EXP( sygmaIndex (*NEW 2020 before i*)))	(EXP(ne))];
+								
+						| UNARY (opr,e) ->
+							( match e with
+								VARIABLE v ->
+								( match opr with
+									MEMOF	-> 
+										analyse_expressionaux exp2;
+										let ne = !nouvExp in
+										(** "*" operator. *)(* revoir e n'est pas forcement une variable *)
+										listeDesInstCourantes := List.append !listeDesInstCourantes [new_instTab ("*"^v) (EXP( i (*NEW 2020 before i*)))	(EXP(ne))]
 									|  _->	 if !vDEBUG then  Printf.eprintf "array expr not implemented\n" ;
 								)
 								| _->  if !vDEBUG then  Printf.eprintf "array expr not implemented\n"
 							)
 						| MEMBEROF (_ , _) 	-> listeDesInstCourantes := List.append !listeDesInstCourantes  (treatStruct exp1 exp2 i t false)
 				 		| MEMBEROFPTR (_ , _) 	->	listeDesInstCourantes := List.append !listeDesInstCourantes  (treatStruct exp1 exp2 i t true)
-						| INDEX (_,_)->
+						| INDEX (_,_)->  (*ARRAYINDEX *)
 							let (tab,lidx) = analyseArray exp1 []  in
 							if tab = "" then
 							begin
 								let (tab,lidx) = analyseArrayIntostruct exp1 [] in
 								let lid =	getInitVarFromStruct tab  in
 								let id = if lid != [] then List.hd (List.rev lid) else (Printf.printf "not id 3876\n"; "noid") in
-								(*print_expression exp1 0 ; flush();space() ;flush();space() ;  Printf.printf "array of array expr not implemented %s\n" id ;*)
 								if (List.mem_assoc id !listAssosTypeDefArrayIDsize) then
 								begin
 									let size = getAssosTypeDefArrayIDsize id in
 									match size with
 										NOSIZE -> analyse_expressionaux (BINARY (op, INDEX (tab,NOTHING), NOTHING))
 										| SARRAY (_) -> analyse_expressionaux (BINARY (op, INDEX (tab,List.hd lidx), exp2))
-										| MSARRAY (lsize) -> (*ajouter une option pour struct détaillé*)(*let index = prodListSizeIndex lsize lidx in
-											analyse_expressionaux (BINARY (op, INDEX (tab,index), exp2)) *)
+										| MSARRAY (lsize) -> (*ajouter une option pour struct détaillé*) 
 											analyse_expressionaux (BINARY (op, INDEX (tab,NOTHING), NOTHING))
 								end else  analyse_expressionaux (BINARY (op, INDEX (tab,NOTHING), NOTHING))
 
@@ -4847,23 +4371,18 @@ and analyse_expressionaux exp =
 											analyse_expressionaux (BINARY (op, INDEX (VARIABLE(tab),index), exp2))
 								end else analyse_expressionaux (BINARY (op, INDEX (VARIABLE(tab),NOTHING), NOTHING))
 							end
-						| _->	 if !vDEBUG then( (*print_expression exp1 0 ; flush();space() ;flush();space() ; *)Printf.eprintf "array expr not implemented\n" 	)
+						| _->	 if !vDEBUG then(  Printf.eprintf "array expr not implemented\n" 	)
 					)
 				| UNARY (opr,e) ->
-					(*let p = !listeNextExp in*)
-					(*
-					analyse_expressionaux e ;
-					listeNextExp := p;
-					let neunary = !nouvExp in 	*)
+					 
 					(
 						match opr with
 							MEMOF		->
-								analyse_expressionaux e ;(*listeNextExp := p;*)
+								analyse_expressionaux e ; 
 
 								(match !nouvExp with
 								  VARIABLE v -> analyse_expressionaux exp2;	 let ne = !nouvExp in
-									(** "*" operator. *)(*Printf.printf "array expr  MEMOF\n" ;*)
-									    (* afficherUneAffect( new_instMem ("*"^v) (EXP(VARIABLE(v))) (EXP(ne))); flush(); new_line(); *)
+									(** "*" operator. *)(*Printf.printf "array expr  MEMOF\n" ;*) 
 									listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instMem ("*"^v) (EXP(VARIABLE(v))) (EXP(ne))]
 								  | UNARY(ADDROF,expaux)	->(** "&" operator. *)
 									(match expaux with
@@ -4889,13 +4408,12 @@ and analyse_expressionaux exp =
 									else
 									begin
 										let newe = remplacerExpPar0   expres e in
-									     print_expression newe 0 ; flush();space() ;flush();space() ;
+									     
 										 if isstruct = false then
 											listeDesInstCourantes := List.append !listeDesInstCourantes [new_instTab v (EXP(newe))	(EXP(ne))]
 										else
 											listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instMem ("*"^v) (EXP(!nouvExp)) (EXP(ne))]
 									end
-
 							)
 
 							|  _->	 if !vDEBUG then Printf.eprintf "array expr not implemented\n" 	 )
@@ -4909,17 +4427,11 @@ and analyse_expressionaux exp =
 								else
 									if List.mem_assoc id !listeAssosPtrNameType then (getBaseType (List.assoc id !listeAssosPtrNameType), true)
 									else (INT_TYPE, false) in
-					(*	if isdeftype then
-							(Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression exp2 0 ; flush();space() ; flush();space() )
-						else Printf.printf "nodef id %s type :\n"id;*)
+				
 						if lid != [] then 
 						begin
-							analyse_expressionaux exp2;	 let ne = !nouvExp in
-							(*Printf.printf "varDefList id %s type :\n"id;  new_line();*)
+							analyse_expressionaux exp2;	 let ne = !nouvExp in 
 							let nee = consCommaExp (VARIABLE(id)) btype [id] lid ne false NOTHING  in
-						(*	if id = "os_thread" then
-							(Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression exp2 0 ; flush();space() ; print_expression ne 0 ; flush();space() ;
-							Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression nee 0 ; flush();space() ;new_line(); );*)
 							let newaffect = new_instVarAndPtr id (EXP(nee) ) in
 
 							listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect];
@@ -4935,17 +4447,9 @@ and analyse_expressionaux exp =
 
 						if lid != [] then
 						begin
-							let rid = ("*"^id) in
-
-							(*if List.mem_assoc id !listeAssosPtrNameType then Printf.printf "MEMBEROFPTR varDefList id %s pointeur :\n"id
-							else Printf.printf "MEMBEROFPTR varDefList id %s  SINGLE :\n"id; *)
-							analyse_expressionaux exp2;	 let ne = !nouvExp in
-							(*Printf.printf "varDefList id %s type :\n"id;  new_line();*)
+							let rid = ("*"^id) in 
+							analyse_expressionaux exp2;	 let ne = !nouvExp in 
 							let nee = consCommaExp (VARIABLE(id)) btype [id] lid ne false NOTHING  in
-							(*if id = "os_thread" then
-							(print_expression exp 0 ; flush();space() ;Printf.printf "MEMBEROFPTR varDefList id %s type :\n"id;  new_line();print_expression exp2 0 ; flush();space() ; print_expression ne 0 ; flush();space() ;
-							Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression nee 0 ; flush();space() ;new_line(); );*)
-
 							let newaffect =   if  List.mem_assoc id !listeAssosPtrNameType then new_instMem  (rid) (EXP(VARIABLE(id))) (EXP(nee))
 											  else  new_instVarAndPtr id (EXP(nee) ) in
 							listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect];
@@ -4988,19 +4492,13 @@ and analyse_expressionaux exp =
 					construireAsAppel f.declaration	exp ;
 
 					 let ida =
-
 						if  name = "SET" || name ="ABSTRACTINTER" then 0
 						else 
 						begin
 							idAppel := !idAppel + 1;
 						   !idAppel 
-					 end in
-
-					(*Printf.printf "analyse_expressionaux %s num appel %d \n" name ida;
-					Printf.printf "analyse_expressionaux %s EXISTE \n" name ;*)
-					 let (fichier , ligne ) = getAssosIdCallFunctionRef ida in
-
-					(*Printf.printf "analyse_expressionaux 45  %s EXISTE %s fichier %d line\n" name fichier ligne ;*)
+					 end in 
+					 let (fichier , ligne ) = getAssosIdCallFunctionRef ida in 
 					
 					listeBoucleOuAppelCourante	:= if  name = "SET" || name ="ABSTRACTINTER" then( !listeBoucleOuAppelCourante )
 						else List.append  !listeBoucleOuAppelCourante  [IDAPPEL(ida, exp, !listeDesInstCourantes,"", !trueList,!falseList ,fichier , ligne)];
@@ -5008,15 +4506,11 @@ and analyse_expressionaux exp =
 					let nouvar = Printf.sprintf "call-%s%d" (nomFonctionDeExp e) ida in
 					(*if isvoid = false then *)
 					begin
-
 						let nouvarres = Printf.sprintf "res-%s" (nomFonctionDeExp e) in
 						let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
 						listeDesInstCourantes :=  List.append !listeDesInstCourantes  [newaffect]
 					end;
-					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
-
-(*afficherLesAffectations (  !listeDesInstCourantes) ;new_line () ;*)
-(*Printf.printf "FIN analyse_expressionaux %s num appel %d \n" (nomFonctionDeExp e) ida;	*)
+					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ; 
 
 					nouvExp:=VARIABLE(nouvar)
 				end
@@ -5038,48 +4532,36 @@ and analyse_expressionaux exp =
 						begin
 							idAppel := !idAppel + 1;
 						   !idAppel 
-					 end in
-(*Printf.printf "analyse_expressionaux %s num appel %d \n" (nomFonctionDeExp e) ida;
-Printf.printf "analyse_expressionaux %s NON EXISTE \n" (nomFonctionDeExp e) ;*)
+					 end in 
 					 let (fichier , ligne ) = getAssosIdCallFunctionRef ida in
  
 					listeBoucleOuAppelCourante	:= if  nom = "SET" || nom ="ABSTRACTINTER" then( !listeBoucleOuAppelCourante )
 						else List.append  !listeBoucleOuAppelCourante [IDAPPEL(ida, exp,!listeDesInstCourantes,"" , !trueList,!falseList ,fichier , ligne)];
-					let isComponant = traiterAppelFonction e args !listeDesInstCourantes ida in
-
-(*if isComponant then Printf.printf "analyse_expressionaux %s NON EXISTE IS COMPOSANT %d\n" (nomFonctionDeExp e) ida
-else   Printf.printf "analyse_expressionaux %s NON EXISTE IS NOT COMPOSANT\n" (nomFonctionDeExp e) ;*)
+					let isComponant = traiterAppelFonction e args !listeDesInstCourantes ida in 
 					let nouvar = Printf.sprintf "call-%s%d" nom ida in
 					let nouvarres = Printf.sprintf "res-%s" nom in
 					let newaffect = new_instVar  (nouvar)  (EXP(VARIABLE(nouvarres))) in
 					listeDesInstCourantes :=  List.append !listeDesInstCourantes  [newaffect];
-					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ;
-
-(*afficherLesAffectations (  !listeDesInstCourantes) ;new_line () ;*)
-(*Printf.printf "end analyse_expressionaux %s num call %d \n" (nomFonctionDeExp e) ida;	*)
+					listeDesInstCourantes :=  List.append listeInstPred !listeDesInstCourantes ; 
 					if isComponant then nouvExp:=VARIABLE(nouvar) else nouvExp:=exp
 				end		;
-	| COMMA e 	-> (*Printf.printf "into comma\n";print_expression exp 0; new_line();*) List.iter (fun ep -> analyse_expressionaux ep) e;
-					nouvExp:=COMMA(e)
-	| MEMBEROF (e , t) 		->	(*->	analyse_expression e ;  nouvExp:=MEMBEROF (!nouvExp , t)*)
-		analyse_expressionaux e ; nouvExp:=MEMBEROF (!nouvExp , t)
-	| MEMBEROFPTR (e , t) 	->	(*Printf.printf "into ptr\n";print_expression exp 0; new_line();	*)
-		analyse_expressionaux e ; nouvExp:=MEMBEROFPTR (!nouvExp , t) (*nouvExp:=exp*)
+	| COMMA e 	->  List.iter (fun ep -> analyse_expressionaux ep) e;					nouvExp:=COMMA(e)
+	| MEMBEROF (e , t) 		-> 		analyse_expressionaux e ; nouvExp:=MEMBEROF (!nouvExp , t)
+	| MEMBEROFPTR (e , t) 	->			analyse_expressionaux e ; nouvExp:=MEMBEROFPTR (!nouvExp , t) (*nouvExp:=exp*)
 	| GNU_BODY (decs, stat) 		->
 			let listePred = !listeDesInstCourantes in
 			listeDesInstCourantes := [];
+			if !vDEBUG then Printf.eprintf "\nAnalyse statement : gnubody";
 			analyse_statement (BLOCK (decs, stat));
+						if !vDEBUG then Printf.eprintf "\nAnalyse statement : gnubody 2";
+
 			listeDesInstCourantes := 	[new_instBEGIN  !listeDesInstCourantes];
 			listeDesInstCourantes :=    List.append listePred  !listeDesInstCourantes 	;
 			nouvExp:=GNU_BODY (decs, stat)
 	|	CONSTANT cst ->
 			(match cst with
-					CONST_COMPOUND expsc ->
-(*Printf.printf "applystore MEMBEROFPTR lid not empty  assigncomma\n" ;print_expression exp 0; new_line();
-Printf.printf "\n";*)
-					nouvExp:=CONSTANT(CONST_COMPOUND(convael  expsc));
-(*print_expression !nouvExp 0; new_line(); Printf.printf "adress of...constant\n";*)
-					|_->nouvExp:=exp	;(*Printf.printf "...constant\n";*)
+					CONST_COMPOUND expsc -> nouvExp:=CONSTANT(CONST_COMPOUND(convael  expsc));
+					|_->nouvExp:=exp	; 
 			)
 	| EXPR_SIZEOF exp ->
 		analyse_expressionaux exp;
@@ -5105,7 +4587,7 @@ Printf.printf "\n";*)
 								 else if List.mem_assoc v !setAssosIDTYPEINIT then
 											nouvExp:=VARIABLE( "SIZEOF_"  ^ (get_baseinittype (List.assoc v !setAssosIDTYPEINIT)))
 										else nouvExp:=EXPR_SIZEOF !nouvExp
-			| INDEX (e, idx) ->
+			| INDEX (e, idx) -> (*ARRAYINDEX *)
 				let (tab,lidx) = analyseArray (  !nouvExp) []  in
 
 				if tab = "" then nouvExp:=EXPR_SIZEOF !nouvExp
@@ -5144,9 +4626,12 @@ Printf.printf "\n";*)
 	| TYPE_SIZEOF typ ->
 			nouvExp:=VARIABLE( "SIZEOF_"  ^ (get_baseinittype typ));
 (*traiter sizeof*)
-	| INDEX(_,expr) ->analyse_expressionaux expr; nouvExp:=exp
+	| INDEX(_,expr) -> (*ARRAYINDEX *)analyse_expressionaux expr; nouvExp:=exp
 	| EXPR_LINE (expr, _, _) ->analyse_expressionaux expr; nouvExp:=exp
 	| _->nouvExp:=exp
+
+
+
 
 
 and creerInitTabStruct  min max exp  autreIndex autreExp=
@@ -5193,7 +4678,7 @@ and ajouterReturn nomF lesAffectations =
 
 
 and getPartialResult nom =
-Printf.printf "getPartialResult name : %s :" nom; 
+    (*Printf.printf "getPartialResult name : %s :" nom; *)
     let nom = (Filename.concat !out_dir (nom^".rpo")) in
     let chan = Unix.in_channel_of_descr (Unix.openfile nom [Unix.O_RDONLY] 0) in
     let (partialResult : compInfo) = Marshal.from_channel chan in
@@ -5208,7 +4693,7 @@ and getESFromComp nom =
 
 
 and getAbsStoreFromComp nom =
-Printf.printf "getAbsStoreFromComp name : %s :" nom; 
+	(*Printf.printf "getAbsStoreFromComp name : %s :" nom; *)
     (getPartialResult nom).absStore
 
 and expBornesToListeAffect expBornes =
@@ -5239,24 +4724,15 @@ and traiterAppelFonction exp args init ida =
 		entrees := [];
 		sorties := [];
 		(*Printf.printf "construireListesES Function name: %s exist=%b \n" nom (existeFonction nom);*)
-		construireListesES f.listeES args;
-
-		(*Printf.printf "ap construireListesES Function name: %s exist=%b \n" nom (existeFonction nom);*)
+		construireListesES f.listeES args; 
 		ajouterReturn nom f.lesAffectations;
-
 		myCurrentPtrContext := LocalAPContext.setGlobalToTop !myCurrentPtrContext ( changeGlobalListPtr  nom (CORPS (new_instBEGIN f.lesAffectations)) []);
-
-
-
-
-		(*Printf.printf "Function name: %s exist=%b NEW APPEL \n" nom (existeFonction nom);*)
 		listeDesInstCourantes :=
 			List.append init [new_instAPPEL ida (new_instBEGIN !entrees) nom (new_instBEGIN !sorties) (new_instBEGIN f.lesAffectations) ""];
 			false
 	 )
 	 else
 	 (
-
 		entrees := [];
 		sorties := [];
 		try
@@ -5265,11 +4741,7 @@ and traiterAppelFonction exp args init ida =
 			(*Printf.printf "Number %u of E/S variables" (List.length listeES);*)
 			construireListesES listeES args;
 			(*Printf.printf "component call: %s %d\n" nom ida;*)
-
 			myCurrentPtrContext := LocalAPContext.setGlobalToTop !myCurrentPtrContext ( changeGlobalListPtr  nom (ABSSTORE absStore) []);
-
-
-
 			listeDesInstCourantes :=   List.append init[ new_instAPPELCOMP ida  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  absStore ""];
 			true
 		)
@@ -5282,8 +4754,6 @@ and traiterAppelFonction exp args init ida =
 				construireListesES	( listeES ) args
 			end;
 			myCurrentPtrContext := LocalAPContext.setGlobalToTop !myCurrentPtrContext ( changeGlobalListPtr  nom (CORPS (new_instBEGIN [])) []);
-			(*construireListesES (creerListeESBase)  args;	  *)
-			(*Printf.printf "Function name: %s not exist=%b NEW APPEL NON 2\n" nom (existeFonction nom);*)
           	listeDesInstCourantes :=  List.append init[new_instAPPEL ida (new_instBEGIN []) nom (new_instBEGIN !sorties) (new_instBEGIN []) ""];false
         	| Unix.Unix_error (x,y,z) -> aUneFctNotDEf := true;
 				listeDesInstCourantes :=  List.append init [new_instAPPEL ida (new_instBEGIN !entrees) nom (new_instBEGIN !sorties) (new_instBEGIN []) ""];
@@ -5313,10 +4783,7 @@ and analyse_def def =
           (MyFunCont.getInput f,MyFunCont.getOtherUsed f)
         end
       in
-  (*List.iter(fun x->Printf.printf"%s " x)used;Printf.printf"\nused\n";
-  List.iter(fun x->Printf.printf"%s " x)input;Printf.printf"\ninput\n";*)
-
-  (*List.iter(fun x->Printf.printf"%s " x)poiteurUsed;Printf.printf"\nptr\n";*)
+      
       let poiteurUsed =
   			List.filter (fun x-> if isPtr x then true else false ) used in
   		let initPtrList = LocalAPContext.initIntervalAnalyse poiteurUsed input (*!myAP current context*)[] !globalPtr(*externValue*) in
@@ -5326,12 +4793,10 @@ and analyse_def def =
   		listeBoucleOuAppelCourante := [];
   		majFonctionDansDocument proto body 	initPtrList	;
   		estGlobale := true;
-  		listeBoucleOuAppelCourante := listeBoucleOuAppelPred;(*Printf.printf "end  analyse_def  %s\n" nom ;*)	()
+  		listeBoucleOuAppelCourante := listeBoucleOuAppelPred; 	()
 	| OLDFUNDEF (proto, (*decs*)_, body) ->
 		let (_ , _ , fct )=proto in
-		let (name,_,_,_) =fct in
-		(*let fonction = rechercheFonction name in*)
-		(*Printf.printf "dans analyse_def  %s\n" name ;*)
+		let (name,_,_,_) =fct in 
 
 	if !vDEBUG then Printf.printf "OLDFUNDEF ans analyse_def  %s\n" name ;
 		let (input, used) =   if AFContext.mem  !myAF name = false then  ([],[])
@@ -5470,25 +4935,11 @@ and analyse_def def =
 				end;
 			end;
 			
-			(*if estDejaDecl then begin listeDesInstCourantes := listPred; consEnum typenum end
-			else if eststatic =false then listeDesInstCourantes := List.append listPred !listeDesInstCourantes
-				 else if !estGlobale = false  && estDejaDecl = false then
-					  begin
-							listeDesInstGlobales := List.append !listeDesInstGlobales !listeDesInstCourantes;
-						    listeLocalStatic := List.append !listeLocalStatic !listeDesInstCourantes;
-							listeDesInstCourantes := listPred
-					  end ;
-
-			if !estGlobale  then
-		 	begin
-					listeDesInstGlobales := List.append !listeDesInstGlobales !listeDesInstCourantes;
-
-					listeDesInstCourantes := listPred
-			end ;*)
-if !vDEBUG then Printf.printf "end analyse_def  DECDEF\n"  ;	
+		
+	if !vDEBUG then Printf.printf "end analyse_def  DECDEF\n"  ;	
 			()
 	| TYPEDEF (n, _) ->
-	if !vDEBUG then Printf.printf "DEBUT analyse_def  TYPEDEF\n"  ;	
+		if !vDEBUG then Printf.printf "DEBUT analyse_def  TYPEDEF\n"  ;	
 		let (typi, sto, namelist) = n in
 			let listPred = !listeDesInstCourantes in listeDesInstCourantes:= [];
 		List.iter  (fun name ->
@@ -5500,7 +4951,7 @@ if !vDEBUG then Printf.printf "end analyse_def  DECDEF\n"  ;
 										|_->());()
 					) namelist;
 		listeDesInstCourantes :=  List.append listPred !listeDesInstCourantes;
-if !vDEBUG then Printf.printf "end analyse_def  TYPEDEF\n"  ;	
+		if !vDEBUG then Printf.printf "end analyse_def  TYPEDEF\n"  ;	
 		()
 	| ONLYTYPEDEF n ->
 		if !vDEBUG then Printf.printf "DEBUT analyse_def  ONLYTYPEDEF\n"  ;	
@@ -5680,13 +5131,9 @@ and  onlyAstatement   stat =
 									listOfCase := [];
 
 									let listOfStat = listeSwitchStatement  stat in
-									analyseSwitchStatement stat varIfNaux listOfStat;
-
-									(*let newStatement = buildSwitchStatement !listOfCase !listOfDefault in*)
-									(*let isPred = !isIntoSwithch in*)
-									(*isIntoSwithch := true;*)
+									analyseSwitchStatement stat varIfNaux listOfStat; 
 									onlyAstatement    stat (* à traiter *);
-									(*isIntoSwithch := isPred*)
+									 
 
 
 	| CASE (exp, stat) ->			onlyAexpression   exp ;
@@ -5731,16 +5178,14 @@ and  onlyAexpressionaux exp =
 				| ADDROF	->(** "&" . nouvExp :=VARIABLE("&"^v)*)
 					(match e with
 						INDEX (t,i)->
-(* Printf.printf "adress of...\n"; print_expression e 0; new_line();*)
-							let (tab,lidx) = analyseArray e []  in
+ 							let (tab,lidx) = analyseArray e []  in
 							if tab = "" then nouvExp := exp
 							else
 							begin
-							    let sygmaIndex = (*(CONSTANT(CONST_INT("0"))) in*)
+							    let sygmaIndex =  
 										if lidx = [] then (CONSTANT(CONST_INT("0"))) else if (List.tl lidx) = [] then i else NOTHING in
 								nouvExp := UNARY(ADDROF,BINARY (ADD, (VARIABLE(tab)), sygmaIndex)) ;
-(*print_expression !nouvExp 0; new_line(); Printf.printf "adress of...\n";*)
-							end
+ 							end
 						| _->
 
 						nouvExp :=exp)
@@ -5751,16 +5196,14 @@ and  onlyAexpressionaux exp =
 
 
 	| BINARY (op, exp11, exp2) -> let exp1 = simplifierValeur exp11 in
-	(*	onlyAexpressionaux exp1 ; let ne1 = !nouvExp in
-		onlyAexpressionaux exp2;	 let ne = !nouvExp in   *)
+	 
 		(	match op with
 			ASSIGN		->
 
 			(	match  exp1 with
 				VARIABLE n ->  onlyAexpression exp2;	 let ne = !nouvExp in
 					let newaffect = match ne with BINARY (ASSIGN, exp111, exp21) -> new_instVarAndPtr  n  (EXP(exp21)) |_->	new_instVarAndPtr  n  (EXP(ne)) in
-					(*let newaffect =new_instVarAndPtr  n  (EXP(ne)) in*)
-						(* afficherUneAffect newaffect; flush(); new_line(); *)
+				
 					listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect]
 				|INDEX (t,i)->
 					( match t with
@@ -5799,8 +5242,7 @@ and  onlyAexpressionaux exp =
 									match size with
 										NOSIZE -> onlyAexpressionaux (BINARY (op, INDEX (tab,NOTHING), NOTHING))
 										| SARRAY (_) -> onlyAexpressionaux (BINARY (op, INDEX (tab,List.hd lidx), exp2))
-										| MSARRAY (lsize) -> (*ajouter une option pour struct détaillé*)(*let index = prodListSizeIndex lsize lidx in
-											onlyAexpressionaux (BINARY (op, INDEX (tab,index), exp2)) *)
+										| MSARRAY (lsize) -> (*ajouter une option pour struct détaillé*) 
 											onlyAexpressionaux (BINARY (op, INDEX (tab,NOTHING), NOTHING))
 								end else  onlyAexpressionaux (BINARY (op, INDEX (tab,NOTHING), NOTHING))
 
@@ -5820,11 +5262,7 @@ and  onlyAexpressionaux exp =
 						| _->	 if !vDEBUG then((* print_expression exp1 0 ; flush();space() ;flush();space() ;*) Printf.eprintf "array expr not implemented\n" 	)
 					)
 				| UNARY (opr,e) ->
-					(*let p = !listeNextExp in*)
-					(*
-					onlyAexpressionaux e ;
-					listeNextExp := p;
-					let neunary = !nouvExp in 	*)
+					
 					(
 						match opr with
 							MEMOF		->
@@ -5833,8 +5271,7 @@ and  onlyAexpressionaux exp =
 								(match !nouvExp with
 								  VARIABLE v -> onlyAexpressionaux exp2;	 let ne = !nouvExp in
 									(** "*" operator. *)(*Printf.printf "array expr  MEMOF\n" ;*)
-									    (* afficherUneAffect( new_instMem ("*"^v) (EXP(VARIABLE(v))) (EXP(ne))); flush(); new_line(); *)
-									listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instMem ("*"^v) (EXP(VARIABLE(v))) (EXP(ne))]
+ 									listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instMem ("*"^v) (EXP(VARIABLE(v))) (EXP(ne))]
 								  | UNARY(ADDROF,expaux)	->(** "&" operator. *)
 									(match expaux with
 									 VARIABLE v -> onlyAexpressionaux exp2;	 let ne = !nouvExp in
@@ -5854,13 +5291,12 @@ and  onlyAexpressionaux exp =
 													listeDesInstCourantes := List.append !listeDesInstCourantes [ new_instVarAndPtr  id   (EXP(NOTHING))]
 												else
 													listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instMem ("*"^id) (EXP(!nouvExp)) (EXP(NOTHING))]
-											|_->    Printf.eprintf "array expr not found\n"; print_expression exp1 0 ;flush();space() ;flush();space() ; ())
+											|_->    Printf.eprintf "array expr not found\n"; (*print_expression exp1 0 ;flush();space() ;flush();space() ;*) ())
 
 									else
 									begin
 										let newe = remplacerExpPar0   expres e in
-									     print_expression newe 0 ; flush();space() ;flush();space() ;
-										 if isstruct = false then
+ 										 if isstruct = false then
 											listeDesInstCourantes := List.append !listeDesInstCourantes [new_instTab v (EXP(newe))	(EXP(ne))]
 										else
 											listeDesInstCourantes := List.append !listeDesInstCourantes  [new_instMem ("*"^v) (EXP(!nouvExp)) (EXP(ne))]
@@ -5870,7 +5306,7 @@ and  onlyAexpressionaux exp =
 
 							|  _->	 if !vDEBUG then Printf.eprintf "array expr not implemented\n" 	 )
 
-				 (*  *)
+				 
 				 | MEMBEROF (e , t) 		->
 						let lid =	getInitVarFromStruct exp1  in
 						let id = if lid != [] then List.hd lid else (Printf.printf "not id 3876\n"; "noid") in
@@ -5882,12 +5318,9 @@ and  onlyAexpressionaux exp =
 
 						if lid != [] then
 						begin
-							onlyAexpressionaux exp2;	 let ne = !nouvExp in
-							(*Printf.printf "varDefList id %s type :\n"id;  new_line();*)
+							onlyAexpressionaux exp2;	 let ne = !nouvExp in 
 							let nee = consCommaExp (VARIABLE(id)) btype [id] lid ne false NOTHING  in
-						(*	if id = "os_thread" then
-							(Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression exp2 0 ; flush();space() ; print_expression ne 0 ; flush();space() ;
-							Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression nee 0 ; flush();space() ;new_line(); );*)
+					
 							let newaffect = new_instVarAndPtr id (EXP(nee) ) in
 
 							listeDesInstCourantes := List.append !listeDesInstCourantes  [newaffect];
@@ -5904,15 +5337,11 @@ and  onlyAexpressionaux exp =
 						if lid != [] then
 						begin
 							let rid = ("*"^id) in
-
-							(*if List.mem_assoc id !listeAssosPtrNameType then Printf.printf "MEMBEROFPTR varDefList id %s pointeur :\n"id
-							else Printf.printf "MEMBEROFPTR varDefList id %s  SINGLE :\n"id; *)
+ 
 							onlyAexpressionaux exp2;	 let ne = !nouvExp in
 							(*Printf.printf "varDefList id %s type :\n"id;  new_line();*)
 							let nee = consCommaExp (VARIABLE(id)) btype [id] lid ne false NOTHING  in
-							(*if id = "os_thread" then
-							(print_expression exp 0 ; flush();space() ;Printf.printf "MEMBEROFPTR varDefList id %s type :\n"id;  new_line();print_expression exp2 0 ; flush();space() ; print_expression ne 0 ; flush();space() ;
-							Printf.printf "varDefList id %s type :\n"id;  new_line();print_expression nee 0 ; flush();space() ;new_line(); );*)
+							 
 
 							let newaffect =   if  List.mem_assoc id !listeAssosPtrNameType then new_instMem  (rid) (EXP(VARIABLE(id))) (EXP(nee))
 											  else  new_instVarAndPtr id (EXP(nee) ) in
@@ -5946,7 +5375,7 @@ and  onlyAexpressionaux exp =
 
 	| CAST (t, e) 		 ->  onlyAexpression e ; nouvExp:=CAST (t, !nouvExp)
 	| CALL (e , args) 				->
-				(* List.iter (fun ep -> onlyAexpression ep) args; *)
+				 
 				let listeInstPred = !listeDesInstCourantes in
 				if existeFonction (nomFonctionDeExp e) && (not (is_in_use_partial (nomFonctionDeExp e))) then
 				begin
@@ -6033,10 +5462,9 @@ and  onlyAexpressionaux exp =
 					 end
 					 else   nouvExp:=EXPR_SIZEOF !nouvExp
 			|_->  nouvExp:=EXPR_SIZEOF !nouvExp
-		); (*print_expression !nouvExp 0;new_line () ;flush(); space();*)
-
+		);  
 	| TYPE_SIZEOF typ ->
-			nouvExp:=VARIABLE( "SIZEOF_"  ^ (get_baseinittype typ)); (*print_expression !nouvExp 0;new_line () ;flush(); space();*)
+			nouvExp:=VARIABLE( "SIZEOF_"  ^ (get_baseinittype typ));  
 	| GNU_BODY (decs, stat) ->
 			let listePred = !listeDesInstCourantes in
 			listeDesInstCourantes := [];
@@ -6046,10 +5474,8 @@ and  onlyAexpressionaux exp =
 			nouvExp:=GNU_BODY (decs, stat)
 	|	CONSTANT cst ->
 			(match cst with
-					CONST_COMPOUND expsc ->  (*Printf.printf "applystore MEMBEROFPTR lid not empty  assigncomma\n" ;*)
-							nouvExp:=CONSTANT(CONST_COMPOUND(convaelaux  expsc));
-	 						(*Printf.printf "new constant\n";print_expression exp 0; new_line() ;
-							print_expression !nouvExp 0; new_line(); Printf.printf "adresse of...constant\n";*)
+					CONST_COMPOUND expsc ->  
+							nouvExp:=CONSTANT(CONST_COMPOUND(convaelaux  expsc)); 
 					|_->nouvExp:=exp
 			)
 	| _->nouvExp:=exp;
@@ -6105,7 +5531,6 @@ let r = !idAppel in
 			     let res =
 					match (getCorpsFonction f).corpsS with  BLOCK (decs, stat) ->	onlyanalysedef (FUNDEF (proto, (decs, stat)));!listeDesInstCourantes
 					|_->[] in
-					(*if res = [] then Printf.printf "function name: %s exist=%b NEW APPEL ONLY onlytraiterAF vide \n" nom (existeFonction nom); *)
 				listeDesInstCourantes := a;
 				listeASCourant := m;
 				nomFctCour := nfc;
@@ -6117,7 +5542,6 @@ let r = !idAppel in
 		sorties := [];
 		construireListesES f.listeES args;
 		ajouterReturn nom aff;
-(*Printf.printf "function name: %s exist=%b NEW APPEL ONLY\n" nom (existeFonction nom);*)
 		listeDesInstCourantes :=   List.append init [ new_instAPPEL r  (new_instBEGIN !entrees)  f.nom (new_instBEGIN !sorties) (new_instBEGIN aff) ""];
 	    false
 	end
@@ -6131,13 +5555,11 @@ let r = !idAppel in
 				let m = !listeASCourant in
 				listeASCourant := [];
 				let (absStore,listeES) = (getAbsStoreFromComp nom),(getESFromComp nom) in
-				(*Printf.printf "Number of %u  E/S variables" (List.length listeES);*)
-				construireListesES listeES args;
+ 				construireListesES listeES args;
 				listeASCourant := m;
 				nomFctCour := nfc;
 				(*Printf.printf "Built component call: %s ONLY\n" nom;*)
-				(*Printf.printf "function name: %s exist=%b NEW APPEL COMPO \n" nom (existeFonction nom);*)
-				listeDesInstCourantes :=  List.append init [ new_instAPPELCOMP r  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  absStore ""]; true
+ 				listeDesInstCourantes :=  List.append init [ new_instAPPELCOMP r  (new_instBEGIN !entrees)  nom (new_instBEGIN !sorties)  absStore ""]; true
 		)
 		with  Unix.Unix_error(Unix.ENOENT, _, _)->
 			(*aUneFctNotDEf := true; *)
@@ -6148,9 +5570,7 @@ let r = !idAppel in
 
 				construireListesES	( listeES ) args
 			end;
-
-			(*Printf.printf " function name: %s exist=%b NEW APPEL NON ONLY \n" nom (existeFonction nom);*)
-          	listeDesInstCourantes :=
+           	listeDesInstCourantes :=
 				List.append init [ new_instAPPEL r  (new_instBEGIN [])  nom (new_instBEGIN !sorties)  (new_instBEGIN []) ""];false
         	| Unix.Unix_error (x,y,z) ->
            		 Printf.eprintf "%s: %s %s\n%!" y (Unix.error_message x) z;
@@ -6169,22 +5589,18 @@ begin
 	if List.mem n !listEnumId = false then listEnumId := n::!listEnumId ;
 	if exp = NOTHING then
 	begin
-(*Printf.printf "ENUM sans %s \n" n;  space();flush();new_line();	*)
-		let ne =(BINARY(ASSIGN,VARIABLE(n), CONSTANT( CONST_INT (Printf.sprintf "%d" valeur)))) in
+ 		let ne =(BINARY(ASSIGN,VARIABLE(n), CONSTANT( CONST_INT (Printf.sprintf "%d" valeur)))) in
 		analyse_expression ne;
 		consListeEnum suite (valeur+1);()
 	end
 	else
 	begin
-(*Printf.printf "ENUM %s \n" n;print_expression exp 0; space();flush();new_line();*)
-		analyse_expression (BINARY(ASSIGN,VARIABLE(n), exp));
+ 		analyse_expression (BINARY(ASSIGN,VARIABLE(n), exp));
 		let nval = calculer  (EXP(exp)) !infoaffichNull  [] 1 in
 		let nextvat =
 			match nval with
 	 			ConstInt (i)-> if  is_integer i then  (int_of_string  i) +1 else (valeur+1)
 			|_-> (valeur+1) in
-
-
 		consListeEnum suite (nextvat)
 	end;()
 end
@@ -6193,68 +5609,50 @@ and  	consEnum enumCour =
 
 match enumCour with
 
-	 ENUM (_, items) -> (*match items with COMMA(l) ->consListeEnum l 0 |_->()*) consListeEnum items 0
+	 ENUM (_, items) ->   consListeEnum items 0
 
 |_->();
 
 and isEnum enumCour =
 match enumCour with
-
-	 ENUM (_, items) -> (*match items with COMMA(l) ->consListeEnum l 0 |_->()*) true
-
+	 ENUM (_, items) ->   true
 |_->false;
 
 and onlyanalysedef def =
 	match def with
 	FUNDEF (proto, body)                 ->
 		let (_ , _ , fct )=proto in
-		let (nom,_,_,_) =fct in
-	(*	let fonction = rechercheFonction nom in*)
-
-		(*Printf.printf "dans onlyanalysedef  %s %s\n" nom !nomFctCour;*)
+		let (nom,_,_,_) =fct in 
 			let gp = !estGlobale in
 			estGlobale := false;
 			listeDesInstCourantes := [];
 			let nomPred = !nomFctCour in
 			nomFctCour := nom;
-			(*let (decs, stat) = body in onlyAstatement (BLOCK (decs, stat));*)
 			nomFctCour := nomPred;
 			listeDesInstCourantes := [ new_instBEGIN  (*!listeDesInstCourantes*)[]];
 			estGlobale := gp;
-
 		()
 
 	| OLDFUNDEF (proto, (*decs*)_, body) ->
 		let (_ , _ , fct )=proto in
-		let (nom,_,_,_) =fct in
-		(*let fonction = rechercheFonction nom in*)
-
-			(*Printf.printf "dans onlyanalysedef   %s %s\n" nom !nomFctCour;*)
+		let (nom,_,_,_) =fct in 
 			let gp = !estGlobale in
 			estGlobale := false;
 			listeDesInstCourantes := [];
 			let nomPred = !nomFctCour in
-			nomFctCour := nom;
-			(*let (decs, stat) = body in onlyAstatement (BLOCK (decs, stat));*)
+			nomFctCour := nom; 
 			nomFctCour := nomPred;
-			listeDesInstCourantes := [ new_instBEGIN  (*!listeDesInstCourantes*)[]];
+			listeDesInstCourantes := [ new_instBEGIN   []];
 			estGlobale := gp;
-
 			()
 
 	| DECDEF (n) ->
 			let listPred = !listeDesInstCourantes in
 			listeDesInstCourantes := [];
-			let (typ, sto, namelist) = n in
-			(*print_type (fun _ -> ()) typ; new_line();*)
-			(*print_base_type typ; new_line();*)
-			(*if estProto typ then  Printf.printf "is proto\n" else  Printf.printf "is not proto\n" ;*)
-			(*let bbtype = get_base_type typ in*)
-			(*let isPtr = if estProto typ =false then  isPtrType typ (get_base_typeEPS  typ) else  (*Printf.printf "is proto\n";*) false  in*)
+			let (typ, sto, namelist) = n in 
 
 			let (isPtr,show) = if estProto typ =false then
 			begin
-
 				let rep = isPtrType typ   in
 				 if rep = false then
 					let baseType = match  get_base_typeEPS  typ  with TYPEDEF_NAME(id) ->   id |_-> "" in
@@ -6263,19 +5661,14 @@ and onlyanalysedef def =
 							(match  (List.assoc baseType !listAssosIdTypeTypeDec) with
 							TYPEDEFTYPE (_,ttt) ->
 								let nr = isPtrType ttt   in
-
-
 								(nr , nr=true)
 							| _->  (false,false)
 							)
-
 					end
 					else (false,false)
 				else (rep,false)
-
 			end
 			else   (false,false)  in
-
 
 			if estProto typ =false then   (* variable declaration*) varDefList  typ namelist isPtr show;
 
@@ -6306,7 +5699,6 @@ and onlyanalysedef def =
 			List.iter  (fun name ->
 					let (id,tt, _, exp) = name in
 
-
 					let (isArray,dim) =
 						(match tt with
 							ARRAY (t, dim) -> majAssosArrayIDsize id tt exp; (* because of rename it is ok*)
@@ -6319,16 +5711,13 @@ and onlyanalysedef def =
 												(match calculer  (EXP(dim)) !infoaffichNull  [] 1 with ConstInt(s)-> if  is_integer s then (true,(int_of_string  s)) else (true,0)|_->(true,0))
 											|_ ->  (false,0))
 								  end
-						)
+						) in
 
-									in
-
-							if exp <> NOTHING ||( eststatic && estDejaDecl = false) then
+					 if exp <> NOTHING ||( eststatic && estDejaDecl = false) then
 							begin
-								if isArray = false then onlyAexpression(BINARY(ASSIGN,VARIABLE(id),exp));
-(*Printf.printf "id : %s \n" id; print_expression exp 0;new_line();*) (*else  creerInitTab id 0 (dim-1) exp estChar*)
+								if isArray = false then onlyAexpression(BINARY(ASSIGN,VARIABLE(id),exp)); 
 							end
-						) namelist;
+			) namelist;
 
 			if estDejaDecl then begin listeDesInstCourantes := listPred;consEnum typenum end
 			else if eststatic =false then listeDesInstCourantes := List.append listPred !listeDesInstCourantes
@@ -6341,7 +5730,6 @@ and onlyanalysedef def =
 			()
 
 	|TYPEDEF (n, _) -> 		let (typei, sto, namelist) = n in
-
 		List.iter  (fun name ->
 					let (id,typ, _, exp) = name in
 					match typ with ARRAY (t, dim) -> majTypeDefAssosArrayIDsize id typ ; () |ENUM(_,_)->()
@@ -6349,8 +5737,6 @@ and onlyanalysedef def =
 											(match base with ENUM(_,_) ->()|_->());()
 
 					) namelist;
-
-
 		()
 	| ONLYTYPEDEF n ->
 		let (typi, sto, namelist) = n in

@@ -4,6 +4,7 @@
 include ../Makefile.head
 
 SOURCES = \
+	parsepragma.ml\
 	main.ml \
 	version.ml
 OCAMLC_FLAGS += -g
