@@ -463,7 +463,9 @@ module TreeList = struct
   let onFunctionEnd = function
       (current, item::stack) -> (addChild current item), stack
       |(_, []) -> raise TreeBuildException
-
+  let onLoopResume res info =  match res  with
+      (current, stack) ->(current, stack)
+    (*to implement*)
   let onReturn = onFunctionEnd
   let onLoopEnd = onFunctionEnd
   let onIfEnd = onFunctionEnd

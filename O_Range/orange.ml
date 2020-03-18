@@ -29,21 +29,19 @@ open Constante
 
 
  (* get pragma loop annotation for line log and file fic*) 
-let getPragmaAnnotation fic lig =
-	if (LocationMap.cardinal !pragmaM>0 && lig-1 > 0) then
+let getPragmaAnnotation fic lig map=
+	if (LocationMap.cardinal map>0 && lig-1 > 0) then
 	 begin   
 		 let loca = (Loc.make fic   (lig -1) ) in
-		 if LocationMap.mem loca  !pragmaM  then 
+		 if LocationMap.mem loca  map  then 
 		 begin 
 				 if !vDEBUG then Printf.eprintf "PRAGMA LOOP FOUND \t" ;
-				 let bounds = LocationMap.find loca  !pragmaM  in
+				 let bounds = LocationMap.find loca  map  in
 				 (LoopBounds.get_upper bounds ,   LoopBounds.get_lower bounds  )				
 		 end
 		 else  (if !vDEBUG then Printf.eprintf "PRAGMA LOOP NOT FOUND \n"  ;(-1,-1))
 	 end else ( if !vDEBUG then Printf.eprintf "NO PRAGMA \n";(-1,-1))
-			 
-		
-		
+	 	
 		
 let exp_VERBOSE = ref false
 let print_EnTETE = ref true
@@ -98,6 +96,7 @@ module type LISTENER =
     val onIfEnd: t -> t
     val onIfTEnd: t -> t
     val onIfFEnd: t -> t
+    val    onLoopResume  : t -> string (*info *) -> t
 
     val concat: t -> t -> t
   end;;
@@ -162,6 +161,13 @@ module MonList = struct
     let newRes = (indent resaux)^text in
   newRes
 
+  let  onLoopResume res     info =
+  nbLigne := !nbLigne +2;
+  let resaux =
+    if !nbLigne>=50 then (nbLigne := 0; predListener := concat !predListener res;"") else res in
+    let newRes = (indent resaux)^info in
+    let newRes = (indent newRes)^"</loop>\n" in
+  newRes
 
 let infoCondStr = function
   | None ->""
@@ -429,7 +435,7 @@ if !vDEBUG then Printf.eprintf "onLoop\t" 	;
     in
  
      
-   let (upper ,lower)=getPragmaAnnotation source line in
+   let (upper ,lower)=getPragmaAnnotation source line !pragmaM in
    let max = (extractExp maxcount) in
    let explower =  if exact && max != "NOCOMP" then max else    Printf.sprintf "%d" ( lower )   in
    if upper >=0 then (
@@ -557,7 +563,7 @@ module PartialAdapter =
     let onIfF = Listener.onIfF
     let onIfT = Listener.onIfT
     let onIf = Listener.onIf
-
+    let onLoopResume  = Listener.onLoopResume
     let onComponent res comp_tree name numCall line source inloop executed =
 
       let rec aux res = function
@@ -646,6 +652,40 @@ type resMaxType =
 | EXPMAX of   expression list
 
 
+module LoopMinMaxBounds = struct
+  type ult = {   upper : resMaxType;
+    lower :resMaxType;
+    }
+    let make max min = {upper = max; lower = min }
+    let get_upper bounds = bounds.upper
+    let get_lower bounds = bounds.lower
+     
+ end
+
+
+let getMinMaxAnnotation fic lig map=
+	if (LocationMap.cardinal map>0 && lig > 0) then
+	 begin   
+		 let loca = (Loc.make fic   lig  ) in
+		 if LocationMap.mem loca  map  then 
+		 begin 
+				  
+				 let bounds = LocationMap.find loca  map  in
+				 (LoopMinMaxBounds.get_upper bounds ,   LoopMinMaxBounds.get_lower bounds  )				
+		 end
+		 else  ( EVALEXP(ConstInt("-1")), EVALEXP(ConstInt("-1")))
+	 end else ( EVALEXP(ConstInt("-1")), EVALEXP(ConstInt("-1")))
+	 
+ 
+let (pragmaOrOrangeM : LoopMinMaxBounds.ult LocationMap.t ref)    = ref  pragmaBounds
+let locationpragmaOrOrangeMapadd loc b =  pragmaOrOrangeM :=  LocationMap.add  loc b !pragmaOrOrangeM
+let locationpragmaOrOrangeMapUpdate loc max min = 
+	let b = LoopMinMaxBounds.make max min in
+	if LocationMap.mem loc !pragmaOrOrangeM  then pragmaOrOrangeM :=LocationMap.remove loc  !pragmaOrOrangeM ;
+	pragmaOrOrangeM := LocationMap.add loc b  !pragmaOrOrangeM 
+	
+	
+
 (* string list * string list is the true conditional list and the false one on with the call or loop
    execution depend on *)
 
@@ -658,12 +698,83 @@ List.iter (fun e ->
       | TFONCTION(num, numa, _, _, _, _, _, _, _, _, _, _) -> Printf.printf "Function %s into call  %d\n" num numa
 )liste
 
-let listeDesMaxParIdBoucle = ref []
-let existeAssosBoucleIdMax id = List.mem_assoc id  !listeDesMaxParIdBoucle
-let getAssosBoucleIdMax id = List.assoc id !listeDesMaxParIdBoucle
-let resetAssosIdMax = listeDesMaxParIdBoucle := []
+(*let listeDesMaxParIdBoucle = ref []*)
+(*let existeAssosBoucleIdMax id = List.mem_assoc id  !listeDesMaxParIdBoucle*)
+(*let getAssosBoucleIdMax id = List.assoc id !listeDesMaxParIdBoucle*)
+(*let resetAssosIdMax = listeDesMaxParIdBoucle := []*)
 
-let setAssosBoucleIdMaxIfSupOldMax id newmax  =
+let combinePragmaAndMinMaxLoop file line =
+let (om, omin) = getMinMaxAnnotation file line !pragmaOrOrangeM in
+	let (maxPragma,minPragma) =  getPragmaAnnotation file line !pragmaM in
+		 
+	let isokmax =   match om with EVALEXP(ConstInt("-1"))	->false |_->true in
+	let isokmin =   match omin with EVALEXP(ConstInt("-1"))	->false |_->true in
+	let isokmaxP =   if maxPragma = -1 then false else true in
+	let isokminP =   if minPragma = -1 then false else true in
+let maxi = if isokmaxP then om else om in
+let mini = if isokminP then omin (*to change*)else omin in
+(maxi, mini, om, omin,	isokmax, isokmin)
+
+
+
+let setAssosBoucleIdMaxIfSupOldMax file line newmax  newmin=
+	let (om, omin) = getMinMaxAnnotation file line !pragmaOrOrangeM in	 
+	let isokmax =   match om with EVALEXP(ConstInt("-1"))	->false |_->true   in
+	let isokmin =   match omin with EVALEXP(ConstInt("-1"))	->false |_->true in
+	
+	let maximum =  
+		if isokmax then 
+		begin     
+				  (match newmax with
+					EVALEXP(new_max)->     
+					  (match om with
+						EVALEXP(oldMax)->
+							if oldMax != new_max then  EVALEXP(maxi oldMax new_max) else newmax
+						|EXPMAX(lold) ->
+						 if List.mem (expressionEvalueeToExpression new_max) lold then om
+						 else  EXPMAX(List.append [expressionEvalueeToExpression new_max] lold) )
+
+					|EXPMAX(ml) ->  let new_exp = List.hd ml in
+					  (match om with
+						EVALEXP(oldMax)->
+						  EXPMAX (List.append [expressionEvalueeToExpression oldMax] ml )
+					   |EXPMAX(lold) -> if List.mem  new_exp lold then om  else   EXPMAX(List.append ml lold)
+							   )
+
+				  )
+		end else (  newmax) in
+			  
+		let minimum =  
+			if isokmin then 
+			begin			
+				  (match newmin with
+					EVALEXP(new_min)->
+					  (match omin with
+						EVALEXP(oldMin)->
+							if oldMin != new_min then  EVALEXP(mini oldMin new_min) else newmin
+						|EXPMAX(lold) ->
+						 if List.mem (expressionEvalueeToExpression new_min) lold then omin
+						 else  EXPMAX(List.append [expressionEvalueeToExpression new_min] lold) )
+
+					|EXPMAX(ml) ->
+					  let new_exp = List.hd ml in
+					  (match omin with
+						EVALEXP(old)->
+						  EXPMAX (List.append [expressionEvalueeToExpression old] ml )
+					   |EXPMAX(lold) ->
+								if List.mem  new_exp lold then omin
+								  else   EXPMAX(List.append ml lold)
+							   )
+				  )
+		end else newmin in
+	let loca = (Loc.make file line ) in		       
+	locationpragmaOrOrangeMapUpdate  loca maximum   minimum				 
+
+(*let setAssosBoucleIdMaxIfSupOldMax file line id newmax  newmin=
+
+
+	
+
   if existeAssosBoucleIdMax id then
   begin
     let om = getAssosBoucleIdMax id in
@@ -695,7 +806,7 @@ let setAssosBoucleIdMaxIfSupOldMax id newmax  =
   else
   begin   listeDesMaxParIdBoucle := List.append [(id, newmax)] !listeDesMaxParIdBoucle end
 
-
+*)
 let typeNidTeteCourant = ref (TBOUCLE(0,0,[], [], true,[], [],"",0))
 let dernierAppelFct = ref  (TFONCTION(!(!mainFonc),0,[], [], [], [],[], [], true,false,"",0))
 let predDernierAppelFct  = ref  (TFONCTION(!(!mainFonc),0,[], [], [], [],[],[], true, false,"",0))
@@ -1710,7 +1821,7 @@ match exp with
 
 let rec compNotInnerDependentLoop nnE iscompo=
 match nnE.idBoucleN with
-TBOUCLE(num, appel, _,_,_,_,_,_,_) ->
+TBOUCLE(num, appel, _,_,_,_,_,file,line)  ->
    if iscompo = false then
    begin
     let nia =   nnE.sensVariation   in
@@ -1765,44 +1876,46 @@ TBOUCLE(num, appel, _,_,_,_,_,_,_) ->
     let varBoucleIfN =  Printf.sprintf "%s-%d" "bIt" num in
     listeVB := listeSansAffectVar !listeVB varBoucleIfN;
     listeVBDEP := listeSansAffectVar !listeVBDEP varBoucleIfN;
-    if estDefExp myMaxIt && (getDefValue myMaxIt <=0.0)  then
-    begin
-        borneMaxAux:= (ConstInt("0"));
-        setAssosBoucleIdMaxIfSupOldMax num (EVALEXP(ConstInt("0")))
-    end
-    else
-    begin
-        if estDefExp myMaxIt then
-        begin
-          borneMaxAux:= myMaxIt ;
-          setAssosBoucleIdMaxIfSupOldMax num (EVALEXP(myMaxIt));
-        end
-        else
-        begin
-          let maxp = if existeNid num then (rechercheNid num).infoNid.expressionBorne else NOTHING in
-          setAssosBoucleIdMaxIfSupOldMax num (EXPMAX [maxp]);
-          borneMaxAux :=  NOCOMP
-        end
-    end;
-
+    
+    let setMax =
+		if estDefExp myMaxIt && (getDefValue myMaxIt <=0.0)  then
+		begin
+			borneMaxAux:= (ConstInt("0"));EVALEXP(ConstInt("0"))	
+		end
+		else
+		begin
+			if estDefExp myMaxIt then
+			begin
+			  borneMaxAux:= myMaxIt ;  (EVALEXP(myMaxIt));
+			end
+			else
+			begin
+			  let maxp = if existeNid num then (rechercheNid num).infoNid.expressionBorne else NOTHING in
+			  borneMaxAux :=  NOCOMP;
+			  (EXPMAX [maxp]);	 
+			end
+		end;
+    in
+        
     let (iAmExact, myVar)=
         if existeNid num then  ( hasinit= false&&hass=false &&(rechercheNid num).infoNid.isExactExp && (nnE.isIntoIf = false),  varBoucleIfN)
         else (false ,  varBoucleIfN)
           in
 
-
+	(*if iAmExact then *)setAssosBoucleIdMaxIfSupOldMax file line   setMax setMax;
+	(*else setAssosBoucleIdMaxIfSupOldMax file line   setMax (EVALEXP(ConstInt("-1")));*)
+	
+	
     if   hasinit= false&&hass=false&& (rechercheNid num).infoNid.isExactExp &&  !isExecutedOneTimeOrMore && estDefExp myMaxIt && (estNul myMaxIt) = false then
     begin
-
-
       isExecutedOneTimeOrMoreList := List.append  !isExecutedOneTimeOrMoreList [(num,true)]
     end
     else isExecutedOneTimeOrMoreList := List.append !isExecutedOneTimeOrMoreList  [(num,false)];
 
 
-     let mymax = !borneMaxAux in
-      let nb = expressionEvalueeToExpression (evalexpression  (Diff (mymax, ConstInt ("1"))))  in
-      let exp_nb = (BINARY(SUB, (expVaToExp new_expmax), CONSTANT (CONST_INT "1"))) in
+    let mymax = !borneMaxAux in
+    let nb = expressionEvalueeToExpression (evalexpression  (Diff (mymax, ConstInt ("1"))))  in
+    let exp_nb = (BINARY(SUB, (expVaToExp new_expmax), CONSTANT (CONST_INT "1"))) in
     let assignVB =
       if iAmExact   then   ASSIGN_SIMPLE (myVar, EXP(nb))
       else
@@ -1878,7 +1991,7 @@ let rec afficherNidUML nnE  liste tab  fichier ligne lt lf(result:Listener.t) : 
   
 	let hass = !hasSETCALL in
   	(*log << "\t" << path << "(MIN_ITERATION," << inst->address() << ") = " << min << io::endl;*)
-	let (upper ,lower)=getPragmaAnnotation fic lig in
+	let (upper ,lower)=getPragmaAnnotation fic lig !pragmaM in
 	let myMaxIt = 
 		if estNulEngPred =false then  
 		begin
@@ -1889,8 +2002,7 @@ let rec afficherNidUML nnE  liste tab  fichier ligne lt lf(result:Listener.t) : 
 				else expmax1	           
 		end
 		else  ConstInt("0") in
-	  
-
+	 
   let ne =  nnE.expressionBorneToutesIt  in
   let new_exptt =  applyif ne !listeVBDEP in
   let c2 = calculer  nnE.expressionBorneToutesIt   nia [] 1 in
@@ -1933,31 +2045,31 @@ let rec afficherNidUML nnE  liste tab  fichier ligne lt lf(result:Listener.t) : 
     listeVB := listeSansAffectVar !listeVB varBoucleIfN;
     listeVBDEP := listeSansAffectVar !listeVBDEP varBoucleIfN;
       estNulEng := false;
-
-    if estDefExp !borneAux && estNul !borneAux then
-    begin
-      borneMaxAux:= (ConstInt("0"));
-      setAssosBoucleIdMaxIfSupOldMax num (EVALEXP(ConstInt("0"))); (*attention on peut avoir plusieurs fois la meme variable de boucle donc ici on ajoute dans false on peut supprimer*)
-      estNulEng := true
-    end
-    else
-    begin
-      if estDefExp myMaxIt then
-      begin
-        borneMaxAux:= myMaxIt ;
-        setAssosBoucleIdMaxIfSupOldMax num (EVALEXP(myMaxIt));
-      end
-      else
-      begin
-        let maxp = if existeNid num then (rechercheNid num).infoNid.expressionBorne else NOTHING in
-        
-        borneMaxAux :=
-              begin
-                setAssosBoucleIdMaxIfSupOldMax num (EXPMAX [maxp]);
-                NOCOMP
-              end;
-      end
-    end;
+	let setMax =
+		if estDefExp !borneAux && estNul !borneAux then
+		begin
+		  borneMaxAux:= (ConstInt("0"));
+		  
+		  estNulEng := true;
+		  (EVALEXP(ConstInt("0"))); (*attention on peut avoir plusieurs fois la meme variable de boucle donc ici on ajoute dans false on peut supprimer*)
+		end
+		else
+		begin
+		  if estDefExp myMaxIt then
+		  begin
+			borneMaxAux:= myMaxIt ;
+			 (EVALEXP(myMaxIt))
+		  end
+		  else
+		  begin
+			let maxp = if existeNid num then (rechercheNid num).infoNid.expressionBorne else NOTHING in
+			
+			borneMaxAux := NOCOMP;
+			 (EXPMAX [maxp])
+				 
+		  end
+		end;
+	in
 
     valeurEng := !borneAux;
 (* ajouter SET*)
@@ -1968,6 +2080,11 @@ let rec afficherNidUML nnE  liste tab  fichier ligne lt lf(result:Listener.t) : 
      else (false,   varBoucleIfN, !borneAux)
      in
 
+	
+	(*if iAmExact then *)setAssosBoucleIdMaxIfSupOldMax fic lig   setMax setMax;
+	(* else setAssosBoucleIdMaxIfSupOldMax fic lig   setMax (EVALEXP(ConstInt("-1")));*)
+	
+	
   let ett = if nnE.isIntoIf then if !borneAux = NOCOMP then NOTHING else (expVaToExp new_exptt) else (expVaToExp new_exptt) in
   let em = if nnE.isIntoIf then if !borneAux = NOCOMP then NOTHING else (expVaToExp new_expmax) else (expVaToExp new_expmax) in
 
@@ -2800,7 +2917,7 @@ let rec traiterBouclesInternesComposant     nT (*tete nid contenant bi*)  nEC (*
       globales corpsCompo maxinit varLoop direction nomE (listeAsToListeAffect new_cond)
     else
     begin
-		let ncc = List.map(fun assign -> match assign with ASSIGN_SIMPLE (id, e)->    ASSIGN_SIMPLE (id,applyStoreVA(applyStoreVA e appel) globales) |_-> assign) new_cond  in
+		let ncc = List.map(fun assign -> match assign with ASSIGN_SIMPLE (id, e)->    ASSIGN_SIMPLE (id,applyStoreVA(applyStoreVA e appel) globales) |_-> assign) new_cond  in  
 		let next_cond = ncc in (* afficherListeAS next_cond;*)
 		let valrestest = calculer (applyStoreVA(applyStoreVA (applyStoreVA (restest) !aslAux) appel) globales)   !infoaffichNull  [](*appel*) 1 in
 
@@ -4067,7 +4184,7 @@ List.iter
 
 
 
-let printendExp l =
+(*let printendExp l =
   if List.mem NOTHING l then
     Printf.printf "NOTHING"
   else
@@ -4075,15 +4192,38 @@ let printendExp l =
   true
   (fun max -> print_expression (remplacerNOTHINGParAux(EXP(max))) 0) l
 
+*)
 
+ let rec endExpToString l =   
+	 let result =
+		 (match l with 
+			[] -> ""
+			|a::next -> 
+				let beg = (pcdata_from_expr a)  in
+				if next = [] then beg else  begin 
+					let aa =  (endExpToString next) in
+					beg ^ ", "^ aa
+				end
+				
+				)  in result
+			
+			
 let afficherInfoFonctionDuDocUML listeF =
+  let extractExp = function
+    (ConstInt(valeur)) ->  valeur
+    |(ConstFloat(valeur)) -> valeur
+    |(RConstFloat(valeur)) -> Printf.sprintf "%g" valeur
+    | _ -> "NOCOMP"
+    in
   compEvalue := List.rev !compEvalue;
   if listeF <> [] then begin
     valeurEng :=  NOCOMP ;
     borneAux :=  NOCOMP ;
     estNulEng := false;
-    isExactEng := true;
-    listeDesMaxParIdBoucle :=[];
+    isExactEng := true; 
+   (* listeDesMaxParIdBoucle := [];*)
+    pragmaOrOrangeM := LocationMap.empty;
+
     let result = (Listener.onBegin Listener.null) in
       if !vDEBUG then Printf.eprintf "\n\n\nAFFICHE afficherInfoFonctionDuDocUML \n";
     match ((rechercherEvalParNomAppel !(!mainFonc) 0 0 listeF)) with
@@ -4097,39 +4237,47 @@ let afficherInfoFonctionDuDocUML listeF =
               let isExtern = (not (existeFonctionParNom !(!mainFonc) doc)) in
               let result = Listener.onFunction result !(!mainFonc) isInLoop isExe isExtern in
               let result = if (not isExtern) then (afficherCorpsUML corps 5 true result) else result in
-              let result = Listener.onFunctionEnd result in
-              let result = Listener.onEnd result in
-              if (!exp_VERBOSE = true) then begin
-                    Printf.printf"\n<loopsfacts>\n";
-                    if ( !listeDesMaxParIdBoucle != [] ) then
-                      List.iter(
-                        fun (id,max) ->
-                          Printf.printf "\t <loopId=\"%d\" maxcountAnyCalls=\"" id ;
-                          (match max with
-                            EVALEXP(oldMax) ->
-                              if estDefExp oldMax then begin
-                                print_expTerm oldMax;
-                                Printf.printf  "\" >"   ; new_line();
-                              end else begin
-                                Printf.printf "NOCOMP\" expmaxcountAnyCalls=\"maximum(";
-                                print_expTerm oldMax;
-                                space();
-                                flush();
-                                Printf.printf ")\" >";
-                                new_line();
-                              end;
-                          | EXPMAX(l) ->
-                              Printf.printf "NOCOMP\" expmaxcountAnyCalls=\"maximum(";
-                              printendExp l;
-                              space();
-                              flush();
-                              Printf.printf  ")\" >";
-                              new_line();)
-                      ) !listeDesMaxParIdBoucle;
-                      Printf.printf "</loopsfacts>\n";
-                      flush();
-                      new_line();
-                end;
+              
+                             
+ 
+			  let listeDesMaxParIdBoucle = LocationMap.bindings !pragmaOrOrangeM  in	   				   
+			  let resume = (List.map(
+							fun (loc,max) ->   
+							  let (file,line) =Loc.get_loc loc in
+							  let (max,min) = getMinMaxAnnotation file line  !pragmaOrOrangeM in (*old maxcountAnyCalls*)
+							  
+							  let (maxexp,verbosemax) =	  (match max with
+										EVALEXP(oldMax) ->
+										 let maxE = (extractExp oldMax) in
+										 let exp = pcdata_from_expr (expressionEvalueeToExpression oldMax) in
+										 if maxE != "NOCOMP" then (maxE,"") else (maxE, 
+										 if (!exp_VERBOSE = true&& exp <>"") then " expmaxcountAnyCalls=\"maximum("^exp ^")\" " else "" )
+									  | EXPMAX(l) ->
+										   let exp = (endExpToString  l ) in	
+										  ("NOCOMP", if (!exp_VERBOSE = true&& exp <> "") then " expmaxcountAnyCalls=\"maximum("^(exp )^")\"" else "" ))
+								in
+							  
+							  let (minexp,verbosemin) =	 (match min with
+								EVALEXP(oldMax) ->
+									let maxE = (extractExp oldMax) in
+									let exp = pcdata_from_expr (expressionEvalueeToExpression oldMax) in
+										 if maxE != "NOCOMP" then (maxE,"") else (maxE,
+										 if (!exp_VERBOSE = true && exp <> "") then " expmincountAnyCalls=\"minimum("^(exp)^")\""  else "")	 
+							  | EXPMAX(l) ->
+								  let exp = (endExpToString  l ) in
+								  ("NOCOMP", if (!exp_VERBOSE = true && exp <> "" ) then " expmincountAnyCalls=\"minimum("^(exp)^")\""  else "")) 
+							in
+							let text = Printf.sprintf "<loop file=\"%s\" line=\"%d\" max=\"%s\"  min=\"%s\"" file line maxexp minexp in
+							let verboseText =  verbosemax ^ verbosemin in
+							let tt = if (!exp_VERBOSE = true) then  (  text ^ verboseText^">\n"	)    else	 (text^">\n")    in
+							 tt   
+							 
+						  ) listeDesMaxParIdBoucle ) in
+						  
+				List.iter (fun loop -> Printf.printf "%s</loop>\n" loop ) resume;	
+				let result = List.fold_left Listener.onLoopResume result resume in   
+				let result = Listener.onFunctionEnd result in	 
+                let result = Listener.onEnd result in
                 result
       | _ -> Listener.null;
   end else
@@ -4436,7 +4584,11 @@ if verbose then Printf.printf "reset initorange";
   estNulEng := false;
   estDansBoucle := false; estDansBoucleE :=!estDansBoucle;
   varDeBoucleBoucle :="";
-  listeDesMaxParIdBoucle :=  [];
+  (*listeDesMaxParIdBoucle :=  [];*)
+  
+   pragmaOrOrangeM := LocationMap.empty;
+  
+  
   typeNidTeteCourant := (TBOUCLE(0,0,[], [], true,[], [],"",0));
   dernierAppelFct := (TFONCTION(!(!mainFonc),0,[], [], [], [],[], [], true,false,"",0));
   predDernierAppelFct := (TFONCTION(!(!mainFonc),0,[], [], [], [],[],[], true, false,"",0));
