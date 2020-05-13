@@ -770,43 +770,7 @@ let setAssosBoucleIdMaxIfSupOldMax file line newmax  newmin=
 	let loca = (Loc.make file line ) in		       
 	locationpragmaOrOrangeMapUpdate  loca maximum   minimum				 
 
-(*let setAssosBoucleIdMaxIfSupOldMax file line id newmax  newmin=
-
-
-	
-
-  if existeAssosBoucleIdMax id then
-  begin
-    let om = getAssosBoucleIdMax id in
-    let maximum =
-      (match newmax with
-        EVALEXP(new_max)->
-          (match om with
-            EVALEXP(oldMax)->
-                if oldMax != new_max then  EVALEXP(maxi oldMax new_max)
-                else EVALEXP(new_max)
-            |EXPMAX(lold) ->
-             if List.mem (expressionEvalueeToExpression new_max) lold then om
-             else  EXPMAX(List.append [expressionEvalueeToExpression new_max] lold) )
-
-        |EXPMAX(ml) ->
-          let new_exp = List.hd ml in
-          (match om with
-            EVALEXP(oldMax)->
-              EXPMAX (List.append [expressionEvalueeToExpression oldMax] ml )
-           |EXPMAX(lold) ->
-                    if List.mem  new_exp lold then om
-                      else   EXPMAX(List.append ml lold)
-                   )
-
-      ) in
-    listeDesMaxParIdBoucle := List.remove_assoc id !listeDesMaxParIdBoucle;
-    listeDesMaxParIdBoucle := List.append [(id, maximum)] !listeDesMaxParIdBoucle
-  end
-  else
-  begin   listeDesMaxParIdBoucle := List.append [(id, newmax)] !listeDesMaxParIdBoucle end
-
-*)
+ 
 let typeNidTeteCourant = ref (TBOUCLE(0,0,[], [], true,[], [],"",0))
 let dernierAppelFct = ref  (TFONCTION(!(!mainFonc),0,[], [], [], [],[], [], true,false,"",0))
 let predDernierAppelFct  = ref  (TFONCTION(!(!mainFonc),0,[], [], [], [],[],[], true, false,"",0))
@@ -1902,8 +1866,16 @@ TBOUCLE(num, appel, _,_,_,_,_,file,line)  ->
         else (false ,  varBoucleIfN)
           in
 
-	(*if iAmExact then *)setAssosBoucleIdMaxIfSupOldMax file line   setMax setMax;
+	(*if iAmExact then setAssosBoucleIdMaxIfSupOldMax file line   setMax setMax;*)
 	(*else setAssosBoucleIdMaxIfSupOldMax file line   setMax (EVALEXP(ConstInt("-1")));*)
+	
+	if iAmExact then setAssosBoucleIdMaxIfSupOldMax  file line  setMax setMax
+	else 
+	begin
+		let (_ ,lower)=getPragmaAnnotation file line !pragmaM in
+		let expLow = if lower >=0 then  EVALEXP(ConstInt(Printf.sprintf "%d" ( lower ))) else setMax in 	           
+		setAssosBoucleIdMaxIfSupOldMax  file line setMax expLow
+	end;
 	
 	
     if   hasinit= false&&hass=false&& (rechercheNid num).infoNid.isExactExp &&  !isExecutedOneTimeOrMore && estDefExp myMaxIt && (estNul myMaxIt) = false then
@@ -2081,8 +2053,15 @@ let rec afficherNidUML nnE  liste tab  fichier ligne lt lf(result:Listener.t) : 
      in
 
 	
-	(*if iAmExact then *)setAssosBoucleIdMaxIfSupOldMax fic lig   setMax setMax;
+	(*if iAmExact then setAssosBoucleIdMaxIfSupOldMax fic lig   setMax setMax;*)
 	(* else setAssosBoucleIdMaxIfSupOldMax fic lig   setMax (EVALEXP(ConstInt("-1")));*)
+	
+	if iAmExact then setAssosBoucleIdMaxIfSupOldMax fic lig   setMax setMax
+	else 
+	begin
+		let expLow = if lower >=0 then  EVALEXP(ConstInt(Printf.sprintf "%d" ( lower ))) else setMax in 	           
+		setAssosBoucleIdMaxIfSupOldMax  fic lig  setMax expLow
+	end;
 	
 	
   let ett = if nnE.isIntoIf then if !borneAux = NOCOMP then NOTHING else (expVaToExp new_exptt) else (expVaToExp new_exptt) in
