@@ -50,10 +50,12 @@ module Coarse (* : Orange.LISTENER *) = struct
     { loop_bound = worst_loop_bound x.loop_bound (LoopMap.singleton id (Bound.of_expression_evaluee max)) }
   let concat x y =
     { loop_bound = worst_loop_bound x.loop_bound y.loop_bound }
+  (* let onLoopResume  x _ = x  (*to implement*)*)
+ 
 	
 
   (** {3 Dummy implementation} *)
-
+  let onLoopResume  x _ = x  (*to implement ?*)
   let onBegin x = x
   let onEnd x = x
   let onFunction x _ _ _ _ = x
@@ -67,6 +69,7 @@ module Coarse (* : Orange.LISTENER *) = struct
   let onIfEnd x = x
   let onIfTEnd x = x
   let onIfFEnd x = x
+  
 
   (** {3 Output} *)
 

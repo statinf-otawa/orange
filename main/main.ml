@@ -19,6 +19,7 @@ open Cvarabs
 open Cabs
 open Coutput
 open Orange
+open Parsepragma
 
 open Resumeforgraph
 open Util
@@ -28,7 +29,6 @@ open Xml
 
 module TO = Orange.Maker(Orange.PartialAdapter(Cextraireboucle.TreeList))
 module XO = Orange.Maker(Orange.PartialAdapter(Orange.MonList))
-module EO = Orange.Maker(Flowfacts.Coarse)
 
 (* === Utility functions === *)
 
@@ -110,6 +110,7 @@ let delta = ref false*)
 
 (* output stuff *)
 let out_file = ref ""
+(*let in_pragma_file = ref ""*)
 let out_dir = ref "."
 let print_exp = ref false
 
@@ -137,9 +138,9 @@ let opts = [
 
   (* jz: there are two options: either, input ffx is treated as the effect of
      'global' assignments, or the input ffx is translated to statements
-     that are inserted at the beginning of the main function 
+     that are inserted at the beginning of the main function
   	 (globals: globales, alreadyAffectedGlobales) *)
-	("--iffx", Arg.Set_string in_ffx_file, 
+	("--iffx", Arg.Set_string in_ffx_file,
 		"Input flow facts from the given file (effect of global assigns).");
 	("--iffxg", Arg.Set ghost,
 		"Input flow facts from the given file (instrumented 'ghost' instructions). Use with --iffx");
@@ -157,6 +158,9 @@ let opts = [
 		"Use partial result (rpo file) for this function.");
 	("--condIF",Arg.String (fun dir ->  hasCondListFile_name :=true;	 condListFile_name  := dir),
 		"Use annotation for \"if\" from .rpo file (use -k on a function containing IF_x = 0|1).");
+		
+	("--withpragma",  Arg.String (fun file -> in_pragma_file := file),
+  		"Get annotation from pragma file");
 	(* Mode options *)
 	("--auto", Arg.Set auto,
 		"Automated full analysis");
@@ -168,8 +172,8 @@ let opts = [
 	(* Output options *)
 	("-o", Arg.Set_string out_file,
 		"Output flow facts to the given file.");
-	("--outdir", Arg.String (fun dir -> out_dir := dir; Cextraireboucle.set_out_dir dir;),
-		"Output directory for partial results (rpo files) or graphs (dot files).");
+	("--rpo_iodir", Arg.String (fun dir -> out_dir := dir; Cextraireboucle.set_out_dir dir;),
+		"Output(Input) directory for partial results (rpo files) or graphs (dot files).");
 	("--without-global-initial",  Arg.Set withoutGlobalAndStaticInit  ,
 		"Without initial global and static values");
     ("--debug",  Arg.Set Util.vDEBUG  ,
@@ -213,11 +217,26 @@ let opts = [
 (* Return if the given component is in the list of to be partialised
 	components *)
 let isComponent comp =
+
 	let rec aux = function
 		| [] -> false
 		| (comp_name) :: r ->
 			if (comp = !comp_name)
-				then (true)
+				then
+				begin
+					try(
+
+							let nom = (Filename.concat !out_dir (comp^".rpo")) in
+							let chan = Unix.in_channel_of_descr (Unix.openfile nom [Unix.O_RDONLY] 0) in
+							close_in chan;
+							(* printf "Resultat partiel pour:%s déjà présent \n" comp;*)
+							false (* it is already partialised *)
+						)
+					 with  Unix.Unix_error(Unix.ENOENT, _, _)->
+					(* or if the partial result do not exists *)
+
+					(true)
+				end
 				else (aux r)
 		in aux !Cextraireboucle.names
 
@@ -227,22 +246,23 @@ let isComponent comp =
  * @return The list of computed partial results (in the same order)
  *)
 let rec getComps = function
-	| [] ->   () 
+	| [] ->   ()
 	| (_, fn)::r ->
       getComps r;
      (* printf "Evalue le resultat partiel pour: %s\n" fn.nom;*)
-     
+
       if (isComponent fn.nom) then begin
-      
+
         printf "Evalue le resultat partiel pour:%s\n" fn.nom;
 			(*alreadyEvalFunctionAS := List.map (fun n ->  (n,Cextraireboucle.getAbsStoreFromComp n)  )!use_partial	;
 						List.iter(fun (n,_) ->Printf.printf "%s " n)!alreadyEvalFunctionAS;*)
-            
+
   			TO.docEvalue := TO.new_documentEvalue [] []  ;
   			compEvalue := [];
   			listeAppels := [];
   			TO.varDeBoucleBoucle := "";
-  			TO.listeDesMaxParIdBoucle := [];
+  			TO.pragmaOrOrangeM := LocationMap.empty;
+  			(*TO.listeDesMaxParIdBoucle := [];*)
   			TO.corpsEvalTMP := [] ;
   			TO.nouBoucleEval:= [];
   			TO.appelcourant := [] ;
@@ -256,39 +276,28 @@ let rec getComps = function
   			let initListAssosPtrNameType = !listeAssosPtrNameType in
   			let initistAssocIdType = !listAssocIdType in
   			let initlistAssosIdTypeTypeDec = !listAssosIdTypeTypeDec in
-  
-  			(*TO.listeDesMaxParIdBoucle :=  [];
-  			TO.corpsEvalTMP :=  [] ;
-  			TO.nouBoucleEval:=  [];
-  			TO.docEvalue :=  TO.new_documentEvalue  [] [];
-  			TO.appelcourant :=   [] ;
-  			TO.listBeforeFct :=  [];
-  			TO.listeVB  := [];
-  			TO.listeVBDEP := [];
-  			TO.curassocnamesetList := [];
-  			TO.listeInstNonexe := [];
-  			TO.aslAux := [];
-  			TO.listCaseFonction := []*)
+
+  	 
         TO.isPartialisation := true;
         TO.isPrint_Expression := true;
   			listeASCourant := [];
   			Printf.printf "Longueur de l'arbre: avant %d.\n" (List.length !TO.docEvalue.TO.maListeEval);
-  
+
         (* jz: input ffx treated as the effect of global assignments *)
   			let globales = !alreadyAffectedGlobales in
         globalesVar := !alreadyAffectedGlobales;
-  
+
   			let typeE = TO.TFONCTION(fn.nom, !TO.numAppel, fn.lesAffectations, !listeDesEnum, [], [], [],  [], true, false, "", 0) in
         TO.dernierAppelFct := typeE;
   			TO.predDernierAppelFct := typeE;
   			let aslist = TO.completevaluerFonction (fn.nom) fn []  (EXP(NOTHING))   [typeE]  typeE true (*!listeASCourant*)
   				(evalStore (new_instBEGIN !listeDesEnum) [] [] []) (( CONSTANT(CONST_INT("1")))) (( CONSTANT(CONST_INT("0")))) [] [] in () ;
-  
+
   			let compAS: abstractStore list =
   				filterwithoutInternal (*(evalStore (new_instBEGIN fn.lesAffectations) [] []) (listeOutputs fn.listeES) globales *)
   						aslist (listeOutputs fn.listeES) globales in
   				printf ".. l'abstractStore fait %u entrees, affichage: \n"(List.length(compAS));
-  
+
   			(*afficherListeAS aslist;*)
   			printf "\n";
   			(* find if there is a loop inside abstract stores *)
@@ -338,9 +347,9 @@ let rec getComps = function
 
 (* Start a partial analysis on file *)
 
-(* Start a partial analysis on file *)           
+(* Start a partial analysis on file *)
 let analysePartielle file =
-	 
+
 
  TO.ptrInterval :=   [];
   TO.integerInterval :=   ["x"];
@@ -353,47 +362,47 @@ let analysePartielle file =
 	idAppel:=0;
 	nbImbrications := 0;
 	TO.enTETE :=  false;
-	TO.estNulEng :=  false;  TO.isPartialisation := true; TO.isPrint_Expression := true; 
+	TO.estNulEng :=  false;  TO.isPartialisation := true; TO.isPrint_Expression := true;
 	TO.estDansBoucle :=  false;getOnlyBoolAssignment := true;
-	     
+
 
 	analyse_defs file;getOnlyBoolAssignment := false; phaseinit := false;
-	   
+
 
 	printf "analyse_defs OK, maintenant lance evaluation des composants.\n";
 	Resumeforgraph.endForPartial "analyse_defs OK, maintenant lance evaluation des composants.\n" ;
 
-	    
-          		 
+
+
 
 	getComps !doc.laListeDesFonctions;
- 
+
 		print_string "OK, fini.\n"
-		
-	
-	
+
+
+
 (*let analysePartielle file =
 
-  if (!doc.laListeDesFonctions = []) then 
+  if (!doc.laListeDesFonctions = []) then
 			Printf.printf "MAIN SECOND liste fonction vide 1\n"
 		else  Printf.printf "MAIN SECOND liste fonction NON vide 1\n";
 
 
 
 	printf "Lance analyse_defs ...\n";
-	
+
   TO.ptrInterval :=   [];
   TO.integerInterval :=   ["x"];
 
   (*if need_analyse_defs
-  	then  
+  	then
   	begin Printf.printf "orange step1\n";
 
 		analyse_defs defs2; (*step 1*)
 	end;
-*)	
-	
-	
+*)
+
+
 	TO.numAppel := 0;
 	idBoucle := 0;	idIf := 0;
 	idAppel:=0;
@@ -401,23 +410,23 @@ let analysePartielle file =
 	TO.enTETE :=  false;
 	TO.estNulEng :=  false;  TO.isPartialisation := true; TO.isPrint_Expression := true;
 	TO.estDansBoucle :=  false;getOnlyBoolAssignment := true;
-	    
-          			  if (!doc.laListeDesFonctions = []) then 
+
+          			  if (!doc.laListeDesFonctions = []) then
 			Printf.printf "MAIN SECOND liste fonction vide 1\n"
 		else  Printf.printf "MAIN SECOND liste fonction NON vide 1\n";
 
 
 	(*analyse_defs file;*)
-	
+
 	getOnlyBoolAssignment := false; phaseinit := false;
-	
-	
-	if (!doc.laListeDesFonctions = []) then 
+
+
+	if (!doc.laListeDesFonctions = []) then
 	Printf.printf "printFile liste fonction vide 1\n"
 else  Printf.printf "printFile liste fonction NON vide 1\n";
 
    let liste = !doc.laListeDesFonctions in
- 
+
 	printf "analyse_defs OK, maintenant lance evaluation des composants.\n";
 	(*Resumeforgraph.endForPartial "analyse_defs OK, maintenant lance evaluation des composants.\n" ;*)
 	getComps liste;
@@ -431,26 +440,29 @@ let getSortRecStatus fp =
 			let outputstatut = (Sortrec.applicationRecursivityClass fp fp) in
 
 			let strToP =
-				if outputstatut = 0 then 
+				if outputstatut = 0 then
           			Printf.sprintf "Application is : not recursive\n"
-				else if outputstatut = 1 then 
+				else if outputstatut = 1 then
           			Printf.sprintf "Application containts only simple recursivity\n"
-		    		else 
+		    		else
 		      			Printf.sprintf "Application containts complex recursivity\n" in
 						output_string  out strToP;
 					close_out out;
 
-			if outputstatut = 2 then 
+			if outputstatut = 2 then
 			begin
 				Printf.eprintf "Application containts complex recursivity : oRange cannot be applied\n" ;
                 exit 1;
 			end
 
- 	
+
 
 (* === Main program === *)
 let _ =
 	(* Set needed output variables *)
+	
+
+  		
 	let (output, close) =
 		if !out_file = "" then (stdout,false)
 		else ((open_out !out_file), true)
@@ -470,6 +482,14 @@ let _ =
 	list_file_and_name := !list_file_and_name @ (get_fun_list !fun_list_file);
 	Cextraireboucle.sort_list_file_and_name !list_file_and_name;
 
+  (* pragma *)
+  
+  	if ((!in_pragma_file) <> "") then begin
+		if (!vDEBUG	) then Printf.eprintf  "Use Pragma %s\n" !in_pragma_file ;
+		Parsepragma.parse_file !in_pragma_file ;
+	end;
+	 
+
   (* jz: read input ffx for scenario -- c.f. util *)
   (* TODO / FIXME: catch xml-exception! *)
   if ((!in_ffx_file) <> "") then begin
@@ -482,20 +502,20 @@ let _ =
             if (xlval = xuval) then (* lower, upper equal -> no range *)
             begin (* scenario: ghost instructions or effect of global asgns *)
               if (!ghost) then begin
-                scenarioAsDocInsts := 
+                scenarioAsDocInsts :=
                   [BINARY(ASSIGN, VARIABLE(xvar), CONSTANT(CONST_INT(xlval)))] @ !scenarioAsDocInsts;
               end else begin
                 scenarioAsGlobals :=
                   [ASSIGN_SIMPLE(xvar, EXP (CONSTANT (CONST_INT(xlval))))] @ !scenarioAsGlobals;
-                (* 2nd part of hack to get in scenario: this way we add it to the list of global 
-                initializations. TODO :: similarly, we need some way to merge/decide which value 
+                (* 2nd part of hack to get in scenario: this way we add it to the list of global
+                initializations. TODO :: similarly, we need some way to merge/decide which value
                 to pick in case of multiple initializations (e.g. when a var is initialized globally
                 and by scenario *)
                 scenarioAsGlobalInsts :=
-                  [VAR(xvar, EXP (CONSTANT (CONST_INT(xlval))), [], [])] @ !scenarioAsGlobalInsts 
+                  [VAR(xvar, EXP (CONSTANT (CONST_INT(xlval))), [], [])] @ !scenarioAsGlobalInsts
               end
             end (*else (* not used anymore *) scenarioAsGlobals :=
-                [ASSIGN_SIMPLE(xvar, EXP (CALL (VARIABLE "SET", [CONSTANT (CONST_INT(xlval));     
+                [ASSIGN_SIMPLE(xvar, EXP (CALL (VARIABLE "SET", [CONSTANT (CONST_INT(xlval));
                   (* <---- SET? TODO *) CONSTANT (CONST_INT(xuval))])))] @ !scenarioAsGlobals *)
       ) !rscAS
   end;
@@ -534,6 +554,7 @@ let _ =
 	List.iter (fun r -> prerr_string (r ^ "\n")) !Cextraireboucle.files;*)
 
 	(* For full analysis, get the entry point *)
+	if (!vDEBUG	) then Printf.eprintf  "For full analysis, get the entry point \n" ;
 	if ((not !partial) && (not !onlyGraphe))
 		then (
 			let hd = (!(List.hd (!Cextraireboucle.names)))
@@ -545,12 +566,14 @@ let _ =
 	let a1 = !args in
 	let a2 = (List.filter
 		(fun e ->
-      match e with 
-        LINE_RECORD _-> true
+      match e with
+        LINE_RECORD _-> false
       | _ -> true)
 		a1
 	) in
 if (!vDEBUG	) then Printf.printf "Begin Merge\n" ;
+	if (!vDEBUG	) then Printf.eprintf  "For full analysis, get the entry point \n" ;
+
 	(* Merge given files into one with MergeC *)
 	let getMergedFile args =
 		let cfiles = (List.map
@@ -562,7 +585,7 @@ if (!vDEBUG	) then Printf.printf "Begin Merge\n" ;
 		) in
 if (!vDEBUG	) then Printf.printf "End Merge => Calipso\n" ;
 		(* Calipso processing *)
-		let cfiles = if (!run_calipso) then 
+		let cfiles = if (!run_calipso) then
       let calipso_opts =
 				[
 					Calipso.RemoveGoto;
@@ -572,10 +595,10 @@ if (!vDEBUG	) then Printf.printf "End Merge => Calipso\n" ;
 					Calipso.RemoveSwitch(Reduce.RAW);
 				] @ (if (!calipso_rrec && !frontc_frec = false)
 					then
-						begin 
-							
+						begin
+
 							 [Calipso.RemoveRecursive]
-							 
+
 						end
 					else []
 				) in (List.map
@@ -583,14 +606,14 @@ if (!vDEBUG	) then Printf.printf "End Merge => Calipso\n" ;
 					cfiles
 				)
 			else
-        cfiles 
+        cfiles
       in
       let removedextern = (Mergec.removeDuplicatedExtern cfiles) in
       let chk_cfiles = (Mergec.check "mergec_rename__" removedextern) in
       let merge_file = Mergec.merge chk_cfiles in
-        if Sortrec.hasRecursivity merge_file merge_file then 
+        if Sortrec.hasRecursivity merge_file merge_file then
           failwith "Recursivity within the application. Orange cannot be applied.";
-          merge_file 
+          merge_file
   in
 if (!vDEBUG	) then Printf.printf "End Calipso\n" ;
 	(* First parse *)
@@ -599,9 +622,9 @@ if (!vDEBUG	) then Printf.printf "End Calipso\n" ;
 		Rename.go (Frontc.trans_old_fun_defs merge_file) in
 if (!vDEBUG	) then Printf.printf "cons merge file => .merge.cm\n" ;
 		(* cons merge file *)
-		(*let out = open_out ".merge.cm" in
+		let out = open_out ".merge.cm" in
 		Cprint.print out firstParse;
-		close_out out;*)
+		close_out out;
 if (!vDEBUG	) then Printf.printf "get rec\n" ;
 		(* get recursivity*)
 		if (!frontc_frec) then begin
@@ -610,40 +633,40 @@ if (!vDEBUG	) then Printf.printf "get rec\n" ;
 			let outputstatut = (Sortrec.applicationRecursivityClass firstParse firstParse) in
 
 			let strToP =
-				if outputstatut = 0 then 
+				if outputstatut = 0 then
           Printf.sprintf "Application is : not recursive\n"
-				else if outputstatut = 1 then 
+				else if outputstatut = 1 then
           Printf.sprintf "Application containts only simple recursivity\n"
-        else 
+        else
           Printf.sprintf "Application containts complex recursivity\n" in
 			output_string  out strToP;
 			close_out out;
 		end else begin
 		(* *)
- if (!vDEBUG	) then Printf.printf " rec OK\n" ;		
+ if (!vDEBUG	) then Printf.printf " rec OK\n" ;
  if (!vDEBUG	) then  Printf.printf "first path end => go to orange\n" ;
       if ((!partial) || (!auto)) then
          TO.initref stdout firstParse
-      else 
+      else
          XO.initref stdout firstParse;
 
 	(* Second parse *)
 	let secondParse =
 		let merge_file = (getMergedFile a2) in
     Rename.go (Frontc.trans_old_fun_defs merge_file) in
-if (!vDEBUG	) then Printf.printf "  second path begin\n" ; 
+if (!vDEBUG	) then Printf.printf "  second path begin\n" ;
 
 
 	if !onlyGraphe then	(* Call graph mode *)
-		if (!completeGraphe) then 
+		if (!completeGraphe) then
 			Resumeforgraph.resume secondParse true
-		else 
+		else
 		Resumeforgraph.resume secondParse false
-	else 
+	else
 	begin
-			(* Analysis mode *)		
-			 
-				
+			(* Analysis mode *)
+
+
 			if (!auto) (* automated full analysis *) then begin
 			  (* apply a partialization strategy *)
 					let rec auto_part strategy =
@@ -677,8 +700,8 @@ if (!vDEBUG	) then Printf.printf "  second path begin\n" ;
 								TO.estNulEng := false;
 								TO.estDansBoucle := false;
 								(* start the partialization *)
-			
-						 
+
+
 
 								getComps !doc.laListeDesFonctions;
 								(* update environment for the next level *)
@@ -687,7 +710,7 @@ if (!vDEBUG	) then Printf.printf "  second path begin\n" ;
 						List.map (
 						  fun n -> (n, Cextraireboucle.getAbsStoreFromComp n)
 						) !use_partial;
-		  
+
 					  auto_part t;
 					end
 				  | [] ->
@@ -697,7 +720,7 @@ if (!vDEBUG	) then Printf.printf "  second path begin\n" ;
 			  (* get the strategy *)
 				let _ = Cextraireboucle.names := [] in
 				let _ = Cextraireboucle.sort_list_file_and_name [!(!Cextraireboucle.mainFonc)] in
-				let strategy = 
+				let strategy =
 				List.hd (
 				  if !allow_pessimism then
 					(Resumeforgraph.get_all_big_strategy secondParse)
@@ -710,7 +733,7 @@ if (!vDEBUG	) then Printf.printf "  second path begin\n" ;
 			  (*TO.initref stdout firstParse;*)
 			  (*analyse_defs secondParse;*)
 				auto_part strategy;
-		  
+
 				(* do a full analysis using all partialized functions *)
 				printf "Compute the final analysis\n";
 				Cextraireboucle.names := [];
@@ -724,54 +747,35 @@ if (!vDEBUG	) then Printf.printf "  second path begin\n" ;
 					XO.isPrint_Expression := true
 				else
 					XO.isPrint_Expression := false;
-				
-							  if (!doc.laListeDesFonctions = []) then 
+
+							  if (!doc.laListeDesFonctions = []) then
 					Printf.printf "MAIN liste fonction vide 3\n"
 				else  Printf.printf "MAIN liste fonction NON vide 3\n";
-				
-				
+
+
 				XO.notwithGlobalAndStaticInit := !withoutGlobalAndStaticInit;
-			 
+
 				XO.docEvalue :=  XO.new_documentEvalue [] []  ;
-				 
+
 			  compEvalue := [];
 				listeAppels :=  [];
-				
-				
+
+
 			  let myMode = if !resume then "resume" else if !multiTree then "multitree" else "nothing" in
 			  let result = XO.printFile stdout secondParse false myMode in
-				(if !out_file = "" then 
+				(if !out_file = "" then
 				List.iter (fun s-> print_string (s ^"\n") ) result
 				else
 					let out = open_out !out_file in
 					List.iter (fun s-> output_string out (s ^"\n")) result;
 					close_out out;
 				);
-    end 
-    else if (!partial) (* partial analysis *) then begin 
-         
+    end
+    else if (!partial) (* partial analysis *) then begin
+
 
       analysePartielle secondParse
-    end else if !wcee
-      then (* worst case event count analysis *) begin
-	let defs = secondParse in
-	Printf.eprintf "PERFORMING the worst case event count analysis\n%!";
-	let result = match EO.printFile stdout defs true "nothing" with
-	  | [x] -> x
-	  | _ -> failwith "unexpected number of analysis results" in
-	Flowfacts.Coarse.dump stderr result;
-	let ff = Flowfacts.LoopInfo.(to_ff_input (make defs result)) in
-	let entry = match !names with
-	  | [x] -> !x
-	  | l -> failwith (Printf.sprintf "unexpected number of entry points (%d)"
-			     (List.length l)) in
-	Printf.eprintf "Running the analysis with entry point \"%s\".\n" entry;
-	let wcee = Wcee.analysis ff defs entry in
-	ignore wcee;
-	Printf.eprintf "Worst case event count analysis DONE\n";
-	()
-      end
-      else (* full analysis *) begin
+    end else (* full analysis *) begin
       if !print_exp then
         XO.isPrint_Expression := true
       else
@@ -779,13 +783,13 @@ if (!vDEBUG	) then Printf.printf "  second path begin\n" ;
       XO.notwithGlobalAndStaticInit := !withoutGlobalAndStaticInit;
       (*Resumeforgraph.get_intervals secondParse;*)
       (*let result = XO.printFile stdout secondParse (*true si pas Resumeforgraph.get_intervals secondParse;*) (*false*) true  in*)
-      
-      			   
-      
+
+
+
         let myMode = if !resume then "resume" else if !multiTree then "multitree" else "nothing" in
   		let result =
   		if !cSNPRT then
-  		  XO.printFile stdout secondParse 
+  		  XO.printFile stdout secondParse
         (*true si pas Resumeforgraph.get_intervals secondParse;*) true myMode
       else
         (Resumeforgraph.get_intervals secondParse;
@@ -802,4 +806,3 @@ if (!vDEBUG	) then Printf.printf "  second path begin\n" ;
   end;
   (* Close the output if needed *)
   if close then close_out output
-  

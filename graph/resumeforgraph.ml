@@ -590,7 +590,7 @@ let rec chooseClassified n (classifiedList:(int * string list) list) cl l curren
 					then (biggesteString:=!biggesteString^Printf.sprintf "\t%s   totalsize %d %d fixed\n" name  totalSize fixed; currentLevelChoosenNode := List.append [name] !currentLevelChoosenNode)
 				| ONLYNOTPESSIMISTIC ->
 					let respess =    mayHaveListLevelNPessimisticnext  pessimistic cl   [name]    in
-					let hasGoodSize =  totalSize > 2500 || (mayBePessimistic && totalSize >1000) in
+					let hasGoodSize =  totalSize > 2500 || (mayBePessimistic && totalSize >500(*1000*)) in
 					(*let nopessimistic = allarenotPessimistic name respess in*)
 					if (respess = [] (*|| nopessimistic*)) && hasGoodSize  then  
 					(
