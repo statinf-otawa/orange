@@ -1950,7 +1950,7 @@ end
 let pragmaBounds = LocationMap.empty
 let (pragmaM : LoopBounds.ult LocationMap.t ref)    = ref  pragmaBounds
 
-let locationMapadd loc b =  pragmaM :=  LocationMap.add  loc b !pragmaM
+let locationMapadd loc b =  Printf.printf "  util\n"   ;Loc.print loc ; pragmaM :=  LocationMap.add  loc b !pragmaM
 (*let locationMaPrint =	 Printf.printf "  PARSEPRAGMA %d\n" ( LocationMap.cardinal !pragmaM)*)
 
 
