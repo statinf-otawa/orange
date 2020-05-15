@@ -157,7 +157,8 @@ module ItemCount = struct
   let print = IMap.print CostItem.print Format.pp_print_int
 
   (** Full printing. *)
-  let print_complete = IMap.print_ordered ~first:"" ~firstbind:">> " ~last:"" ~sep:"@\n" CostItem.print CostItem.known Format.pp_print_int
+  let print_complete =
+    IMap.print ~first:"" ~firstbind:">> " ~last:"" ~sep:"@\n" CostItem.print (* CostItem.known *) Format.pp_print_int
 end
 
 (** Evaluation of a piece of code. *)
@@ -247,7 +248,7 @@ let analysis
   let rec fun_eval (fname: string) : Footprint.t =
     Format.printf "WCEE: starting evaluation of function %s@\n@?" fname;
     let bodyCost = match Balance.function_def defs fname with
-      | None -> Footprint.one_item CostItem.UnknownCode
+      | None -> Footprint.one_item (CostItem.UnknownCode "?")
       | Some body -> stmt_eval None body in
     let callCost = Footprint.list [(1,CostItem.Call); (1,CostItem.Return)] in
     let res = Footprint.add bodyCost callCost in
