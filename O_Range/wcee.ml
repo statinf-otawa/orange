@@ -250,7 +250,7 @@ let analysis
   let rec fun_eval (fname: string) : Footprint.t =
     Format.printf "WCEE: starting evaluation of function %s@\n@?" fname;
     let bodyCost = match Balance.function_def defs fname with
-      | None -> Footprint.one_item (CostItem.UnknownCode "?")
+      | None -> Footprint.one_item CostItem.UnknownCode
       | Some body -> stmt_eval None body in
     let callCost = Footprint.list [(1,CostItem.Call); (1,CostItem.Return)] in
     let res = Footprint.add bodyCost callCost in
