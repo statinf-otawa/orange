@@ -12,6 +12,7 @@ open Printf
 open Frontc
 open Mergec
 open Calipso
+open Clexer
 open Sortrec
 open ExtractinfoPtr
 open Cextraireboucle
@@ -457,7 +458,19 @@ let getSortRecStatus fp =
 
 
 
+(* get pragam of source *)
+	let rec getPragma pragmaHandelList   =
+		match pragmaHandelList with
+		[]->()
+		| (f,l,p)::other ->  Printf.printf   " To analyse pragmaHandelList %s %d %s\n" f l p; analyse_onepragma f l p ; getPragma other 
+		
+
 (* === Main program === *)
+
+
+
+		
+		
 let _ =
 	(* Set needed output variables *)
 	
@@ -571,21 +584,26 @@ let _ =
       | _ -> true)
 		a1
 	) in
-if (!vDEBUG	) then Printf.printf "Begin Merge\n" ;
+    if (!vDEBUG	) then Printf.printf "Begin Merge\n" ;
 	if (!vDEBUG	) then Printf.eprintf  "For full analysis, get the entry point \n" ;
 
 	(* Merge given files into one with MergeC *)
-	let getMergedFile args =
+	let getMergedFile args first =
 		let cfiles = (List.map
 			(fun filename ->
 				match (Frontc.parse (FROM_FILE(filename) :: args)) with
 					| PARSING_ERROR -> failwith ("Frontc Failed to load " ^ filename);
-					| PARSING_OK(defs) -> defs
+					| PARSING_OK(defs) -> 
+					if (first && (!in_pragma_file) = "") then (* else already a pragma file  adding new pragma or not ??? *)
+						getPragma   !Clexer.current_handle.h_pragma ;
+					defs
 			) !Cextraireboucle.files
 		) in
-if (!vDEBUG	) then Printf.printf "End Merge => Calipso\n" ;
+		
+		
+	  if (!vDEBUG	) then Printf.printf "End Merge => Calipso\n" ;
 		(* Calipso processing *)
-		let cfiles = if (!run_calipso) then
+	  let cfiles = if (!run_calipso) then
       let calipso_opts =
 				[
 					Calipso.RemoveGoto;
@@ -615,17 +633,17 @@ if (!vDEBUG	) then Printf.printf "End Merge => Calipso\n" ;
           failwith "Recursivity within the application. Orange cannot be applied.";
           merge_file
   in
-if (!vDEBUG	) then Printf.printf "End Calipso\n" ;
+  if (!vDEBUG	) then Printf.printf "End Calipso\n" ;
 	(* First parse *)
 	let firstParse =
-		let merge_file = (getMergedFile a1) in
+		let merge_file = (getMergedFile a1 true) in
 		Rename.go (Frontc.trans_old_fun_defs merge_file) in
-if (!vDEBUG	) then Printf.printf "cons merge file => .merge.cm\n" ;
+  if (!vDEBUG	) then Printf.printf "cons merge file => .merge.cm\n" ;
 		(* cons merge file *)
 		let out = open_out ".merge.cm" in
 		Cprint.print out firstParse;
 		close_out out;
-if (!vDEBUG	) then Printf.printf "get rec\n" ;
+  if (!vDEBUG	) then Printf.printf "get rec\n" ;
 		(* get recursivity*)
 		if (!frontc_frec) then begin
 			let out = open_out ".rec_status" in
@@ -643,8 +661,8 @@ if (!vDEBUG	) then Printf.printf "get rec\n" ;
 			close_out out;
 		end else begin
 		(* *)
- if (!vDEBUG	) then Printf.printf " rec OK\n" ;
- if (!vDEBUG	) then  Printf.printf "first path end => go to orange\n" ;
+   if (!vDEBUG	) then Printf.printf " rec OK\n" ;
+   if (!vDEBUG	) then  Printf.printf "first path end => go to orange\n" ;
       if ((!partial) || (!auto)) then
          TO.initref stdout firstParse
       else
@@ -652,9 +670,9 @@ if (!vDEBUG	) then Printf.printf "get rec\n" ;
 
 	(* Second parse *)
 	let secondParse =
-		let merge_file = (getMergedFile a2) in
+		let merge_file = (getMergedFile a2 false) in
     Rename.go (Frontc.trans_old_fun_defs merge_file) in
-if (!vDEBUG	) then Printf.printf "  second path begin\n" ;
+   if (!vDEBUG	) then Printf.printf "  second path begin\n" ;
 
 
 	if !onlyGraphe then	(* Call graph mode *)

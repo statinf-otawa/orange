@@ -63,14 +63,14 @@ module CostItem = struct
   | Address
   | Load
   | Store
-  | UnknownCode of string
+  | UnknownCode
   let print fmt i = Format.pp_print_string fmt (match i with
     | SimpleOp -> "SimpleOp" | Mult -> "Mult" | Div -> "Div"
     | CondBr -> "CondBr" | UncondBr -> "UncondBr" | CalcBr -> "CalcBr" | Call -> "Call" | Return -> "Return"
-    | Address -> "Address" | Load -> "Load" | Store -> "Store" | UnknownCode s -> Format.asprintf "UnknowCode:%s" s)
+    | Address -> "Address" | Load -> "Load" | Store -> "Store" | UnknownCode -> "UnknowCode")
   let compare = Pervasives.compare
   let family = function
-    | SimpleOp | Mult | Div | UnknownCode _ -> CostFamily.Operation
+    | SimpleOp | Mult | Div | UnknownCode -> CostFamily.Operation
     | CondBr | UncondBr | CalcBr | Call | Return -> CostFamily.Control
     | Address | Load | Store -> CostFamily.Memory
   let cycle_range = function
@@ -85,8 +85,8 @@ module CostItem = struct
     | Address -> (0.5, 1.)
     | Load -> (2., 20.)
     | Store -> (2., 20.)
-    | UnknownCode _ -> (0., 1000.)
-  let known = [SimpleOp; Mult; Div; CondBr; UncondBr; CalcBr; Call; Return; Address; Load; Store]
+    | UnknownCode -> (0., 1000.)
+  let all = [SimpleOp; Mult; Div; CondBr; UncondBr; CalcBr; Call; Return; Address; Load; Store; UnknownCode]
 end
 
 (** {3 Counting operations} *)
@@ -159,6 +159,8 @@ module ItemCount = struct
   (** Full printing. *)
   let print_complete =
     IMap.print ~first:"" ~firstbind:">> " ~last:"" ~sep:"@\n" CostItem.print (* CostItem.known *) Format.pp_print_int
+
+  let print_list = IMap.print_list ~first:"" ~firstbind:">> " ~last:"" ~sep:"@\n" CostItem.print CostItem.all Format.pp_print_int
 end
 
 (** Evaluation of a piece of code. *)
@@ -375,7 +377,7 @@ let analysis
   let eval = fun_eval entry in
   Format.printf "Estimated cost for the function:@\n%a@\n" Footprint.print eval;
   let wc = Footprint.worst_case eval in
-  Format.printf "Worst case detail:@\n%a@\n" ItemCount.print_complete wc;
+  Format.printf "Worst case detail:@\n%a@\n" ItemCount.print_list wc;
   Format.printf ">> Optimistic evaluation => %d@\n" (int_of_float (ItemCount.cheap_eval wc));
   Format.printf ">> Pessimistic evaluation => %d@\n" (int_of_float (ItemCount.expen_eval wc));
   eval
