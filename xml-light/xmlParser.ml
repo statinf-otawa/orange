@@ -8,6 +8,9 @@
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
+ * This library has the special exception on linking described in file
+ * README.
+ *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -15,7 +18,8 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301 USA
  *)
 
 open Printf
@@ -144,6 +148,9 @@ let do_parse xparser source =
 	try
 		Xml_lexer.init source;
 		let s = { source = source; xparser = xparser; stack = Stack.create(); } in
+		let tk = pop s in
+		(* skip UTF8 BOM *)
+		if tk <> Xml_lexer.PCData "\239\187\191" then push tk s;
 		let x = read_xml s in
 		if xparser.check_eof && pop s <> Xml_lexer.Eof then raise (Internal_error EOFExpected);
 		Xml_lexer.close source;

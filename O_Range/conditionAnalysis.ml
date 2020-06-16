@@ -55,7 +55,7 @@ end
 (** Expressions as Map keys. EXPR_LINE are stripped. *)
 module Expr = struct
   type t = Make of Cabs.expression
-  let compare (Make e1) (Make e2) = Pervasives.compare e1 e2
+  let compare (Make e1) (Make e2) = Stdlib.compare e1 e2
   let make expr =
     let rec annot_free expr =
       let rf = annot_free in

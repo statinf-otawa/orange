@@ -46,7 +46,9 @@ module CostFamily = struct
     | Operation -> "operation"
     | Control -> "control"
     | Memory -> "memory")
-  let compare = Pervasives.compare
+    
+  (*Pervasives.compare ->Stdlib.compare for ocaml 4.10.0*)
+  let compare = Stdlib.compare
 end
 
 (** Cost items. Each cost item belongs to a family of cost. *)
@@ -68,7 +70,9 @@ module CostItem = struct
     | SimpleOp -> "SimpleOp" | Mult -> "Mult" | Div -> "Div"
     | CondBr -> "CondBr" | UncondBr -> "UncondBr" | CalcBr -> "CalcBr" | Call -> "Call" | Return -> "Return"
     | Address -> "Address" | Load -> "Load" | Store -> "Store" | UnknownCode -> "UnknowCode")
-  let compare = Pervasives.compare
+ 
+   (*Pervasives.compare ->Stdlib.compare for ocaml 4.10.0*)
+  let compare = Stdlib.compare 
   let family = function
     | SimpleOp | Mult | Div | UnknownCode -> CostFamily.Operation
     | CondBr | UncondBr | CalcBr | Call | Return -> CostFamily.Control
@@ -300,8 +304,10 @@ let analysis
       add_all [read e_if; max c_then c_else], Reg
     | CAST (_,e) -> read e, Reg
     | CALL (VARIABLE fname,el) ->
+    
+      (*Pervasives.max ->Stdlib.max for ocaml 4.10.0*)
       let args = Footprint.add_all (List.map read el) in
-      let calling = items (Pervasives.max 0 ((List.length el) - 4), CostItem.Store) in
+      let calling = items (Stdlib.max 0 ((List.length el) - 4), CostItem.Store) in
       let execution = fun_eval fname in
       if false then Format.printf "Execution of %s evaluates to:@\n%a@\n" fname Footprint.print execution;
       add_all [args; calling; execution], Reg

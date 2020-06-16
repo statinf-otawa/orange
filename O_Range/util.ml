@@ -1939,7 +1939,7 @@ module Loc = struct
   (** Prints a location. *)
   let print   loc = Printf.printf  "%s:%d" loc.file loc.line
   let get_loc loc = (loc.file, loc.line) 
-  let compare = Pervasives.compare
+  let compare = Stdlib.compare
 end
 
 

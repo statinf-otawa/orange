@@ -4,8 +4,8 @@
 *)
 
 module LoopId = struct
-  type t = int
-  let compare = Pervasives.compare
+  type t = int (*Pervasives.compare ->Stdlib.compare for ocaml 4.10.0*)
+  let compare = Stdlib.compare
 end
 
 module LoopMap = Map.Make(LoopId)
@@ -90,7 +90,7 @@ end
 
 module CStmt = struct
   type t = Cabs.statement
-  let compare = Pervasives.compare
+  let compare = Stdlib.compare
 end
 
 module CStmtMap = Map.Make(CStmt)

@@ -7,6 +7,9 @@
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
+ * This library has the special exception on linking described in file
+ * README.
+ *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -14,7 +17,8 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301 USA
  *)
 
 (** Xml Light DTD
@@ -68,6 +72,8 @@ type dtd_attr_type =
 	| DTDCData
 	| DTDNMToken
 	| DTDEnum of string list
+	| DTDID
+	| DTDIDRef
 
 type dtd_item =
 	| DTDAttribute of string * string * dtd_attr_type * dtd_attr_default
@@ -140,6 +146,7 @@ type check_error =
 	| ElementEmptyContructor of string
 	| ElementReferenced of string * string
 	| ElementNotDeclared of string
+	| WrongImplicitValueForID of string * string
 
 type prove_error =
 	| UnexpectedPCData
@@ -149,6 +156,8 @@ type prove_error =
 	| RequiredAttribute of string
 	| ChildExpected of string
 	| EmptyExpected
+	| DuplicateID of string
+	| MissingID of string
 
 type parse_error = parse_error_msg * Xml.error_pos
 

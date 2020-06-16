@@ -9,7 +9,9 @@ module Loc = struct
   let make file line = { file = file; line = line }
   (** Prints a location. *)
   let print fmt loc = Format.fprintf fmt "%s:%d" loc.file loc.line
-  let compare = Pervasives.compare
+  
+  (*Pervasives.compare ->Stdlib.compare for ocaml 4.10.0*)
+  let compare = Stdlib.compare
 end
 
 module LocMap = Map.Make(Loc)

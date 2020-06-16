@@ -7,6 +7,9 @@
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
+ * This library has the special exception on linking described in file
+ * README.
+ *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -14,7 +17,8 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301 USA
  *)
 
 open Lexing
@@ -64,14 +68,22 @@ and current_line_start = ref 0
 
 let tmp = Buffer.create 200
 
-let idents = Hashtbl.create 0
 
+let entities = [
+  "gt"  ,62, ">";
+  "lt"  ,60, "<";
+  "amp" ,38, "&";
+  "apos",39, "'";
+  "quot",34, "\"";
+]
+
+let idents = Hashtbl.create 0
 let _ = begin
-	Hashtbl.add idents "gt;" ">";
-	Hashtbl.add idents "lt;" "<";
-	Hashtbl.add idents "amp;" "&";
-	Hashtbl.add idents "apos;" "'";
-	Hashtbl.add idents "quot;" "\"";
+  List.iter (fun (str,code,res) ->
+      Hashtbl.add idents (str^";") res;
+      if code > 0
+      then Hashtbl.add idents ("#" ^ string_of_int code ^ ";") res
+    ) entities
 end
 
 let init lexbuf =
@@ -110,8 +122,9 @@ let newline = ['\n']
 let break = ['\r']
 let space = [' ' '\t']
 let identchar =  ['A'-'Z' 'a'-'z' '_' '0'-'9' ':' '-']
-let entitychar = ['A'-'Z' 'a'-'z']
+let entitychar = ['A'-'Z' 'a'-'z' '0'-'9']
 let pcchar = [^ '\r' '\n' '<' '>' '&']
+let cdata_start = ['c''C']['d''D']['a''A']['t''T']['a''A']
 
 rule token = parse
 	| newline
@@ -132,6 +145,12 @@ rule token = parse
 			ignore_spaces lexbuf;
 			let data = dtd_data lexbuf in
 			DocType (root, data)
+		}
+	| "<![" cdata_start '['
+		{
+			last_pos := lexeme_start lexbuf;
+			Buffer.reset tmp;
+			PCData (cdata lexbuf)
 		}
 	| "<!--"
 		{
@@ -160,13 +179,6 @@ rule token = parse
 			ignore_spaces lexbuf;
 			let attribs, closed = attributes lexbuf in
 			Tag(tag, attribs, closed)
-		}
-	| "&#"
-		{
-			last_pos := lexeme_start lexbuf;
-			Buffer.reset tmp;
-			Buffer.add_string tmp (lexeme lexbuf);
-			PCData (pcdata lexbuf)
 		}
 	| '&'
 		{
@@ -198,7 +210,7 @@ and ignore_spaces = parse
 		{ () }
 
 and comment = parse
-    | newline
+	| newline
 		{
 			newline lexbuf;
 			comment lexbuf
@@ -211,7 +223,7 @@ and comment = parse
 		{ comment lexbuf }
 
 and header = parse
-    | newline
+	| newline
 		{
 			newline lexbuf;
 			header lexbuf
@@ -221,18 +233,35 @@ and header = parse
 	| eof
 		{ error lexbuf ECloseExpected }
 	| _
-		{ header lexbuf }		
+		{ header lexbuf }
+
+and cdata = parse
+	| [^ ']' '\n']+
+		{
+			Buffer.add_string tmp (lexeme lexbuf);
+			cdata lexbuf
+		}
+	| newline
+		{
+			newline lexbuf;
+			Buffer.add_string tmp (lexeme lexbuf);
+			cdata lexbuf
+		}
+	| "]]>"
+		{ Buffer.contents tmp }
+	| ']'
+		{
+			Buffer.add_string tmp (lexeme lexbuf);
+			cdata lexbuf
+		}
+	| eof
+		{ error lexbuf ECloseExpected }
 
 and pcdata = parse
 	| pcchar+
 		{
 			Buffer.add_string tmp (lexeme lexbuf);
 			pcdata lexbuf
-		}
-	| "&#"
-		{
-			Buffer.add_string tmp (lexeme lexbuf);
-			pcdata lexbuf;
 		}
 	| '&'
 		{
@@ -247,10 +276,18 @@ and entity = parse
 		{
 			let ident = lexeme lexbuf in
 			try
-				Hashtbl.find idents (String.lowercase ident)
+				Hashtbl.find idents (String.lowercase_ascii ident)
 			with
 				Not_found -> "&" ^ ident
 		}
+  | '#' ['0'-'9']+ ';'
+    {
+			let ident = lexeme lexbuf in
+			try
+				Hashtbl.find idents (String.lowercase_ascii ident)
+			with
+				Not_found -> "&" ^ ident
+    }
 	| _ | eof
 		{ raise (Error EUnterminatedEntity) }
 
@@ -313,7 +350,7 @@ and dq_string = parse
 	| eof
 		{ raise (Error EUnterminatedString) }
 	| _
-		{ 
+		{
 			Buffer.add_char tmp (lexeme_char lexbuf 0);
 			dq_string lexbuf
 		}
@@ -329,7 +366,7 @@ and q_string = parse
 	| eof
 		{ raise (Error EUnterminatedString) }
 	| _
-		{ 
+		{
 			Buffer.add_char tmp (lexeme_char lexbuf 0);
 			q_string lexbuf
 		}
@@ -381,7 +418,7 @@ and dtd_file = parse
 
 and dtd_intern = parse
 	| ']'
-		{ 
+		{
 			ignore_spaces lexbuf;
 			[]
 		}
@@ -458,19 +495,19 @@ and dtd_item_type = parse
 		{
 			ignore_spaces lexbuf;
 			TAttribute
-		} 
+		}
 	| _ | eof
 		{ dtd_error lexbuf EInvalidDTDTag }
 
 and dtd_element_type = parse
 	| "ANY"
-		{ 
+		{
 			ignore_spaces lexbuf;
 			dtd_end_element lexbuf;
 			DTDAny
 		}
 	| "EMPTY"
-		{ 
+		{
 			ignore_spaces lexbuf;
 			dtd_end_element lexbuf;
 			DTDEmpty
@@ -488,13 +525,13 @@ and dtd_element_type = parse
 		{ dtd_error lexbuf EInvalidDTDElement }
 
 and dtd_end_element = parse
-	| '>' 
+	| '>'
 		{ ignore_spaces lexbuf }
 	| _ | eof
 		{ dtd_error lexbuf EInvalidDTDElement }
 
 and dtd_end_attribute = parse
-	| '>' 
+	| '>'
 		{ ignore_spaces lexbuf }
 	| _ | eof
 		{ dtd_error lexbuf EInvalidDTDAttribute }
@@ -541,6 +578,16 @@ and dtd_attr_type = parse
 			ignore_spaces lexbuf;
 			DTDNMToken
 		}
+	| "ID"
+		{
+			ignore_spaces lexbuf;
+		 	DTDID
+		}
+	| "IDREF"
+		{
+			ignore_spaces lexbuf;
+			DTDIDRef
+		}
 	| '('
 		{
 			ignore_spaces lexbuf;
@@ -548,7 +595,7 @@ and dtd_attr_type = parse
 		}
 	| _ | eof
 		{ dtd_error lexbuf EInvalidDTDAttribute }
-	
+
 and dtd_attr_enum = parse
 	| identchar+
 		{

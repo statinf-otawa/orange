@@ -221,7 +221,8 @@ module CondEval = struct
                                          (** List of the feasible branches together with their respective weight.
 					     Must be non-empty. *)
   }
-  let compare = Pervasives.compare
+  (*Pervasives.compare ->Stdlib.compare for ocaml 4.10.0*)
+  let compare = Stdlib.compare
   let delta (n,ce) =
     let low, high = min_max (fun (_,w,_) -> w) ce.branches in
     n * (high - low)
