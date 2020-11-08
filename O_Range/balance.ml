@@ -222,7 +222,8 @@ module CondEval = struct
 					     Must be non-empty. *)
   }
   (*Pervasives.compare ->Stdlib.compare for ocaml 4.10.0*)
-  let compare = Stdlib.compare
+  let core_compare = compare	(* WARNING: too early Stdlib use *)
+  let compare = core_compare
   let delta (n,ce) =
     let low, high = min_max (fun (_,w,_) -> w) ce.branches in
     n * (high - low)

@@ -1,6 +1,7 @@
 
 (* Taken from balance.ml! *)
 (** Location in the source code. *)
+let core_compare = compare	(* WARNING: too early Stdlib use *)
 module Loc = struct
   (** A location in the source code. *)
   type t = { file: string; (** File name. *)
@@ -11,7 +12,7 @@ module Loc = struct
   let print fmt loc = Format.fprintf fmt "%s:%d" loc.file loc.line
   
   (*Pervasives.compare ->Stdlib.compare for ocaml 4.10.0*)
-  let compare = Stdlib.compare
+  let compare = core_compare	(* WARNING: too early Stdlib use *)
 end
 
 module LocMap = Map.Make(Loc)

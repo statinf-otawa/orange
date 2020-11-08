@@ -53,9 +53,10 @@ module Interval = struct
 end
 
 (** Expressions as Map keys. EXPR_LINE are stripped. *)
+let core_compare = compare	(* WARNING: too early Stdlib use *)
 module Expr = struct
   type t = Make of Cabs.expression
-  let compare (Make e1) (Make e2) = Stdlib.compare e1 e2
+  let compare (Make e1) (Make e2) = core_compare e1 e2
   let make expr =
     let rec annot_free expr =
       let rf = annot_free in

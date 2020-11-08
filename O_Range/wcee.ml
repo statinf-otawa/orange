@@ -40,6 +40,8 @@
 (** {3 Categories of costs} *)
 
 (** Families of cost. *)
+let core_compare = compare	(* WARNING: too early Stdlib use *)
+let core_max = max			(* WARNING: too early Stdlib use *)
 module CostFamily = struct
   type t = Operation | Control | Memory
   let print fmt f = Format.pp_print_string fmt (match f with
@@ -48,7 +50,7 @@ module CostFamily = struct
     | Memory -> "memory")
     
   (*Pervasives.compare ->Stdlib.compare for ocaml 4.10.0*)
-  let compare = Stdlib.compare
+  let compare = core_compare
 end
 
 (** Cost items. Each cost item belongs to a family of cost. *)
@@ -72,7 +74,7 @@ module CostItem = struct
     | Address -> "Address" | Load -> "Load" | Store -> "Store" | UnknownCode -> "UnknowCode")
  
    (*Pervasives.compare ->Stdlib.compare for ocaml 4.10.0*)
-  let compare = Stdlib.compare 
+  let compare = core_compare
   let family = function
     | SimpleOp | Mult | Div | UnknownCode -> CostFamily.Operation
     | CondBr | UncondBr | CalcBr | Call | Return -> CostFamily.Control
@@ -307,7 +309,7 @@ let analysis
     
       (*Pervasives.max ->Stdlib.max for ocaml 4.10.0*)
       let args = Footprint.add_all (List.map read el) in
-      let calling = items (Stdlib.max 0 ((List.length el) - 4), CostItem.Store) in
+      let calling = items (core_max 0 ((List.length el) - 4), CostItem.Store) in
       let execution = fun_eval fname in
       if false then Format.printf "Execution of %s evaluates to:@\n%a@\n" fname Footprint.print execution;
       add_all [args; calling; execution], Reg

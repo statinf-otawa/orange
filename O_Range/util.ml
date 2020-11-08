@@ -1930,6 +1930,7 @@ module LoopBounds = struct
  end
 
 (** Location in the source code. *)
+let core_compare = compare	(* WARNING: too early Stdlib use *)
 module Loc = struct
   (** A location in the source code. *)
   type t = { file: string; (** File name. *)
@@ -1939,7 +1940,7 @@ module Loc = struct
   (** Prints a location. *)
   let print   loc = Printf.printf  "%s:%d" loc.file loc.line
   let get_loc loc = (loc.file, loc.line) 
-  let compare = Stdlib.compare
+  let compare = core_compare
 end
 
 
