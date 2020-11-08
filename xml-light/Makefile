@@ -25,6 +25,9 @@ all: xml-light.cma xml-light.cmxa test.exe doc
 
 opt: xml-light.cmxa $(CMXS) test_opt.exe
 
+ifdef ONLY_APP
+install:
+else
 installcommon: all
 	cp xml.mli xmlParser.mli dtd.mli xml.cmi xmlParser.cmi dtd.cmi $(INSTALLDIR)
 
@@ -42,6 +45,7 @@ wininstall: all opt
 install_ocamlfind: all opt
 	sed "s|@VERSION@|$(VERSION)|g" < META.in > META
 	$(OCAMLFIND) install xml-light META xml-light.a xml-light.cma xml-light.cmxa $(CMXS) xml.cmx dtd.cmx xmlParser.cmx xml.mli xmlParser.mli dtd.mli xml.cmi xmlParser.cmi dtd.cmi
+endif
 
 doc:
 	mkdir doc
