@@ -4246,7 +4246,7 @@ let afficherInfoFonctionDuDocUML listeF =
 								  let exp = (endExpToString  l ) in
 								  ("NOCOMP", if (!exp_VERBOSE = true && exp <> "" ) then " expmincountAnyCalls=\"minimum("^(exp)^")\""  else "")) 
 							in
-							let text = Printf.sprintf "<loop file=\"%s\" line=\"%d\" max=\"%s\"  min=\"%s\"" file line maxexp minexp in
+							let text = Printf.sprintf "<loop source=\"%s\" line=\"%d\" max=\"%s\"  min=\"%s\"" file line maxexp minexp in
 							let verboseText =  verbosemax ^ verbosemin in
 							let tt = if (!exp_VERBOSE = true) then  (  text ^ verboseText^">\n"	)    else	 (text^">\n")    in
 							 tt   
