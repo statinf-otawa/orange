@@ -172,7 +172,7 @@ define ocaml_install_bin
 
 _INSTALL += _install_$(1)
 _install_$(1): $$(BIN_DIR)
-	install $(1)$(EXE) $$(BIN_DIR)
+	install $(1)$(EXE) '$$(BIN_DIR)'
 
 endef
 
