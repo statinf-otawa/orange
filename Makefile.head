@@ -87,8 +87,8 @@ define ocaml_install_lib
 
 _INSTALL += _install_$(1)_$(2)
 _install_$(1)_$(2):
-	install -d $(OCAML_SITE)/$(1)
-	install $(1).$(2) $(3) $(OCAML_SITE)/$(1)
+	install -d '$(OCAML_SITE)/$(1)'
+	install $(1).$(2) $(3) '$(OCAML_SITE)/$(1)'
 
 endef
 

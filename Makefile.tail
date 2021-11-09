@@ -69,10 +69,10 @@ ifdef SUBDIRS
 endif
 
 $(BIN_DIR):
-	install -d $(BIN_DIR)
+	install -d '$(BIN_DIR)'
 
 $(DATA_DIR):
-	install -d $(DATA_DIR)
+	install -d '$(DATA_DIR)'
 
 
 # OCAML Rules
